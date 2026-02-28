@@ -25,6 +25,7 @@ Voluntify
 │   ├── /dashboard                          — Role-adaptive dashboard
 │   ├── /events                             — Events list
 │   │   ├── /events/create                  — Create Event (modal or page)
+│   │   ├── /events/ai-create              — AI-Powered Event Creation (chat interface)
 │   │   └── /events/{event}                 — Event detail (tabbed)
 │   │       ├── /events/{event}/overview     — Event overview tab
 │   │       ├── /events/{event}/jobs         — Jobs & Shifts Manager tab
@@ -62,6 +63,7 @@ Voluntify
 | Scanner | Yes | No | Yes |
 | Scanner > Manual Lookup | Yes | No | Yes |
 | Settings > Team | Yes | No | No |
+| Events List > Create with AI | Yes (visible when org has ai_api_key) | No | No |
 
 ### Content Priority
 
@@ -203,6 +205,47 @@ Voluntify
 - **Loading**: Skeleton rows
 - **Empty**: "No events yet. Create your first event!" with CTA (Organizer) or "No events assigned to you." (other roles)
 - **Filtered empty**: "No [status] events found."
+
+### Page 4b: AI Event Creator
+
+**Route**: `/events/ai-create`
+**Purpose**: Create events, jobs, and shifts through natural language conversation with an AI assistant
+**Auth required**: Yes (Organizer only)
+**Requires**: Organization has `ai_api_key` configured
+
+**Layout**:
+- **Structure**: Sidebar + main content area with chat interface. Chat messages fill the main area. Input bar pinned at bottom.
+- **Key sections**: Chat message history → Text input bar with send button
+
+**Components**:
+
+| Component | Purpose | Data Source | Key Interactions |
+|---|---|---|---|
+| Chat History | Display conversation messages | Component state (messages array) | Scroll, auto-scroll on new message |
+| User Message | Right-aligned message bubble | User input | None |
+| Assistant Message | Left-aligned message bubble | Claude API response (text blocks) | Links to created events |
+| Text Input | Compose message to the AI | N/A | Type, submit (Enter or button) |
+| Loading Indicator | Show while AI is processing | Component state | None (display only) |
+| Event Link Card | Inline card showing the created event | Event model | Click to navigate to event detail |
+
+**User Actions**:
+1. **Send message**: Type a natural language description and submit
+2. **Follow up**: Continue the conversation to refine (add/modify/remove jobs, shifts, details)
+3. **Navigate to event**: Click the event link card to view the created event in the standard event detail page
+4. **Start over**: Clear the conversation and start a new event
+
+**Data Requirements**:
+- **Read**: Current organization (for context in system prompt and org-scoped queries)
+- **Write**: events, volunteer_jobs, shifts (via Actions — same as form UI)
+- **External**: Claude API via Vercel AI Gateway (using org's `ai_api_key`)
+
+**States**:
+- **No API key**: "AI event creation requires an API key. Configure one in Organization Settings." with link to settings
+- **Empty**: Welcome message with example prompts: "Try: 'Create a community cleanup on March 15th from 9am-3pm at Central Park with a setup crew and a food service team'"
+- **Conversing**: Chat messages displayed, input active
+- **Processing**: Loading indicator, input disabled
+- **Event created**: Assistant message includes event summary + link card to event detail
+- **Error**: Assistant message shows error (API error, validation failure), input remains active for retry
 
 ### Page 5: Event Detail / Overview
 
@@ -496,6 +539,21 @@ Voluntify
 - **Invite sent**: Toast "Invitation sent to [email]"
 - **Remove confirmation**: "Remove [name] from the organization? They will lose access to all events."
 
+**AI Settings Section** (visible to Organizer role only):
+
+| Component | Purpose | Data Source | Key Interactions |
+|---|---|---|---|
+| API Key Input | Configure the org's Vercel AI Gateway API key | `organizations.ai_api_key` | Enter key, save |
+| Masked Key Display | Show last 4 characters of saved key | `organizations.ai_api_key` | None (display only) |
+| Test Connection Button | Verify the API key works | Makes a minimal API call to Vercel AI Gateway | Click: shows success/failure toast |
+| Remove Key Button | Delete the stored API key | `organizations.ai_api_key` | Click: confirm, set to null |
+
+**AI Settings States**:
+- **Key not set**: "Configure your AI API key to enable AI-powered event creation." with input field and save button
+- **Key set**: Masked display (showing last 4 chars), Test Connection and Remove Key buttons
+- **Test success**: Toast "Connection successful — AI event creation is ready."
+- **Test failure**: Toast "Connection failed — please check your API key."
+
 ## Core User Flows
 
 ### Flow 1: Event Setup
@@ -518,6 +576,25 @@ Voluntify
 
 **Success criteria**: Event is published with at least one job containing at least one shift. Public URL is shareable.
 **Error paths**: Validation errors on event creation form (missing name, invalid dates). Attempting to publish with no jobs/shifts shows a warning.
+
+### Flow 1b: AI-Powered Event Setup
+
+**Trigger**: Organizer clicks "Create with AI" on Events List
+**Persona**: Organizer
+**Goal**: Create a fully configured event with jobs and shifts from a natural language description
+**Addresses**: PP-3 (coordinator tech support), PR-1 (unified workflow)
+
+| Step | User Action | System Response | Page/Component |
+|---|---|---|---|
+| 1 | Clicks "Create with AI" on Events List | Navigates to AI chat page | Events List |
+| 2 | Types event description (e.g., "Create a cleanup event on March 15th...") | Sends message to Claude API with tool definitions. Claude calls `create_full_event` tool. System executes Actions to create event + jobs + shifts in draft status. Returns confirmation message with event summary and link. | AI Event Creator |
+| 3 | Reviews the created event in the chat | Assistant shows: event name, date, location, jobs with shift counts. Event link card displayed. | AI Event Creator |
+| 4 | (Optional) Sends follow-up ("Add a parking crew of 3 from 8-9am") | Claude calls tools to add the job and shift. Updated summary shown. | AI Event Creator |
+| 5 | Clicks event link or says "Publish the event" | Navigates to event detail, or Claude calls `publish_event` tool (if event has ≥1 job with ≥1 shift) | AI Event Creator / Event Overview |
+| 6 | Copies the public event URL | URL copied to clipboard | Event Overview |
+
+**Success criteria**: Event is created with correct jobs and shifts matching the natural language description. Organizer can review and publish.
+**Error paths**: API key not configured (redirect to settings). API rate limit / network error (show error in chat, allow retry). Event created but organizer wants to change something (continue conversation or use form UI).
 
 ### Flow 2: Volunteer Sign-Up
 
@@ -649,6 +726,8 @@ Voluntify
 | Database | SQLite (dev) / MySQL/PostgreSQL (prod) | Laravel default. SQLite for easy local dev; MySQL or PostgreSQL for production. |
 | Testing | Pest | Already in dev dependencies. PHP testing framework designed for Laravel. |
 | Queue | Laravel Queue (database driver) | For sending emails (confirmation, notifications, promotion). Database driver to avoid Redis dependency. |
+| AI API | `anthropic-ai/sdk` (Anthropic PHP SDK) | Official SDK for Claude API. Tool use for structured event creation from natural language. |
+| AI Gateway | Vercel AI Gateway (`ai-gateway.vercel.sh`) | Proxy for AI API requests. Observability, failover, spend tracking. Each org provides own key — no shared API costs. |
 
 ### QR / JWT Architecture
 
@@ -689,6 +768,38 @@ Voluntify
 - **Sync conflicts**: Server treats arrivals as idempotent (first-write-wins) — if a volunteer was already marked arrived (e.g., by manual lookup at another entrance), the sync response indicates "already_recorded" so the device can update its local state. This also enables cross-device duplicate detection after sync.
 - **Multi-device scanning**: Multiple Entrance Staff can scan at different entrances. Each device maintains its own IndexedDB. Server-side first-write-wins upsert handles convergence. After sync, the server's response includes the full arrival list, allowing devices to update their local cache for better cross-device duplicate detection.
 - **Key rotation at midnight**: The per-event, per-day HMAC key uses 4:00 AM local time as the rotation boundary (not midnight) to avoid mid-event key changes. Additionally, the scanner validates against both the current period's key and the previous period's key before rejecting a ticket, providing a graceful transition window.
+
+### AI Chat Architecture
+
+The AI-powered event creation feature uses Claude's tool use API to convert natural language descriptions into structured event data. The architecture follows an **agentic loop** pattern:
+
+1. Organizer sends a message via the in-app chat UI
+2. The backend sends the message to Claude API (via Vercel AI Gateway) with tool definitions for event management
+3. Claude decides which tools to call based on the organizer's request
+4. The backend executes the tool calls using the same domain Actions as the form UI (CreateEvent, CreateVolunteerJob, CreateShift, PublishEvent)
+5. Tool results are sent back to Claude
+6. Steps 3–5 repeat until Claude produces a final text response
+7. The response is displayed in the chat UI
+
+**Tool definitions** (passed to Claude API as `tools` parameter):
+- `list_events` — list events for the org (read-only)
+- `get_event` — get full event detail with jobs and shifts (read-only)
+- `create_full_event` — create event + jobs + shifts in one call
+- `update_event` — update event fields
+- `publish_event` — publish a draft event
+
+**Security model**:
+- Organization context is injected server-side — tools do not accept `organization_id` from the AI. All queries are scoped to the authenticated user's organization.
+- Only the Organizer role can access the AI chat
+- API key is stored encrypted per organization (`ai_api_key` on organizations table), never exposed to the client
+- Agentic loop capped at 10 iterations to prevent runaway API calls
+- Standard Laravel throttle middleware on the chat endpoint
+
+**BYOK (Bring Your Own Key)**:
+- Each organization stores its own Vercel AI Gateway API key
+- The AI chat feature is disabled when no key is configured
+- Organizers manage their key via Organization Settings
+- No shared API key at the application level — each org pays for their own usage
 
 ### Middleware
 
@@ -894,6 +1005,13 @@ readonly class SignupData
 - Event Overview page with metrics
 - Public event page with volunteer signup form
 - Volunteer model, shift signup logic with capacity enforcement
+
+### Phase 2b: AI Event Creation (Optional)
+- Anthropic PHP SDK integration with Vercel AI Gateway
+- AI tool definitions (event management tools)
+- Agentic loop service (tool executor, chat service)
+- AI Chat Livewire component and Blade view
+- Organization AI settings (API key CRUD, test connection)
 
 ### Phase 3: Tickets & QR Scanner (Must Have complete)
 - QR ticket generation (JWT creation with `chillerlan/php-qrcode`)
