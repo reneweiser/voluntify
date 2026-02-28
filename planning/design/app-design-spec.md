@@ -693,6 +693,7 @@ Voluntify
 ### Middleware
 
 - **RequirePasswordChange**: Checks `auth()->user()->must_change_password`. If true, redirects to `/change-password` for all routes except `/change-password`, `/logout`. Applied after auth middleware.
+- **ResolveOrganization**: Resolves the current organization from the authenticated user's memberships and binds it to the container as `currentOrganization`. Applied to all authenticated routes after auth middleware. Single-org users auto-resolve; multi-org users select via session.
 
 ## Design Principles
 
@@ -702,11 +703,187 @@ Voluntify
 - **Progressive disclosure**: Simple pages by default, complexity revealed on demand. Job accordion expands to show shifts. Volunteer row expands to detail.
 - **Affordable by design**: No features that require paid external services (no Twilio, no cloud scanning APIs). Self-hostable if desired.
 
+## Architectural Guardrails
+
+### PHP Enums
+
+All status, role, and method fields use PHP 8.3+ backed enums with `string` backing types. Enums are cast on Eloquent models via `$casts` — no string comparisons anywhere in the codebase.
+
+| Enum Class | Backing Type | Values | Used On |
+|---|---|---|---|
+| `App\Enums\EventStatus` | `string` | `draft`, `published`, `archived` | `events.status` |
+| `App\Enums\StaffRole` | `string` | `organizer`, `volunteer_admin`, `entrance_staff` | `organization_user.role` |
+| `App\Enums\AttendanceStatus` | `string` | `on_time`, `late`, `no_show` | `attendance_records.status` |
+| `App\Enums\ArrivalMethod` | `string` | `qr_scan`, `manual_lookup` | `event_arrivals.method` |
+
+**Rules**:
+- Models cast these columns: `protected $casts = ['status' => EventStatus::class]`
+- Migrations use `->string()` columns (not native DB enums) for portability
+- All conditionals use enum comparisons: `$event->status === EventStatus::Published`
+- Enum cases use PascalCase (`Draft`, `Published`, `Archived`)
+
+### Multi-Tenancy Scoping
+
+Organizations are the tenant boundary. Every query touching events, jobs, shifts, volunteers, tickets, and arrivals must be scoped to the current organization. The scoping strategy uses **middleware + container binding** so that Actions receive the org context via injection, and models stay unaware of tenant filtering.
+
+**Flow**:
+1. A `ResolveOrganization` middleware runs on all authenticated routes
+2. The middleware resolves the current organization from the authenticated user's memberships (single-org users auto-resolve; multi-org users select via session)
+3. The middleware binds the `Organization` instance to the container: `app()->instance('currentOrganization', $org)`
+4. Actions receive the current organization via constructor injection (type-hinted `Organization` resolved from the container binding)
+5. Actions scope all queries through the organization relationship: `$org->events()->where(...)` rather than `Event::where('organization_id', ...)`
+
+**Rules**:
+- Never use `Event::all()`, `Volunteer::where(...)`, or any unscoped model query in authenticated contexts
+- Always traverse from the organization: `$org->events()`, `$event->volunteerJobs()`, etc.
+- Public routes (event page, ticket page) resolve the organization from the `public_token` or `magic_token` on the resource — no middleware needed
+- The `ScannerController` API endpoints receive the event ID in the request; the controller verifies the authenticated user has access to that event's organization before returning data
+
+### Authorization Strategy
+
+Authorization uses **Laravel Policies per model**, called from Actions. Livewire components never contain authorization logic — they delegate to the Action, which calls the Policy. Route-level middleware handles broad role gating.
+
+**Layers**:
+
+| Layer | Mechanism | Purpose |
+|---|---|---|
+| Route middleware | `role:organizer`, `role:organizer,volunteer_admin` | Broad role gating — prevents unauthorized route access |
+| Model Policies | `EventPolicy`, `ShiftPolicy`, `VolunteerPolicy`, `AttendanceRecordPolicy` | Fine-grained permission checks (e.g., "can this user manage this event?") |
+| Actions | Call `$this->authorize()` or `Gate::authorize()` before mutating | Single enforcement point for business operations |
+| Livewire components | No auth logic — call Actions, display results | Pure adapter — no policy or gate calls |
+
+**Policies**:
+
+| Policy | Model | Key Methods |
+|---|---|---|
+| `EventPolicy` | `Event` | `viewAny`, `view`, `create`, `update`, `publish`, `archive` |
+| `VolunteerJobPolicy` | `VolunteerJob` | `viewAny`, `create`, `update`, `delete` |
+| `ShiftPolicy` | `Shift` | `viewAny`, `create`, `update`, `delete` |
+| `VolunteerPolicy` | `Volunteer` | `viewAny`, `view`, `promote` |
+| `AttendanceRecordPolicy` | `AttendanceRecord` | `record` (Volunteer Admin + Organizer only) |
+| `EventArrivalPolicy` | `EventArrival` | `record` (Entrance Staff + Organizer only) |
+| `OrganizationPolicy` | `Organization` | `manageTeam` (Organizer only) |
+
+**Rules**:
+- "Volunteer Admin sees only assigned events" is enforced by scoping queries in the Policy's `viewAny` method — not by hiding UI elements
+- Entrance Staff access to scanner is gated by route middleware (`role:entrance_staff,organizer`)
+- Organizer has implicit access to everything within their organization — Policies check org membership, not role, then fall through to role-specific checks
+
+### Action Orchestration
+
+Actions are single-responsibility classes with one `execute()` method. When an operation requires multiple steps, the primary Action **orchestrates** other Actions via constructor injection. Side effects (emails, notifications) are dispatched as queued jobs/notifications — never inline.
+
+**`SignUpVolunteer` orchestration** (the most complex flow):
+
+```
+SignUpVolunteer::execute(string $name, string $email, Shift $shift)
+├── Upserts volunteer record by email
+├── Creates shift_signup (with capacity check)
+├── Calls GenerateTicket::execute(volunteer, event)
+│   └── Creates JWT, generates QR, stores ticket record
+├── Calls GenerateMagicLink::execute(volunteer)
+│   └── Creates hashed magic link token
+└── Dispatches SignupConfirmation notification (queued)
+    └── Email contains event details, shift info, magic link to ticket
+```
+
+**Rules**:
+- Actions receive dependencies via constructor injection: `__construct(GenerateTicket $generateTicket, GenerateMagicLink $generateMagicLink)`
+- Actions never dispatch emails directly — they dispatch queued Notifications or queue Jobs
+- `RecordArrival` and `RecordAttendance` are independent Actions (different actors, different entities) — they do not orchestrate each other
+- `PromoteVolunteer` orchestrates user creation, role assignment, and dispatches the `VolunteerPromoted` notification
+
+### Validation Strategy
+
+Validation lives at the adapter boundary — in Livewire components for form submissions, in Form Requests for API endpoints. Actions trust their inputs (they receive typed parameters from validated adapters).
+
+**Livewire components**: Use `#[Validate]` attributes on public properties for declarative validation. The `$this->validate()` call in the component method triggers validation before calling the Action.
+
+```php
+// Example: Public Event Page signup form
+#[Validate('required|string|max:255')]
+public string $name = '';
+
+#[Validate('required|email')]
+public string $email = '';
+```
+
+**API endpoints**: The `ScannerController` uses Form Requests (`SyncArrivalsRequest`) for input validation. No manual `$request->validate()` calls in controller methods.
+
+**Rules**:
+- No validation logic inside Actions — they receive pre-validated, typed parameters
+- Livewire components use `#[Validate]` attributes (not `$rules` arrays) for consistency
+- Form Requests are used only for the `ScannerController` API endpoints
+- Domain constraints (shift capacity, duplicate signup) are enforced in Actions as business logic, not as validation rules
+
+### Domain Exceptions
+
+Business rule violations throw domain-specific exceptions from Actions. Livewire components catch these and translate them to user-facing messages (flash messages or inline errors). This keeps error semantics in the domain layer.
+
+| Exception | Thrown By | When |
+|---|---|---|
+| `ShiftFullException` | `SignUpVolunteer` | Shift capacity reached at time of signup |
+| `DuplicateSignupException` | `SignUpVolunteer` | Volunteer already signed up for this shift |
+| `EventNotPublishedException` | `SignUpVolunteer` | Signup attempted on a draft or archived event |
+| `InvalidMagicLinkException` | `TicketPage` (Livewire) resolves token | Magic link token expired, already used, or not found |
+| `InvalidTicketException` | `RecordArrival` | JWT validation failure (invalid signature, expired, malformed) |
+| `DuplicateArrivalException` | `RecordArrival` | Volunteer already recorded as arrived at this event |
+
+All domain exceptions extend a base `App\Exceptions\DomainException` class (which extends `\DomainException`). This allows a single catch block in Livewire components:
+
+```php
+try {
+    $this->signUpVolunteer->execute($this->name, $this->email, $this->shift);
+} catch (DomainException $e) {
+    $this->addError('signup', $e->getMessage());
+}
+```
+
+**Rules**:
+- Domain exceptions carry user-safe messages — they're designed to be shown to users
+- Actions throw domain exceptions; they never return error arrays or false
+- Livewire components catch `DomainException` and translate to UI feedback
+- Unexpected errors (DB failures, etc.) are not caught by components — they bubble up to Laravel's exception handler
+
+### Data Transfer Objects (DTOs)
+
+When Actions accept more than 3 parameters or need to pass structured data between layers, use simple DTOs (readonly classes with public properties). This prevents the "array with magic keys" anti-pattern.
+
+| DTO | Used By | Fields |
+|---|---|---|
+| `SignupData` | `SignUpVolunteer` | `name`, `email`, `shift_id` |
+| `ArrivalData` | `RecordArrival`, `SyncArrivals` | `volunteer_id`, `event_id`, `method` (ArrivalMethod enum), `scanned_at`, `scanned_by` |
+| `AttendanceData` | `RecordAttendance` | `shift_signup_id`, `status` (AttendanceStatus enum), `recorded_by` |
+| `PromotionData` | `PromoteVolunteer` | `volunteer_id`, `role` (StaffRole enum), `promoted_by` |
+
+DTOs are readonly classes constructed via named arguments:
+
+```php
+readonly class SignupData
+{
+    public function __construct(
+        public string $name,
+        public string $email,
+        public int $shiftId,
+    ) {}
+}
+```
+
+**Rules**:
+- DTOs are immutable (readonly classes)
+- DTOs carry no behavior — only data
+- Livewire components create DTOs from validated form data and pass them to Actions
+- DTOs may reference enums as field types for type safety
+
 ## Implementation Sequence
 
 ### Phase 1: Foundation
-- Database schema (all 13 entities: migrations, models, relationships)
+- Database schema (all 13 entities: migrations, models, relationships, enum casts)
+- PHP Enums (`EventStatus`, `StaffRole`, `AttendanceStatus`, `ArrivalMethod`)
 - Auth scaffolding (Fortify configuration, RequirePasswordChange middleware)
+- Multi-tenancy middleware (`ResolveOrganization` — org context binding)
+- Authorization Policies (`EventPolicy`, `OrganizationPolicy`, etc.)
+- Domain exception base class and initial exceptions
 - Organization and team management (CRUD, role pivot)
 - Basic layout with sidebar navigation and role-based visibility
 
@@ -757,19 +934,40 @@ app/
 │   ├── CreateEvent.php
 │   ├── PublishEvent.php
 │   ├── ArchiveEvent.php
-│   ├── SignUpVolunteer.php
+│   ├── SignUpVolunteer.php          — orchestrates GenerateTicket + GenerateMagicLink
 │   ├── GenerateTicket.php
 │   ├── GenerateMagicLink.php
 │   ├── RecordArrival.php
 │   ├── RecordAttendance.php
 │   ├── PromoteVolunteer.php
 │   └── SyncArrivals.php
+├── DTOs/
+│   ├── SignupData.php
+│   ├── ArrivalData.php
+│   ├── AttendanceData.php
+│   └── PromotionData.php
+├── Enums/
+│   ├── EventStatus.php              — Draft, Published, Archived
+│   ├── StaffRole.php                — Organizer, VolunteerAdmin, EntranceStaff
+│   ├── AttendanceStatus.php         — OnTime, Late, NoShow
+│   └── ArrivalMethod.php            — QrScan, ManualLookup
+├── Exceptions/
+│   ├── DomainException.php          — base class for all domain exceptions
+│   ├── ShiftFullException.php
+│   ├── DuplicateSignupException.php
+│   ├── EventNotPublishedException.php
+│   ├── InvalidMagicLinkException.php
+│   ├── InvalidTicketException.php
+│   └── DuplicateArrivalException.php
 ├── Http/
 │   ├── Controllers/
 │   │   └── Api/
 │   │       └── ScannerController.php
-│   └── Middleware/
-│       └── RequirePasswordChange.php
+│   ├── Middleware/
+│   │   ├── RequirePasswordChange.php
+│   │   └── ResolveOrganization.php  — binds current org to container
+│   └── Requests/
+│       └── SyncArrivalsRequest.php  — Form Request for scanner sync API
 ├── Livewire/
 │   ├── Dashboard.php
 │   ├── Events/
@@ -803,6 +1001,14 @@ app/
 │   ├── SignupConfirmation.php
 │   ├── PreShiftReminder.php
 │   └── VolunteerPromoted.php
+├── Policies/
+│   ├── EventPolicy.php
+│   ├── VolunteerJobPolicy.php
+│   ├── ShiftPolicy.php
+│   ├── VolunteerPolicy.php
+│   ├── AttendanceRecordPolicy.php
+│   ├── EventArrivalPolicy.php
+│   └── OrganizationPolicy.php
 └── Jobs/
     └── SendPreShiftNotifications.php
 
