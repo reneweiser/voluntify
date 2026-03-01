@@ -3,7 +3,9 @@
 use App\Actions\CreateEvent;
 use App\Enums\EventStatus;
 use App\Models\Organization;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
@@ -99,6 +101,41 @@ it('appends numeric suffix for duplicate slugs within same organization', functi
 
     expect($first->slug)->toBe('summer-carnival')
         ->and($second->slug)->toBe('summer-carnival-2');
+});
+
+it('stores title image when provided', function () {
+    Storage::fake('public');
+
+    $action = new CreateEvent;
+    $image = UploadedFile::fake()->image('banner.jpg', 1200, 400);
+
+    $event = $action->execute(
+        organization: $this->org,
+        name: 'Image Event',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-07-01 10:00'),
+        endsAt: Carbon::parse('2026-07-01 18:00'),
+        titleImage: $image,
+    );
+
+    expect($event->title_image_path)->not->toBeNull();
+    Storage::disk('public')->assertExists($event->title_image_path);
+});
+
+it('creates event without image', function () {
+    $action = new CreateEvent;
+
+    $event = $action->execute(
+        organization: $this->org,
+        name: 'No Image Event',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-07-01 10:00'),
+        endsAt: Carbon::parse('2026-07-01 18:00'),
+    );
+
+    expect($event->title_image_path)->toBeNull();
 });
 
 it('allows same slug in different organizations', function () {

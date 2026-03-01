@@ -2,8 +2,10 @@
 
 namespace App\Notifications;
 
+use App\Enums\EmailTemplateType;
 use App\Models\Event;
 use App\Models\Shift;
+use App\Services\EmailTemplateRenderer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -31,14 +33,31 @@ class SignupConfirmation extends Notification implements ShouldQueue
     {
         $job = $this->shift->volunteerJob;
 
-        return (new MailMessage)
-            ->subject("You're signed up for {$this->event->name}!")
-            ->greeting("Hello {$notifiable->name}!")
-            ->line("You've been signed up for **{$this->event->name}**.")
-            ->line("**Job:** {$job->name}")
-            ->line("**Shift:** {$this->shift->starts_at->format('M d, Y g:i A')} — {$this->shift->ends_at->format('g:i A')}")
-            ->when($this->event->location, fn (MailMessage $mail) => $mail->line("**Location:** {$this->event->location}"))
-            ->line('You will receive your ticket with a QR code via a separate link.')
-            ->line('Thank you for volunteering!');
+        $renderer = app(EmailTemplateRenderer::class);
+        $rendered = $renderer->render(
+            EmailTemplateType::SignupConfirmation,
+            $this->event,
+            [
+                'volunteer_name' => $notifiable->name,
+                'event_name' => $this->event->name,
+                'job_name' => $job->name,
+                'shift_date' => $this->shift->starts_at->format('M d, Y'),
+                'shift_time' => $this->shift->starts_at->format('g:i A').' — '.$this->shift->ends_at->format('g:i A'),
+                'event_location' => $this->event->location ? "**Location:** {$this->event->location}" : '',
+            ],
+        );
+
+        $mail = (new MailMessage)
+            ->subject($rendered['subject'])
+            ->greeting("Hello {$notifiable->name}!");
+
+        foreach (explode("\n", $rendered['body']) as $line) {
+            $trimmed = trim($line);
+            if ($trimmed !== '') {
+                $mail->line($trimmed);
+            }
+        }
+
+        return $mail;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Livewire\Events;
 
 use App\Actions\ArchiveEvent;
+use App\Actions\DeleteEventImage;
 use App\Actions\PublishEvent;
 use App\Actions\UpdateEvent;
 use App\Enums\EventStatus;
@@ -15,10 +16,13 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Title('Event Details')]
 class EventShow extends Component
 {
+    use WithFileUploads;
+
     public Event $event;
 
     public string $name = '';
@@ -30,6 +34,8 @@ class EventShow extends Component
     public string $startsAt = '';
 
     public string $endsAt = '';
+
+    public $titleImage;
 
     public bool $editing = false;
 
@@ -103,6 +109,7 @@ class EventShow extends Component
             'location' => ['nullable', 'string', 'max:255'],
             'startsAt' => ['required', 'date'],
             'endsAt' => ['required', 'date', 'after:startsAt'],
+            'titleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
         try {
@@ -114,13 +121,23 @@ class EventShow extends Component
                 location: $this->location ?: null,
                 startsAt: Carbon::parse($this->startsAt),
                 endsAt: Carbon::parse($this->endsAt),
+                titleImage: $this->titleImage,
             );
 
+            $this->titleImage = null;
             $this->editing = false;
             $this->dispatch('event-updated');
         } catch (DomainException $e) {
             $this->addError('name', $e->getMessage());
         }
+    }
+
+    public function deleteImage(): void
+    {
+        Gate::authorize('update', $this->event);
+
+        $action = app(DeleteEventImage::class);
+        $this->event = $action->execute($this->event);
     }
 
     public function publishEvent(): void

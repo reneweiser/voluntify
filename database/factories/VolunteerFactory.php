@@ -17,6 +17,7 @@ class VolunteerFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
+            'phone' => fake()->optional()->e164PhoneNumber(),
             'user_id' => null,
         ];
     }

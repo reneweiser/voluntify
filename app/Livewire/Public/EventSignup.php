@@ -23,6 +23,8 @@ class EventSignup extends Component
 
     public string $volunteerEmail = '';
 
+    public string $volunteerPhone = '';
+
     public ?int $selectedShiftId = null;
 
     public bool $signupComplete = false;
@@ -47,6 +49,7 @@ class EventSignup extends Component
         $this->validate([
             'volunteerName' => ['required', 'string', 'max:255'],
             'volunteerEmail' => ['required', 'email', 'max:255'],
+            'volunteerPhone' => ['nullable', 'string', 'max:20'],
             'selectedShiftId' => [
                 'required',
                 'integer',
@@ -70,6 +73,7 @@ class EventSignup extends Component
                 email: $this->volunteerEmail,
                 event: $this->event,
                 shift: $shift,
+                phone: $this->volunteerPhone ?: null,
             );
 
             $this->signupComplete = true;

@@ -7,6 +7,8 @@ use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\VolunteerJob;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -120,6 +122,69 @@ it('returns 404 for events from other organizations', function () {
     $this->actingAs($this->user)
         ->get(route('events.show', $otherEvent))
         ->assertNotFound();
+});
+
+it('allows organizer to upload title image', function () {
+    Storage::fake('public');
+
+    $image = UploadedFile::fake()->image('banner.jpg', 1200, 400);
+
+    Livewire::actingAs($this->user)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->call('startEditing')
+        ->set('titleImage', $image)
+        ->set('startsAt', '2026-09-01T10:00')
+        ->set('endsAt', '2026-09-01T18:00')
+        ->call('saveEvent')
+        ->assertHasNoErrors();
+
+    expect($this->event->fresh()->title_image_path)->not->toBeNull();
+    Storage::disk('public')->assertExists($this->event->fresh()->title_image_path);
+});
+
+it('allows organizer to delete title image', function () {
+    Storage::fake('public');
+
+    $image = UploadedFile::fake()->image('banner.jpg');
+    $path = $image->store('events/'.$this->event->id, 'public');
+    $this->event->update(['title_image_path' => $path]);
+
+    Livewire::actingAs($this->user)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->call('deleteImage');
+
+    expect($this->event->fresh()->title_image_path)->toBeNull();
+    Storage::disk('public')->assertMissing($path);
+});
+
+it('rejects oversized image upload', function () {
+    Storage::fake('public');
+
+    $image = UploadedFile::fake()->image('huge.jpg')->size(3000);
+
+    Livewire::actingAs($this->user)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->call('startEditing')
+        ->set('titleImage', $image)
+        ->set('startsAt', '2026-09-01T10:00')
+        ->set('endsAt', '2026-09-01T18:00')
+        ->call('saveEvent')
+        ->assertHasErrors('titleImage');
+});
+
+it('rejects non-image file upload', function () {
+    Storage::fake('public');
+
+    $file = UploadedFile::fake()->create('document.pdf', 100, 'application/pdf');
+
+    Livewire::actingAs($this->user)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->call('startEditing')
+        ->set('titleImage', $file)
+        ->set('startsAt', '2026-09-01T10:00')
+        ->set('endsAt', '2026-09-01T18:00')
+        ->call('saveEvent')
+        ->assertHasErrors('titleImage');
 });
 
 it('hides edit button on archived events', function () {

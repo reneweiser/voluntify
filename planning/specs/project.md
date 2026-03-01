@@ -131,6 +131,16 @@ Routes / Middleware
 
 **Outcome**: Organizer creates events with jobs/shifts, publishes them. Volunteers sign up passwordlessly on a public page. Feature 07 is the **tracer bullet** — the `SignUpVolunteer` Action orchestrates ticket generation, magic link creation, and notification dispatch end-to-end.
 
+### Milestone 2.1: Enhanced Event Setup
+
+| # | Feature | Type | Priority | Pain points |
+|---|---|---|---|---|
+| 22 | Optional volunteer phone number | fullstack | Should Have | PP-3 |
+| 23 | Event title image upload | fullstack | Should Have | PP-3, PR-1 |
+| 24 | Customizable email templates | fullstack | Should Have | PP-3, FP-1 |
+
+**Outcome**: Volunteer signup collects optional phone number. Organizers can upload hero images for events (displayed on public page and admin overview). Organizers can customize automated email templates (signup confirmation, pre-shift reminders) per event with placeholder variables. Falls back to built-in defaults when no custom template exists.
+
 ### Milestone 2b: AI Event Creation
 
 | # | Feature | Type | Priority | Pain points |
@@ -236,6 +246,8 @@ All emails are dispatched as queued notifications (database queue driver):
 - `PreShiftReminder` — 24h and 4h before shift with job-specific instructions
 - `VolunteerPromoted` — temp password + login link
 
+**Customizable Templates (M2.1)**: Organizers can customize subject and body of automated emails per event via the `email_templates` table. The `EmailTemplateRenderer` service resolves custom templates by `[event_id, type]`, falling back to built-in defaults. Templates support `{{placeholder}}` variables: `volunteer_name`, `event_name`, `job_name`, `shift_date`, `shift_time`, `event_location`. Template types: `signup_confirmation`, `pre_shift_reminder_24h`, `pre_shift_reminder_4h`.
+
 ## Constraints
 
 - **Solo developer** — no team parallelization; features are sequential
@@ -246,12 +258,13 @@ All emails are dispatched as queued notifications (database queue driver):
 
 ## Domain Model
 
-13 entities — full schema in `planning/design/app-concept.md` § Domain Model. Ubiquitous language glossary in the same section.
+14 entities — full schema in `planning/design/app-concept.md` § Domain Model. Ubiquitous language glossary in the same section.
 
 ```
 [organizations] 1───N [events]
 [organizations] N───M [users] (via organization_user with role)
 [events] 1───N [volunteer_jobs]
+[events] 1───N [email_templates]
 [volunteer_jobs] 1───N [shifts]
 [shifts] N───M [volunteers] (via shift_signups)
 [volunteers] 1───N [shift_signups]

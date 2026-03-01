@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Auth\ChangePassword;
+use App\Livewire\Events\EmailTemplateEditor;
 use App\Livewire\Events\EventList;
 use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
@@ -23,6 +24,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('events', EventList::class)->name('events.index');
     Route::livewire('events/{eventId}', EventShow::class)->name('events.show');
     Route::livewire('events/{eventId}/jobs', JobsAndShiftsManager::class)->name('events.jobs');
+    Route::livewire('events/{eventId}/emails', EmailTemplateEditor::class)->name('events.emails');
 });
 
 require __DIR__.'/settings.php';

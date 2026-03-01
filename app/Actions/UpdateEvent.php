@@ -6,6 +6,8 @@ use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use Carbon\CarbonInterface;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UpdateEvent
@@ -17,6 +19,7 @@ class UpdateEvent
         ?string $location,
         CarbonInterface $startsAt,
         CarbonInterface $endsAt,
+        ?UploadedFile $titleImage = null,
     ): Event {
         if ($event->status === EventStatus::Archived) {
             throw new DomainException('Cannot update an archived event.');
@@ -24,14 +27,24 @@ class UpdateEvent
 
         $slug = $this->uniqueSlug($event, $name);
 
-        $event->update([
+        $updateData = [
             'name' => $name,
             'slug' => $slug,
             'description' => $description,
             'location' => $location,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-        ]);
+        ];
+
+        if ($titleImage) {
+            if ($event->title_image_path) {
+                Storage::disk('public')->delete($event->title_image_path);
+            }
+
+            $updateData['title_image_path'] = $titleImage->store("events/{$event->id}", 'public');
+        }
+
+        $event->update($updateData);
 
         return $event->refresh();
     }

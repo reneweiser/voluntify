@@ -9,7 +9,9 @@ use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use App\Notifications\SignupConfirmation;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -35,6 +37,17 @@ it('shows event info on public page', function () {
         ->assertSee('Community Cleanup')
         ->assertSee('City Park')
         ->assertSee('Litter Pickup');
+});
+
+it('displays title image on public page', function () {
+    Storage::fake('public');
+
+    $image = UploadedFile::fake()->image('banner.jpg');
+    $path = $image->store('events/'.$this->event->id, 'public');
+    $this->event->update(['title_image_path' => $path]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSeeHtml('img');
 });
 
 it('returns 404 for draft events', function () {
@@ -89,6 +102,31 @@ it('submits signup form and creates records', function () {
         Volunteer::where('email', 'john@example.com')->first(),
         SignupConfirmation::class,
     );
+});
+
+it('submits signup with phone number', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerName', 'Phone Person')
+        ->set('volunteerEmail', 'phone@example.com')
+        ->set('volunteerPhone', '+15551234567')
+        ->set('selectedShiftId', $this->shift->id)
+        ->call('signup')
+        ->assertHasNoErrors()
+        ->assertSet('signupComplete', true);
+
+    expect(Volunteer::where('email', 'phone@example.com')->first()->phone)->toBe('+15551234567');
+});
+
+it('submits signup without phone number', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerName', 'No Phone')
+        ->set('volunteerEmail', 'nophone@example.com')
+        ->set('selectedShiftId', $this->shift->id)
+        ->call('signup')
+        ->assertHasNoErrors()
+        ->assertSet('signupComplete', true);
+
+    expect(Volunteer::where('email', 'nophone@example.com')->first()->phone)->toBeNull();
 });
 
 it('validates required fields', function () {

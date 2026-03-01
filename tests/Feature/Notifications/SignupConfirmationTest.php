@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\EmailTemplateType;
+use App\Models\EmailTemplate;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
@@ -34,6 +36,31 @@ it('sends email with event details', function () {
 
         return true;
     });
+});
+
+it('uses custom template when set', function () {
+    EmailTemplate::factory()->create([
+        'event_id' => $this->event->id,
+        'type' => EmailTemplateType::SignupConfirmation,
+        'subject' => 'Welcome {{volunteer_name}} to {{event_name}}',
+        'body' => 'Custom: {{job_name}} on {{shift_date}}',
+    ]);
+
+    $notification = new SignupConfirmation($this->event, $this->shift, 'test-token');
+    $mail = $notification->toMail($this->volunteer);
+
+    expect($mail->subject)->toBe('Welcome Jane Doe to Summer Fest')
+        ->and(implode(' ', $mail->introLines))->toContain('Custom:')
+        ->and(implode(' ', $mail->introLines))->toContain('Gate Security');
+});
+
+it('uses default template when no custom template exists', function () {
+    $notification = new SignupConfirmation($this->event, $this->shift, 'test-token');
+    $mail = $notification->toMail($this->volunteer);
+
+    expect($mail->subject)->toBe("You're signed up for Summer Fest!")
+        ->and(implode(' ', $mail->introLines))->toContain('Summer Fest')
+        ->and(implode(' ', $mail->introLines))->toContain('Gate Security');
 });
 
 it('is queued', function () {

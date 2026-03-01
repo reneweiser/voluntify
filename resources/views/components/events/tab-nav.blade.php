@@ -17,4 +17,12 @@
     >
         {{ __('Jobs & Shifts') }}
     </flux:navbar.item>
+    <flux:navbar.item
+        :href="route('events.emails', $event)"
+        :current="request()->routeIs('events.emails')"
+        icon="envelope"
+        wire:navigate
+    >
+        {{ __('Emails') }}
+    </flux:navbar.item>
 </flux:navbar>

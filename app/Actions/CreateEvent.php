@@ -6,6 +6,7 @@ use App\Enums\EventStatus;
 use App\Models\Event;
 use App\Models\Organization;
 use Carbon\CarbonInterface;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 class CreateEvent
@@ -17,10 +18,11 @@ class CreateEvent
         ?string $location,
         CarbonInterface $startsAt,
         CarbonInterface $endsAt,
+        ?UploadedFile $titleImage = null,
     ): Event {
         $slug = $this->uniqueSlug($organization, $name);
 
-        return $organization->events()->create([
+        $event = $organization->events()->create([
             'name' => $name,
             'slug' => $slug,
             'description' => $description,
@@ -29,6 +31,13 @@ class CreateEvent
             'ends_at' => $endsAt,
             'status' => EventStatus::Draft,
         ]);
+
+        if ($titleImage) {
+            $path = $titleImage->store("events/{$event->id}", 'public');
+            $event->update(['title_image_path' => $path]);
+        }
+
+        return $event;
     }
 
     private function uniqueSlug(Organization $organization, string $name): string

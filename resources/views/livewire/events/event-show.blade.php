@@ -62,6 +62,13 @@
         </div>
     </div>
 
+    {{-- Title image --}}
+    @if ($event->titleImageUrl())
+        <div class="mb-6">
+            <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="w-full max-h-64 object-cover rounded-lg" />
+        </div>
+    @endif
+
     {{-- Event details / edit form --}}
     <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-6">
         @if ($editing)
@@ -94,6 +101,21 @@
                     <flux:label>{{ __('Ends At') }}</flux:label>
                     <flux:input type="datetime-local" wire:model="endsAt" />
                     <flux:error name="endsAt" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Title Image') }}</flux:label>
+                    @if ($event->titleImageUrl() && !$titleImage)
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="h-20 w-32 object-cover rounded" />
+                            <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteImage" wire:confirm="{{ __('Remove this image?') }}">
+                                {{ __('Remove') }}
+                            </flux:button>
+                        </div>
+                    @endif
+                    <input type="file" wire:model="titleImage" accept="image/jpeg,image/png,image/webp"
+                        class="block w-full text-sm text-zinc-500 file:mr-4 file:rounded-md file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:hover:file:bg-zinc-600" />
+                    <flux:error name="titleImage" />
                 </flux:field>
 
                 <div class="flex gap-2">

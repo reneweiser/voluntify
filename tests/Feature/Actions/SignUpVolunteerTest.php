@@ -118,6 +118,66 @@ it('throws AlreadySignedUpException for duplicate signup', function () {
     ))->toThrow(AlreadySignedUpException::class);
 });
 
+it('stores phone number when provided', function () {
+    $result = $this->action->execute(
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        event: $this->event,
+        shift: $this->shift,
+        phone: '+15551234567',
+    );
+
+    expect($result['volunteer']->phone)->toBe('+15551234567');
+});
+
+it('stores null phone when not provided', function () {
+    $result = $this->action->execute(
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        event: $this->event,
+        shift: $this->shift,
+    );
+
+    expect($result['volunteer']->phone)->toBeNull();
+});
+
+it('updates phone for returning volunteer when new phone is provided', function () {
+    Volunteer::factory()->create([
+        'email' => 'returning@example.com',
+        'phone' => '+10000000000',
+    ]);
+
+    $otherShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
+
+    $result = $this->action->execute(
+        name: 'Returning',
+        email: 'returning@example.com',
+        event: $this->event,
+        shift: $otherShift,
+        phone: '+19999999999',
+    );
+
+    expect($result['volunteer']->fresh()->phone)->toBe('+19999999999');
+});
+
+it('preserves existing phone for returning volunteer when phone is null', function () {
+    Volunteer::factory()->create([
+        'email' => 'returning@example.com',
+        'phone' => '+10000000000',
+    ]);
+
+    $otherShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
+
+    $result = $this->action->execute(
+        name: 'Returning',
+        email: 'returning@example.com',
+        event: $this->event,
+        shift: $otherShift,
+    );
+
+    expect($result['volunteer']->fresh()->phone)->toBe('+10000000000');
+});
+
 it('throws DomainException when shift does not belong to event', function () {
     $otherOrg = Organization::factory()->create();
     $otherEvent = Event::factory()->for($otherOrg)->published()->create();

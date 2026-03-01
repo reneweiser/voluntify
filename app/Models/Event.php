@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Facades\Storage;
 
 class Event extends Model
 {
@@ -25,6 +26,7 @@ class Event extends Model
         'starts_at',
         'ends_at',
         'status',
+        'title_image_path',
     ];
 
     protected function casts(): array
@@ -68,6 +70,20 @@ class Event extends Model
     public function volunteers(): HasManyThrough
     {
         return $this->hasManyThrough(Volunteer::class, Ticket::class, 'event_id', 'id', 'id', 'volunteer_id');
+    }
+
+    public function emailTemplates(): HasMany
+    {
+        return $this->hasMany(EmailTemplate::class);
+    }
+
+    public function titleImageUrl(): ?string
+    {
+        if (! $this->title_image_path) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->title_image_path);
     }
 
     public function scopePublished(Builder $query): void

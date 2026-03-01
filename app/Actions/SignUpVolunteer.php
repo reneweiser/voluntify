@@ -27,12 +27,13 @@ class SignUpVolunteer
         string $email,
         Event $event,
         Shift $shift,
+        ?string $phone = null,
     ): array {
         if ($shift->volunteerJob->event_id !== $event->id) {
             throw new DomainException('Shift does not belong to this event.');
         }
 
-        $result = DB::transaction(function () use ($name, $email, $event, $shift) {
+        $result = DB::transaction(function () use ($name, $email, $phone, $event, $shift) {
             $shift = Shift::lockForUpdate()->find($shift->id);
 
             if ($shift->isFull()) {
@@ -41,8 +42,12 @@ class SignUpVolunteer
 
             $volunteer = Volunteer::firstOrCreate(
                 ['email' => $email],
-                ['name' => $name],
+                ['name' => $name, 'phone' => $phone],
             );
+
+            if ($phone !== null && $volunteer->phone !== $phone) {
+                $volunteer->update(['phone' => $phone]);
+            }
 
             $existingSignup = ShiftSignup::where('volunteer_id', $volunteer->id)
                 ->where('shift_id', $shift->id)

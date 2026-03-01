@@ -88,16 +88,17 @@ Voluntify
 **Components**:
 | Component | Purpose | Data Source | Key Interactions |
 |---|---|---|---|
+| Title Image Banner | Display hero image above event header (if uploaded) | `events.title_image_path` via Storage disk | None (display only) |
 | Event Header | Display event info | `events` table via `public_token` | None (display only) |
 | Job Accordion | List jobs with expandable shift slots | `volunteer_jobs` + `shifts` with signup counts | Expand/collapse, select shift |
 | Shift Card | Show shift time, capacity, spots remaining | `shifts` with aggregated `shift_signups` count | Click to select for signup |
-| Signup Form | Collect volunteer name + email | Form input → `volunteers` + `shift_signups` | Submit: validate, create records, send confirmation email |
+| Signup Form | Collect volunteer name, email, and optional phone | Form input → `volunteers` + `shift_signups` | Submit: validate, create records, send confirmation email |
 | Capacity Badge | Show "X of Y spots filled" per shift | Real-time count from `shift_signups` | Auto-updates via Livewire polling |
 
 **User Actions**:
 1. **Browse jobs**: Expand job accordion to see available shifts
 2. **Select shift**: Click a shift card to reveal the signup form
-3. **Submit signup**: Enter name + email, submit form. System creates volunteer (or finds existing by email), creates shift_signup, generates ticket + QR, sends confirmation email
+3. **Submit signup**: Enter name, email, and optional phone number, submit form. System creates volunteer (or finds existing by email), creates shift_signup, generates ticket + QR, sends confirmation email
 
 **Data Requirements**:
 - **Read**: Event (by public_token), volunteer_jobs (for event), shifts (with signup counts), capacity
@@ -260,22 +261,25 @@ Voluntify
 **Components**:
 | Component | Purpose | Data Source | Key Interactions |
 |---|---|---|---|
+| Title Image | Hero image displayed above event details (if uploaded) | `events.title_image_path` via Storage disk | Upload/replace/delete in edit mode (Organizer) |
 | Event Header | Name, dates, location, status | `events` table | Edit button (Organizer) |
-| Tab Bar | Navigate between event sections | Route-based | Click to switch tabs |
+| Tab Bar | Navigate between event sections (Overview, Jobs & Shifts, Emails) | Route-based | Click to switch tabs |
 | Metric Cards | Key numbers at a glance | Aggregated queries | None |
 | Share Link | Public event URL with copy button | `events.public_token` | Click to copy URL |
 | Status Actions | Publish / Archive buttons | `events.status` | Click to change event status |
 
 **User Actions**:
-1. **Edit event details** (Organizer): Update name, dates, location, description
-2. **Publish event** (Organizer): Change status from draft to published, making the public page live
-3. **Archive event** (Organizer): Mark event as archived after completion
-4. **Copy share link**: Copy the public event URL to clipboard
-5. **Navigate tabs**: Switch to Jobs, Volunteers, or Attendance sections
+1. **Edit event details** (Organizer): Update name, dates, location, description, title image
+2. **Upload/replace title image** (Organizer): Upload a hero image (jpg, png, webp, max 2MB)
+3. **Delete title image** (Organizer): Remove the hero image
+4. **Publish event** (Organizer): Change status from draft to published, making the public page live
+5. **Archive event** (Organizer): Mark event as archived after completion
+6. **Copy share link**: Copy the public event URL to clipboard
+7. **Navigate tabs**: Switch to Jobs, Emails, Volunteers, or Attendance sections
 
 **Data Requirements**:
 - **Read**: Event details, aggregated metrics (job count, shift count, signup count, capacity, arrival count)
-- **Write**: Event updates (name, dates, description, status)
+- **Write**: Event updates (name, dates, description, status, title_image_path)
 
 **States**:
 - **Loading**: Skeleton layout
@@ -321,6 +325,43 @@ Voluntify
 - **Job with no shifts**: Prompt "Add shifts to this job so volunteers can sign up"
 - **Shift at capacity**: Capacity badge shows full in warning color
 - **Delete confirmation**: Modal asking "Are you sure? X volunteers are signed up for this shift."
+
+### Page 6b: Email Template Editor (M2.1)
+
+**Route**: `/admin/events/{eventId}/emails`
+**Purpose**: Customize automated email templates per event with placeholder variables
+**Auth required**: Yes (Organizer only)
+
+**Layout**:
+- **Structure**: Tab content area under event tab bar. Template type selector → Subject/body editor → Placeholder reference panel → Preview panel.
+
+**Components**:
+| Component | Purpose | Data Source | Key Interactions |
+|---|---|---|---|
+| Template Type Selector | Choose which email to customize | `EmailTemplateType` enum | Dropdown select, loads template |
+| Subject Input | Edit email subject line | `email_templates.subject` or default | Text input with placeholder support |
+| Body Textarea | Edit email body content | `email_templates.body` or default | Textarea with placeholder support |
+| Placeholder Reference | Show available `{{variables}}` | `EmailTemplateRenderer::availablePlaceholders()` | Display only |
+| Preview Panel | Rendered preview with sample data | `EmailTemplateRenderer::render()` | Click "Preview" to render |
+| Customization Badge | Shows "Customized" or "Using default" | `email_templates` existence check | Display only |
+
+**User Actions**:
+1. **Select template type**: Choose from Signup Confirmation, Pre-Shift Reminder (24h), Pre-Shift Reminder (4h)
+2. **Edit subject/body**: Customize the template text with `{{placeholder}}` variables
+3. **Save template**: Persist the customized template (upsert by event + type)
+4. **Preview**: View rendered email with sample data
+5. **Reset to default**: Delete custom template, revert to built-in defaults
+
+**Available Placeholders**: `{{volunteer_name}}`, `{{event_name}}`, `{{job_name}}`, `{{shift_date}}`, `{{shift_time}}`, `{{event_location}}`
+
+**Data Requirements**:
+- **Read**: `email_templates` (for event + type), default templates from `EmailTemplateRenderer`
+- **Write**: `email_templates` (upsert/delete)
+
+**States**:
+- **Default**: Template loaded from built-in defaults, "Using default" badge shown
+- **Customized**: Custom template loaded from database, "Customized" badge shown, "Reset to Default" button visible
+- **Preview**: Rendered email shown with sample volunteer/event data below the editor
 
 ### Page 7: Volunteer List
 
@@ -608,9 +649,9 @@ Voluntify
 | 1 | Opens the public event URL | Loads public event page with event info, jobs, and available shifts | Public Event Page |
 | 2 | Browses jobs, expands one to see shifts | Shows shift cards with times and remaining capacity | Public Event Page > Job Accordion |
 | 3 | Clicks a shift with available spots | Highlights selected shift, reveals signup form below | Public Event Page > Shift Card |
-| 4 | Enters name and email address | If email exists in volunteers table, pre-fills name | Public Event Page > Signup Form |
+| 4 | Enters name, email address, and optional phone number | If email exists in volunteers table, pre-fills name; phone is updated if provided | Public Event Page > Signup Form |
 | 5 | Clicks "Sign Up" | System: (a) upserts volunteer by email, (b) creates shift_signup, (c) generates ticket with JWT QR, (d) creates magic_link_token, (e) sends confirmation email with ticket link | Public Event Page > Signup Form |
-| 6 | Receives confirmation email | Email contains: event details, shift info, and a magic link to view their QR ticket | Email (off-platform) |
+| 6 | Receives confirmation email | Email uses custom template if set by organizer, otherwise default. Contains: event details, shift info, and a magic link to view their QR ticket | Email (off-platform) |
 | 7 | Clicks magic link in email | Opens ticket page with QR code, event details, and shift assignments | Volunteer Ticket Page |
 
 **Success criteria**: Volunteer sees confirmation on page, receives email with magic link, can view QR ticket.
@@ -887,8 +928,8 @@ Actions are single-responsibility classes with one `execute()` method. When an o
 **`SignUpVolunteer` orchestration** (the most complex flow):
 
 ```
-SignUpVolunteer::execute(string $name, string $email, Shift $shift)
-├── Upserts volunteer record by email
+SignUpVolunteer::execute(string $name, string $email, Shift $shift, ?string $phone = null)
+├── Upserts volunteer record by email (updates phone if provided)
 ├── Creates shift_signup (with capacity check)
 ├── Calls GenerateTicket::execute(volunteer, event)
 │   └── Creates JWT, generates QR, stores ticket record

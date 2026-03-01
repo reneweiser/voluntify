@@ -101,6 +101,13 @@
                 <flux:error name="eventEndsAt" />
             </flux:field>
 
+            <flux:field>
+                <flux:label>{{ __('Title Image') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
+                <input type="file" wire:model="eventTitleImage" accept="image/jpeg,image/png,image/webp"
+                    class="block w-full text-sm text-zinc-500 file:mr-4 file:rounded-md file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:hover:file:bg-zinc-600" />
+                <flux:error name="eventTitleImage" />
+            </flux:field>
+
             <div class="flex">
                 <flux:spacer />
                 <flux:button type="submit" variant="primary">{{ __('Create Event') }}</flux:button>

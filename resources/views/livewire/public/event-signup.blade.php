@@ -1,4 +1,11 @@
 <div>
+    {{-- Title image --}}
+    @if ($event->titleImageUrl())
+        <div class="mb-6 -mx-4 sm:mx-0">
+            <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="w-full max-h-72 object-cover sm:rounded-lg" />
+        </div>
+    @endif
+
     {{-- Event header --}}
     <div class="mb-8">
         <flux:heading size="xl">{{ $event->name }}</flux:heading>
@@ -95,6 +102,12 @@
                     <flux:label>{{ __('Email') }}</flux:label>
                     <flux:input type="email" wire:model="volunteerEmail" placeholder="{{ __('your@email.com') }}" />
                     <flux:error name="volunteerEmail" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Phone') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
+                    <flux:input type="tel" wire:model="volunteerPhone" placeholder="{{ __('+1 555 123 4567') }}" />
+                    <flux:error name="volunteerPhone" />
                 </flux:field>
             </div>
 

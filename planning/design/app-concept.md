@@ -159,16 +159,17 @@
 | `organizations` | The group or nonprofit that runs events | `id`, `name`, `slug`, `ai_api_key` (encrypted, nullable — stores the org's Vercel AI Gateway API key) |
 | `users` | Authenticated accounts for staff roles (Organizer, Volunteer Admin, Entrance Staff) | `id`, `name`, `email`, `password`, `must_change_password` |
 | `organization_user` | Pivot table: user role per organization | `organization_id`, `user_id`, `role` (enum: organizer, volunteer_admin, entrance_staff) |
-| `events` | An event run by an organization | `id`, `organization_id`, `name`, `slug`, `public_token`, `description`, `location`, `starts_at`, `ends_at`, `status` (enum: draft, published, archived) |
+| `events` | An event run by an organization | `id`, `organization_id`, `name`, `slug`, `public_token`, `description`, `location`, `starts_at`, `ends_at`, `status` (enum: draft, published, archived), `title_image_path` (nullable — hero image stored on public disk) |
 | `volunteer_jobs` | A named role/function at an event (named to avoid collision with Laravel's queue `jobs` table) | `id`, `event_id`, `name`, `description`, `instructions` (job-specific info for notifications) |
 | `shifts` | A time slot within a job with capacity | `id`, `volunteer_job_id`, `starts_at`, `ends_at`, `capacity` |
-| `volunteers` | People who sign up for events (no account needed) | `id`, `name`, `email` (unique), `user_id` (nullable FK — set when promoted) |
+| `volunteers` | People who sign up for events (no account needed) | `id`, `name`, `email` (unique), `phone` (nullable, max 20), `user_id` (nullable FK — set when promoted) |
 | `shift_signups` | Volunteer-to-shift assignment | `id`, `volunteer_id`, `shift_id`, `signed_up_at`, `notification_24h_sent`, `notification_4h_sent` |
 | `attendance_records` | Shift-level attendance logged by Volunteer Admin | `id`, `shift_signup_id`, `status` (enum: on_time, late, no_show), `recorded_by` (user_id), `recorded_at` |
 | `tickets` | One QR-coded ticket per volunteer per event | `id`, `volunteer_id`, `event_id`, `jwt_token`, `created_at` |
 | `event_arrivals` | Entrance scan records — separate from shift attendance | `id`, `ticket_id`, `volunteer_id`, `event_id`, `scanned_by` (nullable user_id), `scanned_at`, `method` (enum: qr_scan, manual_lookup), `flagged`, `flag_reason` |
 | `magic_link_tokens` | Hashed tokens for passwordless ticket page access | `id`, `volunteer_id`, `token_hash` (SHA-256), `expires_at` |
 | `volunteer_promotions` | Audit log when a volunteer is promoted to a staff role | `id`, `volunteer_id`, `user_id` (newly created), `promoted_by` (user_id), `role`, `promoted_at` |
+| `email_templates` | Customizable email templates per event (M2.1) | `id`, `event_id`, `type` (enum: signup_confirmation, pre_shift_reminder_24h, pre_shift_reminder_4h), `subject`, `body` (text, supports `{{placeholder}}` variables), unique on `[event_id, type]` |
 
 ### Relationships
 
@@ -186,6 +187,7 @@
 [volunteers] 0..1───1 [users] (when promoted)
 [volunteers] 1───N [magic_link_tokens]
 [volunteers] 1───0..1 [volunteer_promotions]
+[events] 1───N [email_templates]
 ```
 
 ### Ubiquitous Language Glossary
