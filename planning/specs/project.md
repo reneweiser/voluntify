@@ -141,7 +141,7 @@ Routes / Middleware
 
 **Outcome**: Volunteer signup collects optional phone number. Organizers can upload hero images for events (displayed on public page and admin overview). Organizers can customize automated email templates (signup confirmation, pre-shift reminders) per event with placeholder variables. Falls back to built-in defaults when no custom template exists.
 
-### Milestone 2b: AI Event Creation
+### Milestone 2.2: AI Event Creation
 
 | # | Feature | Type | Priority | Pain points |
 |---|---|---|---|---|
