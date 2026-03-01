@@ -7,6 +7,9 @@
                 <flux:navlist.item :href="route('two-factor.show')" wire:navigate>{{ __('Two-factor auth') }}</flux:navlist.item>
             @endif
             <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
+            @if (app()->bound(\App\Models\Organization::class) && auth()->user()->can('manageTeam', app(\App\Models\Organization::class)))
+                <flux:navlist.item :href="route('settings.team')" wire:navigate>{{ __('Team') }}</flux:navlist.item>
+            @endif
         </flux:navlist>
     </div>
 

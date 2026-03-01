@@ -41,7 +41,17 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Create a user attached to an organization with the given role.
+ *
+ * @return array{user: \App\Models\User, organization: \App\Models\Organization}
+ */
+function createUserWithOrganization(\App\Enums\StaffRole $role = \App\Enums\StaffRole::Organizer): array
 {
-    // ..
+    $user = \App\Models\User::factory()->create();
+    $organization = \App\Models\Organization::factory()->create();
+
+    $organization->users()->attach($user, ['role' => $role]);
+
+    return ['user' => $user, 'organization' => $organization];
 }
