@@ -32,7 +32,7 @@ class StaffInvitation extends Notification
             ->line("You've been invited to join **{$this->organization->name}** on Voluntify.")
             ->line("Your temporary password is: **{$this->temporaryPassword}**")
             ->line('You will be asked to change your password when you first log in.')
-            ->action('Log in now', url('/login'))
+            ->action('Log in now', route('login'))
             ->line('Thank you for joining the team!');
     }
 }

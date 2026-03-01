@@ -18,6 +18,11 @@ class Organization extends Model
         'ai_api_key',
     ];
 
+    /** @var list<string> */
+    protected $hidden = [
+        'ai_api_key',
+    ];
+
     protected function casts(): array
     {
         return [

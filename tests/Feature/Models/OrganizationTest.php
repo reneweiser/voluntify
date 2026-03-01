@@ -23,3 +23,11 @@ it('stores null ai_api_key', function () {
 
     expect($org->ai_api_key)->toBeNull();
 });
+
+it('hides ai_api_key from serialization', function () {
+    $org = Organization::factory()->withAiKey()->create();
+
+    $array = $org->toArray();
+
+    expect($array)->not->toHaveKey('ai_api_key');
+});

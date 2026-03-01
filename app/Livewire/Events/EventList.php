@@ -12,6 +12,13 @@ class EventList extends Component
 {
     public string $statusFilter = '';
 
+    public function mount(): void
+    {
+        if (! app()->bound(Organization::class)) {
+            $this->redirect(route('dashboard'));
+        }
+    }
+
     #[Computed]
     public function events(): \Illuminate\Database\Eloquent\Collection
     {

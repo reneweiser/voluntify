@@ -54,6 +54,15 @@ it('shows empty state when no events', function () {
         ->assertSee('No events found');
 });
 
+it('redirects to dashboard when user has no organization', function () {
+    app()->forgetInstance(Organization::class);
+    $user = \App\Models\User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test(EventList::class)
+        ->assertRedirect(route('dashboard'));
+});
+
 it('toggles filter off when clicking same status', function () {
     Event::factory()->for($this->org)->published()->create(['name' => 'Published Event']);
     Event::factory()->for($this->org)->create(['name' => 'Draft Event', 'status' => EventStatus::Draft]);
