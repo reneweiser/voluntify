@@ -93,19 +93,20 @@ Routes / Middleware
 ### Key Patterns
 
 - **PHP Enums**: All status/role/method fields use backed string enums with `$casts`. No string comparisons. Cases are PascalCase. Migrations use `->string()` columns.
-- **Multi-tenancy**: `ResolveOrganization` middleware binds current org to container. All queries scoped through org relationships (`$org->events()`), never unscoped.
+- **Multi-tenancy**: `ResolveOrganization` middleware binds current org to the container as a typed singleton (`app()->instance(Organization::class, $org)`). Actions receive it via constructor injection (`__construct(private Organization $organization)`), keeping the dependency explicit, type-safe, and testable. All queries scoped through org relationships (`$org->events()`), never unscoped. Routes outside org context (org creation, org switching) bypass this middleware. Queue jobs resolve their org from the job payload — never rely on container state from the web request.
 - **Authorization**: Laravel Policies per model, called from Actions. Livewire components contain no auth logic. Route middleware for broad role gating.
-- **Action orchestration**: Actions are single-responsibility with `execute()`. Complex flows (e.g., `SignUpVolunteer`) orchestrate sub-Actions via constructor injection. Side effects dispatched as queued jobs/notifications.
+- **Action orchestration**: Actions are single-responsibility with `execute()`. Complex flows (e.g., `SignUpVolunteer`) orchestrate sub-Actions via constructor injection. Side effects dispatched as queued jobs/notifications. Actions return Eloquent models (or scalars/void) — no DTO return layer. In a Livewire app, models go directly to Blade templates; wrapping them in response DTOs would be pure ceremony.
 - **Validation**: Lives at the adapter boundary (Livewire `#[Validate]` attributes, Form Requests for API). Actions trust their typed inputs.
 - **Domain exceptions**: Business rule violations throw domain-specific exceptions extending `App\Exceptions\DomainException`. Livewire components catch and translate to UI feedback.
 - **DTOs**: Used when Actions accept >3 parameters. Readonly classes, no behavior.
+- **Value Objects**: Used sparingly, only for security-critical primitives where misuse has real consequences. `HashedToken` wraps magic link tokens (hashes on construction, timing-safe comparison). `PublicToken` wraps event public tokens (generates and validates format). Located in `app/ValueObjects/`. General primitives (email, name) remain plain strings — Value Objects are not justified where misuse risk is low.
 
 ### Middleware
 
 | Middleware | Purpose |
 |---|---|
 | `RequirePasswordChange` | Redirects to `/change-password` if `must_change_password` is true |
-| `ResolveOrganization` | Resolves current org from user memberships, binds to container |
+| `ResolveOrganization` | Resolves current org from user memberships, binds as typed singleton (`Organization::class`) |
 
 ## Feature Breakdown
 
