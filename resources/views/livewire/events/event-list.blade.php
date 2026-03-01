@@ -1,6 +1,12 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center justify-between mb-6">
         <flux:heading size="xl">{{ __('Events') }}</flux:heading>
+
+        @if ($this->canCreateEvents)
+            <flux:button variant="primary" icon="plus" wire:click="$set('showCreateModal', true)">
+                {{ __('Create Event') }}
+            </flux:button>
+        @endif
     </div>
 
     {{-- Status filter buttons --}}
@@ -26,7 +32,8 @@
     @else
         <div class="space-y-4">
             @foreach ($this->events as $event)
-                <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4" wire:key="event-{{ $event->id }}">
+                <a href="{{ route('events.show', $event) }}" wire:navigate wire:key="event-{{ $event->id }}"
+                   class="block rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors">
                     <div class="flex items-center justify-between">
                         <div>
                             <flux:heading size="sm">{{ $event->name }}</flux:heading>
@@ -37,16 +44,68 @@
                                 <flux:text size="sm">{{ $event->location }}</flux:text>
                             @endif
                         </div>
-                        <flux:badge size="sm" :color="match($event->status) {
-                            \App\Enums\EventStatus::Published => 'green',
-                            \App\Enums\EventStatus::Draft => 'yellow',
-                            \App\Enums\EventStatus::Archived => 'zinc',
-                        }">
-                            {{ __(ucfirst($event->status->value)) }}
-                        </flux:badge>
+                        <div class="flex items-center gap-3">
+                            <flux:text size="sm">
+                                {{ $event->volunteers_count }} {{ __('volunteers') }}
+                            </flux:text>
+                            <flux:badge size="sm" :color="match($event->status) {
+                                \App\Enums\EventStatus::Published => 'green',
+                                \App\Enums\EventStatus::Draft => 'yellow',
+                                \App\Enums\EventStatus::Archived => 'zinc',
+                            }">
+                                {{ __(ucfirst($event->status->value)) }}
+                            </flux:badge>
+                        </div>
                     </div>
-                </div>
+                </a>
             @endforeach
         </div>
+    @endif
+
+    {{-- Create Event Modal --}}
+    @if ($this->canCreateEvents)
+    <flux:modal wire:model="showCreateModal" class="md:w-96">
+        <form wire:submit="createEvent" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Create Event') }}</flux:heading>
+                <flux:text class="mt-2">{{ __('Set up the basics for your new event.') }}</flux:text>
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('Event Name') }}</flux:label>
+                <flux:input wire:model="eventName" placeholder="{{ __('e.g. Summer Carnival') }}" />
+                <flux:error name="eventName" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Description') }}</flux:label>
+                <flux:textarea wire:model="eventDescription" rows="3" />
+                <flux:error name="eventDescription" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Location') }}</flux:label>
+                <flux:input wire:model="eventLocation" placeholder="{{ __('e.g. Central Park') }}" />
+                <flux:error name="eventLocation" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Starts At') }}</flux:label>
+                <flux:input type="datetime-local" wire:model="eventStartsAt" />
+                <flux:error name="eventStartsAt" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Ends At') }}</flux:label>
+                <flux:input type="datetime-local" wire:model="eventEndsAt" />
+                <flux:error name="eventEndsAt" />
+            </flux:field>
+
+            <div class="flex">
+                <flux:spacer />
+                <flux:button type="submit" variant="primary">{{ __('Create Event') }}</flux:button>
+            </div>
+        </form>
+    </flux:modal>
     @endif
 </div>

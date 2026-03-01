@@ -37,4 +37,14 @@ class Shift extends Model
     {
         return $this->hasMany(ShiftSignup::class);
     }
+
+    public function isFull(): bool
+    {
+        return $this->signups()->count() >= $this->capacity;
+    }
+
+    public function spotsRemaining(): int
+    {
+        return max(0, $this->capacity - $this->signups()->count());
+    }
 }

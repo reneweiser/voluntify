@@ -7,7 +7,7 @@ use Livewire\Livewire;
 test('profile page is displayed', function () {
     $this->actingAs($user = User::factory()->create());
 
-    $this->get('/settings/profile')->assertOk();
+    $this->get(route('profile.edit'))->assertOk();
 });
 
 test('profile information can be updated', function () {

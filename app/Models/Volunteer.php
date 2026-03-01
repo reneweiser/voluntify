@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Notifications\Notifiable;
 
 class Volunteer extends Model
 {
     /** @use HasFactory<\Database\Factories\VolunteerFactory> */
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -47,5 +49,10 @@ class Volunteer extends Model
     public function promotion(): HasOne
     {
         return $this->hasOne(VolunteerPromotion::class);
+    }
+
+    public function scopeForEvent(Builder $query, int $eventId): void
+    {
+        $query->whereHas('tickets', fn (Builder $q) => $q->where('event_id', $eventId));
     }
 }
