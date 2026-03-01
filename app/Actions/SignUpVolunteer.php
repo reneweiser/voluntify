@@ -3,12 +3,14 @@
 namespace App\Actions;
 
 use App\Exceptions\AlreadySignedUpException;
+use App\Exceptions\DomainException;
 use App\Exceptions\ShiftFullException;
 use App\Models\Event;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
 use App\Notifications\SignupConfirmation;
+use Illuminate\Support\Facades\DB;
 
 class SignUpVolunteer
 {
@@ -26,38 +28,54 @@ class SignUpVolunteer
         Event $event,
         Shift $shift,
     ): array {
-        if ($shift->isFull()) {
-            throw new ShiftFullException('This shift is full.');
+        if ($shift->volunteerJob->event_id !== $event->id) {
+            throw new DomainException('Shift does not belong to this event.');
         }
 
-        $volunteer = Volunteer::firstOrCreate(
-            ['email' => $email],
-            ['name' => $name],
-        );
+        $result = DB::transaction(function () use ($name, $email, $event, $shift) {
+            $shift = Shift::lockForUpdate()->find($shift->id);
 
-        $existingSignup = ShiftSignup::where('volunteer_id', $volunteer->id)
-            ->where('shift_id', $shift->id)
-            ->exists();
+            if ($shift->isFull()) {
+                throw new ShiftFullException('This shift is full.');
+            }
 
-        if ($existingSignup) {
-            throw new AlreadySignedUpException('You are already signed up for this shift.');
-        }
+            $volunteer = Volunteer::firstOrCreate(
+                ['email' => $email],
+                ['name' => $name],
+            );
 
-        $signup = ShiftSignup::create([
-            'volunteer_id' => $volunteer->id,
-            'shift_id' => $shift->id,
-            'signed_up_at' => now(),
-        ]);
+            $existingSignup = ShiftSignup::where('volunteer_id', $volunteer->id)
+                ->where('shift_id', $shift->id)
+                ->exists();
 
-        $this->generateTicket->execute($volunteer, $event);
+            if ($existingSignup) {
+                throw new AlreadySignedUpException('You are already signed up for this shift.');
+            }
 
-        ['plainToken' => $plainToken] = $this->generateMagicLink->execute($volunteer);
+            $signup = ShiftSignup::create([
+                'volunteer_id' => $volunteer->id,
+                'shift_id' => $shift->id,
+                'signed_up_at' => now(),
+            ]);
 
-        $volunteer->notify(new SignupConfirmation($event, $shift, $plainToken));
+            $this->generateTicket->execute($volunteer, $event);
+
+            ['plainToken' => $plainToken] = $this->generateMagicLink->execute($volunteer);
+
+            return [
+                'volunteer' => $volunteer,
+                'signup' => $signup,
+                'shift' => $shift,
+                'plainToken' => $plainToken,
+            ];
+        });
+
+        $result['shift']->load('volunteerJob');
+        $result['volunteer']->notify(new SignupConfirmation($event, $result['shift'], $result['plainToken']));
 
         return [
-            'volunteer' => $volunteer,
-            'signup' => $signup,
+            'volunteer' => $result['volunteer'],
+            'signup' => $result['signup'],
         ];
     }
 }

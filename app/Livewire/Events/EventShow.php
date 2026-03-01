@@ -7,9 +7,9 @@ use App\Actions\PublishEvent;
 use App\Actions\UpdateEvent;
 use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
-use App\Exceptions\EventNotReadyException;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Shift;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -63,7 +63,10 @@ class EventShow extends Component
     #[Computed]
     public function shiftCount(): int
     {
-        return $this->event->volunteerJobs()->withCount('shifts')->get()->sum('shifts_count');
+        return Shift::whereIn(
+            'volunteer_job_id',
+            $this->event->volunteerJobs()->select('id'),
+        )->count();
     }
 
     #[Computed]
@@ -103,7 +106,7 @@ class EventShow extends Component
         ]);
 
         try {
-            $action = new UpdateEvent;
+            $action = app(UpdateEvent::class);
             $this->event = $action->execute(
                 event: $this->event,
                 name: $this->name,
@@ -125,11 +128,9 @@ class EventShow extends Component
         Gate::authorize('publish', $this->event);
 
         try {
-            $action = new PublishEvent;
+            $action = app(PublishEvent::class);
             $this->event = $action->execute($this->event);
             $this->dispatch('event-published');
-        } catch (EventNotReadyException $e) {
-            $this->addError('status', $e->getMessage());
         } catch (DomainException $e) {
             $this->addError('status', $e->getMessage());
         }
@@ -140,7 +141,7 @@ class EventShow extends Component
         Gate::authorize('archive', $this->event);
 
         try {
-            $action = new ArchiveEvent;
+            $action = app(ArchiveEvent::class);
             $this->event = $action->execute($this->event);
             $this->dispatch('event-archived');
         } catch (DomainException $e) {

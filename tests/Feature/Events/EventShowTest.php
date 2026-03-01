@@ -36,7 +36,7 @@ it('shows edit button for organizer on non-archived events', function () {
 });
 
 it('hides edit button for volunteer admin', function () {
-    ['user' => $admin] = createUserWithOrganization(StaffRole::VolunteerAdmin);
+    $admin = \App\Models\User::factory()->create();
     $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($admin)

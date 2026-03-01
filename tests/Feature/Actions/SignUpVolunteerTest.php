@@ -1,7 +1,5 @@
 <?php
 
-use App\Actions\GenerateMagicLink;
-use App\Actions\GenerateTicket;
 use App\Actions\SignUpVolunteer;
 use App\Exceptions\AlreadySignedUpException;
 use App\Exceptions\ShiftFullException;
@@ -23,7 +21,7 @@ beforeEach(function () {
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
 
-    $this->action = new SignUpVolunteer(new GenerateTicket, new GenerateMagicLink);
+    $this->action = app(SignUpVolunteer::class);
 });
 
 it('creates volunteer and signup records', function () {
@@ -118,4 +116,18 @@ it('throws AlreadySignedUpException for duplicate signup', function () {
         event: $this->event,
         shift: $this->shift,
     ))->toThrow(AlreadySignedUpException::class);
+});
+
+it('throws DomainException when shift does not belong to event', function () {
+    $otherOrg = Organization::factory()->create();
+    $otherEvent = Event::factory()->for($otherOrg)->published()->create();
+    $otherJob = VolunteerJob::factory()->for($otherEvent)->create();
+    $otherShift = Shift::factory()->for($otherJob, 'volunteerJob')->create(['capacity' => 5]);
+
+    expect(fn () => $this->action->execute(
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        event: $this->event,
+        shift: $otherShift,
+    ))->toThrow(\App\Exceptions\DomainException::class, 'Shift does not belong to this event.');
 });

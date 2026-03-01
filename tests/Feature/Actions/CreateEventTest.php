@@ -10,9 +10,10 @@ beforeEach(function () {
 });
 
 it('creates a draft event for the organization', function () {
-    $action = new CreateEvent($this->org);
+    $action = new CreateEvent;
 
     $event = $action->execute(
+        organization: $this->org,
         name: 'Summer Carnival',
         description: 'A fun summer event',
         location: 'Central Park',
@@ -29,9 +30,10 @@ it('creates a draft event for the organization', function () {
 });
 
 it('generates a slug from the event name', function () {
-    $action = new CreateEvent($this->org);
+    $action = new CreateEvent;
 
     $event = $action->execute(
+        organization: $this->org,
         name: 'My Great Event',
         description: null,
         location: null,
@@ -43,9 +45,10 @@ it('generates a slug from the event name', function () {
 });
 
 it('auto-generates a public token', function () {
-    $action = new CreateEvent($this->org);
+    $action = new CreateEvent;
 
     $event = $action->execute(
+        organization: $this->org,
         name: 'Token Event',
         description: null,
         location: null,
@@ -58,9 +61,10 @@ it('auto-generates a public token', function () {
 });
 
 it('allows nullable description and location', function () {
-    $action = new CreateEvent($this->org);
+    $action = new CreateEvent;
 
     $event = $action->execute(
+        organization: $this->org,
         name: 'Minimal Event',
         description: null,
         location: null,
@@ -70,4 +74,55 @@ it('allows nullable description and location', function () {
 
     expect($event->description)->toBeNull()
         ->and($event->location)->toBeNull();
+});
+
+it('appends numeric suffix for duplicate slugs within same organization', function () {
+    $action = new CreateEvent;
+
+    $first = $action->execute(
+        organization: $this->org,
+        name: 'Summer Carnival',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-07-01 10:00'),
+        endsAt: Carbon::parse('2026-07-01 18:00'),
+    );
+
+    $second = $action->execute(
+        organization: $this->org,
+        name: 'Summer Carnival',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-08-01 10:00'),
+        endsAt: Carbon::parse('2026-08-01 18:00'),
+    );
+
+    expect($first->slug)->toBe('summer-carnival')
+        ->and($second->slug)->toBe('summer-carnival-2');
+});
+
+it('allows same slug in different organizations', function () {
+    $action = new CreateEvent;
+    $otherOrg = Organization::factory()->create();
+
+    $first = $action->execute(
+        organization: $this->org,
+        name: 'Summer Carnival',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-07-01 10:00'),
+        endsAt: Carbon::parse('2026-07-01 18:00'),
+    );
+
+    $second = $action->execute(
+        organization: $otherOrg,
+        name: 'Summer Carnival',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-07-01 10:00'),
+        endsAt: Carbon::parse('2026-07-01 18:00'),
+    );
+
+    expect($first->slug)->toBe('summer-carnival')
+        ->and($second->slug)->toBe('summer-carnival');
 });

@@ -101,14 +101,14 @@ class JobsAndShiftsManager extends Component
 
         if ($this->editingJobId) {
             $job = $this->event->volunteerJobs()->findOrFail($this->editingJobId);
-            (new UpdateVolunteerJob)->execute(
+            app(UpdateVolunteerJob::class)->execute(
                 job: $job,
                 name: $this->jobName,
                 description: $this->jobDescription ?: null,
                 instructions: $this->jobInstructions ?: null,
             );
         } else {
-            (new CreateVolunteerJob)->execute(
+            app(CreateVolunteerJob::class)->execute(
                 event: $this->event,
                 name: $this->jobName,
                 description: $this->jobDescription ?: null,
@@ -128,7 +128,7 @@ class JobsAndShiftsManager extends Component
         $job = $this->event->volunteerJobs()->findOrFail($jobId);
 
         try {
-            (new DeleteVolunteerJob)->execute($job);
+            app(DeleteVolunteerJob::class)->execute($job);
         } catch (HasSignupsException $e) {
             $this->addError('job', $e->getMessage());
 
@@ -175,7 +175,7 @@ class JobsAndShiftsManager extends Component
 
         if ($this->editingShiftId) {
             $shift = $this->findShift($this->editingShiftId);
-            (new UpdateShift)->execute(
+            app(UpdateShift::class)->execute(
                 shift: $shift,
                 startsAt: Carbon::parse($this->shiftStartsAt),
                 endsAt: Carbon::parse($this->shiftEndsAt),
@@ -183,7 +183,7 @@ class JobsAndShiftsManager extends Component
             );
         } else {
             $job = $this->event->volunteerJobs()->findOrFail($this->shiftJobId);
-            (new CreateShift)->execute(
+            app(CreateShift::class)->execute(
                 job: $job,
                 startsAt: Carbon::parse($this->shiftStartsAt),
                 endsAt: Carbon::parse($this->shiftEndsAt),
@@ -204,7 +204,7 @@ class JobsAndShiftsManager extends Component
         $shift = $this->findShift($shiftId);
 
         try {
-            (new DeleteShift)->execute($shift);
+            app(DeleteShift::class)->execute($shift);
         } catch (HasSignupsException $e) {
             $this->addError('shift', $e->getMessage());
 

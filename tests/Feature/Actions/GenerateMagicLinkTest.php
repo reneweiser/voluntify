@@ -29,9 +29,12 @@ it('hashes the token with SHA-256', function () {
 });
 
 it('sets expiry to 72 hours', function () {
+    $this->freezeSecond();
+
     $result = $this->action->execute($this->volunteer);
 
-    expect($result['token']->expires_at->diffInHours(now(), true))->toBeBetween(71, 73);
+    expect($result['token']->fresh()->expires_at->toDateTimeString())
+        ->toBe(now()->addHours(72)->toDateTimeString());
 });
 
 it('returns the plain token for email URL', function () {

@@ -40,11 +40,15 @@ class Shift extends Model
 
     public function isFull(): bool
     {
-        return $this->signups()->count() >= $this->capacity;
+        $count = $this->signups_count ?? $this->signups()->count();
+
+        return $count >= $this->capacity;
     }
 
     public function spotsRemaining(): int
     {
-        return max(0, $this->capacity - $this->signups()->count());
+        $count = $this->signups_count ?? $this->signups()->count();
+
+        return max(0, $this->capacity - $count);
     }
 }

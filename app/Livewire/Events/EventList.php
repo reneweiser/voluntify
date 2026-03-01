@@ -74,9 +74,10 @@ class EventList extends Component
             'eventEndsAt' => ['required', 'date', 'after:eventStartsAt'],
         ]);
 
-        $action = new CreateEvent(app(Organization::class));
+        $action = app(CreateEvent::class);
 
         $event = $action->execute(
+            organization: app(Organization::class),
             name: $this->eventName,
             description: $this->eventDescription ?: null,
             location: $this->eventLocation ?: null,

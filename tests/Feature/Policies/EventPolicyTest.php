@@ -61,3 +61,34 @@ it('denies non-member from viewing events', function () {
 
     expect($outsider->can('view', $this->event))->toBeFalse();
 });
+
+describe('entrance staff', function () {
+    beforeEach(function () {
+        $this->entranceStaff = \App\Models\User::factory()->create();
+        $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
+    });
+
+    it('allows entrance staff to view events', function () {
+        expect($this->entranceStaff->can('view', $this->event))->toBeTrue();
+    });
+
+    it('denies entrance staff from creating events', function () {
+        expect($this->entranceStaff->can('create', [Event::class, $this->org]))->toBeFalse();
+    });
+
+    it('denies entrance staff from updating events', function () {
+        expect($this->entranceStaff->can('update', $this->event))->toBeFalse();
+    });
+
+    it('denies entrance staff from publishing events', function () {
+        expect($this->entranceStaff->can('publish', $this->event))->toBeFalse();
+    });
+
+    it('denies entrance staff from archiving events', function () {
+        expect($this->entranceStaff->can('archive', $this->event))->toBeFalse();
+    });
+
+    it('denies entrance staff from managing jobs', function () {
+        expect($this->entranceStaff->can('manageJobs', $this->event))->toBeFalse();
+    });
+});

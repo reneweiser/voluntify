@@ -56,3 +56,34 @@ it('can update published events', function () {
 
     expect($updated->name)->toBe('Updated Published');
 });
+
+it('appends numeric suffix when slug collides with another event', function () {
+    Event::factory()->for($this->org)->create(['slug' => 'same-name']);
+    $event = Event::factory()->for($this->org)->create(['slug' => 'original']);
+
+    $updated = $this->action->execute(
+        event: $event,
+        name: 'Same Name',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-08-01 10:00'),
+        endsAt: Carbon::parse('2026-08-01 18:00'),
+    );
+
+    expect($updated->slug)->toBe('same-name-2');
+});
+
+it('keeps same slug when name does not change', function () {
+    $event = Event::factory()->for($this->org)->create(['name' => 'My Event', 'slug' => 'my-event']);
+
+    $updated = $this->action->execute(
+        event: $event,
+        name: 'My Event',
+        description: 'Updated description',
+        location: null,
+        startsAt: Carbon::parse('2026-08-01 10:00'),
+        endsAt: Carbon::parse('2026-08-01 18:00'),
+    );
+
+    expect($updated->slug)->toBe('my-event');
+});

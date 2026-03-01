@@ -22,9 +22,11 @@ class UpdateEvent
             throw new DomainException('Cannot update an archived event.');
         }
 
+        $slug = $this->uniqueSlug($event, $name);
+
         $event->update([
             'name' => $name,
-            'slug' => Str::slug($name),
+            'slug' => $slug,
             'description' => $description,
             'location' => $location,
             'starts_at' => $startsAt,
@@ -32,5 +34,24 @@ class UpdateEvent
         ]);
 
         return $event->refresh();
+    }
+
+    private function uniqueSlug(Event $event, string $name): string
+    {
+        $baseSlug = Str::slug($name);
+        $slug = $baseSlug;
+        $suffix = 2;
+
+        while (
+            $event->organization->events()
+                ->where('slug', $slug)
+                ->where('id', '!=', $event->id)
+                ->exists()
+        ) {
+            $slug = "{$baseSlug}-{$suffix}";
+            $suffix++;
+        }
+
+        return $slug;
     }
 }

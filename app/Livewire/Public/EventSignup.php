@@ -2,13 +2,12 @@
 
 namespace App\Livewire\Public;
 
-use App\Actions\GenerateMagicLink;
-use App\Actions\GenerateTicket;
 use App\Actions\SignUpVolunteer;
 use App\Enums\EventStatus;
 use App\Exceptions\AlreadySignedUpException;
 use App\Exceptions\ShiftFullException;
 use App\Models\Event;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -48,7 +47,14 @@ class EventSignup extends Component
         $this->validate([
             'volunteerName' => ['required', 'string', 'max:255'],
             'volunteerEmail' => ['required', 'email', 'max:255'],
-            'selectedShiftId' => ['required', 'integer', 'exists:shifts,id'],
+            'selectedShiftId' => [
+                'required',
+                'integer',
+                Rule::exists('shifts', 'id')->where(fn ($q) => $q->whereIn(
+                    'volunteer_job_id',
+                    $this->event->volunteerJobs()->select('id'),
+                )),
+            ],
         ]);
 
         $shift = \App\Models\Shift::whereHas(
@@ -56,7 +62,7 @@ class EventSignup extends Component
             fn ($q) => $q->where('event_id', $this->event->id),
         )->findOrFail($this->selectedShiftId);
 
-        $action = new SignUpVolunteer(new GenerateTicket, new GenerateMagicLink);
+        $action = app(SignUpVolunteer::class);
 
         try {
             $action->execute(
