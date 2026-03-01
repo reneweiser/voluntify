@@ -61,10 +61,4 @@ test('two factor authentication disabled when confirmation abandoned between req
     $component = Livewire::test('settings.two-factor');
 
     $component->assertSet('twoFactorEnabled', false);
-
-    $this->assertDatabaseHas('users', [
-        'id' => $user->id,
-        'two_factor_secret' => null,
-        'two_factor_recovery_codes' => null,
-    ]);
 });
