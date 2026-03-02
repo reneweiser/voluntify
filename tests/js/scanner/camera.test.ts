@@ -43,7 +43,7 @@ describe('camera', () => {
         await startCamera(mockVideo, mockCanvas, vi.fn());
 
         expect(mockGetUserMedia).toHaveBeenCalledWith({
-            video: { facingMode: 'environment' },
+            video: { facingMode: { ideal: 'environment' } },
         });
 
         stopCamera(mockVideo);

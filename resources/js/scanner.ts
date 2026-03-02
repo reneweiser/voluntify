@@ -14,10 +14,18 @@ declare global {
     }
 }
 
-// Register Alpine component when DOM is ready
-document.addEventListener('alpine:init', () => {
+// Register Alpine component.
+// This module loads as a deferred script, so Alpine (@fluxScripts) has already
+// started by the time it executes. We register directly on the global Alpine
+// instance rather than using the alpine:init event (which has already fired).
+if (window.Alpine) {
     window.Alpine.data('scannerApp', scannerApp as (...args: unknown[]) => object);
-});
+} else {
+    // Fallback: if Alpine hasn't loaded yet (unlikely), use the event
+    document.addEventListener('alpine:init', () => {
+        window.Alpine.data('scannerApp', scannerApp as (...args: unknown[]) => object);
+    });
+}
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
