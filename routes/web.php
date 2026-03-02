@@ -15,6 +15,18 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
 
+if (app()->environment('local')) {
+    Route::get('/dev/mail-preview', function () {
+        $org = \App\Models\Organization::firstOrFail();
+        $event = $org->events()->firstOrFail();
+        $shift = \App\Models\Shift::whereHas('volunteerJob', fn ($q) => $q->where('event_id', $event->id))->firstOrFail();
+        $volunteer = \App\Models\Volunteer::factory()->make(['name' => 'Jane Doe', 'email' => 'jane@example.com']);
+
+        return (new \App\Notifications\SignupConfirmation($event, [$shift->id], 'preview-token'))
+            ->toMail($volunteer);
+    });
+}
+
 // Public routes (no auth required)
 Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public');
 Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunteer.ticket');
