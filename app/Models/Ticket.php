@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\QrCodeGenerator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,5 +26,10 @@ class Ticket extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function qrCodeSvg(): string
+    {
+        return app(QrCodeGenerator::class)->generate($this->jwt_token);
     }
 }

@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "chillerlan/php-qrcode": "^5.0",
         "firebase/php-jwt": "^7.0",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",

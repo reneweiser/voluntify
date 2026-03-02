@@ -73,6 +73,9 @@ class SignupConfirmation extends Notification implements ShouldQueue
             }
         }
 
+        $ticketUrl = route('volunteer.ticket', $this->magicLinkToken);
+        $mail->action('View Your Ticket', $ticketUrl);
+
         return $mail;
     }
 }

@@ -5,14 +5,13 @@ use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Ticket;
 use App\Models\Volunteer;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+use App\Services\JwtKeyService;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->event = Event::factory()->for($this->org)->create();
     $this->volunteer = Volunteer::factory()->create();
-    $this->action = new GenerateTicket;
+    $this->action = app(GenerateTicket::class);
 });
 
 it('creates a ticket with a valid JWT', function () {
@@ -22,10 +21,13 @@ it('creates a ticket with a valid JWT', function () {
         ->and($ticket->volunteer_id)->toBe($this->volunteer->id)
         ->and($ticket->event_id)->toBe($this->event->id)
         ->and($ticket->jwt_token)->toStartWith('eyJ');
+});
 
-    // Decode and verify JWT contents
-    $key = hash_hmac('sha256', (string) $this->event->id, config('app.key'));
-    $decoded = JWT::decode($ticket->jwt_token, new Key($key, 'HS256'));
+it('creates a JWT that JwtKeyService can validate', function () {
+    $ticket = $this->action->execute($this->volunteer, $this->event);
+
+    $jwtKeyService = app(JwtKeyService::class);
+    $decoded = $jwtKeyService->validateToken($ticket->jwt_token, $this->event->id);
 
     expect($decoded->volunteer_id)->toBe($this->volunteer->id)
         ->and($decoded->event_id)->toBe($this->event->id)

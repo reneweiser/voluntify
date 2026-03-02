@@ -13,3 +13,13 @@ it('enforces unique volunteer per event', function () {
     expect(fn () => Ticket::factory()->for($volunteer)->for($event)->create())
         ->toThrow(\Illuminate\Database\UniqueConstraintViolationException::class);
 });
+
+it('generates QR code SVG from JWT token', function () {
+    $ticket = Ticket::factory()->create();
+
+    $svg = $ticket->qrCodeSvg();
+
+    expect($svg)->toBeString()
+        ->and($svg)->toContain('<svg')
+        ->and($svg)->toContain('</svg>');
+});

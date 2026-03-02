@@ -56,6 +56,14 @@ it('denies volunteer admin from managing jobs', function () {
     expect($this->volunteerAdmin->can('manageJobs', $this->event))->toBeFalse();
 });
 
+it('allows organizer to scan', function () {
+    expect($this->organizer->can('scan', $this->event))->toBeTrue();
+});
+
+it('denies volunteer admin from scanning', function () {
+    expect($this->volunteerAdmin->can('scan', $this->event))->toBeFalse();
+});
+
 it('denies non-member from viewing events', function () {
     $outsider = \App\Models\User::factory()->create();
 
@@ -90,5 +98,9 @@ describe('entrance staff', function () {
 
     it('denies entrance staff from managing jobs', function () {
         expect($this->entranceStaff->can('manageJobs', $this->event))->toBeFalse();
+    });
+
+    it('allows entrance staff to scan', function () {
+        expect($this->entranceStaff->can('scan', $this->event))->toBeTrue();
     });
 });

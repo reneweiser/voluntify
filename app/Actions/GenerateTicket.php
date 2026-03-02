@@ -5,10 +5,13 @@ namespace App\Actions;
 use App\Models\Event;
 use App\Models\Ticket;
 use App\Models\Volunteer;
+use App\Services\JwtKeyService;
 use Firebase\JWT\JWT;
 
 class GenerateTicket
 {
+    public function __construct(private JwtKeyService $jwtKeyService) {}
+
     public function execute(Volunteer $volunteer, Event $event): Ticket
     {
         $existing = Ticket::where('volunteer_id', $volunteer->id)
@@ -19,7 +22,7 @@ class GenerateTicket
             return $existing;
         }
 
-        $key = $this->deriveKey($event);
+        $key = $this->jwtKeyService->deriveKey($event->id);
 
         $payload = [
             'volunteer_id' => $volunteer->id,
@@ -34,10 +37,5 @@ class GenerateTicket
             'event_id' => $event->id,
             'jwt_token' => $jwt,
         ]);
-    }
-
-    private function deriveKey(Event $event): string
-    {
-        return hash_hmac('sha256', (string) $event->id, config('app.key'));
     }
 }

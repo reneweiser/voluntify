@@ -67,3 +67,11 @@ it('is queued', function () {
     expect(new SignupConfirmation($this->event, [$this->shift], 'token'))
         ->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
 });
+
+it('includes View Your Ticket action URL', function () {
+    $notification = new SignupConfirmation($this->event, [$this->shift], 'test-token');
+    $mail = $notification->toMail($this->volunteer);
+
+    expect($mail->actionText)->toBe('View Your Ticket')
+        ->and($mail->actionUrl)->toBe(route('volunteer.ticket', 'test-token'));
+});
