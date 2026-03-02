@@ -64,7 +64,7 @@
 
     {{-- Create Event Modal --}}
     @if ($this->canCreateEvents)
-    <flux:modal wire:model="showCreateModal" class="md:w-96">
+    <flux:modal wire:model.self="showCreateModal" class="md:w-96">
         <form wire:submit="createEvent" class="space-y-6">
             <div>
                 <flux:heading size="lg">{{ __('Create Event') }}</flux:heading>

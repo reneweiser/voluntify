@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\StaffRole;
+use App\Http\Middleware\ResolveOrganization;
 use App\Models\Organization;
 use App\Models\User;
+use Livewire\Livewire;
 
 it('resolves single organization automatically', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization();
@@ -53,4 +55,10 @@ it('handles user with no organizations', function () {
         ->assertOk();
 
     expect(app()->bound(Organization::class))->toBeFalse();
+});
+
+it('is registered as Livewire persistent middleware', function () {
+    $persistentMiddleware = Livewire::getPersistentMiddleware();
+
+    expect($persistentMiddleware)->toContain(ResolveOrganization::class);
 });
