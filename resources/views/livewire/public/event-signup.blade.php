@@ -27,7 +27,17 @@
         </div>
     </div>
 
-    @if ($signupComplete)
+    @if ($pendingVerification)
+        {{-- Pending verification state --}}
+        <div class="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 p-8 text-center">
+            <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40">
+                <flux:icon name="envelope" class="size-10 text-blue-600 dark:text-blue-400" />
+            </div>
+            <flux:heading size="lg" class="mt-4">{{ __('Check Your Email') }}</flux:heading>
+            <flux:text class="mt-2">{{ __('We\'ve sent a verification link to :email. Click the link to confirm your signup.', ['email' => $volunteerEmail]) }}</flux:text>
+            <flux:text size="sm" class="mt-4 text-zinc-500 dark:text-zinc-400">{{ __('The link expires in 24 hours. Your shift selections are not reserved until you verify.') }}</flux:text>
+        </div>
+    @elseif ($signupComplete)
         {{-- Success state --}}
         <div class="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20 border border-emerald-200 dark:border-emerald-800 p-8 text-center">
             <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">

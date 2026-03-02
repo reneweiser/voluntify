@@ -87,7 +87,7 @@ it('dispatches signup confirmation notification with shift array', function () {
     $volunteer = Volunteer::where('email', 'jane@example.com')->first();
 
     Notification::assertSentTo($volunteer, SignupConfirmation::class, function ($notification) {
-        return is_array($notification->shifts) && count($notification->shifts) === 1;
+        return is_array($notification->shiftIds) && count($notification->shiftIds) === 1;
     });
 });
 

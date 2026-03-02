@@ -21,6 +21,10 @@ class EmailTemplateRenderer
             'subject' => 'Reminder: Your shift for {{event_name}} starts soon',
             'body' => "Hello {{volunteer_name}}!\n\nYour shift for **{{event_name}}** starts in a few hours.\n\n**Job:** {{job_name}}\n**Shift:** {{shift_date}} {{shift_time}}\n{{event_location}}\nSee you soon!",
         ],
+        'email_verification' => [
+            'subject' => 'Verify your email for {{event_name}}',
+            'body' => "Hello {{volunteer_name}}!\n\nPlease verify your email address to complete your volunteer signup for **{{event_name}}**.\n\nThis link will expire in 24 hours. Your shift selections are not reserved until you verify.",
+        ],
     ];
 
     /**
@@ -79,6 +83,10 @@ class EmailTemplateRenderer
                 'shift_date',
                 'shift_time',
                 'event_location',
+            ],
+            EmailTemplateType::EmailVerification => [
+                'volunteer_name',
+                'event_name',
             ],
         };
     }

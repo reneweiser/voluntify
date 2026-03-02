@@ -18,8 +18,16 @@ class VolunteerFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->optional()->e164PhoneNumber(),
+            'email_verified_at' => null,
             'user_id' => null,
         ];
+    }
+
+    public function verified(): static
+    {
+        return $this->state(fn () => [
+            'email_verified_at' => now(),
+        ]);
     }
 
     public function promoted(): static

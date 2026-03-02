@@ -19,8 +19,26 @@ class Volunteer extends Model
         'name',
         'email',
         'phone',
+        'email_verified_at',
         'user_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+        ];
+    }
+
+    public function isEmailVerified(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
+    public function markEmailAsVerified(): void
+    {
+        $this->update(['email_verified_at' => now()]);
+    }
 
     public function user(): BelongsTo
     {

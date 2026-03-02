@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Public;
 
-use App\Actions\SignUpVolunteerForShifts;
+use App\Actions\ProcessVolunteerSignup;
 use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
@@ -28,6 +28,8 @@ class EventSignup extends Component
     public array $selectedShiftIds = [];
 
     public bool $signupComplete = false;
+
+    public bool $pendingVerification = false;
 
     public string $warningMessage = '';
 
@@ -62,16 +64,24 @@ class EventSignup extends Component
             ],
         ]);
 
-        $action = app(SignUpVolunteerForShifts::class);
+        $action = app(ProcessVolunteerSignup::class);
 
         try {
-            $result = $action->execute(
+            $outcome = $action->execute(
                 name: $this->volunteerName,
                 email: $this->volunteerEmail,
                 event: $this->event,
                 shiftIds: array_map('intval', $this->selectedShiftIds),
                 phone: $this->volunteerPhone ?: null,
             );
+
+            if ($outcome->isPendingVerification()) {
+                $this->pendingVerification = true;
+
+                return;
+            }
+
+            $result = $outcome->batchResult;
 
             if ($result->hasNewSignups()) {
                 $this->signupComplete = true;

@@ -6,6 +6,7 @@ use App\Livewire\Events\EmailTemplateEditor;
 use App\Livewire\Events\EventList;
 use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
+use App\Livewire\Public\EmailVerificationPage;
 use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\VolunteerTicket;
 use App\Livewire\Scanner\ManualLookup;
@@ -17,6 +18,7 @@ Route::view('/', 'welcome')->name('home');
 // Public routes (no auth required)
 Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public');
 Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunteer.ticket');
+Route::livewire('verify-email/{token}', EmailVerificationPage::class)->name('volunteer.verify-email');
 
 // Auth-only (no org required)
 Route::prefix('admin')->middleware(['auth'])->group(function () {
