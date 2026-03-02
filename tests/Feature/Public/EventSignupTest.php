@@ -176,7 +176,7 @@ it('submits multi-shift signup and creates all records', function () {
         ->and(Ticket::where('event_id', $this->event->id)->count())->toBe(1);
 
     Notification::assertSentTo($volunteer, SignupConfirmation::class, function ($notification) {
-        return count($notification->shifts) === 2;
+        return count($notification->shiftIds) === 2;
     });
 });
 

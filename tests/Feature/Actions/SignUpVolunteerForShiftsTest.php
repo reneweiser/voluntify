@@ -79,7 +79,7 @@ it('sends one notification with all shifts', function () {
     );
 
     Notification::assertSentTo($result->volunteer, SignupConfirmation::class, function ($notification) {
-        return count($notification->shifts) === 2;
+        return count($notification->shiftIds) === 2;
     });
 });
 

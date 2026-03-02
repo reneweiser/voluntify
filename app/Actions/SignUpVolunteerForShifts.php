@@ -105,12 +105,12 @@ class SignUpVolunteerForShifts
         );
 
         if ($batchResult->hasNewSignups()) {
-            $shifts = collect($result['newSignups'])
-                ->map(fn (ShiftSignup $signup) => $signup->shift)
+            $shiftIds = collect($result['newSignups'])
+                ->map(fn (ShiftSignup $signup) => $signup->shift_id)
                 ->all();
 
             $result['volunteer']->notify(
-                new SignupConfirmation($event, $shifts, $result['plainToken']),
+                new SignupConfirmation($event, $shiftIds, $result['plainToken']),
             );
         }
 

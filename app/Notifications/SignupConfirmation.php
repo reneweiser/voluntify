@@ -16,11 +16,11 @@ class SignupConfirmation extends Notification implements ShouldQueue
     use Queueable;
 
     /**
-     * @param  array<Shift>  $shifts
+     * @param  array<int>  $shiftIds
      */
     public function __construct(
         public Event $event,
-        public array $shifts,
+        public array $shiftIds,
         public string $magicLinkToken,
     ) {}
 
@@ -34,8 +34,7 @@ class SignupConfirmation extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $shiftIds = collect($this->shifts)->pluck('id')->all();
-        $shifts = Shift::with('volunteerJob')->whereIn('id', $shiftIds)->get();
+        $shifts = Shift::with('volunteerJob')->whereIn('id', $this->shiftIds)->get();
 
         $firstShift = $shifts->first();
         $firstJob = $firstShift->volunteerJob;
