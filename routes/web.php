@@ -8,6 +8,8 @@ use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
 use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\VolunteerTicket;
+use App\Livewire\Scanner\ManualLookup;
+use App\Livewire\Scanner\QrScanner;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
@@ -28,6 +30,10 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('events/{eventId}', EventShow::class)->name('events.show');
     Route::livewire('events/{eventId}/jobs', JobsAndShiftsManager::class)->name('events.jobs');
     Route::livewire('events/{eventId}/emails', EmailTemplateEditor::class)->name('events.emails');
+
+    // Scanner UI
+    Route::livewire('scanner', QrScanner::class)->name('scanner.index');
+    Route::livewire('scanner/lookup', ManualLookup::class)->name('scanner.lookup');
 
     // Scanner API
     Route::get('scanner/api/events/{eventId}/data', [ScannerApiController::class, 'data'])->name('scanner.data');

@@ -18,6 +18,18 @@
                     <flux:sidebar.item icon="calendar" :href="route('events.index')" :current="request()->routeIs('events.*')" wire:navigate>
                         {{ __('Events') }}
                     </flux:sidebar.item>
+                    @php
+                        $org = app()->bound(\App\Models\Organization::class) ? app(\App\Models\Organization::class) : null;
+                        $canScan = $org && $org->users()
+                            ->where('user_id', auth()->id())
+                            ->wherePivotIn('role', [\App\Enums\StaffRole::Organizer, \App\Enums\StaffRole::EntranceStaff])
+                            ->exists();
+                    @endphp
+                    @if ($canScan)
+                        <flux:sidebar.item icon="qr-code" :href="route('scanner.index')" :current="request()->routeIs('scanner.*')" wire:navigate>
+                            {{ __('Scanner') }}
+                        </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

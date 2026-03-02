@@ -1,0 +1,22 @@
+{
+    "name": "Voluntify Scanner",
+    "short_name": "Scanner",
+    "description": "QR code scanner for volunteer event entrance validation",
+    "start_url": "/admin/scanner",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#18181b",
+    "theme_color": "#059669",
+    "icons": [
+        {
+            "src": "/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png"
+        }
+    ]
+}
