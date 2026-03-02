@@ -46,7 +46,6 @@ Seven flows drive the product. Full step-by-step tables are in `planning/design/
 | # | Flow | Actor | Trigger | Key outcome |
 |---|---|---|---|---|
 | 1 | Event Setup | Organizer | Creates a new event | Published event with jobs, shifts, and shareable public URL |
-| 1b | AI Event Setup | Organizer | "Create with AI" | Event + jobs + shifts created via natural language chat |
 | 2 | Volunteer Sign-Up | Volunteer | Opens public event link | Signed up for shift, confirmation email with magic link to QR ticket |
 | 3 | Pre-Shift Notifications | System → Volunteer | Scheduled (24h, 4h before shift) | Volunteer receives job-specific instructions by email |
 | 4 | Shift Attendance | Volunteer Admin | Shift start time | Each volunteer marked on_time / late / no_show |
@@ -69,7 +68,6 @@ Seven flows drive the product. Full step-by-step tables are in `planning/design/
 | Offline | Service Worker + IndexedDB | PWA pattern for scanner |
 | Testing | Pest | TDD throughout |
 | Queue | Laravel Queue (database driver) | Emails, notifications |
-| AI | Anthropic PHP SDK + Vercel AI Gateway | BYOK per organization |
 | Database | SQLite (dev) / MySQL or PostgreSQL (prod) | |
 
 Full architecture details (QR/JWT, offline sync, AI chat, middleware) in `planning/design/app-design-spec.md` § Tech Stack.
@@ -141,14 +139,6 @@ Routes / Middleware
 
 **Outcome**: Volunteer signup collects optional phone number. Organizers can upload hero images for events (displayed on public page and admin overview). Organizers can customize automated email templates (signup confirmation, pre-shift reminders) per event with placeholder variables. Falls back to built-in defaults when no custom template exists.
 
-### Milestone 2.2: AI Event Creation
-
-| # | Feature | Type | Priority | Pain points |
-|---|---|---|---|---|
-| 08 | AI-powered event creation | fullstack | Should Have | PP-3, PR-1 |
-
-**Outcome**: Organizer creates events via natural language chat. Uses same Actions as form UI. BYOK (Bring Your Own Key) per organization.
-
 ### Milestone 3: Tickets & QR Scanner
 
 | # | Feature | Type | Priority | Pain points |
@@ -191,6 +181,14 @@ Note: Features 09 and 10 provide the backend Actions (`GenerateTicket`, `Generat
 | 21 | Browser integration tests | testing | Should Have | — |
 
 **Outcome**: Quality-of-life features and browser-level tests for PWA flows.
+
+### Post-MVP: AI Event Creation
+
+| # | Feature | Type | Priority | Pain points |
+|---|---|---|---|---|
+| 08 | AI-powered event creation | fullstack | Should Have | PP-3, PR-1 |
+
+**Outcome**: Organizer creates events via natural language chat. Uses same Actions as form UI. BYOK (Bring Your Own Key) per organization. Requires Anthropic PHP SDK + Vercel AI Gateway. Organization AI API keys stored encrypted (`ai_api_key` column).
 
 ## Cross-Cutting Concerns
 
@@ -236,7 +234,6 @@ Every feature follows **red-green-refactor**. Each feature's `tasks.md` interlea
 - JWT signing keys are per-event, per-period (rotate at 4 AM local) — limits exposure if IndexedDB is compromised
 - Scanner validates current + previous period keys (dual-key fallback for boundary events)
 - `public_token` on events prevents ID enumeration
-- Organization AI API keys stored encrypted (`ai_api_key` column)
 - Multi-tenancy enforced at query level — never unscoped model queries in authenticated contexts
 
 ### Email
@@ -254,7 +251,6 @@ All emails are dispatched as queued notifications (database queue driver):
 - **Laravel 12 + Livewire 4 + Flux UI** — tech stack is fixed
 - **No paid external services** — no Twilio, no cloud scanning APIs. Self-hostable.
 - **Database queue driver** — no Redis dependency
-- **BYOK for AI** — no shared API key; each organization provides their own
 
 ## Domain Model
 

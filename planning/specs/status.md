@@ -8,7 +8,7 @@
 |---|---|
 | Complete | 0 |
 | In Progress | 0 |
-| Not Started | 21 |
+| Not Started | 20 |
 
 ## Features
 
@@ -28,12 +28,6 @@
 | 05 | Event CRUD | fullstack | Must Have | Not Started | — |
 | 06 | Jobs & shifts management | fullstack | Must Have | Not Started | — |
 | 07 | Public event page & volunteer signup | fullstack | Must Have | Not Started | — |
-
-### Milestone 2b: AI Event Creation
-
-| # | Feature | Type | Priority | Status | Spec |
-|---|---|---|---|---|---|
-| 08 | AI-powered event creation | fullstack | Should Have | Not Started | — |
 
 ### Milestone 3: Tickets & QR Scanner
 
@@ -67,3 +61,9 @@
 | 19 | CSV export | backend | Could Have | Not Started | — |
 | 20 | Dashboard analytics | fullstack | Could Have | Not Started | — |
 | 21 | Browser integration tests | testing | Should Have | Not Started | — |
+
+### Post-MVP: AI Event Creation
+
+| # | Feature | Type | Priority | Status | Spec |
+|---|---|---|---|---|---|
+| 08 | AI-powered event creation | fullstack | Should Have | Not Started | — |

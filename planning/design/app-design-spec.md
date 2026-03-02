@@ -25,7 +25,7 @@ Voluntify
 │   ├── /dashboard                          — Role-adaptive dashboard
 │   ├── /events                             — Events list
 │   │   ├── /events/create                  — Create Event (modal or page)
-│   │   ├── /events/ai-create              — AI-Powered Event Creation (chat interface)
+│   │   ├── /events/ai-create              — AI-Powered Event Creation (post-MVP)
 │   │   └── /events/{event}                 — Event detail (tabbed)
 │   │       ├── /events/{event}/overview     — Event overview tab
 │   │       ├── /events/{event}/jobs         — Jobs & Shifts Manager tab
@@ -63,7 +63,7 @@ Voluntify
 | Scanner | Yes | No | Yes |
 | Scanner > Manual Lookup | Yes | No | Yes |
 | Settings > Team | Yes | No | No |
-| Events List > Create with AI | Yes (visible when org has ai_api_key) | No | No |
+| Events List > Create with AI (post-MVP) | Yes (visible when org has ai_api_key) | No | No |
 
 ### Content Priority
 
@@ -207,7 +207,7 @@ Voluntify
 - **Empty**: "No events yet. Create your first event!" with CTA (Organizer) or "No events assigned to you." (other roles)
 - **Filtered empty**: "No [status] events found."
 
-### Page 4b: AI Event Creator
+### Page 4b: AI Event Creator [Deferred — post-MVP]
 
 **Route**: `/events/ai-create`
 **Purpose**: Create events, jobs, and shifts through natural language conversation with an AI assistant
@@ -618,7 +618,7 @@ Voluntify
 **Success criteria**: Event is published with at least one job containing at least one shift. Public URL is shareable.
 **Error paths**: Validation errors on event creation form (missing name, invalid dates). Attempting to publish with no jobs/shifts shows a warning.
 
-### Flow 1b: AI-Powered Event Setup
+### Flow 1b: AI-Powered Event Setup [Deferred — post-MVP]
 
 **Trigger**: Organizer clicks "Create with AI" on Events List
 **Persona**: Organizer
@@ -767,8 +767,8 @@ Voluntify
 | Database | SQLite (dev) / MySQL/PostgreSQL (prod) | Laravel default. SQLite for easy local dev; MySQL or PostgreSQL for production. |
 | Testing | Pest | Already in dev dependencies. PHP testing framework designed for Laravel. |
 | Queue | Laravel Queue (database driver) | For sending emails (confirmation, notifications, promotion). Database driver to avoid Redis dependency. |
-| AI API | `anthropic-ai/sdk` (Anthropic PHP SDK) | Official SDK for Claude API. Tool use for structured event creation from natural language. |
-| AI Gateway | Vercel AI Gateway (`ai-gateway.vercel.sh`) | Proxy for AI API requests. Observability, failover, spend tracking. Each org provides own key — no shared API costs. |
+| AI API (post-MVP) | `anthropic-ai/sdk` (Anthropic PHP SDK) | Official SDK for Claude API. Tool use for structured event creation from natural language. |
+| AI Gateway (post-MVP) | Vercel AI Gateway (`ai-gateway.vercel.sh`) | Proxy for AI API requests. Observability, failover, spend tracking. Each org provides own key — no shared API costs. |
 
 ### QR / JWT Architecture
 
@@ -810,7 +810,7 @@ Voluntify
 - **Multi-device scanning**: Multiple Entrance Staff can scan at different entrances. Each device maintains its own IndexedDB. Server-side first-write-wins upsert handles convergence. After sync, the server's response includes the full arrival list, allowing devices to update their local cache for better cross-device duplicate detection.
 - **Key rotation at midnight**: The per-event, per-day HMAC key uses 4:00 AM local time as the rotation boundary (not midnight) to avoid mid-event key changes. Additionally, the scanner validates against both the current period's key and the previous period's key before rejecting a ticket, providing a graceful transition window.
 
-### AI Chat Architecture
+### AI Chat Architecture [Deferred — post-MVP]
 
 The AI-powered event creation feature uses Claude's tool use API to convert natural language descriptions into structured event data. The architecture follows an **agentic loop** pattern:
 
@@ -1047,7 +1047,7 @@ readonly class SignupData
 - Public event page with volunteer signup form
 - Volunteer model, shift signup logic with capacity enforcement
 
-### Phase 2b: AI Event Creation (Optional)
+### Phase 2b: AI Event Creation [Deferred — post-MVP]
 - Anthropic PHP SDK integration with Vercel AI Gateway
 - AI tool definitions (event management tools)
 - Agentic loop service (tool executor, chat service)

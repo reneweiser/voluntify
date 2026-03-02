@@ -156,7 +156,7 @@
 
 | Entity | Description | Key Attributes |
 |---|---|---|
-| `organizations` | The group or nonprofit that runs events | `id`, `name`, `slug`, `ai_api_key` (encrypted, nullable — stores the org's Vercel AI Gateway API key) |
+| `organizations` | The group or nonprofit that runs events | `id`, `name`, `slug`, `ai_api_key` (encrypted, nullable — stores the org's AI API key; post-MVP) |
 | `users` | Authenticated accounts for staff roles (Organizer, Volunteer Admin, Entrance Staff) | `id`, `name`, `email`, `password`, `must_change_password` |
 | `organization_user` | Pivot table: user role per organization | `organization_id`, `user_id`, `role` (enum: organizer, volunteer_admin, entrance_staff) |
 | `events` | An event run by an organization | `id`, `organization_id`, `name`, `slug`, `public_token`, `description`, `location`, `starts_at`, `ends_at`, `status` (enum: draft, published, archived), `title_image_path` (nullable — hero image stored on public disk) |
