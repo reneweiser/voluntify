@@ -1,5 +1,7 @@
 # Project Spec: Voluntify
 
+> **Amended**: See [amendments/001-status-sync-m1-m2-m21-m3p1.md](amendments/001-status-sync-m1-m2-m21-m3p1.md) -- Status synced with M1, M2, M2.1, M3 Part 1 implementation
+
 **Date**: 2026-03-01
 **Status**: Active
 **Design docs**: `planning/design/` (domain-landscape, pain-points, opportunity-analysis, app-concept, app-design-spec)
