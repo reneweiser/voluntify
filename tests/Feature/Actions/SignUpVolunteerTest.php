@@ -76,7 +76,7 @@ it('generates a magic link token', function () {
     expect($volunteer->magicLinkTokens()->count())->toBe(1);
 });
 
-it('dispatches signup confirmation notification', function () {
+it('dispatches signup confirmation notification with shift array', function () {
     $this->action->execute(
         name: 'Jane Doe',
         email: 'jane@example.com',
@@ -86,7 +86,9 @@ it('dispatches signup confirmation notification', function () {
 
     $volunteer = Volunteer::where('email', 'jane@example.com')->first();
 
-    Notification::assertSentTo($volunteer, SignupConfirmation::class);
+    Notification::assertSentTo($volunteer, SignupConfirmation::class, function ($notification) {
+        return is_array($notification->shifts) && count($notification->shifts) === 1;
+    });
 });
 
 it('throws ShiftFullException when shift is at capacity', function () {
@@ -189,5 +191,5 @@ it('throws DomainException when shift does not belong to event', function () {
         email: 'jane@example.com',
         event: $this->event,
         shift: $otherShift,
-    ))->toThrow(\App\Exceptions\DomainException::class, 'Shift does not belong to this event.');
+    ))->toThrow(\App\Exceptions\DomainException::class, 'One or more shifts do not belong to this event.');
 });

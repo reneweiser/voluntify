@@ -11,7 +11,7 @@ class EmailTemplateRenderer
     private const DEFAULTS = [
         'signup_confirmation' => [
             'subject' => "You're signed up for {{event_name}}!",
-            'body' => "Hello {{volunteer_name}}!\n\nYou've been signed up for **{{event_name}}**.\n\n**Job:** {{job_name}}\n**Shift:** {{shift_date}} {{shift_time}}\n{{event_location}}\nYou will receive your ticket with a QR code via a separate link.\n\nThank you for volunteering!",
+            'body' => "Hello {{volunteer_name}}!\n\nYou've been signed up for **{{event_name}}**.\n\n**Your Shifts:**\n{{shifts_summary}}\n{{event_location}}\nYou will receive your ticket with a QR code via a separate link.\n\nThank you for volunteering!",
         ],
         'pre_shift_reminder_24h' => [
             'subject' => 'Reminder: Your shift for {{event_name}} is tomorrow',
@@ -62,7 +62,15 @@ class EmailTemplateRenderer
     public function availablePlaceholders(EmailTemplateType $type): array
     {
         return match ($type) {
-            EmailTemplateType::SignupConfirmation,
+            EmailTemplateType::SignupConfirmation => [
+                'volunteer_name',
+                'event_name',
+                'shifts_summary',
+                'job_name',
+                'shift_date',
+                'shift_time',
+                'event_location',
+            ],
             EmailTemplateType::PreShiftReminder24h,
             EmailTemplateType::PreShiftReminder4h => [
                 'volunteer_name',

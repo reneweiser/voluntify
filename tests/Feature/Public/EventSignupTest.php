@@ -88,7 +88,7 @@ it('submits signup form and creates records', function () {
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerName', 'John Smith')
         ->set('volunteerEmail', 'john@example.com')
-        ->set('selectedShiftId', $this->shift->id)
+        ->set('selectedShiftIds', [$this->shift->id])
         ->call('signup')
         ->assertHasNoErrors()
         ->assertSet('signupComplete', true)
@@ -109,7 +109,7 @@ it('submits signup with phone number', function () {
         ->set('volunteerName', 'Phone Person')
         ->set('volunteerEmail', 'phone@example.com')
         ->set('volunteerPhone', '+15551234567')
-        ->set('selectedShiftId', $this->shift->id)
+        ->set('selectedShiftIds', [$this->shift->id])
         ->call('signup')
         ->assertHasNoErrors()
         ->assertSet('signupComplete', true);
@@ -121,7 +121,7 @@ it('submits signup without phone number', function () {
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerName', 'No Phone')
         ->set('volunteerEmail', 'nophone@example.com')
-        ->set('selectedShiftId', $this->shift->id)
+        ->set('selectedShiftIds', [$this->shift->id])
         ->call('signup')
         ->assertHasNoErrors()
         ->assertSet('signupComplete', true);
@@ -132,22 +132,22 @@ it('submits signup without phone number', function () {
 it('validates required fields', function () {
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->call('signup')
-        ->assertHasErrors(['volunteerName', 'volunteerEmail', 'selectedShiftId']);
+        ->assertHasErrors(['volunteerName', 'volunteerEmail', 'selectedShiftIds']);
 });
 
-it('shows error for already signed up volunteer', function () {
+it('shows error for already signed up volunteer on all selected shifts', function () {
     $volunteer = Volunteer::factory()->create(['email' => 'repeat@example.com']);
     ShiftSignup::factory()->create(['shift_id' => $this->shift->id, 'volunteer_id' => $volunteer->id]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerName', 'Repeat Person')
         ->set('volunteerEmail', 'repeat@example.com')
-        ->set('selectedShiftId', $this->shift->id)
+        ->set('selectedShiftIds', [$this->shift->id])
         ->call('signup')
-        ->assertHasErrors('volunteerEmail');
+        ->assertHasErrors('selectedShiftIds');
 });
 
-it('shows error when shift becomes full during signup', function () {
+it('shows error when all selected shifts are full', function () {
     $tinyShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
     $volunteer = Volunteer::factory()->create();
     ShiftSignup::factory()->create(['shift_id' => $tinyShift->id, 'volunteer_id' => $volunteer->id]);
@@ -155,7 +155,58 @@ it('shows error when shift becomes full during signup', function () {
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerName', 'Late Person')
         ->set('volunteerEmail', 'late@example.com')
-        ->set('selectedShiftId', $tinyShift->id)
+        ->set('selectedShiftIds', [$tinyShift->id])
         ->call('signup')
-        ->assertHasErrors('selectedShiftId');
+        ->assertHasErrors('selectedShiftIds');
+});
+
+it('submits multi-shift signup and creates all records', function () {
+    $shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerName', 'Multi Shift')
+        ->set('volunteerEmail', 'multi@example.com')
+        ->set('selectedShiftIds', [$this->shift->id, $shift2->id])
+        ->call('signup')
+        ->assertHasNoErrors()
+        ->assertSet('signupComplete', true);
+
+    $volunteer = Volunteer::where('email', 'multi@example.com')->first();
+    expect(ShiftSignup::where('volunteer_id', $volunteer->id)->count())->toBe(2)
+        ->and(Ticket::where('event_id', $this->event->id)->count())->toBe(1);
+
+    Notification::assertSentTo($volunteer, SignupConfirmation::class, function ($notification) {
+        return count($notification->shifts) === 2;
+    });
+});
+
+it('shows warning when some shifts are skipped', function () {
+    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
+    $otherVolunteer = Volunteer::factory()->create();
+    ShiftSignup::factory()->create(['shift_id' => $fullShift->id, 'volunteer_id' => $otherVolunteer->id]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerName', 'Partial Person')
+        ->set('volunteerEmail', 'partial@example.com')
+        ->set('selectedShiftIds', [$this->shift->id, $fullShift->id])
+        ->call('signup')
+        ->assertHasNoErrors()
+        ->assertSet('signupComplete', true)
+        ->assertSee('Some shifts were skipped');
+});
+
+it('shows all-duplicate error for mixed duplicate and full shifts', function () {
+    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
+    $otherVolunteer = Volunteer::factory()->create();
+    ShiftSignup::factory()->create(['shift_id' => $fullShift->id, 'volunteer_id' => $otherVolunteer->id]);
+
+    $volunteer = Volunteer::factory()->create(['email' => 'mixed@example.com']);
+    ShiftSignup::factory()->create(['shift_id' => $this->shift->id, 'volunteer_id' => $volunteer->id]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerName', 'Mixed')
+        ->set('volunteerEmail', 'mixed@example.com')
+        ->set('selectedShiftIds', [$this->shift->id, $fullShift->id])
+        ->call('signup')
+        ->assertHasErrors('selectedShiftIds');
 });

@@ -16,6 +16,7 @@ beforeEach(function () {
     $this->variables = [
         'volunteer_name' => 'Jane Doe',
         'event_name' => 'Summer Fest',
+        'shifts_summary' => '- Setup Crew: Jul 01, 2026 10:00 AM — 2:00 PM',
         'job_name' => 'Setup Crew',
         'shift_date' => 'Jul 01, 2026',
         'shift_time' => '10:00 AM — 2:00 PM',
@@ -33,7 +34,7 @@ it('renders default template when no custom template exists', function () {
     expect($rendered['subject'])->toBe("You're signed up for Summer Fest!")
         ->and($rendered['body'])->toContain('Jane Doe')
         ->and($rendered['body'])->toContain('Summer Fest')
-        ->and($rendered['body'])->toContain('Setup Crew');
+        ->and($rendered['body'])->toContain('Setup Crew: Jul 01, 2026 10:00 AM');
 });
 
 it('renders custom template when one exists', function () {
@@ -98,6 +99,7 @@ it('returns available placeholders for template types', function () {
 
     expect($placeholders)->toContain('volunteer_name')
         ->and($placeholders)->toContain('event_name')
+        ->and($placeholders)->toContain('shifts_summary')
         ->and($placeholders)->toContain('job_name')
         ->and($placeholders)->toContain('shift_date')
         ->and($placeholders)->toContain('shift_time')

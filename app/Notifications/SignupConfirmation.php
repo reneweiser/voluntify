@@ -15,9 +15,12 @@ class SignupConfirmation extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * @param  array<Shift>  $shifts
+     */
     public function __construct(
         public Event $event,
-        public Shift $shift,
+        public array $shifts,
         public string $magicLinkToken,
     ) {}
 
@@ -31,7 +34,18 @@ class SignupConfirmation extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $job = $this->shift->volunteerJob;
+        $shiftIds = collect($this->shifts)->pluck('id')->all();
+        $shifts = Shift::with('volunteerJob')->whereIn('id', $shiftIds)->get();
+
+        $firstShift = $shifts->first();
+        $firstJob = $firstShift->volunteerJob;
+
+        $shiftsSummary = $shifts->map(function (Shift $shift) {
+            $job = $shift->volunteerJob;
+            $dateRange = $shift->starts_at->format('M d, Y g:i A').' — '.$shift->ends_at->format('g:i A');
+
+            return "- {$job->name}: {$dateRange}";
+        })->implode("\n");
 
         $renderer = app(EmailTemplateRenderer::class);
         $rendered = $renderer->render(
@@ -40,9 +54,10 @@ class SignupConfirmation extends Notification implements ShouldQueue
             [
                 'volunteer_name' => $notifiable->name,
                 'event_name' => $this->event->name,
-                'job_name' => $job->name,
-                'shift_date' => $this->shift->starts_at->format('M d, Y'),
-                'shift_time' => $this->shift->starts_at->format('g:i A').' — '.$this->shift->ends_at->format('g:i A'),
+                'shifts_summary' => $shiftsSummary,
+                'job_name' => $firstJob->name,
+                'shift_date' => $firstShift->starts_at->format('M d, Y'),
+                'shift_time' => $firstShift->starts_at->format('g:i A').' — '.$firstShift->ends_at->format('g:i A'),
                 'event_location' => $this->event->location ? "**Location:** {$this->event->location}" : '',
             ],
         );

@@ -24,7 +24,7 @@ beforeEach(function () {
 it('sends email with event details', function () {
     Notification::fake();
 
-    $this->volunteer->notify(new SignupConfirmation($this->event, $this->shift, 'test-token'));
+    $this->volunteer->notify(new SignupConfirmation($this->event, [$this->shift], 'test-token'));
 
     Notification::assertSentTo($this->volunteer, SignupConfirmation::class, function ($notification) {
         $mail = $notification->toMail($this->volunteer);
@@ -46,7 +46,7 @@ it('uses custom template when set', function () {
         'body' => 'Custom: {{job_name}} on {{shift_date}}',
     ]);
 
-    $notification = new SignupConfirmation($this->event, $this->shift, 'test-token');
+    $notification = new SignupConfirmation($this->event, [$this->shift], 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect($mail->subject)->toBe('Welcome Jane Doe to Summer Fest')
@@ -55,7 +55,7 @@ it('uses custom template when set', function () {
 });
 
 it('uses default template when no custom template exists', function () {
-    $notification = new SignupConfirmation($this->event, $this->shift, 'test-token');
+    $notification = new SignupConfirmation($this->event, [$this->shift], 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect($mail->subject)->toBe("You're signed up for Summer Fest!")
@@ -64,6 +64,6 @@ it('uses default template when no custom template exists', function () {
 });
 
 it('is queued', function () {
-    expect(new SignupConfirmation($this->event, $this->shift, 'token'))
+    expect(new SignupConfirmation($this->event, [$this->shift], 'token'))
         ->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
 });

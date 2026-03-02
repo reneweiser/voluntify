@@ -1,0 +1,119 @@
+<?php
+
+namespace App\Actions;
+
+use App\Exceptions\DomainException;
+use App\Models\Event;
+use App\Models\Shift;
+use App\Models\ShiftSignup;
+use App\Models\Volunteer;
+use App\Notifications\SignupConfirmation;
+use App\ValueObjects\SignupBatchResult;
+use Illuminate\Support\Facades\DB;
+
+class SignUpVolunteerForShifts
+{
+    public function __construct(
+        private GenerateTicket $generateTicket,
+        private GenerateMagicLink $generateMagicLink,
+    ) {}
+
+    /**
+     * @param  array<int>  $shiftIds
+     */
+    public function execute(
+        string $name,
+        string $email,
+        Event $event,
+        array $shiftIds,
+        ?string $phone = null,
+    ): SignupBatchResult {
+        $eventJobIds = $event->volunteerJobs()->pluck('id');
+        $validShiftIds = Shift::whereIn('volunteer_job_id', $eventJobIds)
+            ->whereIn('id', $shiftIds)
+            ->pluck('id')
+            ->all();
+
+        if (count($validShiftIds) !== count($shiftIds)) {
+            throw new DomainException('One or more shifts do not belong to this event.');
+        }
+
+        $sortedShiftIds = $shiftIds;
+        sort($sortedShiftIds);
+
+        $result = DB::transaction(function () use ($name, $email, $phone, $event, $sortedShiftIds) {
+            $volunteer = Volunteer::firstOrCreate(
+                ['email' => $email],
+                ['name' => $name, 'phone' => $phone],
+            );
+
+            if ($phone !== null && $volunteer->phone !== $phone) {
+                $volunteer->update(['phone' => $phone]);
+            }
+
+            $newSignups = [];
+            $skippedFull = [];
+            $skippedDuplicate = [];
+
+            foreach ($sortedShiftIds as $shiftId) {
+                $shift = Shift::lockForUpdate()->findOrFail($shiftId);
+
+                $alreadySignedUp = ShiftSignup::where('volunteer_id', $volunteer->id)
+                    ->where('shift_id', $shift->id)
+                    ->exists();
+
+                if ($alreadySignedUp) {
+                    $skippedDuplicate[] = $shift;
+
+                    continue;
+                }
+
+                if ($shift->isFull()) {
+                    $skippedFull[] = $shift;
+
+                    continue;
+                }
+
+                $newSignups[] = ShiftSignup::create([
+                    'volunteer_id' => $volunteer->id,
+                    'shift_id' => $shift->id,
+                    'signed_up_at' => now(),
+                ]);
+            }
+
+            $this->generateTicket->execute($volunteer, $event);
+
+            $plainToken = null;
+            if (count($newSignups) > 0) {
+                ['plainToken' => $plainToken] = $this->generateMagicLink->execute($volunteer);
+            }
+
+            return [
+                'volunteer' => $volunteer,
+                'newSignups' => $newSignups,
+                'skippedFull' => $skippedFull,
+                'skippedDuplicate' => $skippedDuplicate,
+                'plainToken' => $plainToken,
+            ];
+        });
+
+        $batchResult = new SignupBatchResult(
+            volunteer: $result['volunteer'],
+            newSignups: $result['newSignups'],
+            skippedFull: $result['skippedFull'],
+            skippedDuplicate: $result['skippedDuplicate'],
+        );
+
+        if ($batchResult->hasNewSignups()) {
+            $shifts = collect($result['newSignups'])
+                ->map(fn (ShiftSignup $signup) => $signup->shift)
+                ->all();
+
+            $result['volunteer']->notify(
+                new SignupConfirmation($event, $shifts, $result['plainToken']),
+            );
+        }
+
+        return $batchResult;
+    }
+}

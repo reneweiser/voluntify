@@ -34,14 +34,20 @@
                 <flux:icon name="check-circle" class="size-10 text-emerald-600 dark:text-emerald-400" />
             </div>
             <flux:heading size="lg" class="mt-4">{{ __("You're signed up!") }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Check your email for a confirmation with your ticket details.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('Check your email for a confirmation with your shift and ticket details.') }}</flux:text>
+            @if ($warningMessage)
+                <flux:callout variant="warning" class="mt-4">{{ $warningMessage }}</flux:callout>
+            @endif
         </div>
     @else
         {{-- Signup form --}}
         <form wire:submit="signup">
             {{-- Jobs & shifts selection --}}
             <div class="space-y-6 mb-8">
-                <flux:heading size="lg">{{ __('Choose a Shift') }}</flux:heading>
+                <flux:heading size="lg">{{ __('Choose Your Shifts') }}</flux:heading>
+                @if (count($selectedShiftIds) > 0)
+                    <flux:text size="sm" class="mt-1">{{ count($selectedShiftIds) }} {{ __('shift(s) selected') }}</flux:text>
+                @endif
 
                 @foreach ($this->jobs as $job)
                     <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden" wire:key="job-{{ $job->id }}">
@@ -61,12 +67,12 @@
                                 <label
                                     class="flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all duration-200
                                         {{ $isFull ? 'border-zinc-200 dark:border-zinc-700 opacity-50 cursor-not-allowed' : 'border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10' }}
-                                        {{ $selectedShiftId == $shift->id ? 'border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm' : '' }}"
+                                        {{ in_array($shift->id, $selectedShiftIds) ? 'border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm' : '' }}"
                                     wire:key="shift-{{ $shift->id }}"
                                 >
                                     <div class="flex items-center gap-3">
-                                        <input type="radio" name="shift" value="{{ $shift->id }}"
-                                            wire:model="selectedShiftId"
+                                        <input type="checkbox" value="{{ $shift->id }}"
+                                            wire:model="selectedShiftIds"
                                             {{ $isFull ? 'disabled' : '' }}
                                             class="accent-emerald-600"
                                         />
@@ -91,7 +97,7 @@
                 @endforeach
             </div>
 
-            @error('selectedShiftId')
+            @error('selectedShiftIds')
                 <flux:callout variant="danger" class="mb-4">{{ $message }}</flux:callout>
             @enderror
 

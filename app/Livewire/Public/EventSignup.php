@@ -2,10 +2,9 @@
 
 namespace App\Livewire\Public;
 
-use App\Actions\SignUpVolunteer;
+use App\Actions\SignUpVolunteerForShifts;
 use App\Enums\EventStatus;
-use App\Exceptions\AlreadySignedUpException;
-use App\Exceptions\ShiftFullException;
+use App\Exceptions\DomainException;
 use App\Models\Event;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -25,9 +24,12 @@ class EventSignup extends Component
 
     public string $volunteerPhone = '';
 
-    public ?int $selectedShiftId = null;
+    /** @var array<int> */
+    public array $selectedShiftIds = [];
 
     public bool $signupComplete = false;
+
+    public string $warningMessage = '';
 
     public function mount(string $publicToken): void
     {
@@ -50,8 +52,8 @@ class EventSignup extends Component
             'volunteerName' => ['required', 'string', 'max:255'],
             'volunteerEmail' => ['required', 'email', 'max:255'],
             'volunteerPhone' => ['nullable', 'string', 'max:20'],
-            'selectedShiftId' => [
-                'required',
+            'selectedShiftIds' => ['required', 'array', 'min:1'],
+            'selectedShiftIds.*' => [
                 'integer',
                 Rule::exists('shifts', 'id')->where(fn ($q) => $q->whereIn(
                     'volunteer_job_id',
@@ -60,28 +62,35 @@ class EventSignup extends Component
             ],
         ]);
 
-        $shift = \App\Models\Shift::whereHas(
-            'volunteerJob',
-            fn ($q) => $q->where('event_id', $this->event->id),
-        )->findOrFail($this->selectedShiftId);
-
-        $action = app(SignUpVolunteer::class);
+        $action = app(SignUpVolunteerForShifts::class);
 
         try {
-            $action->execute(
+            $result = $action->execute(
                 name: $this->volunteerName,
                 email: $this->volunteerEmail,
                 event: $this->event,
-                shift: $shift,
+                shiftIds: array_map('intval', $this->selectedShiftIds),
                 phone: $this->volunteerPhone ?: null,
             );
 
-            $this->signupComplete = true;
-        } catch (ShiftFullException) {
-            $this->addError('selectedShiftId', __('This shift is now full. Please choose another.'));
-            unset($this->jobs);
-        } catch (AlreadySignedUpException) {
-            $this->addError('volunteerEmail', __('You are already signed up for this shift.'));
+            if ($result->hasNewSignups()) {
+                $this->signupComplete = true;
+
+                $skippedCount = count($result->skippedFull) + count($result->skippedDuplicate);
+                if ($skippedCount > 0) {
+                    $this->warningMessage = __('Some shifts were skipped because they were full or you were already signed up.');
+                }
+            } elseif (count($result->skippedDuplicate) === count($this->selectedShiftIds)) {
+                $this->addError('selectedShiftIds', __('You are already signed up for all selected shifts.'));
+            } elseif (count($result->skippedFull) === count($this->selectedShiftIds)) {
+                $this->addError('selectedShiftIds', __('All selected shifts are full.'));
+                unset($this->jobs);
+            } else {
+                $this->addError('selectedShiftIds', __('Selected shifts are either full or already registered.'));
+                unset($this->jobs);
+            }
+        } catch (DomainException $e) {
+            $this->addError('selectedShiftIds', $e->getMessage());
         }
     }
 }
