@@ -1,8 +1,9 @@
 <div>
-    {{-- Title image --}}
+    {{-- Title image with hero treatment --}}
     @if ($event->titleImageUrl())
-        <div class="mb-6 -mx-4 sm:mx-0">
-            <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="w-full max-h-72 object-cover sm:rounded-lg" />
+        <div class="mb-8 -mx-6 sm:mx-0 relative">
+            <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="w-full max-h-72 object-cover sm:rounded-xl" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent sm:rounded-xl"></div>
         </div>
     @endif
 
@@ -12,20 +13,26 @@
         @if ($event->description)
             <flux:text class="mt-2">{{ $event->description }}</flux:text>
         @endif
-        <div class="mt-3 flex flex-wrap gap-4">
-            <flux:text size="sm">
+        <div class="mt-4 flex flex-wrap gap-3">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 text-sm text-emerald-700 dark:text-emerald-300">
+                <flux:icon name="calendar" variant="mini" class="size-4" />
                 {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('g:i A') }}
-            </flux:text>
+            </span>
             @if ($event->location)
-                <flux:text size="sm">{{ $event->location }}</flux:text>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 text-sm text-emerald-700 dark:text-emerald-300">
+                    <flux:icon name="map-pin" variant="mini" class="size-4" />
+                    {{ $event->location }}
+                </span>
             @endif
         </div>
     </div>
 
     @if ($signupComplete)
         {{-- Success state --}}
-        <div class="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-8 text-center">
-            <flux:icon name="check-circle" class="mx-auto h-12 w-12 text-green-500" />
+        <div class="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20 border border-emerald-200 dark:border-emerald-800 p-8 text-center">
+            <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                <flux:icon name="check-circle" class="size-10 text-emerald-600 dark:text-emerald-400" />
+            </div>
             <flux:heading size="lg" class="mt-4">{{ __("You're signed up!") }}</flux:heading>
             <flux:text class="mt-2">{{ __('Check your email for a confirmation with your ticket details.') }}</flux:text>
         </div>
@@ -37,8 +44,8 @@
                 <flux:heading size="lg">{{ __('Choose a Shift') }}</flux:heading>
 
                 @foreach ($this->jobs as $job)
-                    <div class="rounded-lg border border-zinc-200 dark:border-zinc-700" wire:key="job-{{ $job->id }}">
-                        <div class="p-4 border-b border-zinc-200 dark:border-zinc-700">
+                    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden" wire:key="job-{{ $job->id }}">
+                        <div class="p-4 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
                             <flux:heading size="sm">{{ $job->name }}</flux:heading>
                             @if ($job->description)
                                 <flux:text size="sm" class="mt-1">{{ $job->description }}</flux:text>
@@ -52,16 +59,16 @@
                                     $spotsLeft = max(0, $shift->capacity - $shift->signups_count);
                                 @endphp
                                 <label
-                                    class="flex items-center justify-between p-3 rounded-md border cursor-pointer transition-colors
-                                        {{ $isFull ? 'border-zinc-200 dark:border-zinc-700 opacity-50 cursor-not-allowed' : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700/50' }}
-                                        {{ $selectedShiftId == $shift->id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : '' }}"
+                                    class="flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all duration-200
+                                        {{ $isFull ? 'border-zinc-200 dark:border-zinc-700 opacity-50 cursor-not-allowed' : 'border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10' }}
+                                        {{ $selectedShiftId == $shift->id ? 'border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm' : '' }}"
                                     wire:key="shift-{{ $shift->id }}"
                                 >
                                     <div class="flex items-center gap-3">
                                         <input type="radio" name="shift" value="{{ $shift->id }}"
                                             wire:model="selectedShiftId"
                                             {{ $isFull ? 'disabled' : '' }}
-                                            class="accent-blue-600"
+                                            class="accent-emerald-600"
                                         />
                                         <div>
                                             <flux:text size="sm" class="font-medium">
@@ -75,7 +82,7 @@
                                     @if ($isFull)
                                         <flux:badge size="sm" color="red">{{ __('Full') }}</flux:badge>
                                     @else
-                                        <flux:badge size="sm" color="green">{{ __('Open') }}</flux:badge>
+                                        <flux:badge size="sm" color="emerald">{{ __('Open') }}</flux:badge>
                                     @endif
                                 </label>
                             @endforeach

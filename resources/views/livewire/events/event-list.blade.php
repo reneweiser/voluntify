@@ -11,6 +11,13 @@
 
     {{-- Status filter buttons --}}
     <div class="flex gap-2 mb-6">
+        <flux:button
+            size="sm"
+            :variant="$statusFilter === '' ? 'primary' : 'subtle'"
+            wire:click="setStatusFilter(null)"
+        >
+            {{ __('All') }}
+        </flux:button>
         @foreach (\App\Enums\EventStatus::cases() as $status)
             <flux:button
                 size="sm"
@@ -24,33 +31,58 @@
 
     {{-- Events list --}}
     @if ($this->events->isEmpty())
-        <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-12 text-center">
-            <flux:icon name="calendar" class="mx-auto h-12 w-12 text-zinc-400" />
+        <div class="rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 p-12 text-center">
+            <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                <flux:icon name="calendar" class="size-8 text-emerald-600 dark:text-emerald-400" />
+            </div>
             <flux:heading size="sm" class="mt-4">{{ __('No events found') }}</flux:heading>
             <flux:text class="mt-2">{{ __('Create your first event to get started.') }}</flux:text>
+            @if ($this->canCreateEvents)
+                <div class="mt-4">
+                    <flux:button variant="primary" size="sm" icon="plus" wire:click="$set('showCreateModal', true)">
+                        {{ __('Create Event') }}
+                    </flux:button>
+                </div>
+            @endif
         </div>
     @else
         <div class="space-y-4">
             @foreach ($this->events as $event)
                 <a href="{{ route('events.show', $event) }}" wire:navigate wire:key="event-{{ $event->id }}"
-                   class="block rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors">
+                   class="block rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 transition-all duration-200 hover:shadow-md
+                       {{ match($event->status) {
+                           \App\Enums\EventStatus::Published => 'card-accent-emerald',
+                           \App\Enums\EventStatus::Draft => 'card-accent-amber',
+                           \App\Enums\EventStatus::Archived => 'border-l-4 border-l-zinc-400',
+                       } }}">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <flux:heading size="sm">{{ $event->name }}</flux:heading>
-                            <flux:text size="sm" class="mt-1">
-                                {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('g:i A') }}
-                            </flux:text>
-                            @if ($event->location)
-                                <flux:text size="sm">{{ $event->location }}</flux:text>
+                        <div class="flex items-start gap-4">
+                            @if ($event->titleImageUrl())
+                                <img src="{{ $event->titleImageUrl() }}" alt="" class="size-14 shrink-0 rounded-lg object-cover" />
                             @endif
+                            <div>
+                                <flux:heading size="sm">{{ $event->name }}</flux:heading>
+                                <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+                                    <span class="inline-flex items-center gap-1">
+                                        <flux:icon name="calendar" variant="mini" class="size-4" />
+                                        {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('g:i A') }}
+                                    </span>
+                                    @if ($event->location)
+                                        <span class="inline-flex items-center gap-1">
+                                            <flux:icon name="map-pin" variant="mini" class="size-4" />
+                                            {{ $event->location }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                         <div class="flex items-center gap-3">
                             <flux:text size="sm">
                                 {{ $event->volunteers_count }} {{ __('volunteers') }}
                             </flux:text>
                             <flux:badge size="sm" :color="match($event->status) {
-                                \App\Enums\EventStatus::Published => 'green',
-                                \App\Enums\EventStatus::Draft => 'yellow',
+                                \App\Enums\EventStatus::Published => 'emerald',
+                                \App\Enums\EventStatus::Draft => 'amber',
                                 \App\Enums\EventStatus::Archived => 'zinc',
                             }">
                                 {{ __(ucfirst($event->status->value)) }}
@@ -103,8 +135,7 @@
 
             <flux:field>
                 <flux:label>{{ __('Title Image') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
-                <input type="file" wire:model="eventTitleImage" accept="image/jpeg,image/png,image/webp"
-                    class="block w-full text-sm text-zinc-500 file:mr-4 file:rounded-md file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:hover:file:bg-zinc-600" />
+                <flux:input type="file" wire:model="eventTitleImage" accept="image/jpeg,image/png,image/webp" />
                 <flux:error name="eventTitleImage" />
             </flux:field>
 

@@ -4,8 +4,8 @@
             <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate />
             <flux:heading size="xl">{{ $event->name }}</flux:heading>
             <flux:badge size="sm" :color="match($event->status) {
-                \App\Enums\EventStatus::Published => 'green',
-                \App\Enums\EventStatus::Draft => 'yellow',
+                \App\Enums\EventStatus::Published => 'emerald',
+                \App\Enums\EventStatus::Draft => 'amber',
                 \App\Enums\EventStatus::Archived => 'zinc',
             }">
                 {{ __(ucfirst($event->status->value)) }}
@@ -36,41 +36,67 @@
 
     {{-- Share link for published events --}}
     @if ($this->publicUrl)
-        <div class="mb-6 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
-            <flux:text size="sm" class="font-medium text-green-800 dark:text-green-200">
-                {{ __('Public signup link:') }}
-            </flux:text>
-            <flux:text size="sm" class="mt-1 font-mono text-green-700 dark:text-green-300 break-all">
-                {{ $this->publicUrl }}
-            </flux:text>
+        <div class="mb-6 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 flex items-start gap-3">
+            <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                <flux:icon name="link" class="size-4" />
+            </div>
+            <div>
+                <flux:text size="sm" class="font-medium text-emerald-800 dark:text-emerald-200">
+                    {{ __('Public signup link:') }}
+                </flux:text>
+                <flux:text size="sm" class="mt-1 font-mono text-emerald-700 dark:text-emerald-300 break-all">
+                    {{ $this->publicUrl }}
+                </flux:text>
+            </div>
         </div>
     @endif
 
     {{-- Metric cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-            <flux:text size="sm">{{ __('Volunteers') }}</flux:text>
-            <flux:heading size="xl" class="mt-1">{{ $this->volunteerCount }}</flux:heading>
+        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 card-accent-emerald card-gradient-emerald">
+            <div class="flex items-center gap-3">
+                <div class="flex size-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                    <flux:icon name="user-group" variant="mini" class="size-5" />
+                </div>
+                <div>
+                    <flux:text size="sm">{{ __('Volunteers') }}</flux:text>
+                    <flux:heading size="xl">{{ $this->volunteerCount }}</flux:heading>
+                </div>
+            </div>
         </div>
-        <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-            <flux:text size="sm">{{ __('Jobs') }}</flux:text>
-            <flux:heading size="xl" class="mt-1">{{ $this->jobCount }}</flux:heading>
+        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 card-accent-amber card-gradient-amber">
+            <div class="flex items-center gap-3">
+                <div class="flex size-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
+                    <flux:icon name="briefcase" variant="mini" class="size-5" />
+                </div>
+                <div>
+                    <flux:text size="sm">{{ __('Jobs') }}</flux:text>
+                    <flux:heading size="xl">{{ $this->jobCount }}</flux:heading>
+                </div>
+            </div>
         </div>
-        <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-            <flux:text size="sm">{{ __('Shifts') }}</flux:text>
-            <flux:heading size="xl" class="mt-1">{{ $this->shiftCount }}</flux:heading>
+        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 card-accent-sky card-gradient-sky">
+            <div class="flex items-center gap-3">
+                <div class="flex size-9 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400">
+                    <flux:icon name="clock" variant="mini" class="size-5" />
+                </div>
+                <div>
+                    <flux:text size="sm">{{ __('Shifts') }}</flux:text>
+                    <flux:heading size="xl">{{ $this->shiftCount }}</flux:heading>
+                </div>
+            </div>
         </div>
     </div>
 
     {{-- Title image --}}
     @if ($event->titleImageUrl())
         <div class="mb-6">
-            <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="w-full max-h-64 object-cover rounded-lg" />
+            <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="w-full max-h-64 object-cover rounded-xl shadow-sm" />
         </div>
     @endif
 
     {{-- Event details / edit form --}}
-    <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-6">
+    <flux:card>
         @if ($editing)
             <form wire:submit="saveEvent" class="space-y-4">
                 <flux:field>
@@ -113,8 +139,7 @@
                             </flux:button>
                         </div>
                     @endif
-                    <input type="file" wire:model="titleImage" accept="image/jpeg,image/png,image/webp"
-                        class="block w-full text-sm text-zinc-500 file:mr-4 file:rounded-md file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:hover:file:bg-zinc-600" />
+                    <flux:input type="file" wire:model="titleImage" accept="image/jpeg,image/png,image/webp" />
                     <flux:error name="titleImage" />
                 </flux:field>
 
@@ -155,5 +180,5 @@
                 @endif
             </div>
         @endif
-    </div>
+    </flux:card>
 </div>

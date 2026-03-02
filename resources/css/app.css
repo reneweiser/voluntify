@@ -9,30 +9,33 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-heading: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 
-    --color-zinc-50: #fafafa;
-    --color-zinc-100: #f5f5f5;
-    --color-zinc-200: #e5e5e5;
-    --color-zinc-300: #d4d4d4;
-    --color-zinc-400: #a3a3a3;
-    --color-zinc-500: #737373;
-    --color-zinc-600: #525252;
-    --color-zinc-700: #404040;
-    --color-zinc-800: #262626;
-    --color-zinc-900: #171717;
-    --color-zinc-950: #0a0a0a;
+    /* Slate palette (warmer blue-gray) replaces zinc */
+    --color-zinc-50: #f8fafc;
+    --color-zinc-100: #f1f5f9;
+    --color-zinc-200: #e2e8f0;
+    --color-zinc-300: #cbd5e1;
+    --color-zinc-400: #94a3b8;
+    --color-zinc-500: #64748b;
+    --color-zinc-600: #475569;
+    --color-zinc-700: #334155;
+    --color-zinc-800: #1e293b;
+    --color-zinc-900: #0f172a;
+    --color-zinc-950: #020617;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    /* Emerald accent */
+    --color-accent: var(--color-emerald-600);
+    --color-accent-content: var(--color-emerald-600);
     --color-accent-foreground: var(--color-white);
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: var(--color-emerald-500);
+        --color-accent-content: var(--color-emerald-500);
+        --color-accent-foreground: var(--color-white);
     }
 }
 
@@ -44,6 +47,11 @@
     ::backdrop,
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
+    }
+
+    /* Auto-apply heading font to all Flux headings */
+    [data-flux-heading] {
+        font-family: var(--font-heading);
     }
 }
 
@@ -61,6 +69,23 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
-/* \[:where(&)\]:size-4 {
-    @apply size-4;
-} */
+/* Card utility classes */
+.card-accent-emerald {
+    @apply border-l-4 border-l-emerald-500;
+}
+.card-accent-amber {
+    @apply border-l-4 border-l-amber-500;
+}
+.card-accent-sky {
+    @apply border-l-4 border-l-sky-500;
+}
+
+.card-gradient-emerald {
+    background-image: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, transparent 60%);
+}
+.card-gradient-amber {
+    background-image: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, transparent 60%);
+}
+.card-gradient-sky {
+    background-image: linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, transparent 60%);
+}

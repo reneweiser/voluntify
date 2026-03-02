@@ -29,11 +29,11 @@
         <div class="mt-8">
             <flux:heading size="sm">{{ __('Current members') }}</flux:heading>
 
-            <div class="mt-4 space-y-4">
+            <div class="mt-4 divide-y divide-zinc-200 dark:divide-zinc-700">
                 @foreach ($this->members as $member)
-                    <div class="flex items-center justify-between gap-4" wire:key="member-{{ $member->id }}">
+                    <div class="flex items-center justify-between gap-4 py-3" wire:key="member-{{ $member->id }}">
                         <div class="flex items-center gap-3 min-w-0">
-                            <flux:avatar size="sm" name="{{ $member->name }}" />
+                            <flux:avatar size="sm" name="{{ $member->name }}" color="auto" />
                             <div class="min-w-0">
                                 <flux:heading size="sm" class="truncate">{{ $member->name }}</flux:heading>
                                 <flux:text size="sm" class="truncate">{{ $member->email }}</flux:text>

@@ -1,6 +1,6 @@
 @props(['event'])
 
-<flux:navbar class="mb-6">
+<flux:navbar class="mb-8">
     <flux:navbar.item
         :href="route('events.show', $event)"
         :current="request()->routeIs('events.show')"

@@ -60,9 +60,13 @@ class EventList extends Component
         return Gate::allows('create', [Event::class, app(Organization::class)]);
     }
 
-    public function setStatusFilter(string $status): void
+    public function setStatusFilter(?string $status): void
     {
-        $this->statusFilter = $this->statusFilter === $status ? '' : $status;
+        if ($status === null) {
+            $this->statusFilter = '';
+        } else {
+            $this->statusFilter = $this->statusFilter === $status ? '' : $status;
+        }
 
         unset($this->events);
     }

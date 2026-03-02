@@ -25,17 +25,26 @@
     </div>
 
     @if ($this->jobs->isEmpty())
-        <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-12 text-center">
-            <flux:icon name="briefcase" class="mx-auto h-12 w-12 text-zinc-400" />
+        <div class="rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 p-12 text-center">
+            <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
+                <flux:icon name="briefcase" class="size-8 text-amber-600 dark:text-amber-400" />
+            </div>
             <flux:heading size="sm" class="mt-4">{{ __('No jobs yet') }}</flux:heading>
             <flux:text class="mt-2">{{ __('Add volunteer jobs and their shifts to get started.') }}</flux:text>
+            @if ($this->canManage)
+                <div class="mt-4">
+                    <flux:button variant="primary" size="sm" icon="plus" wire:click="openCreateJob">
+                        {{ __('Add Job') }}
+                    </flux:button>
+                </div>
+            @endif
         </div>
     @else
         <div class="space-y-6">
             @foreach ($this->jobs as $job)
-                <div class="rounded-lg border border-zinc-200 dark:border-zinc-700" wire:key="job-{{ $job->id }}">
+                <flux:card class="!p-0 overflow-hidden" wire:key="job-{{ $job->id }}">
                     {{-- Job header --}}
-                    <div class="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700">
+                    <div class="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
                         <div>
                             <flux:heading size="sm">{{ $job->name }}</flux:heading>
                             @if ($job->description)
@@ -54,7 +63,7 @@
                     {{-- Shifts table --}}
                     <div class="p-4">
                         @if ($job->shifts->isEmpty())
-                            <flux:text size="sm" class="text-zinc-500">{{ __('No shifts added yet.') }}</flux:text>
+                            <flux:text size="sm" variant="subtle" class="italic">{{ __('No shifts added yet.') }}</flux:text>
                         @else
                             <flux:table>
                                 <flux:table.columns>
@@ -78,7 +87,7 @@
                                                 @if ($shift->signups_count >= $shift->capacity)
                                                     <flux:badge size="sm" color="red">{{ __('Full') }}</flux:badge>
                                                 @else
-                                                    <flux:badge size="sm" color="green">{{ __('Open') }}</flux:badge>
+                                                    <flux:badge size="sm" color="emerald">{{ __('Open') }}</flux:badge>
                                                 @endif
                                             </flux:table.cell>
                                             @if ($this->canManage)
@@ -104,7 +113,7 @@
                             </div>
                         @endif
                     </div>
-                </div>
+                </flux:card>
             @endforeach
         </div>
     @endif

@@ -59,24 +59,27 @@
             </div>
 
             {{-- Placeholder reference --}}
-            <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-                <flux:heading size="sm" class="mb-3">{{ __('Available Placeholders') }}</flux:heading>
+            <flux:card>
+                <div class="flex items-center gap-2 mb-3">
+                    <flux:icon name="code-bracket" class="size-5 text-emerald-600 dark:text-emerald-400" />
+                    <flux:heading size="sm">{{ __('Available Placeholders') }}</flux:heading>
+                </div>
                 <div class="space-y-2">
                     @foreach ($this->availablePlaceholders as $placeholder)
                         <div class="flex items-center gap-2">
-                            <code class="rounded bg-zinc-100 dark:bg-zinc-800 px-2 py-1 text-sm font-mono">@{{ '{{' . $placeholder . '}}' }}</code>
+                            <code class="rounded bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-1 text-sm font-mono">@{{ '{{' . $placeholder . '}}' }}</code>
                         </div>
                     @endforeach
                 </div>
                 <flux:text size="sm" class="mt-4 text-zinc-500">
                     {{ __('Use these variables in your subject or body. They will be replaced with actual values when the email is sent.') }}
                 </flux:text>
-            </div>
+            </flux:card>
         </div>
 
         {{-- Preview panel --}}
         @if ($showPreview)
-            <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-6">
+            <flux:card>
                 <flux:heading size="sm" class="mb-4">{{ __('Preview') }}</flux:heading>
                 <div class="mb-3">
                     <flux:text size="sm" class="font-medium">{{ __('Subject:') }}</flux:text>
@@ -84,11 +87,11 @@
                 </div>
                 <div>
                     <flux:text size="sm" class="font-medium">{{ __('Body:') }}</flux:text>
-                    <div class="mt-1 rounded bg-zinc-50 dark:bg-zinc-800 p-4 prose dark:prose-invert prose-sm max-w-none">
+                    <div class="mt-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 p-4 prose dark:prose-invert prose-sm max-w-none">
                         {!! \Illuminate\Support\Str::markdown($previewBody) !!}
                     </div>
                 </div>
-            </div>
+            </flux:card>
         @endif
     </div>
 </div>
