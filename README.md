@@ -140,6 +140,7 @@ GitHub Actions runs on every push and PR to `main`:
 
 - **Linter** — Laravel Pint code style checks
 - **Tests** — Full Pest suite against PHP 8.4 and 8.5
+- **Docker** — Builds and pushes to GHCR on push to `main`
 
 ## License
 
