@@ -44,6 +44,14 @@ class EventPolicy
         return $this->isOrganizer($user, $event->organization);
     }
 
+    public function markAttendance(User $user, Event $event): bool
+    {
+        return $event->organization->users()
+            ->where('user_id', $user->id)
+            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::VolunteerAdmin])
+            ->exists();
+    }
+
     public function scan(User $user, Event $event): bool
     {
         return $event->organization->users()

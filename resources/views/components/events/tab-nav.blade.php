@@ -25,4 +25,14 @@
     >
         {{ __('Emails') }}
     </flux:navbar.item>
+    @can('markAttendance', $event)
+        <flux:navbar.item
+            :href="route('events.attendance', $event)"
+            :current="request()->routeIs('events.attendance')"
+            icon="clipboard-document-check"
+            wire:navigate
+        >
+            {{ __('Attendance') }}
+        </flux:navbar.item>
+    @endcan
 </flux:navbar>

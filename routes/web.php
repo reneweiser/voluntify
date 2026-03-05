@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ScannerApiController;
 use App\Livewire\Auth\ChangePassword;
+use App\Livewire\Events\AttendanceTracker;
 use App\Livewire\Events\EmailTemplateEditor;
 use App\Livewire\Events\EventList;
 use App\Livewire\Events\EventShow;
@@ -44,6 +45,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('events/{eventId}', EventShow::class)->name('events.show');
     Route::livewire('events/{eventId}/jobs', JobsAndShiftsManager::class)->name('events.jobs');
     Route::livewire('events/{eventId}/emails', EmailTemplateEditor::class)->name('events.emails');
+    Route::livewire('events/{eventId}/attendance', AttendanceTracker::class)->name('events.attendance');
 
     // Scanner UI
     Route::livewire('scanner', QrScanner::class)->name('scanner.index');
