@@ -1,15 +1,16 @@
 # Voluntify -- Feature Status Dashboard
 
 > **Amended**: See [amendments/001-status-sync-m1-m2-m21-m3p1.md](amendments/001-status-sync-m1-m2-m21-m3p1.md) -- Sync status with implemented milestones
+> **Amended**: See [amendments/002-m3p2-gdpr-email-sync.md](amendments/002-m3p2-gdpr-email-sync.md) -- M3 Part 2 completion, GDPR double opt-in, branded email templates
 
-**Last updated**: 2026-03-02
+**Last updated**: 2026-03-05
 
 ## Summary
 
 | Status | Count |
 |---|---|
-| Done | 12 |
-| In Progress | 2 |
+| Done | 16 |
+| In Progress | 0 |
 | Not Started | 10 |
 
 ## Features
@@ -45,8 +46,8 @@
 |---|---|---|---|---|---|
 | 09 | Ticket generation & email | backend | Must Have | Done | GenerateTicket action, JWT via JwtKeyService |
 | 10 | Magic links & ticket page | fullstack | Must Have | Done | VerifyMagicLink, VolunteerTicket component, QR SVG display |
-| 11 | QR scanner PWA | fullstack | Must Have | In Progress | Backend complete (ScannerApiController, RecordArrival, JwtKeyService.validateToken). Frontend PWA not started. |
-| 12 | Manual lookup | fullstack | Must Have | In Progress | RecordArrival action supports manual_lookup method. Lookup UI not started. |
+| 11 | QR scanner PWA | fullstack | Must Have | Done | Full PWA: Service Worker, IndexedDB, jsQR camera, Alpine scanner state machine, dual-key JWT validation, offline outbox sync |
+| 12 | Manual lookup | fullstack | Must Have | Done | ManualLookup Livewire component with server-side LIKE search, eager-loaded relationships, confirmArrival action |
 
 ### Milestone 4: Attendance & Notifications
 
@@ -77,3 +78,10 @@
 | # | Feature | Type | Priority | Status | Notes |
 |---|---|---|---|---|---|
 | 08 | AI-powered event creation | fullstack | Should Have | Not Started | BYOK storage infrastructure already built (ai_api_key on organizations, TeamManagement UI) |
+
+### Cross-Cutting: GDPR & Email
+
+| # | Feature | Type | Priority | Status | Notes |
+|---|---|---|---|---|---|
+| 25 | GDPR double opt-in email verification | fullstack | Must Have | Done | ProcessVolunteerSignup gates signup on email verification; EmailVerificationToken model, SendEmailVerification + CompleteEmailVerification actions, EmailVerificationPage component at /verify-email/{token} |
+| 26 | Voluntify-branded email templates | frontend | Should Have | Done | Custom Mailable styling applied to all outgoing notifications (SignupConfirmation, EmailVerification) |

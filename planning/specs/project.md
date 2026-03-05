@@ -1,6 +1,7 @@
 # Project Spec: Voluntify
 
 > **Amended**: See [amendments/001-status-sync-m1-m2-m21-m3p1.md](amendments/001-status-sync-m1-m2-m21-m3p1.md) -- Status synced with M1, M2, M2.1, M3 Part 1 implementation
+> **Amended**: See [amendments/002-m3p2-gdpr-email-sync.md](amendments/002-m3p2-gdpr-email-sync.md) -- M3 Part 2 completion, GDPR double opt-in, branded email templates
 
 **Date**: 2026-03-01
 **Status**: Active
