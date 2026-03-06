@@ -1,57 +1,59 @@
-FROM serversideup/php:8.5-fpm-nginx AS php_base
-
-USER root
-RUN install-php-extensions intl
-
-WORKDIR /var/www/html
-
-# Copy composer files only
-COPY --chown=www-data:www-data ./composer.json ./composer.lock ./
-
-# Install production PHP deps
-RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
-
-
-# -----------------------------------------------------
-# NODE BUILD STAGE
-# -----------------------------------------------------
-FROM node:20 AS node_build
+# Stage 1 — Install PHP dependencies
+FROM composer:latest AS composer-deps
 
 WORKDIR /app
 
-# Copy only package files to use build cache
-COPY ./package.json ./
-COPY ./package-lock.json ./
+COPY composer.json composer.lock ./
 
-RUN npm ci
+RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-autoloader
 
-# Copy vendor from php_base for Filament CSS imports
-COPY --from=php_base /var/www/html/vendor ./vendor
-
-# Copy full source
 COPY . .
 
-RUN npm run build
+RUN composer dump-autoload --optimize
 
+# Stage 2 — Build frontend assets
+FROM node:22-alpine AS node-build
 
-# -----------------------------------------------------
-# FINAL RUNTIME IMAGE
-# No node, no node_modules, only PHP + built assets
-# -----------------------------------------------------
-FROM php_base AS final
+WORKDIR /app
+
+COPY package.json package-lock.json vite.config.js ./
+COPY resources/ resources/
+COPY public/ public/
+COPY --from=composer-deps /app/vendor/ vendor/
+
+RUN npm ci && npm run build
+
+# Stage 3 — Final NGINX Unit image
+FROM unit:1.34.2-php8.4
+
+RUN apt update && apt install -y \
+    curl unzip git libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libssl-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pcntl opcache pdo pdo_mysql intl zip gd exif ftp bcmath \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt clean && rm -rf /var/lib/apt/lists/*
+
+RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
+    && echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "opcache.jit_buffer_size=256M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "upload_max_filesize=64M" >> /usr/local/etc/php/conf.d/custom.ini \
+    && echo "post_max_size=64M" >> /usr/local/etc/php/conf.d/custom.ini
 
 WORKDIR /var/www/html
 
-# Copy full Laravel code
-COPY --chown=www-data:www-data . .
+COPY . .
+COPY --from=composer-deps /app/vendor/ vendor/
+COPY --from=node-build /app/public/build/ public/build/
 
-# Copy built assets from node stage
-COPY --from=node_build /app/public/build ./public/build
+COPY unit.json /docker-entrypoint.d/unit.json
 
-# Fix perms
-RUN chmod -R 755 storage bootstrap/cache
+RUN chown -R unit:unit storage bootstrap/cache && chmod -R 775 storage bootstrap/cache
 
-# Auto-generate APP_KEY entrypoint (runs on ALL containers via S6 Overlay)
-COPY --chmod=755 docker/entrypoint.d/50-generate-app-key.sh /etc/entrypoint.d/50-generate-app-key.sh
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-USER www-data
+EXPOSE 8000
+
+ENTRYPOINT ["entrypoint.sh"]
