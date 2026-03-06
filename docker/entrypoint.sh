@@ -11,7 +11,4 @@ php artisan event:cache
 php artisan migrate --force
 php artisan storage:link --force
 
-# Fix ownership after root-owned artisan commands so Unit's worker (unit user) can write
-chown -R unit:unit storage bootstrap/cache
-
-exec /usr/local/bin/docker-entrypoint.sh unitd --no-daemon
+exec frankenphp run --config /etc/frankenphp/Caddyfile
