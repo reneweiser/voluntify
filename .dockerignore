@@ -5,6 +5,7 @@ tests
 .env*
 .github
 docker-compose*.yml
+compose.yaml
 Dockerfile
 *.md
 storage/logs/*
