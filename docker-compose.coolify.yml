@@ -15,6 +15,7 @@ services:
       - app-data:/var/www/html/storage/app
     networks:
       - voluntify-network
+      - coolify
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/up"]
       interval: 30s
@@ -72,6 +73,8 @@ services:
 networks:
   voluntify-network:
     driver: bridge
+  coolify:
+    external: true
 
 volumes:
   app-data:
