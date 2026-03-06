@@ -3,15 +3,6 @@ services:
     image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      # Laravel automations (serversideup/php)
-      AUTORUN_ENABLED: "true"
-      AUTORUN_LARAVEL_MIGRATION: "true"
-      AUTORUN_LARAVEL_CONFIG_CACHE: "true"
-      AUTORUN_LARAVEL_ROUTE_CACHE: "true"
-      AUTORUN_LARAVEL_VIEW_CACHE: "true"
-      AUTORUN_LARAVEL_EVENT_CACHE: "true"
-      AUTORUN_LARAVEL_STORAGE_LINK: "true"
-      # PHP settings
       PHP_MEMORY_LIMIT: "256M"
       PHP_POST_MAX_SIZE: "64M"
       PHP_UPLOAD_MAX_FILE_SIZE: "64M"
@@ -23,7 +14,7 @@ services:
     networks:
       - voluntify-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/up"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/up"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -34,7 +25,6 @@ services:
     restart: unless-stopped
     command: ["php", "artisan", "schedule:work"]
     environment:
-      AUTORUN_ENABLED: "false"
       PHP_MEMORY_LIMIT: "128M"
     depends_on:
       app:
@@ -49,7 +39,6 @@ services:
     restart: unless-stopped
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
     environment:
-      AUTORUN_ENABLED: "false"
       PHP_MEMORY_LIMIT: "128M"
     depends_on:
       app:
