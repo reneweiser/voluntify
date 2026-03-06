@@ -32,7 +32,7 @@ services:
   scheduler:
     image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    command: ["/usr/local/bin/load-app-key.sh", "php", "artisan", "schedule:work"]
+    command: ["php", "artisan", "schedule:work"]
     environment:
       AUTORUN_ENABLED: "false"
       PHP_MEMORY_LIMIT: "128M"
@@ -47,7 +47,7 @@ services:
   queue:
     image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    command: ["/usr/local/bin/load-app-key.sh", "php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
     environment:
       AUTORUN_ENABLED: "false"
       PHP_MEMORY_LIMIT: "128M"
