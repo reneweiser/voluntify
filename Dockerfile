@@ -51,4 +51,9 @@ COPY --from=node_build /app/public/build ./public/build
 # Fix perms
 RUN chmod -R 755 storage bootstrap/cache
 
+# Auto-generate APP_KEY entrypoint (runs on app service via serversideup entrypoint.d)
+COPY --chmod=755 docker/entrypoint.d/50-generate-app-key.sh /etc/entrypoint.d/50-generate-app-key.sh
+# Key loader wrapper for scheduler/queue services (entrypoint.d skipped when AUTORUN_ENABLED=false)
+COPY --chmod=755 docker/load-app-key.sh /usr/local/bin/load-app-key.sh
+
 USER www-data
