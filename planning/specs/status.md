@@ -9,9 +9,9 @@
 
 | Status | Count |
 |---|---|
-| Done | 16 |
+| Done | 20 |
 | In Progress | 0 |
-| Not Started | 10 |
+| Not Started | 6 |
 
 ## Features
 
@@ -53,15 +53,15 @@
 
 | # | Feature | Type | Priority | Status | Spec |
 |---|---|---|---|---|---|
-| 13 | Attendance tracker | fullstack | Should Have | Not Started | -- |
-| 14 | Pre-shift notifications | backend | Should Have | Not Started | -- |
+| 13 | Attendance tracker | fullstack | Should Have | Done | -- |
+| 14 | Pre-shift notifications | backend | Should Have | Done | -- |
 
 ### Milestone 5: Dashboard & Volunteer Management
 
 | # | Feature | Type | Priority | Status | Spec |
 |---|---|---|---|---|---|
-| 15 | Dashboard | fullstack | Should Have | Not Started | -- |
-| 16 | Volunteer list & detail | fullstack | Should Have | Not Started | -- |
+| 15 | Dashboard | fullstack | Should Have | Done | -- |
+| 16 | Volunteer list & detail | fullstack | Should Have | Done | -- |
 
 ### Milestone 6: Polish
 

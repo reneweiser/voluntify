@@ -7,6 +7,8 @@ use App\Livewire\Events\EmailTemplateEditor;
 use App\Livewire\Events\EventList;
 use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
+use App\Livewire\Events\VolunteerDetail;
+use App\Livewire\Events\VolunteerList;
 use App\Livewire\Public\EmailVerificationPage;
 use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\VolunteerTicket;
@@ -45,6 +47,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('events/{eventId}', EventShow::class)->name('events.show');
     Route::livewire('events/{eventId}/jobs', JobsAndShiftsManager::class)->name('events.jobs');
     Route::livewire('events/{eventId}/emails', EmailTemplateEditor::class)->name('events.emails');
+    Route::livewire('events/{eventId}/volunteers', VolunteerList::class)->name('events.volunteers');
+    Route::livewire('events/{eventId}/volunteers/{volunteerId}', VolunteerDetail::class)->name('events.volunteers.show');
     Route::livewire('events/{eventId}/attendance', AttendanceTracker::class)->name('events.attendance');
 
     // Scanner UI

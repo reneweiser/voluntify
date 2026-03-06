@@ -17,6 +17,16 @@
     >
         {{ __('Jobs & Shifts') }}
     </flux:navbar.item>
+    @can('view', $event)
+        <flux:navbar.item
+            :href="route('events.volunteers', $event)"
+            :current="request()->routeIs('events.volunteers*')"
+            icon="user-group"
+            wire:navigate
+        >
+            {{ __('Volunteers') }}
+        </flux:navbar.item>
+    @endcan
     <flux:navbar.item
         :href="route('events.emails', $event)"
         :current="request()->routeIs('events.emails')"
