@@ -74,4 +74,12 @@ class Volunteer extends Model
     {
         $query->whereHas('tickets', fn (Builder $q) => $q->where('event_id', $eventId));
     }
+
+    public function scopeSearch(Builder $query, string $search): void
+    {
+        $query->where(function (Builder $q) use ($search) {
+            $q->where('name', 'LIKE', '%'.$search.'%')
+                ->orWhere('email', 'LIKE', '%'.$search.'%');
+        });
+    }
 }

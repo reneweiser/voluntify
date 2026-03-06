@@ -8,6 +8,10 @@
 
     <div class="flex items-center justify-between mb-6">
         <flux:heading size="lg">{{ __('Volunteers') }}</flux:heading>
+        <flux:button variant="subtle" icon="arrow-down-tray" size="sm"
+            :href="route('events.volunteers.export', ['eventId' => $event->id, 'search' => $search ?: null])">
+            {{ __('Export CSV') }}
+        </flux:button>
     </div>
 
     <div class="mb-6 max-w-sm">

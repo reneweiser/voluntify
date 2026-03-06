@@ -7,7 +7,6 @@ use App\Models\Event;
 use App\Models\Organization;
 use Carbon\CarbonInterface;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Str;
 
 class CreateEvent
 {
@@ -20,7 +19,7 @@ class CreateEvent
         CarbonInterface $endsAt,
         ?UploadedFile $titleImage = null,
     ): Event {
-        $slug = $this->uniqueSlug($organization, $name);
+        $slug = Event::generateUniqueSlug($organization, $name);
 
         $event = $organization->events()->create([
             'name' => $name,
@@ -38,19 +37,5 @@ class CreateEvent
         }
 
         return $event;
-    }
-
-    private function uniqueSlug(Organization $organization, string $name): string
-    {
-        $baseSlug = Str::slug($name);
-        $slug = $baseSlug;
-        $suffix = 2;
-
-        while ($organization->events()->where('slug', $slug)->exists()) {
-            $slug = "{$baseSlug}-{$suffix}";
-            $suffix++;
-        }
-
-        return $slug;
     }
 }

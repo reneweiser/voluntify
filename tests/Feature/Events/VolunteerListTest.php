@@ -123,6 +123,25 @@ it('shows arrival badge', function () {
         ->assertSee('Yes');
 });
 
+it('shows export csv button', function () {
+    Livewire::actingAs($this->user)
+        ->test(VolunteerList::class, ['eventId' => $this->event->id])
+        ->assertSee('Export CSV');
+});
+
+it('export route returns csv', function () {
+    $volunteer = Volunteer::factory()->create(['name' => 'Export Test']);
+    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
+
+    $response = $this->actingAs($this->user)
+        ->get(route('events.volunteers.export', $this->event))
+        ->assertOk()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+    expect($response->streamedContent())->toContain('Export Test')
+        ->toContain('Name,Email,Phone,Shifts,Arrived,Attendance');
+});
+
 it('shows attendance badge', function () {
     $volunteer = Volunteer::factory()->create(['name' => 'Attended Bob']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);

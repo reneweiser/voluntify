@@ -53,6 +53,81 @@
         </div>
     </div>
 
+    {{-- Analytics cards --}}
+    @if ($this->organization)
+        <div class="grid gap-6 md:grid-cols-2 mb-8">
+            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-6">
+                <div class="flex items-start gap-4">
+                    <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
+                        <flux:icon name="x-circle" class="size-5" />
+                    </div>
+                    <div>
+                        <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">{{ __('No-Show Rate') }}</flux:text>
+                        <flux:heading size="xl">{{ $this->noShowRate }}%</flux:heading>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-6">
+                <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400 mb-3">{{ __('Attendance Breakdown') }}</flux:text>
+                @php $summary = $this->attendanceSummary; @endphp
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div>
+                        <flux:heading size="lg" class="!text-emerald-600 dark:!text-emerald-400">{{ $summary['on_time'] }}</flux:heading>
+                        <flux:text size="xs">{{ __('On Time') }}</flux:text>
+                    </div>
+                    <div>
+                        <flux:heading size="lg" class="!text-amber-600 dark:!text-amber-400">{{ $summary['late'] }}</flux:heading>
+                        <flux:text size="xs">{{ __('Late') }}</flux:text>
+                    </div>
+                    <div>
+                        <flux:heading size="lg" class="!text-red-600 dark:!text-red-400">{{ $summary['no_show'] }}</flux:heading>
+                        <flux:text size="xs">{{ __('No Show') }}</flux:text>
+                    </div>
+                    <div>
+                        <flux:heading size="lg" class="!text-zinc-500 dark:!text-zinc-400">{{ $summary['unmarked'] }}</flux:heading>
+                        <flux:text size="xs">{{ __('Unmarked') }}</flux:text>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Recent past events --}}
+        @if ($this->recentPastEvents->isNotEmpty())
+            <div class="mb-8">
+                <flux:heading size="lg" class="mb-4">{{ __('Recent Past Events') }}</flux:heading>
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Name') }}</flux:table.column>
+                        <flux:table.column>{{ __('Date') }}</flux:table.column>
+                        <flux:table.column>{{ __('Volunteers') }}</flux:table.column>
+                        <flux:table.column>{{ __('Arrival %') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @foreach ($this->recentPastEvents as $pastEvent)
+                            <flux:table.row :key="'past-'.$pastEvent->id">
+                                <flux:table.cell>
+                                    <a href="{{ route('events.show', $pastEvent) }}" wire:navigate class="font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
+                                        {{ $pastEvent->name }}
+                                    </a>
+                                </flux:table.cell>
+                                <flux:table.cell>{{ $pastEvent->ends_at->format('M d, Y') }}</flux:table.cell>
+                                <flux:table.cell>{{ $pastEvent->volunteers_count }}</flux:table.cell>
+                                <flux:table.cell>
+                                    @if ($pastEvent->volunteers_count > 0)
+                                        {{ round(($pastEvent->event_arrivals_count / $pastEvent->volunteers_count) * 100) }}%
+                                    @else
+                                        —
+                                    @endif
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        @endif
+    @endif
+
     {{-- Upcoming events table --}}
     <div class="flex items-center justify-between mb-4">
         <flux:heading size="lg">{{ __('Upcoming Events') }}</flux:heading>

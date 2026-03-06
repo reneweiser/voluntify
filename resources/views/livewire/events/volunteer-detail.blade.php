@@ -8,7 +8,19 @@
 
     {{-- Info card --}}
     <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-6 mb-6">
-        <flux:heading size="lg" class="mb-4">{{ __('Volunteer Info') }}</flux:heading>
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <flux:heading size="lg">{{ __('Volunteer Info') }}</flux:heading>
+                @if ($this->isAlreadyPromoted)
+                    <flux:badge size="sm" color="emerald">{{ __('Staff Member') }}</flux:badge>
+                @endif
+            </div>
+            @if ($this->canPromote)
+                <flux:button variant="primary" size="sm" icon="arrow-up-circle" wire:click="$set('showPromoteModal', true)">
+                    {{ __('Promote to Staff') }}
+                </flux:button>
+            @endif
+        </div>
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
                 <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">{{ __('Name') }}</flux:text>
@@ -82,4 +94,27 @@
             </flux:table.rows>
         </flux:table>
     @endif
+
+    {{-- Promote modal --}}
+    <flux:modal wire:model="showPromoteModal">
+        <flux:heading>{{ __('Promote to Staff') }}</flux:heading>
+        <flux:text class="mt-2">{{ __('Promote :name to a staff member. They will receive login credentials via email.', ['name' => $volunteer->name]) }}</flux:text>
+
+        <div class="mt-4">
+            <flux:field>
+                <flux:label>{{ __('Role') }}</flux:label>
+                <flux:select wire:model="promoteRole">
+                    <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>
+                    <flux:select.option value="entrance_staff">{{ __('Entrance Staff') }}</flux:select.option>
+                    <flux:select.option value="organizer">{{ __('Organizer') }}</flux:select.option>
+                </flux:select>
+                <flux:error name="promoteRole" />
+            </flux:field>
+        </div>
+
+        <div class="mt-6 flex gap-2">
+            <flux:button variant="primary" wire:click="promoteVolunteer">{{ __('Promote') }}</flux:button>
+            <flux:button variant="ghost" wire:click="$set('showPromoteModal', false)">{{ __('Cancel') }}</flux:button>
+        </div>
+    </flux:modal>
 </div>

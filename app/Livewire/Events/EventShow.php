@@ -3,6 +3,7 @@
 namespace App\Livewire\Events;
 
 use App\Actions\ArchiveEvent;
+use App\Actions\CloneEvent;
 use App\Actions\DeleteEventImage;
 use App\Actions\PublishEvent;
 use App\Actions\UpdateEvent;
@@ -164,6 +165,16 @@ class EventShow extends Component
         } catch (DomainException $e) {
             $this->addError('status', $e->getMessage());
         }
+    }
+
+    public function cloneEvent(): void
+    {
+        Gate::authorize('create', [Event::class, $this->event->organization]);
+
+        $action = app(CloneEvent::class);
+        $clonedEvent = $action->execute($this->event);
+
+        $this->redirect(route('events.show', $clonedEvent), navigate: true);
     }
 
     private function fillForm(): void

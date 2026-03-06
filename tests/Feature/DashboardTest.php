@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\AttendanceStatus;
 use App\Enums\StaffRole;
 use App\Livewire\Dashboard;
+use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
@@ -91,11 +93,6 @@ test('excludes past and archived events from upcoming list', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization();
     app()->instance(Organization::class, $org);
 
-    Event::factory()->for($org)->published()->create([
-        'name' => 'Past Fest',
-        'starts_at' => now()->subWeek(),
-        'ends_at' => now()->subWeek()->addHours(4),
-    ]);
     Event::factory()->for($org)->archived()->create([
         'name' => 'Archived Fest',
         'starts_at' => now()->addWeek(),
@@ -104,7 +101,6 @@ test('excludes past and archived events from upcoming list', function () {
 
     Livewire::actingAs($user)
         ->test(Dashboard::class)
-        ->assertDontSee('Past Fest')
         ->assertDontSee('Archived Fest');
 });
 
@@ -138,4 +134,94 @@ test('handles missing organization gracefully', function () {
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertOk();
+});
+
+test('no-show rate is 0 when no attendance records', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('0%');
+});
+
+test('computes no-show rate correctly', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    $event = Event::factory()->for($org)->published()->create();
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+
+    $signup1 = ShiftSignup::factory()->create(['shift_id' => $shift->id]);
+    $signup2 = ShiftSignup::factory()->create(['shift_id' => $shift->id]);
+
+    AttendanceRecord::create([
+        'shift_signup_id' => $signup1->id,
+        'status' => AttendanceStatus::OnTime,
+        'recorded_by' => $user->id,
+        'recorded_at' => now(),
+    ]);
+    AttendanceRecord::create([
+        'shift_signup_id' => $signup2->id,
+        'status' => AttendanceStatus::NoShow,
+        'recorded_by' => $user->id,
+        'recorded_at' => now(),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('50%');
+});
+
+test('attendance summary counts correctly', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    $event = Event::factory()->for($org)->published()->create();
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+
+    $signups = ShiftSignup::factory()->count(3)->create(['shift_id' => $shift->id]);
+
+    AttendanceRecord::create([
+        'shift_signup_id' => $signups[0]->id,
+        'status' => AttendanceStatus::OnTime,
+        'recorded_by' => $user->id,
+        'recorded_at' => now(),
+    ]);
+    AttendanceRecord::create([
+        'shift_signup_id' => $signups[1]->id,
+        'status' => AttendanceStatus::Late,
+        'recorded_by' => $user->id,
+        'recorded_at' => now(),
+    ]);
+    // signup 3 has no attendance record = unmarked
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('On Time')
+        ->assertSee('Late')
+        ->assertSee('Unmarked');
+});
+
+test('recent past events only includes past events', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    Event::factory()->for($org)->published()->create([
+        'name' => 'Past Gala',
+        'starts_at' => now()->subMonth(),
+        'ends_at' => now()->subMonth()->addHours(4),
+    ]);
+    Event::factory()->for($org)->published()->create([
+        'name' => 'Future Fest',
+        'starts_at' => now()->addMonth(),
+        'ends_at' => now()->addMonth()->addHours(4),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('Past Gala')
+        ->assertSee('Recent Past Events');
 });

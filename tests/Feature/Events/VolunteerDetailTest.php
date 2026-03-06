@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AttendanceStatus;
+use App\Enums\StaffRole;
 use App\Livewire\Events\VolunteerDetail;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
@@ -9,8 +10,10 @@ use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -93,4 +96,44 @@ it('shows not arrived status when no arrival', function () {
     Livewire::actingAs($this->user)
         ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
         ->assertSee('Not arrived');
+});
+
+it('shows promote button for organizer when not promoted', function () {
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Promote to Staff');
+});
+
+it('denies promotion for volunteer admin', function () {
+    $admin = User::factory()->create();
+    $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($admin)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('promoteVolunteer')
+        ->assertForbidden();
+});
+
+it('hides promote button when already promoted', function () {
+    $existingUser = User::factory()->create(['email' => $this->volunteer->email]);
+    $this->volunteer->update(['user_id' => $existingUser->id]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Staff Member');
+});
+
+it('promotes volunteer and creates user', function () {
+    Notification::fake();
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->set('showPromoteModal', true)
+        ->set('promoteRole', 'entrance_staff')
+        ->call('promoteVolunteer')
+        ->assertHasNoErrors()
+        ->assertDispatched('volunteer-promoted');
+
+    expect($this->volunteer->fresh()->user_id)->not->toBeNull();
+    expect(User::where('email', $this->volunteer->email)->exists())->toBeTrue();
 });

@@ -32,10 +32,7 @@ class VolunteerList extends Component
     public function volunteers(): LengthAwarePaginator
     {
         return Volunteer::forEvent($this->event->id)
-            ->when($this->search, fn ($q) => $q->where(function ($q) {
-                $q->where('name', 'LIKE', '%'.$this->search.'%')
-                    ->orWhere('email', 'LIKE', '%'.$this->search.'%');
-            }))
+            ->when($this->search, fn ($q) => $q->search($this->search))
             ->with([
                 'shiftSignups' => fn ($q) => $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->where('event_id', $this->event->id)),
                 'shiftSignups.shift.volunteerJob',
