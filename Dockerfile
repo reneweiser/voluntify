@@ -54,6 +54,6 @@ RUN chown -R unit:unit storage bootstrap/cache && chmod -R 775 storage bootstrap
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 80
+EXPOSE 8000
 
 ENTRYPOINT ["entrypoint.sh"]
