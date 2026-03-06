@@ -18,7 +18,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        if (str_starts_with(config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+            URL::forceRootUrl(config('app.url'));
+        }
     }
 
     /**
@@ -45,10 +48,6 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureDefaults(): void
     {
-        if (app()->isProduction()) {
-            URL::forceScheme('https');
-        }
-
         Date::use(CarbonImmutable::class);
 
         DB::prohibitDestructiveCommands(
