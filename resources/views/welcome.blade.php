@@ -212,7 +212,7 @@
                 </p>
                 <div class="hero-reveal hero-reveal-5" style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; opacity: 0;">
                     @guest
-                        <a href="{{ Route::has('register') ? route('register') : '#' }}" style="display: inline-block; padding: 0.875rem 2.5rem; background: var(--brand); color: white; font-weight: 600; font-size: 1rem; border-radius: 4px; text-decoration: none; letter-spacing: 0.05em; transition: opacity 0.2s;"
+                        <a href="{{ route('login') }}" style="display: inline-block; padding: 0.875rem 2.5rem; background: var(--brand); color: white; font-weight: 600; font-size: 1rem; border-radius: 4px; text-decoration: none; letter-spacing: 0.05em; transition: opacity 0.2s;"
                            onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
                             GET STARTED
                         </a>
@@ -347,7 +347,7 @@
                     Start organizing smarter events today. Free to get started, no credit card required.
                 </p>
                 @guest
-                    <a href="{{ Route::has('register') ? route('register') : '#' }}" style="display: inline-block; padding: 1rem 3rem; background: var(--brand); color: white; font-weight: 700; font-size: 1.125rem; border-radius: 4px; text-decoration: none; letter-spacing: 0.05em; transition: opacity 0.2s;"
+                    <a href="{{ route('login') }}" style="display: inline-block; padding: 1rem 3rem; background: var(--brand); color: white; font-weight: 700; font-size: 1.125rem; border-radius: 4px; text-decoration: none; letter-spacing: 0.05em; transition: opacity 0.2s;"
                        onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
                         GET STARTED FREE
                     </a>

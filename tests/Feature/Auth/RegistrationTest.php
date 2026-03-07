@@ -1,42 +1,22 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Support\Facades\Notification;
 
-test('registration screen can be rendered', function () {
-    $response = $this->get(route('register'));
+test('registration route returns 404', function () {
+    $response = $this->get('/register');
 
-    $response->assertOk();
+    $response->assertNotFound();
 });
 
-test('new users can register', function () {
-    $response = $this->post(route('register.store'), [
+test('registration POST route returns 404', function () {
+    $response = $this->post('/register', [
         'name' => 'John Doe',
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
     ]);
 
-    $response->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
-
-    $this->assertAuthenticated();
-});
-
-test('registration sends email verification notification', function () {
-    Notification::fake();
-
-    $this->post(route('register.store'), [
-        'name' => 'Jane Doe',
-        'email' => 'jane@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
-
-    $user = User::where('email', 'jane@example.com')->first();
-
-    Notification::assertSentTo($user, VerifyEmail::class);
+    $response->assertNotFound();
 });
 
 test('unverified users cannot access the dashboard', function () {
