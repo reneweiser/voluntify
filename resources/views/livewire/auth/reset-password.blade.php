@@ -29,7 +29,10 @@
                 autocomplete="new-password"
                 :placeholder="__('Password')"
                 viewable
+                data-password-target
             />
+
+            <x-password-requirements />
 
             <!-- Confirm Password -->
             <flux:input

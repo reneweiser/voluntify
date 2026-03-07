@@ -36,6 +36,7 @@
                 <flux:text class="mt-2">{{ __('No volunteers have signed up for this shift yet.') }}</flux:text>
             </div>
         @else
+            <div class="overflow-x-auto">
             <flux:table>
                 <flux:table.columns>
                     <flux:table.column>{{ __('Volunteer') }}</flux:table.column>
@@ -76,22 +77,28 @@
                                         size="xs"
                                         :variant="$signup->attendanceRecord?->status === \App\Enums\AttendanceStatus::OnTime ? 'primary' : 'ghost'"
                                         wire:click="markStatus({{ $signup->id }}, 'on_time')"
+                                        title="{{ __('On Time') }}"
                                     >
-                                        {{ __('On Time') }}
+                                        <flux:icon name="check" class="size-4 sm:hidden" />
+                                        <span class="hidden sm:inline">{{ __('On Time') }}</span>
                                     </flux:button>
                                     <flux:button
                                         size="xs"
                                         :variant="$signup->attendanceRecord?->status === \App\Enums\AttendanceStatus::Late ? 'primary' : 'ghost'"
                                         wire:click="markStatus({{ $signup->id }}, 'late')"
+                                        title="{{ __('Late') }}"
                                     >
-                                        {{ __('Late') }}
+                                        <flux:icon name="clock" class="size-4 sm:hidden" />
+                                        <span class="hidden sm:inline">{{ __('Late') }}</span>
                                     </flux:button>
                                     <flux:button
                                         size="xs"
                                         :variant="$signup->attendanceRecord?->status === \App\Enums\AttendanceStatus::NoShow ? 'danger' : 'ghost'"
                                         wire:click="markStatus({{ $signup->id }}, 'no_show')"
+                                        title="{{ __('No Show') }}"
                                     >
-                                        {{ __('No Show') }}
+                                        <flux:icon name="x-mark" class="size-4 sm:hidden" />
+                                        <span class="hidden sm:inline">{{ __('No Show') }}</span>
                                     </flux:button>
                                 </div>
                             </flux:table.cell>
@@ -99,6 +106,7 @@
                     @endforeach
                 </flux:table.rows>
             </flux:table>
+            </div>
         @endif
     @else
         <div class="rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 p-12 text-center">

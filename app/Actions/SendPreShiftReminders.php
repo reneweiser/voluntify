@@ -19,7 +19,7 @@ class SendPreShiftReminders
             )
             ->whereHas('shift.volunteerJob.event', fn ($q) => $q->published())
             ->whereHas('volunteer', fn ($q) => $q->whereNotNull('email_verified_at'))
-            ->with(['shift.volunteerJob.event', 'volunteer'])
+            ->with(['shift.volunteerJob.event.organization', 'volunteer'])
             ->get();
 
         $count = 0;

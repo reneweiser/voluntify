@@ -44,7 +44,7 @@
             @foreach ($this->jobs as $job)
                 <flux:card class="!p-0 overflow-hidden" wire:key="job-{{ $job->id }}">
                     {{-- Job header --}}
-                    <div class="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
+                    <div class="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
                         <div>
                             <flux:heading size="sm">{{ $job->name }}</flux:heading>
                             @if ($job->description)
@@ -65,6 +65,7 @@
                         @if ($job->shifts->isEmpty())
                             <flux:text size="sm" variant="subtle" class="italic">{{ __('No shifts added yet.') }}</flux:text>
                         @else
+                            <div class="overflow-x-auto">
                             <flux:table>
                                 <flux:table.columns>
                                     <flux:table.column>{{ __('Time') }}</flux:table.column>
@@ -103,6 +104,7 @@
                                     @endforeach
                                 </flux:table.rows>
                             </flux:table>
+                            </div>
                         @endif
 
                         @if ($this->canManage)

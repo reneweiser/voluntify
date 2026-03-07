@@ -3,48 +3,47 @@ services:
     image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      PHP_MEMORY_LIMIT: "256M"
-      PHP_POST_MAX_SIZE: "64M"
-      PHP_UPLOAD_MAX_FILE_SIZE: "64M"
+      SERVER_NAME: ":80"
+    ports:
+      - "80"
     depends_on:
       mariadb:
         condition: service_healthy
     volumes:
-      - app-data:/var/www/html/storage/app
+      - app-data:/app/storage/app
     networks:
       - voluntify-network
+      - coolify
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/up"]
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
       interval: 30s
       timeout: 5s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      start_period: 60s
 
   scheduler:
     image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    command: ["php", "artisan", "schedule:work"]
-    environment:
-      PHP_MEMORY_LIMIT: "128M"
+    entrypoint: ["php"]
+    command: ["artisan", "schedule:work"]
     depends_on:
       app:
         condition: service_healthy
     volumes:
-      - app-data:/var/www/html/storage/app
+      - app-data:/app/storage/app
     networks:
       - voluntify-network
 
   queue:
     image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
-    environment:
-      PHP_MEMORY_LIMIT: "128M"
+    entrypoint: ["php"]
+    command: ["artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
     depends_on:
       app:
         condition: service_healthy
     volumes:
-      - app-data:/var/www/html/storage/app
+      - app-data:/app/storage/app
     networks:
       - voluntify-network
 
@@ -70,6 +69,8 @@ services:
 networks:
   voluntify-network:
     driver: bridge
+  coolify:
+    external: true
 
 volumes:
   app-data:

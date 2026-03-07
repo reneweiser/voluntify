@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Organization;
+use App\Notifications\Concerns\UsesOrganizationMailer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -10,6 +11,7 @@ use Illuminate\Notifications\Notification;
 class StaffInvitation extends Notification
 {
     use Queueable;
+    use UsesOrganizationMailer;
 
     public function __construct(
         public Organization $organization,
@@ -26,7 +28,7 @@ class StaffInvitation extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject("You've been invited to {$this->organization->name}")
             ->greeting("Hello {$notifiable->name}!")
             ->line("You've been invited to join **{$this->organization->name}** on Voluntify.")
@@ -34,5 +36,7 @@ class StaffInvitation extends Notification
             ->line('You will be asked to change your password when you first log in.')
             ->action('Log in now', route('login'))
             ->line('Thank you for joining the team!');
+
+        return $this->applyOrgMailer($mail, $this->organization);
     }
 }

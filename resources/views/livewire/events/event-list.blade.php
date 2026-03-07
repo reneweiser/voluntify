@@ -10,7 +10,7 @@
     </div>
 
     {{-- Status filter buttons --}}
-    <div class="flex gap-2 mb-6">
+    <div class="flex flex-wrap gap-2 mb-6">
         <flux:button
             size="sm"
             :variant="$statusFilter === '' ? 'primary' : 'subtle'"
@@ -55,7 +55,7 @@
                            \App\Enums\EventStatus::Draft => 'card-accent-amber',
                            \App\Enums\EventStatus::Archived => 'border-l-4 border-l-zinc-400',
                        } }}">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div class="flex items-start gap-4">
                             @if ($event->titleImageUrl())
                                 <img src="{{ $event->titleImageUrl() }}" alt="" class="size-14 shrink-0 rounded-lg object-cover" />

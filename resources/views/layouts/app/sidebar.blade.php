@@ -29,6 +29,11 @@
                             {{ __('Scanner') }}
                         </flux:sidebar.item>
                     @endif
+                    @if (currentOrganization()->users()->where('user_id', auth()->id())->wherePivot('role', \App\Enums\StaffRole::Organizer)->exists())
+                        <flux:sidebar.item icon="document-text" :href="route('logs.index')" :current="request()->routeIs('logs.*')" wire:navigate>
+                            {{ __('Logs') }}
+                        </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

@@ -18,7 +18,11 @@
                 type="password"
                 required
                 autocomplete="new-password"
+                data-password-target
             />
+
+            <x-password-requirements />
+
             <flux:input
                 wire:model="password_confirmation"
                 :label="__('Confirm password')"

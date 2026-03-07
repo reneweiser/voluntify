@@ -8,10 +8,7 @@
  */
 
 const CACHE_NAME = 'voluntify-scanner-v1';
-const STATIC_ASSETS = [
-    '/admin/scanner',
-    '/admin/scanner/lookup',
-];
+const STATIC_ASSETS = [];
 
 // Install — pre-cache shell
 self.addEventListener('install', (event) => {

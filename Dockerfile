@@ -23,16 +23,10 @@ COPY --from=composer-deps /app/vendor/ vendor/
 
 RUN npm ci && npm run build
 
-# Stage 3 — Final NGINX Unit image
-FROM unit:1.34.2-php8.4
+# Stage 3 — Final FrankenPHP image
+FROM dunglas/frankenphp:1-php8.4-bookworm
 
-RUN apt update && apt install -y \
-    curl unzip git libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libssl-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) pcntl opcache pdo pdo_mysql intl zip gd exif ftp bcmath \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
-    && apt clean && rm -rf /var/lib/apt/lists/*
+RUN install-php-extensions pcntl opcache pdo pdo_mysql intl zip gd exif ftp bcmath redis
 
 RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
     && echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/custom.ini \
@@ -41,19 +35,17 @@ RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \
     && echo "upload_max_filesize=64M" >> /usr/local/etc/php/conf.d/custom.ini \
     && echo "post_max_size=64M" >> /usr/local/etc/php/conf.d/custom.ini
 
-WORKDIR /var/www/html
+WORKDIR /app
 
 COPY . .
 COPY --from=composer-deps /app/vendor/ vendor/
 COPY --from=node-build /app/public/build/ public/build/
 
-COPY unit.json /docker-entrypoint.d/unit.json
-
-RUN chown -R unit:unit storage bootstrap/cache && chmod -R 775 storage bootstrap/cache
+COPY Caddyfile /etc/frankenphp/Caddyfile
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 8000
+EXPOSE 80
 
 ENTRYPOINT ["entrypoint.sh"]
