@@ -10,6 +10,7 @@ use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
 use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
+use App\Livewire\Logs\LogViewer;
 use App\Livewire\Public\EmailVerificationPage;
 use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\VolunteerTicket;
@@ -52,6 +53,9 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::get('events/{eventId}/volunteers/export', [VolunteerExportController::class, 'export'])->name('events.volunteers.export');
     Route::livewire('events/{eventId}/volunteers/{volunteerId}', VolunteerDetail::class)->name('events.volunteers.show');
     Route::livewire('events/{eventId}/attendance', AttendanceTracker::class)->name('events.attendance');
+
+    // Logs
+    Route::livewire('logs', LogViewer::class)->name('logs.index');
 
     // Scanner UI
     Route::livewire('scanner', QrScanner::class)->name('scanner.index');
