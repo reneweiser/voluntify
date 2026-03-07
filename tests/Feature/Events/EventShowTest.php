@@ -194,3 +194,32 @@ it('hides edit button on archived events', function () {
         ->test(EventShow::class, ['eventId' => $this->event->id])
         ->assertDontSee('Edit');
 });
+
+it('shows clone button for organizer', function () {
+    Livewire::actingAs($this->user)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->assertSee('Clone');
+});
+
+it('hides clone button for volunteer admin', function () {
+    $admin = \App\Models\User::factory()->create();
+    $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($admin)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->assertDontSee('Clone');
+});
+
+it('clones event and redirects to new event', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    Shift::factory()->for($job, 'volunteerJob')->create();
+
+    Livewire::actingAs($this->user)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->call('cloneEvent')
+        ->assertRedirect();
+
+    $cloned = Event::where('name', 'Test Event (Copy)')->first();
+    expect($cloned)->not->toBeNull()
+        ->and($cloned->status)->toBe(EventStatus::Draft);
+});

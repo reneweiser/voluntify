@@ -90,6 +90,7 @@ it('invites a new user', function () {
     $newUser = User::where('email', 'newuser@example.com')->first();
     expect($newUser)->not->toBeNull()
         ->and($newUser->must_change_password)->toBeTrue()
+        ->and($newUser->email_verified_at)->not->toBeNull()
         ->and($this->org->users()->where('user_id', $newUser->id)->exists())->toBeTrue();
 
     Notification::assertSentTo($newUser, StaffInvitation::class);
@@ -129,6 +130,71 @@ it('removes an AI API key', function () {
 
     $this->org->refresh();
     expect($this->org->ai_api_key)->toBeNull();
+});
+
+it('attaches an existing user without creating a new one or sending notification', function () {
+    Notification::fake();
+
+    $existingUser = User::factory()->create(['email' => 'existing@example.com']);
+
+    Livewire::actingAs($this->organizer)
+        ->test(TeamManagement::class)
+        ->set('inviteName', 'Ignored Name')
+        ->set('inviteEmail', 'existing@example.com')
+        ->set('inviteRole', 'entrance_staff')
+        ->call('inviteMember')
+        ->assertDispatched('member-invited');
+
+    expect(User::where('email', 'existing@example.com')->count())->toBe(1)
+        ->and($this->org->users()->where('user_id', $existingUser->id)->exists())->toBeTrue()
+        ->and($this->org->users()->where('user_id', $existingUser->id)->first()->pivot->role)
+        ->toBe(StaffRole::EntranceStaff);
+
+    Notification::assertNothingSent();
+});
+
+it('validates invite name is required', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(TeamManagement::class)
+        ->set('inviteName', '')
+        ->set('inviteEmail', 'valid@example.com')
+        ->set('inviteRole', 'volunteer_admin')
+        ->call('inviteMember')
+        ->assertHasErrors(['inviteName']);
+});
+
+it('validates invite email format', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(TeamManagement::class)
+        ->set('inviteName', 'Test')
+        ->set('inviteEmail', 'not-an-email')
+        ->set('inviteRole', 'volunteer_admin')
+        ->call('inviteMember')
+        ->assertHasErrors(['inviteEmail']);
+});
+
+it('validates invite role must be valid', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(TeamManagement::class)
+        ->set('inviteName', 'Test')
+        ->set('inviteEmail', 'test@example.com')
+        ->set('inviteRole', 'superadmin')
+        ->call('inviteMember')
+        ->assertHasErrors(['inviteRole']);
+});
+
+it('resets form fields after successful invite', function () {
+    Notification::fake();
+
+    Livewire::actingAs($this->organizer)
+        ->test(TeamManagement::class)
+        ->set('inviteName', 'New User')
+        ->set('inviteEmail', 'newuser-reset@example.com')
+        ->set('inviteRole', 'entrance_staff')
+        ->call('inviteMember')
+        ->assertSet('inviteName', '')
+        ->assertSet('inviteEmail', '')
+        ->assertSet('inviteRole', 'volunteer_admin');
 });
 
 it('masks the AI API key', function () {

@@ -3,15 +3,15 @@
 > **Amended**: See [amendments/001-status-sync-m1-m2-m21-m3p1.md](amendments/001-status-sync-m1-m2-m21-m3p1.md) -- Sync status with implemented milestones
 > **Amended**: See [amendments/002-m3p2-gdpr-email-sync.md](amendments/002-m3p2-gdpr-email-sync.md) -- M3 Part 2 completion, GDPR double opt-in, branded email templates
 
-**Last updated**: 2026-03-05
+**Last updated**: 2026-03-07
 
 ## Summary
 
 | Status | Count |
 |---|---|
-| Done | 16 |
+| Done | 21 |
 | In Progress | 0 |
-| Not Started | 10 |
+| Not Started | 5 |
 
 ## Features
 
@@ -53,15 +53,15 @@
 
 | # | Feature | Type | Priority | Status | Spec |
 |---|---|---|---|---|---|
-| 13 | Attendance tracker | fullstack | Should Have | Not Started | -- |
-| 14 | Pre-shift notifications | backend | Should Have | Not Started | -- |
+| 13 | Attendance tracker | fullstack | Should Have | Done | -- |
+| 14 | Pre-shift notifications | backend | Should Have | Done | -- |
 
 ### Milestone 5: Dashboard & Volunteer Management
 
 | # | Feature | Type | Priority | Status | Spec |
 |---|---|---|---|---|---|
-| 15 | Dashboard | fullstack | Should Have | Not Started | -- |
-| 16 | Volunteer list & detail | fullstack | Should Have | Not Started | -- |
+| 15 | Dashboard | fullstack | Should Have | Done | -- |
+| 16 | Volunteer list & detail | fullstack | Should Have | Done | -- |
 
 ### Milestone 6: Polish
 
@@ -71,7 +71,7 @@
 | 18 | Volunteer promotion | fullstack | Could Have | Not Started | -- |
 | 19 | CSV export | backend | Could Have | Not Started | -- |
 | 20 | Dashboard analytics | fullstack | Could Have | Not Started | -- |
-| 21 | Browser integration tests | testing | Should Have | Not Started | -- |
+| 21 | Browser integration tests | testing | Should Have | Done | Playwright MCP runbook with 4 scenarios |
 
 ### Post-MVP: AI Event Creation
 

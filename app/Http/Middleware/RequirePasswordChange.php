@@ -11,7 +11,7 @@ class RequirePasswordChange
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user()?->must_change_password
-            && ! $request->routeIs('change-password', 'logout')) {
+            && ! $request->routeIs('change-password', 'logout', 'default-livewire.update')) {
             return redirect()->route('change-password');
         }
 

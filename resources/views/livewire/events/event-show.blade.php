@@ -14,6 +14,9 @@
 
         @if ($this->canManage)
             <div class="flex items-center gap-2">
+                <flux:button variant="subtle" icon="document-duplicate" wire:click="cloneEvent" wire:confirm="{{ __('Clone this event? A new Draft event will be created with the same jobs and shifts.') }}">
+                    {{ __('Clone') }}
+                </flux:button>
                 @if ($event->status === \App\Enums\EventStatus::Draft)
                     <flux:button variant="primary" wire:click="publishEvent" wire:confirm="{{ __('Publish this event? It will become publicly accessible.') }}">
                         {{ __('Publish') }}

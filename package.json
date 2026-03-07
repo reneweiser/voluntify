@@ -5,7 +5,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test": "vitest"
+        "test": "vitest",
+        "test:e2e:setup": "bash e2e/setup.sh"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.1.11",
@@ -23,6 +24,7 @@
         "lightningcss-linux-x64-gnu": "^1.29.1"
     },
     "devDependencies": {
+        "@playwright/mcp": "^0.0.68",
         "@vitest/coverage-v8": "^4.0.18",
         "fake-indexeddb": "^6.2.5",
         "jsdom": "^28.1.0",

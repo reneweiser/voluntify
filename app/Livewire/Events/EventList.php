@@ -33,17 +33,20 @@ class EventList extends Component
 
     public bool $showCreateModal = false;
 
-    public function mount(): void
+    #[Computed]
+    public function organization(): ?Organization
     {
-        if (! app()->bound(Organization::class)) {
-            $this->redirect(route('dashboard'));
-        }
+        return app()->bound(Organization::class) ? app(Organization::class) : null;
     }
 
     #[Computed]
     public function events(): \Illuminate\Database\Eloquent\Collection
     {
-        $query = app(Organization::class)->events()
+        if (! $this->organization) {
+            return new \Illuminate\Database\Eloquent\Collection;
+        }
+
+        $query = $this->organization->events()
             ->withCount('volunteers')
             ->latest('starts_at');
 
@@ -57,7 +60,11 @@ class EventList extends Component
     #[Computed]
     public function canCreateEvents(): bool
     {
-        return Gate::allows('create', [Event::class, app(Organization::class)]);
+        if (! $this->organization) {
+            return false;
+        }
+
+        return Gate::allows('create', [Event::class, $this->organization]);
     }
 
     public function setStatusFilter(?string $status): void
@@ -73,7 +80,7 @@ class EventList extends Component
 
     public function createEvent(): void
     {
-        Gate::authorize('create', [Event::class, app(Organization::class)]);
+        Gate::authorize('create', [Event::class, $this->organization]);
 
         $this->validate([
             'eventName' => ['required', 'string', 'max:255'],
@@ -87,7 +94,7 @@ class EventList extends Component
         $action = app(CreateEvent::class);
 
         $event = $action->execute(
-            organization: app(Organization::class),
+            organization: $this->organization,
             name: $this->eventName,
             description: $this->eventDescription ?: null,
             location: $this->eventLocation ?: null,
