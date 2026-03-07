@@ -67,13 +67,23 @@
                 <div class="space-y-2">
                     @foreach ($this->availablePlaceholders as $placeholder)
                         <div class="flex items-center gap-2">
-                            <code class="rounded bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-1 text-sm font-mono">@{{ '{{' . $placeholder . '}}' }}</code>
+                            <code class="rounded bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-1 text-sm font-mono">{{ '{' . '{' . $placeholder . '}' . '}' }}</code>
                         </div>
                     @endforeach
                 </div>
                 <flux:text size="sm" class="mt-4 text-zinc-500">
                     {{ __('Use these variables in your subject or body. They will be replaced with actual values when the email is sent.') }}
                 </flux:text>
+                @if ($selectedType === 'signup_confirmation')
+                    <flux:text size="sm" class="mt-2 text-zinc-500">
+                        @lang('Note: :shifts_summary lists all selected shifts. :job_name, :shift_date, and :shift_time refer to the first shift only.', [
+                            'shifts_summary' => '{{shifts_summary}}',
+                            'job_name' => '{{job_name}}',
+                            'shift_date' => '{{shift_date}}',
+                            'shift_time' => '{{shift_time}}',
+                        ])
+                    </flux:text>
+                @endif
             </flux:card>
         </div>
 
