@@ -1029,8 +1029,8 @@ readonly class SignupData
 
 ## Implementation Sequence
 
-### Phase 1: Foundation
-- Database schema (all 13 entities: migrations, models, relationships, enum casts)
+### Phase 1: Foundation [Complete]
+- Database schema (all 15 entities: migrations, models, relationships, enum casts)
 - PHP Enums (`EventStatus`, `StaffRole`, `AttendanceStatus`, `ArrivalMethod`)
 - Auth scaffolding (Fortify configuration, RequirePasswordChange middleware)
 - Multi-tenancy middleware (`ResolveOrganization` — org context binding)
@@ -1039,7 +1039,7 @@ readonly class SignupData
 - Organization and team management (CRUD, role pivot)
 - Basic layout with sidebar navigation and role-based visibility
 
-### Phase 2: Event Setup & Volunteer Signup
+### Phase 2: Event Setup & Volunteer Signup [Complete]
 - Event CRUD (create, edit, publish, archive)
 - Volunteer Jobs CRUD with instructions field
 - Shifts CRUD with capacity
@@ -1047,14 +1047,14 @@ readonly class SignupData
 - Public event page with volunteer signup form
 - Volunteer model, shift signup logic with capacity enforcement
 
-### Phase 2b: AI Event Creation [Deferred — post-MVP]
+### Phase 2b: AI Event Creation [Deferred -- post-MVP]
 - Anthropic PHP SDK integration with Vercel AI Gateway
 - AI tool definitions (event management tools)
 - Agentic loop service (tool executor, chat service)
 - AI Chat Livewire component and Blade view
 - Organization AI settings (API key CRUD, test connection)
 
-### Phase 3: Tickets & QR Scanner (Must Have complete)
+### Phase 3: Tickets & QR Scanner [Complete]
 - QR ticket generation (JWT creation with `chillerlan/php-qrcode`)
 - Magic link token generation and Volunteer Ticket Page
 - Confirmation email with ticket link
@@ -1062,21 +1062,21 @@ readonly class SignupData
 - Client-side JWT validation with per-event, per-day HMAC key derivation
 - Service Worker for offline caching
 - IndexedDB for volunteer data cache and arrival queue
-- Sync mechanism (outbox → POST /api/scanner/sync)
+- Sync mechanism (outbox -> POST /admin/scanner/api/events/{eventId}/sync)
 - Manual Lookup page
 
-### Phase 4: Attendance & Admin (Should Have)
+### Phase 4: Attendance & Admin [Complete]
 - Attendance Tracker (shift-level on_time/late/no_show)
 - Pre-shift notification scheduler (24h, 4h)
 - Notification email template with job-specific instructions
 - Notification tracking flags on shift_signups
 
-### Phase 5: Dashboard & Volunteer Management
+### Phase 5: Dashboard & Volunteer Management [Complete]
 - Dashboard with role-adaptive metrics
 - Volunteer List page (search, filter)
 - Volunteer Detail page
 
-### Phase 6: Polish & Testing
+### Phase 6: Polish & Testing [Complete -- 4/5 features, AI event creation deferred]
 - Event cloning (Could Have)
 - Volunteer promotion flow (Could Have)
 - CSV export (Could Have)

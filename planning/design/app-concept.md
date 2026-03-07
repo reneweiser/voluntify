@@ -170,6 +170,7 @@
 | `magic_link_tokens` | Hashed tokens for passwordless ticket page access | `id`, `volunteer_id`, `token_hash` (SHA-256), `expires_at` |
 | `volunteer_promotions` | Audit log when a volunteer is promoted to a staff role | `id`, `volunteer_id`, `user_id` (newly created), `promoted_by` (user_id), `role`, `promoted_at` |
 | `email_templates` | Customizable email templates per event (M2.1) | `id`, `event_id`, `type` (enum: signup_confirmation, pre_shift_reminder_24h, pre_shift_reminder_4h), `subject`, `body` (text, supports `{{placeholder}}` variables), unique on `[event_id, type]` |
+| `email_verification_tokens` | GDPR double opt-in tokens for volunteer signup (cross-cutting) | `id`, `volunteer_id`, `event_id`, `shift_ids` (JSON), `token_hash` (SHA-256), `expires_at` (24h) |
 
 ### Relationships
 
@@ -188,6 +189,7 @@
 [volunteers] 1───N [magic_link_tokens]
 [volunteers] 1───0..1 [volunteer_promotions]
 [events] 1───N [email_templates]
+[volunteers] 1───N [email_verification_tokens]
 ```
 
 ### Ubiquitous Language Glossary
@@ -216,4 +218,4 @@
 
 ## User Validation Notes
 
-Product name "Voluntify" was pre-selected by the user as the project name. The value proposition and feature set directly reflect the user's requirements document, which specified three core workflows: volunteer recruiting (passwordless), ticket distribution (QR), and entrance validation (offline scanning). The domain model's 13 entities were designed to support the explicit requirement of separating "arrived at event" from "arrived at shift" tracking, and the `volunteer_jobs` naming convention addresses the user's Laravel tech stack (avoiding `jobs` table collision).
+Product name "Voluntify" was pre-selected by the user as the project name. The value proposition and feature set directly reflect the user's requirements document, which specified three core workflows: volunteer recruiting (passwordless), ticket distribution (QR), and entrance validation (offline scanning). The domain model's 15 entities were designed to support the explicit requirement of separating "arrived at event" from "arrived at shift" tracking, and the `volunteer_jobs` naming convention addresses the user's Laravel tech stack (avoiding `jobs` table collision).
