@@ -81,6 +81,38 @@ describe('sync', () => {
         vi.unstubAllGlobals();
     });
 
+    it('includes CSRF token header when meta tag is present', async () => {
+        await addOutboxEntry(1, {
+            ticket_id: 10,
+            volunteer_id: 1,
+            method: 'qr_scan',
+            scanned_at: '2026-03-02 10:00:00',
+        });
+
+        const mockMeta = { getAttribute: () => 'test-csrf-token' };
+        const originalQuerySelector = document.querySelector.bind(document);
+        vi.spyOn(document, 'querySelector').mockImplementation((selector: string) => {
+            if (selector === 'meta[name="csrf-token"]') {
+                return mockMeta as unknown as Element;
+            }
+            return originalQuerySelector(selector);
+        });
+
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ arrivals: [] }),
+        });
+        vi.stubGlobal('fetch', mockFetch);
+
+        await syncOutbox(1, '/admin/scanner/api/events/1/sync');
+
+        const [, options] = mockFetch.mock.calls[0];
+        expect(options.headers['X-CSRF-TOKEN']).toBe('test-csrf-token');
+
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
     it('handles empty outbox (no-op)', async () => {
         const mockFetch = vi.fn();
         vi.stubGlobal('fetch', mockFetch);

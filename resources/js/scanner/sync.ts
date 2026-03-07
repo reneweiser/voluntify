@@ -8,13 +8,19 @@ export async function syncOutbox(eventId: number, syncUrl: string): Promise<void
     }
 
     try {
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+        if (csrfMeta) {
+            headers['X-CSRF-TOKEN'] = csrfMeta.getAttribute('content') ?? '';
+        }
+
         const response = await fetch(syncUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
+            headers,
             credentials: 'same-origin',
             body: JSON.stringify({
                 arrivals: entries.map((e) => ({
