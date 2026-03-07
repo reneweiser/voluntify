@@ -3,7 +3,12 @@
 use App\Livewire\Auth\ChangePassword;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Livewire\Livewire;
+
+afterEach(function () {
+    Password::defaults(null);
+});
 
 it('renders the change password page', function () {
     $user = User::factory()->mustChangePassword()->create();
@@ -12,6 +17,24 @@ it('renders the change password page', function () {
         ->get(route('change-password'))
         ->assertOk()
         ->assertSeeLivewire(ChangePassword::class);
+});
+
+it('shows password requirements checklist when production rules are configured', function () {
+    Password::defaults(fn () => Password::min(12)
+        ->mixedCase()
+        ->numbers()
+        ->symbols()
+        ->uncompromised()
+    );
+
+    $user = User::factory()->mustChangePassword()->create();
+
+    $this->actingAs($user)
+        ->get(route('change-password'))
+        ->assertSee('At least 12 characters')
+        ->assertSee('Upper and lowercase letters')
+        ->assertSee('At least one number')
+        ->assertSee('At least one symbol');
 });
 
 it('changes password and clears the flag', function () {
