@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Enums\EmailTemplateType;
 use App\Models\Event;
 use App\Models\Shift;
+use App\Notifications\Concerns\UsesOrganizationMailer;
 use App\Services\EmailTemplateRenderer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,6 +15,7 @@ use Illuminate\Notifications\Notification;
 class PreShiftReminder extends Notification implements ShouldQueue
 {
     use Queueable;
+    use UsesOrganizationMailer;
 
     public function __construct(
         public Event $event,
@@ -59,6 +61,6 @@ class PreShiftReminder extends Notification implements ShouldQueue
             }
         }
 
-        return $mail;
+        return $this->applyOrgMailer($mail, $this->event->organization);
     }
 }

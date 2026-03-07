@@ -10,6 +10,9 @@
             @if (app()->bound(\App\Models\Organization::class) && auth()->user()->can('manageTeam', app(\App\Models\Organization::class)))
                 <flux:navlist.item :href="route('settings.team')" wire:navigate>{{ __('Team') }}</flux:navlist.item>
             @endif
+            @if (app()->bound(\App\Models\Organization::class) && auth()->user()->can('update', app(\App\Models\Organization::class)))
+                <flux:navlist.item :href="route('settings.email')" wire:navigate>{{ __('Email') }}</flux:navlist.item>
+            @endif
         </flux:navlist>
     </div>
 

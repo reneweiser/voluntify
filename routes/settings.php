@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Settings\Appearance;
+use App\Livewire\Settings\EmailSettings;
 use App\Livewire\Settings\Password;
 use App\Livewire\Settings\Profile;
 use App\Livewire\Settings\TeamManagement;
@@ -18,6 +19,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('settings/password', Password::class)->name('user-password.edit');
     Route::livewire('settings/appearance', Appearance::class)->name('appearance.edit');
     Route::livewire('settings/team', TeamManagement::class)->name('settings.team');
+    Route::livewire('settings/email', EmailSettings::class)->name('settings.email');
 
     Route::livewire('settings/two-factor', TwoFactor::class)
         ->middleware(

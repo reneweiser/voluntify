@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Enums\EmailTemplateType;
 use App\Models\Event;
 use App\Models\Shift;
+use App\Notifications\Concerns\UsesOrganizationMailer;
 use App\Services\EmailTemplateRenderer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,6 +15,7 @@ use Illuminate\Notifications\Notification;
 class SignupConfirmation extends Notification implements ShouldQueue
 {
     use Queueable;
+    use UsesOrganizationMailer;
 
     /**
      * @param  array<int>  $shiftIds
@@ -75,6 +77,6 @@ class SignupConfirmation extends Notification implements ShouldQueue
         $ticketUrl = route('volunteer.ticket', $this->magicLinkToken);
         $mail->action('View Your Ticket', $ticketUrl);
 
-        return $mail;
+        return $this->applyOrgMailer($mail, $this->event->organization);
     }
 }
