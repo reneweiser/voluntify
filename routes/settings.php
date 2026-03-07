@@ -9,7 +9,7 @@ use App\Livewire\Settings\TwoFactor;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
-Route::prefix('admin')->middleware(['auth'])->group(function () {
+Route::prefix('admin')->middleware(['auth', 'resolve-org'])->group(function () {
     Route::redirect('settings', 'admin/settings/profile');
 
     Route::livewire('settings/profile', Profile::class)->name('profile.edit');
