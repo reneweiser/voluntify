@@ -164,8 +164,12 @@
                     </svg>
                     <span class="font-bebas" style="font-size: 1.5rem; color: white; letter-spacing: 0.1em;">VOLUNTIFY</span>
                 </a>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="https://github.com/reneweiser/voluntify/tree/main/docs#readme" style="color: rgba(255,255,255,0.8); font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: color 0.2s;"
+                       onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.8)'">
+                        Docs
+                    </a>
                 @if (Route::has('login'))
-                    <div style="display: flex; align-items: center; gap: 1rem;">
                         @auth
                             <a href="{{ route('dashboard') }}" style="color: white; font-size: 0.875rem; font-weight: 500; padding: 0.5rem 1.25rem; border: 1px solid var(--brand); border-radius: 4px; text-decoration: none; transition: background 0.2s;"
                                onmouseover="this.style.background='#059669'" onmouseout="this.style.background='transparent'">
@@ -183,8 +187,8 @@
                                 </a>
                             @endif
                         @endauth
-                    </div>
                 @endif
+                </div>
             </div>
             <div style="height: 3px; background: var(--brand);"></div>
         </nav>
@@ -369,6 +373,12 @@
                 </svg>
                 <span class="font-bebas" style="font-size: 1.1rem; color: rgba(255,255,255,0.6); letter-spacing: 0.1em;">VOLUNTIFY</span>
             </div>
+            <p style="margin-bottom: 0.5rem;">
+                <a href="https://github.com/reneweiser/voluntify/tree/main/docs#readme" style="color: rgba(255,255,255,0.5); font-size: 0.8rem; text-decoration: none; transition: color 0.2s;"
+                   onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">
+                    Documentation
+                </a>
+            </p>
             <p style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">&copy; {{ date('Y') }} Voluntify. All rights reserved.</p>
         </footer>
 

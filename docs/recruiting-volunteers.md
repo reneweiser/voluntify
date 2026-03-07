@@ -1,0 +1,67 @@
+# Recruiting Volunteers
+
+This guide covers how to publish your event, share the signup link, and what the volunteer experience looks like.
+
+## Publish Your Event
+
+Before volunteers can sign up, your event must be published. See [Creating Events > Publish an Event](creating-events.md#publish-an-event) for steps.
+
+Once published, a unique public URL is generated for your event (e.g., `https://your-domain/events/abc123`). This URL uses a random token -- it doesn't expose your event's internal ID.
+
+## Share the Signup Link
+
+1. Go to the event's **Overview** tab.
+2. Click **Copy Link** to copy the public event URL to your clipboard.
+
+Share this link however you'd like -- email, social media, your organization's website, messaging apps, printed flyers, etc. Anyone with the link can view the event and sign up.
+
+## What Volunteers See
+
+When a volunteer opens your event's public link, they see:
+
+1. **Event header** -- The event name, dates, location, and description. If you uploaded a title image, it appears as a hero banner.
+2. **Job listing** -- An accordion of volunteer jobs. Each job shows its name and description.
+3. **Available shifts** -- Within each job, shift cards show the time slot, capacity, and remaining spots (e.g., "3 of 5 spots filled").
+4. **Signup form** -- When a volunteer selects a shift, a form appears asking for:
+   - **Name** (required)
+   - **Email** (required)
+   - **Phone** (optional)
+
+The volunteer clicks **Sign Up** to register. If a shift is full, it shows a "Full" badge and the signup button is disabled.
+
+No account or password is needed. Volunteers sign up with just their name and email.
+
+## Email Verification (Double Opt-In)
+
+After signing up, volunteers receive a verification email to confirm their email address. This is a GDPR-compliant double opt-in process:
+
+1. The volunteer signs up on the public page.
+2. They receive a verification email with a confirmation link.
+3. They click the link to verify their email.
+4. Once verified, their signup is confirmed and they receive their ticket.
+
+## Volunteer Ticket and Magic Link
+
+After verification, the volunteer receives a confirmation email containing:
+
+- Event details (name, date, location)
+- Their assigned shift information
+- A **magic link** to view their QR ticket
+
+The magic link opens their ticket page, which shows:
+
+- A large **QR code** -- This is their entrance ticket. It contains a signed JWT token that can be validated offline.
+- Their name and email.
+- Event details.
+- All shifts they're signed up for.
+
+Volunteers should save this page or screenshot the QR code for easy access on event day. The magic link works without logging in -- no password needed.
+
+If a volunteer signs up for multiple shifts at the same event, they get one ticket covering all their shifts.
+
+## Tips for Recruiting
+
+- **Customize your emails**: Use the [Email Template Editor](creating-events.md#customize-email-templates) to add event-specific information to confirmation and reminder emails.
+- **Add job instructions**: Fill in the Instructions field for each job. These are included in pre-shift reminder emails so volunteers know where to go and what to bring.
+- **Monitor signups**: Check the **Volunteers** tab to see who has signed up and which shifts still need people.
+- **Share widely**: The public URL is safe to share publicly -- it doesn't expose any admin functionality.
