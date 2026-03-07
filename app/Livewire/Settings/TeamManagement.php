@@ -32,8 +32,6 @@ class TeamManagement extends Component
 
     public string $removeConfirmEmail = '';
 
-    public string $aiApiKey = '';
-
     public function mount(): void
     {
         Gate::authorize('manageTeam', $this->organization());
@@ -181,46 +179,5 @@ class TeamManagement extends Component
         unset($this->members);
 
         $this->dispatch('member-invited');
-    }
-
-    public function saveAiApiKey(): void
-    {
-        Gate::authorize('update', $this->organization());
-
-        $this->validate([
-            'aiApiKey' => ['required', 'string', 'max:500'],
-        ]);
-
-        $this->organization()->update(['ai_api_key' => $this->aiApiKey]);
-
-        $this->reset('aiApiKey');
-        $this->dispatch('ai-key-saved');
-    }
-
-    public function removeAiApiKey(): void
-    {
-        Gate::authorize('update', $this->organization());
-
-        $this->organization()->update(['ai_api_key' => null]);
-
-        $this->dispatch('ai-key-removed');
-    }
-
-    #[Computed]
-    public function maskedAiApiKey(): ?string
-    {
-        $key = $this->organization()->ai_api_key;
-
-        if (! $key) {
-            return null;
-        }
-
-        return Str::mask($key, '*', 8);
-    }
-
-    #[Computed]
-    public function hasAiApiKey(): bool
-    {
-        return $this->organization()->ai_api_key !== null;
     }
 }

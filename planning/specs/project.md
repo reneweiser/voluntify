@@ -74,7 +74,7 @@ Seven flows drive the product. Full step-by-step tables are in `planning/design/
 | Queue | Laravel Queue (database driver) | Emails, notifications |
 | Database | SQLite (dev) / MySQL or PostgreSQL (prod) | |
 
-Full architecture details (QR/JWT, offline sync, AI chat, middleware) in `planning/design/app-design-spec.md` § Tech Stack.
+Full architecture details (QR/JWT, offline sync, middleware) in `planning/design/app-design-spec.md` § Tech Stack.
 
 ## Architecture Overview
 
@@ -188,15 +188,7 @@ Note: Features 09 and 10 provide the backend Actions (`GenerateTicket`, `Generat
 | 20 | Dashboard analytics | fullstack | Could Have | PR-3 |
 | 21 | Browser integration tests | testing | Should Have | — |
 
-**Outcome**: Event cloning, volunteer promotion flow, CSV export, and dashboard analytics shipped. Playwright MCP runbook covers 4 browser test scenarios. Only feature 08 (AI event creation) remains deferred to post-MVP.
-
-### Post-MVP: AI Event Creation
-
-| # | Feature | Type | Priority | Pain points |
-|---|---|---|---|---|
-| 08 | AI-powered event creation | fullstack | Should Have | PP-3, PR-1 |
-
-**Outcome**: Organizer creates events via natural language chat. Uses same Actions as form UI. BYOK (Bring Your Own Key) per organization. Requires Anthropic PHP SDK + Vercel AI Gateway. Organization AI API keys stored encrypted (`ai_api_key` column).
+**Outcome**: Event cloning, volunteer promotion flow, CSV export, and dashboard analytics shipped. Playwright MCP runbook covers 4 browser test scenarios.
 
 ## Cross-Cutting Concerns
 

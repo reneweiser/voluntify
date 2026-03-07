@@ -148,29 +148,6 @@ it('prevents duplicate invitations', function () {
         ->assertHasErrors('inviteEmail');
 });
 
-it('saves an AI API key', function () {
-    Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
-        ->set('aiApiKey', 'sk-test-1234567890')
-        ->call('saveAiApiKey')
-        ->assertDispatched('ai-key-saved');
-
-    $this->org->refresh();
-    expect($this->org->ai_api_key)->toBe('sk-test-1234567890');
-});
-
-it('removes an AI API key', function () {
-    $this->org->update(['ai_api_key' => 'sk-test-existing']);
-
-    Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
-        ->call('removeAiApiKey')
-        ->assertDispatched('ai-key-removed');
-
-    $this->org->refresh();
-    expect($this->org->ai_api_key)->toBeNull();
-});
-
 it('attaches an existing user without creating a new one or sending notification', function () {
     Notification::fake();
 
@@ -234,14 +211,4 @@ it('resets form fields after successful invite', function () {
         ->assertSet('inviteName', '')
         ->assertSet('inviteEmail', '')
         ->assertSet('inviteRole', 'volunteer_admin');
-});
-
-it('masks the AI API key', function () {
-    $this->org->update(['ai_api_key' => 'sk-test-1234567890abcdef']);
-
-    $component = Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class);
-
-    expect($component->get('maskedAiApiKey'))->toContain('sk-test-')
-        ->and($component->get('maskedAiApiKey'))->toContain('*');
 });

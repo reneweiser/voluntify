@@ -223,4 +223,3 @@ Entity count remains at **15** (unchanged from amendment 002). No new database e
 2. **M6 outcome text**: `project.md` describes M6 as "Quality-of-life features and browser-level tests" without noting completion.
 3. **Email notification list**: `project.md` lists 3 notifications; there are now 5 (`StaffInvitation` was always present but unlisted).
 4. **Scanner sync URL**: `app-design-spec.md` line 1065 references `/api/scanner/sync`; actual URL is `/admin/scanner/api/events/{eventId}/sync`.
-5. **Feature 08** (AI event creation) remains the only unimplemented feature, deferred to post-MVP.

@@ -12,7 +12,7 @@
 |---|---|
 | Done | 31 |
 | In Progress | 0 |
-| Not Started | 1 |
+| Not Started | 0 |
 
 ## Features
 
@@ -73,12 +73,6 @@
 | 19 | CSV export | backend | Could Have | Done | ExportVolunteersCsv action, VolunteerExportController; streamed lazy collection |
 | 20 | Dashboard analytics | fullstack | Could Have | Done | noShowRate, attendanceSummary, recentPastEvents, shiftsNeedingAttention on Dashboard |
 | 21 | Browser integration tests | testing | Should Have | Done | Playwright MCP runbook with 4 scenarios |
-
-### Post-MVP: AI Event Creation
-
-| # | Feature | Type | Priority | Status | Notes |
-|---|---|---|---|---|---|
-| 08 | AI-powered event creation | fullstack | Should Have | Not Started | BYOK storage infrastructure already built (ai_api_key on organizations, TeamManagement UI) |
 
 ### Cross-Cutting: GDPR & Email
 

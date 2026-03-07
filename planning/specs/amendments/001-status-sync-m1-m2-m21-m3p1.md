@@ -51,7 +51,7 @@ A full code audit against `specs/project.md` and `specs/status.md` reveals that 
 
 ### Features Not Started (Confirmed)
 
-Features 08 (AI event creation -- deferred post-MVP), 13-21 remain not started. No code exists for attendance tracking, pre-shift notifications, dashboard analytics, volunteer list/detail, event cloning, volunteer promotion flow, CSV export, or browser integration tests.
+Features 13-21 remain not started. No code exists for attendance tracking, pre-shift notifications, dashboard analytics, volunteer list/detail, event cloning, volunteer promotion flow, CSV export, or browser integration tests.
 
 ## Changes to project.md
 
@@ -74,11 +74,7 @@ This is an intentional feature enhancement (commit `de7c451`), not a bug. The sp
 
 The spec lists 6 placeholder variables: `volunteer_name`, `event_name`, `job_name`, `shift_date`, `shift_time`, `event_location`. The implementation adds a 7th: `shifts_summary` (used in signup confirmation to list all shifts). This should be documented.
 
-### 4. Organization AI API Key
-
-The `ai_api_key` column exists on the organizations table from M1. The TeamManagement component already has `saveAiApiKey()` and `removeAiApiKey()` methods, plus `maskedAiApiKey` and `hasAiApiKey` computed properties. This was built as infrastructure for the post-MVP AI feature (feature 08) but is already functional. The project spec mentions BYOK under feature 08 but does not document that the storage infrastructure is already in place.
-
-### 5. M3 Feature Split
+### 4. M3 Feature Split
 
 Features 09 and 10 were described as providing backend Actions that feature 07 orchestrates. In practice, GenerateTicket and GenerateMagicLink are called from within SignUpVolunteerForShifts (feature 07's action), and the ticket page (feature 10) also includes the QR code display via Ticket::qrCodeSvg(). The scanner API (part of feature 11) is also complete on the backend side. The remaining M3 work is purely frontend: the PWA scanner UI and the manual lookup search interface.
 
@@ -92,4 +88,3 @@ Features 09 and 10 were described as providing backend Actions that feature 07 o
 
 1. **Feature 11 split**: Should the scanner PWA frontend be tracked as a separate sub-feature (e.g., "11a: Scanner API backend" = Done, "11b: Scanner PWA frontend" = Not Started)? The current granularity makes it unclear that half the feature is complete.
 2. **Feature 12 split**: Similarly, the RecordArrival action for manual lookup exists, but the UI does not. Should this be tracked separately?
-3. **Organization AI API key**: The BYOK infrastructure (encrypted storage, masked display, add/remove UI) is fully built in TeamManagement. Should this be documented as part of M1/M3 scope rather than feature 08?
