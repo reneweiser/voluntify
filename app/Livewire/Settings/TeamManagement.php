@@ -95,6 +95,7 @@ class TeamManagement extends Component
                 'email' => $this->inviteEmail,
                 'password' => $password,
                 'must_change_password' => true,
+                'email_verified_at' => now(),
             ]);
 
             $user->notify(new StaffInvitation($this->organization(), $password));

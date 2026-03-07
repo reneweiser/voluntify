@@ -27,11 +27,14 @@ it('creates user, pivot, and promotion record for new volunteer', function () {
 
     expect($promotion)->toBeInstanceOf(VolunteerPromotion::class)
         ->and($promotion->role)->toBe(StaffRole::VolunteerAdmin)
-        ->and($promotion->promoted_by)->toBe($this->promoter->id);
+        ->and($promotion->promoted_by)->toBe($this->promoter->id)
+        ->and($promotion->volunteer_id)->toBe($volunteer->id)
+        ->and($promotion->promoted_at)->not->toBeNull();
 
     $user = User::where('email', 'new@example.com')->first();
     expect($user)->not->toBeNull()
         ->and($user->must_change_password)->toBeTrue()
+        ->and($user->email_verified_at)->not->toBeNull()
         ->and($volunteer->fresh()->user_id)->toBe($user->id);
 
     expect($this->org->users()->where('user_id', $user->id)->exists())->toBeTrue();
@@ -49,7 +52,10 @@ it('links existing user without creating a new one', function () {
     $promotion = $action->execute($volunteer, $this->org, StaffRole::EntranceStaff, $this->promoter);
 
     expect($volunteer->fresh()->user_id)->toBe($existingUser->id)
-        ->and($this->org->users()->where('user_id', $existingUser->id)->exists())->toBeTrue();
+        ->and($this->org->users()->where('user_id', $existingUser->id)->exists())->toBeTrue()
+        ->and($this->org->users()->where('user_id', $existingUser->id)->first()->pivot->role)
+        ->toBe(StaffRole::EntranceStaff)
+        ->and($promotion->role)->toBe(StaffRole::EntranceStaff);
 
     Notification::assertNothingSent();
 });
@@ -71,14 +77,37 @@ it('throws when user already in organization', function () {
     $action->execute($volunteer, $this->org, StaffRole::EntranceStaff, $this->promoter);
 })->throws(UserAlreadyInOrganizationException::class);
 
-it('sets must_change_password on new user', function () {
+it('does not create promotion record when user is already in organization', function () {
+    $existingUser = User::factory()->create(['email' => 'member@example.com']);
+    $this->org->users()->attach($existingUser, ['role' => StaffRole::VolunteerAdmin]);
+    $volunteer = Volunteer::factory()->create(['email' => 'member@example.com']);
+
+    $initialPromotionCount = VolunteerPromotion::count();
+
+    try {
+        (new PromoteVolunteer)->execute($volunteer, $this->org, StaffRole::EntranceStaff, $this->promoter);
+    } catch (UserAlreadyInOrganizationException) {
+        // expected
+    }
+
+    expect(VolunteerPromotion::count())->toBe($initialPromotionCount);
+    $volunteer->refresh();
+    expect($volunteer->user_id)->toBeNull();
+});
+
+it('does not modify existing user attributes when promoting', function () {
     Notification::fake();
 
-    $volunteer = Volunteer::factory()->create();
+    $existingUser = User::factory()->create([
+        'name' => 'Original Name',
+        'must_change_password' => false,
+        'email' => 'staff@example.com',
+    ]);
+    $volunteer = Volunteer::factory()->create(['email' => 'staff@example.com']);
 
-    $action = new PromoteVolunteer;
-    $action->execute($volunteer, $this->org, StaffRole::VolunteerAdmin, $this->promoter);
+    (new PromoteVolunteer)->execute($volunteer, $this->org, StaffRole::EntranceStaff, $this->promoter);
 
-    $user = User::where('email', $volunteer->email)->first();
-    expect($user->must_change_password)->toBeTrue();
+    $existingUser->refresh();
+    expect($existingUser->must_change_password)->toBeFalse()
+        ->and($existingUser->name)->toBe('Original Name');
 });

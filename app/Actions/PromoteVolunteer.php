@@ -40,6 +40,7 @@ class PromoteVolunteer
                     'email' => $volunteer->email,
                     'password' => $temporaryPassword,
                     'must_change_password' => true,
+                    'email_verified_at' => now(),
                 ]);
             }
 
