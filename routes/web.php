@@ -16,6 +16,7 @@ use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\VolunteerTicket;
 use App\Livewire\Scanner\ManualLookup;
 use App\Livewire\Scanner\QrScanner;
+use App\Livewire\Scanner\ScannerEventSelect;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
@@ -58,8 +59,9 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('logs', LogViewer::class)->name('logs.index');
 
     // Scanner UI
-    Route::livewire('scanner', QrScanner::class)->name('scanner.index');
-    Route::livewire('scanner/lookup', ManualLookup::class)->name('scanner.lookup');
+    Route::livewire('scanner', ScannerEventSelect::class)->name('scanner.index');
+    Route::livewire('scanner/{eventId}', QrScanner::class)->name('scanner.scan');
+    Route::livewire('scanner/{eventId}/lookup', ManualLookup::class)->name('scanner.lookup');
 
     // Scanner API
     Route::get('scanner/api/events/{eventId}/data', [ScannerApiController::class, 'data'])->name('scanner.data');

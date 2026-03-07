@@ -31,7 +31,7 @@ beforeEach(function () {
 it('renders for organizer', function () {
     $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
-        ->get(route('scanner.lookup'))
+        ->get(route('scanner.lookup', $this->event))
         ->assertOk()
         ->assertSeeLivewire(ManualLookup::class);
 });
@@ -39,20 +39,19 @@ it('renders for organizer', function () {
 it('returns 403 for volunteer admin', function () {
     $this->actingAs($this->volunteerAdmin)
         ->withSession(['current_organization_id' => $this->org->id])
-        ->get(route('scanner.lookup'))
+        ->get(route('scanner.lookup', $this->event))
         ->assertForbidden();
 });
 
-it('shows event selector', function () {
+it('shows event name', function () {
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->assertSee($this->event->name);
 });
 
 it('shows empty search state', function () {
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->assertSee('Search for a volunteer');
 });
 
@@ -63,8 +62,7 @@ it('finds volunteers by name', function () {
     Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->set('search', 'Alice')
         ->assertSee('Alice Johnson');
 });
@@ -75,16 +73,14 @@ it('scopes search to selected event', function () {
     Ticket::factory()->for($volunteer)->for($otherEvent)->create();
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->set('search', 'Bob')
         ->assertDontSee('Bob Smith');
 });
 
 it('shows no results state', function () {
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->set('search', 'Nonexistent Person')
         ->assertSee('No volunteers found');
 });
@@ -97,8 +93,7 @@ it('shows job and shift info', function () {
     ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->set('search', 'Carol')
         ->assertSee('Carol Davis')
         ->assertSee('Gate Watch');
@@ -116,8 +111,7 @@ it('shows already arrived for checked-in volunteer', function () {
     ]);
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->set('search', 'Dave')
         ->assertSee('Dave Wilson')
         ->assertSee('Already arrived');
@@ -130,8 +124,7 @@ it('records arrival on confirm', function () {
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->call('confirmArrival', $volunteer->id);
 
     $this->assertDatabaseHas('event_arrivals', [
@@ -146,8 +139,7 @@ it('sets method to manual_lookup', function () {
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->call('confirmArrival', $volunteer->id);
 
     $this->assertDatabaseHas('event_arrivals', [
@@ -168,8 +160,7 @@ it('flags duplicate arrival', function () {
     ]);
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->call('confirmArrival', $volunteer->id);
 
     $this->assertDatabaseHas('event_arrivals', [
@@ -184,24 +175,9 @@ it('dispatches arrival-confirmed event on success', function () {
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->call('confirmArrival', $volunteer->id)
         ->assertDispatched('arrival-confirmed');
-});
-
-it('clears search when event changes', function () {
-    $event2 = Event::factory()->for($this->org)->published()->create();
-    $volunteer = Volunteer::factory()->create(['name' => 'Irene Park']);
-    Ticket::factory()->for($volunteer)->for($this->event)->create();
-
-    Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
-        ->set('search', 'Irene')
-        ->assertSee('Irene Park')
-        ->set('selectedEventId', $event2->id)
-        ->assertDontSee('Irene Park');
 });
 
 it('cannot confirm volunteer from wrong event', function () {
@@ -212,7 +188,6 @@ it('cannot confirm volunteer from wrong event', function () {
     $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
 
     Livewire::actingAs($this->organizer)
-        ->test(ManualLookup::class)
-        ->set('selectedEventId', $this->event->id)
+        ->test(ManualLookup::class, ['eventId' => $this->event->id])
         ->call('confirmArrival', $volunteer->id);
 });

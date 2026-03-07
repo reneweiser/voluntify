@@ -71,7 +71,7 @@
             <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-6">
                 <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400 mb-3">{{ __('Attendance Breakdown') }}</flux:text>
                 @php $summary = $this->attendanceSummary; @endphp
-                <div class="grid grid-cols-4 gap-2 text-center">
+                <div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
                     <div>
                         <flux:heading size="lg" class="!text-emerald-600 dark:!text-emerald-400">{{ $summary['on_time'] }}</flux:heading>
                         <flux:text size="xs">{{ __('On Time') }}</flux:text>
@@ -96,6 +96,7 @@
         @if ($this->recentPastEvents->isNotEmpty())
             <div class="mb-8">
                 <flux:heading size="lg" class="mb-4">{{ __('Recent Past Events') }}</flux:heading>
+                <div class="overflow-x-auto">
                 <flux:table>
                     <flux:table.columns>
                         <flux:table.column>{{ __('Name') }}</flux:table.column>
@@ -124,6 +125,7 @@
                         @endforeach
                     </flux:table.rows>
                 </flux:table>
+                </div>
             </div>
         @endif
     @endif
@@ -139,6 +141,7 @@
     </div>
 
     @if ($this->upcomingEvents->isNotEmpty())
+        <div class="overflow-x-auto">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column>{{ __('Name') }}</flux:table.column>
@@ -163,6 +166,7 @@
                 @endforeach
             </flux:table.rows>
         </flux:table>
+        </div>
     @else
         <div class="rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 p-12 text-center">
             <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">

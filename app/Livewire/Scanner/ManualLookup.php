@@ -19,11 +19,13 @@ use Livewire\Component;
 #[Layout('layouts.scanner')]
 class ManualLookup extends Component
 {
-    public ?int $selectedEventId = null;
+    public int $eventId;
+
+    public ?Event $event = null;
 
     public string $search = '';
 
-    public function mount(): void
+    public function mount(int $eventId): void
     {
         $organization = app(Organization::class);
 
@@ -35,30 +37,26 @@ class ManualLookup extends Component
         if (! $hasAccess) {
             abort(403);
         }
-    }
 
-    /** @return Collection<int, Event> */
-    #[Computed]
-    public function events(): Collection
-    {
-        return app(Organization::class)->events()->get();
+        $this->event = $organization->events()->findOrFail($eventId);
+        $this->eventId = $eventId;
     }
 
     /** @return Collection<int, Volunteer> */
     #[Computed]
     public function volunteers(): Collection
     {
-        if (! $this->selectedEventId || strlen($this->search) < 2) {
+        if (strlen($this->search) < 2) {
             return new Collection;
         }
 
         return Volunteer::query()
-            ->forEvent($this->selectedEventId)
+            ->forEvent($this->eventId)
             ->where('name', 'like', '%'.$this->search.'%')
             ->with([
                 'shiftSignups.shift.volunteerJob',
-                'eventArrivals' => fn ($q) => $q->where('event_id', $this->selectedEventId),
-                'tickets' => fn ($q) => $q->where('event_id', $this->selectedEventId),
+                'eventArrivals' => fn ($q) => $q->where('event_id', $this->eventId),
+                'tickets' => fn ($q) => $q->where('event_id', $this->eventId),
             ])
             ->get();
     }
@@ -66,7 +64,7 @@ class ManualLookup extends Component
     public function confirmArrival(int $volunteerId): void
     {
         $ticket = Ticket::where('volunteer_id', $volunteerId)
-            ->where('event_id', $this->selectedEventId)
+            ->where('event_id', $this->eventId)
             ->firstOrFail();
 
         $arrival = app(RecordArrival::class)->execute(
@@ -78,12 +76,6 @@ class ManualLookup extends Component
         unset($this->volunteers);
 
         $this->dispatch('arrival-confirmed', volunteerId: $volunteerId, flagged: $arrival->flagged);
-    }
-
-    public function updatedSelectedEventId(): void
-    {
-        $this->search = '';
-        unset($this->volunteers);
     }
 
     public function updatedSearch(): void

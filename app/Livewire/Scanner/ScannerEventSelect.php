@@ -2,22 +2,19 @@
 
 namespace App\Livewire\Scanner;
 
+use App\Enums\EventStatus;
 use App\Enums\StaffRole;
 use App\Models\Event;
 use App\Models\Organization;
-use Livewire\Attributes\Layout;
+use Illuminate\Database\Eloquent\Collection;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Scanner')]
-#[Layout('layouts.scanner')]
-class QrScanner extends Component
+class ScannerEventSelect extends Component
 {
-    public int $eventId;
-
-    public ?Event $event = null;
-
-    public function mount(int $eventId): void
+    public function mount(): void
     {
         $organization = app(Organization::class);
 
@@ -29,8 +26,16 @@ class QrScanner extends Component
         if (! $hasAccess) {
             abort(403);
         }
+    }
 
-        $this->event = $organization->events()->findOrFail($eventId);
-        $this->eventId = $eventId;
+    /** @return Collection<int, Event> */
+    #[Computed]
+    public function events(): Collection
+    {
+        return app(Organization::class)->events()
+            ->where('status', EventStatus::Published)
+            ->orderBy('starts_at')
+            ->withCount(['volunteers', 'eventArrivals'])
+            ->get();
     }
 }

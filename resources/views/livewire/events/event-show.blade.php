@@ -1,5 +1,5 @@
 <div class="mx-auto max-w-7xl p-6">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div class="flex items-center gap-3">
             <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate />
             <flux:heading size="xl">{{ $event->name }}</flux:heading>

@@ -62,6 +62,7 @@
             <flux:text class="mt-2">{{ __('This volunteer has no shift assignments for this event.') }}</flux:text>
         </div>
     @else
+        <div class="overflow-x-auto">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column>{{ __('Job') }}</flux:table.column>
@@ -93,6 +94,7 @@
                 @endforeach
             </flux:table.rows>
         </flux:table>
+        </div>
     @endif
 
     {{-- Promote modal --}}
