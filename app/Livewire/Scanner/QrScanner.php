@@ -4,7 +4,6 @@ namespace App\Livewire\Scanner;
 
 use App\Enums\StaffRole;
 use App\Models\Event;
-use App\Models\Organization;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,7 +17,7 @@ class QrScanner extends Component
 
     public function mount(): void
     {
-        $organization = app(Organization::class);
+        $organization = currentOrganization();
 
         $hasAccess = $organization->users()
             ->where('user_id', auth()->id())
@@ -34,6 +33,6 @@ class QrScanner extends Component
     #[Computed]
     public function events(): \Illuminate\Database\Eloquent\Collection
     {
-        return app(Organization::class)->events()->get();
+        return currentOrganization()->events()->get();
     }
 }

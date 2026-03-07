@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\ExportVolunteersCsv;
 use App\Models\Event;
-use App\Models\Organization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -13,7 +12,7 @@ class VolunteerExportController extends Controller
 {
     public function export(int $eventId, Request $request, ExportVolunteersCsv $action): StreamedResponse
     {
-        $organization = app(Organization::class);
+        $organization = currentOrganization();
         $event = Event::where('id', $eventId)
             ->where('organization_id', $organization->id)
             ->firstOrFail();

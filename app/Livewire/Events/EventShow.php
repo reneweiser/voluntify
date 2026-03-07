@@ -10,7 +10,6 @@ use App\Actions\UpdateEvent;
 use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
-use App\Models\Organization;
 use App\Models\Shift;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -42,7 +41,7 @@ class EventShow extends Component
 
     public function mount(int $eventId): void
     {
-        $this->event = app(Organization::class)->events()->findOrFail($eventId);
+        $this->event = currentOrganization()->events()->findOrFail($eventId);
 
         Gate::authorize('view', $this->event);
 

@@ -132,6 +132,27 @@ it('validates input', function () {
         ->assertUnprocessable();
 });
 
+it('rejects syncing a ticket from a different event', function () {
+    $otherEvent = Event::factory()->for($this->org)->create();
+    $otherVolunteer = Volunteer::factory()->create();
+    $otherTicket = Ticket::factory()->for($otherVolunteer)->for($otherEvent)->create();
+
+    $response = $this->actingAs($this->entranceStaff)
+        ->withSession(['current_organization_id' => $this->org->id])
+        ->postJson(route('scanner.sync', $this->event->id), [
+            'arrivals' => [
+                [
+                    'ticket_id' => $otherTicket->id,
+                    'method' => 'qr_scan',
+                    'scanned_at' => '2025-06-15 10:00:00',
+                ],
+            ],
+        ]);
+
+    $response->assertNotFound();
+    expect(EventArrival::count())->toBe(0);
+});
+
 it('returns 403 for unauthorized user', function () {
     $volunteerAdmin = \App\Models\User::factory()->create();
     $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);

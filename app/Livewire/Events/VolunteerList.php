@@ -3,7 +3,6 @@
 namespace App\Livewire\Events;
 
 use App\Models\Event;
-use App\Models\Organization;
 use App\Models\Volunteer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
@@ -23,7 +22,7 @@ class VolunteerList extends Component
 
     public function mount(int $eventId): void
     {
-        $this->event = app(Organization::class)->events()->findOrFail($eventId);
+        $this->event = currentOrganization()->events()->findOrFail($eventId);
 
         Gate::authorize('view', $this->event);
     }

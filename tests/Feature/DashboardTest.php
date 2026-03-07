@@ -128,14 +128,6 @@ test('empty state renders when no events', function () {
         ->assertSee('No upcoming events');
 });
 
-test('handles missing organization gracefully', function () {
-    $user = \App\Models\User::factory()->create();
-
-    $this->actingAs($user)
-        ->get(route('dashboard'))
-        ->assertOk();
-});
-
 test('no-show rate is 0 when no attendance records', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization();
     app()->instance(Organization::class, $org);

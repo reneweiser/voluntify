@@ -7,7 +7,6 @@ use App\Enums\ArrivalMethod;
 use App\Http\Requests\SyncArrivalsRequest;
 use App\Models\Event;
 use App\Models\EventArrival;
-use App\Models\Organization;
 use App\Models\Ticket;
 use App\Services\JwtKeyService;
 use Carbon\Carbon;
@@ -18,7 +17,7 @@ class ScannerApiController extends Controller
 {
     public function data(int $eventId, JwtKeyService $jwtKeyService): JsonResponse
     {
-        $organization = app(Organization::class);
+        $organization = currentOrganization();
         $event = Event::where('id', $eventId)
             ->where('organization_id', $organization->id)
             ->firstOrFail();
@@ -67,7 +66,7 @@ class ScannerApiController extends Controller
 
     public function sync(int $eventId, SyncArrivalsRequest $request, RecordArrival $recordArrival): JsonResponse
     {
-        $organization = app(Organization::class);
+        $organization = currentOrganization();
         $event = Event::where('id', $eventId)
             ->where('organization_id', $organization->id)
             ->firstOrFail();
@@ -75,7 +74,7 @@ class ScannerApiController extends Controller
         Gate::authorize('scan', $event);
 
         foreach ($request->validated()['arrivals'] as $arrivalData) {
-            $ticket = Ticket::findOrFail($arrivalData['ticket_id']);
+            $ticket = Ticket::where('event_id', $event->id)->findOrFail($arrivalData['ticket_id']);
 
             $recordArrival->execute(
                 ticket: $ticket,

@@ -57,14 +57,40 @@
                                     variant="danger"
                                     size="sm"
                                     icon="trash"
-                                    wire:click="removeMember({{ $member->id }})"
-                                    wire:confirm="{{ __('Are you sure you want to remove this member?') }}"
+                                    wire:click="confirmRemoveMember({{ $member->id }})"
                                 />
                             @endif
                         </div>
                     </div>
                 @endforeach
             </div>
+
+            <flux:modal wire:model="showRemoveModal" focusable class="max-w-lg">
+                @if ($this->memberToRemove)
+                    <form wire:submit="removeMember" class="space-y-6">
+                        <div>
+                            <flux:heading size="lg">{{ __('Remove team member') }}</flux:heading>
+
+                            <flux:subheading>
+                                {{ __('You are about to remove :name from this organization. This action cannot be undone.', ['name' => $this->memberToRemove->name]) }}
+                            </flux:subheading>
+                        </div>
+
+                        <flux:input
+                            wire:model="removeConfirmEmail"
+                            :label="__('Type :email to confirm', ['email' => $this->memberToRemove->email])"
+                        />
+
+                        <div class="flex justify-end space-x-2 rtl:space-x-reverse">
+                            <flux:modal.close>
+                                <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
+                            </flux:modal.close>
+
+                            <flux:button variant="danger" type="submit">{{ __('Remove member') }}</flux:button>
+                        </div>
+                    </form>
+                @endif
+            </flux:modal>
         </div>
 
         <flux:separator class="mt-8" />

@@ -23,8 +23,6 @@ class ResolveOrganization
             return $next($request);
         }
 
-        $organization = null;
-
         if ($organizations->count() === 1) {
             $organization = $organizations->first();
         } else {
