@@ -46,8 +46,7 @@
                             @else
                                 <flux:select
                                     size="sm"
-                                    wire:change="updateRole({{ $member->id }}, $event.target.value)"
-                                    :value="$member->pivot->role->value"
+                                    wire:model.live="memberRoles.{{ $member->id }}"
                                 >
                                     <flux:select.option value="organizer">{{ __('Organizer') }}</flux:select.option>
                                     <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>

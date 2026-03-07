@@ -39,13 +39,13 @@ it('lists organization members', function () {
         ->assertSee($member->name);
 });
 
-it('updates a member role', function () {
+it('updates a member role via model binding', function () {
     $member = User::factory()->create();
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
         ->test(TeamManagement::class)
-        ->call('updateRole', $member->id, 'entrance_staff');
+        ->set("memberRoles.{$member->id}", 'entrance_staff');
 
     expect($this->org->users()->where('user_id', $member->id)->first()->pivot->role)
         ->toBe(StaffRole::EntranceStaff);

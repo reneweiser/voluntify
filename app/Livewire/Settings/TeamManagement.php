@@ -22,11 +22,25 @@ class TeamManagement extends Component
 
     public string $inviteRole = 'volunteer_admin';
 
+    public array $memberRoles = [];
+
     public string $aiApiKey = '';
 
     public function mount(): void
     {
         Gate::authorize('manageTeam', $this->organization());
+    }
+
+    public function rendering(): void
+    {
+        $this->memberRoles = $this->members()->mapWithKeys(
+            fn ($member) => [$member->id => $member->pivot->role->value]
+        )->toArray();
+    }
+
+    public function updatedMemberRoles(string $value, string $key): void
+    {
+        $this->updateRole((int) $key, $value);
     }
 
     #[Computed]
