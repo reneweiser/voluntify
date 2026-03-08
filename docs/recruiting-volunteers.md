@@ -12,7 +12,7 @@ Once published, a unique public URL is generated for your event (e.g., `https://
 
 ## Share the Signup Link
 
-1. Go to the event's **Overview** tab.
+1. Go to **Overview** in the event sidebar.
 2. Click **Copy Link** to copy the public event URL to your clipboard.
 
 Share this link however you'd like -- email, social media, your organization's website, messaging apps, printed flyers, etc. Anyone with the link can view the event and sign up.
@@ -28,6 +28,7 @@ When a volunteer opens your event's public link, they see:
    - **Name** (required)
    - **Email** (required)
    - **Phone** (optional)
+5. **Gear selection** (if applicable) -- If the event has gear items, a gear form appears after the signup fields. Sized items show a size dropdown; non-sized items are listed as informational.
 
 The volunteer clicks **Sign Up** to register. If a shift is full, it shows a "Full" badge and the signup button is disabled.
 
@@ -66,10 +67,11 @@ If a volunteer signs up for multiple shifts at the same event, they get one tick
 
 The volunteer portal gives volunteers a self-service view of their shifts and any announcements from organizers. Volunteers access it via the **Manage Your Shifts** link on their ticket page -- no login required.
 
-The portal shows three sections:
+The portal shows four sections:
 
 - **Upcoming Shifts** -- All future shifts the volunteer is signed up for, sorted by date. Each entry shows the event name, job, and shift time.
 - **Past Shifts** -- Completed shifts, sorted most recent first.
+- **Event Gear** -- Gear assigned to the volunteer, showing the item name, event name, size (if applicable), and pickup status (Picked Up / Not Picked Up).
 - **Announcements** -- Messages sent by the organizer (e.g., parking changes, schedule updates). Only sent announcements appear here.
 
 If the link has expired, volunteers see a message asking them to request a new magic link from the organizer.
@@ -95,7 +97,7 @@ If cancellation is disabled or the cutoff has passed, the cancel button won't ap
 
 - **Customize your emails**: Use the [Email Template Editor](creating-events.md#customize-email-templates) to add event-specific information to confirmation and reminder emails.
 - **Add job instructions**: Fill in the Instructions field for each job. These are included in pre-shift reminder emails so volunteers know where to go and what to bring.
-- **Monitor signups**: Check the **Volunteers** tab to see who has signed up and which shifts still need people.
+- **Monitor signups**: Check the **Volunteers** page to see who has signed up and which shifts still need people.
 - **Share widely**: The public URL is safe to share publicly -- it doesn't expose any admin functionality.
 
 ## Public Event API

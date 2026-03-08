@@ -75,4 +75,4 @@ Share these steps with new Volunteer Admins:
 1. **Accept the invitation** -- Check email for the invitation, log in with the temporary password, and set a new password.
 2. **Explore the dashboard** -- Click Dashboard in the sidebar to see upcoming events and metrics.
 3. **Review assigned events** -- Click Events in the sidebar to see events you have access to.
-4. **Learn attendance tracking** -- Go to an event's Attendance tab and familiarize yourself with the shift selector and status buttons (see [Tracking Attendance](tracking-attendance.md)).
+4. **Learn attendance tracking** -- Go to **Attendance** in the event sidebar and familiarize yourself with the shift selector and status buttons (see [Tracking Attendance](tracking-attendance.md)).

@@ -22,14 +22,14 @@ You'll receive an email with a temporary password. Log in at your organization's
 
 ### 3. Add Jobs and Shifts
 
-1. From the event page, click the **Jobs & Shifts** tab.
+1. From the event page, click **Jobs & Shifts** in the event sidebar.
 2. Click **Add Job** and enter a name (e.g., "Registration Desk"), description, and any instructions volunteers should know.
 3. Within the job, click **Add Shift** and set the start time, end time, and capacity (how many volunteers you need).
 4. Repeat for each job and shift your event needs.
 
 ### 4. Publish and Share
 
-1. Go back to the **Overview** tab.
+1. Go back to **Overview** in the event sidebar.
 2. Click **Publish**. This makes your event's public signup page live.
 3. Copy the **public event URL** and share it with potential volunteers.
 
@@ -76,15 +76,17 @@ The sidebar contains the main navigation:
 | **Scanner** | QR ticket scanner for event entrances (Organizer and Entrance Staff only) |
 | **Activity Log** | View organization activity log (Organizer only) |
 
-Within an event, tabs let you navigate between sections:
+Within an event, a sidebar lets you navigate between sections:
 
-| Tab | What It Shows |
+| Section | What It Shows |
 |---|---|
 | **Overview** | Event details, metrics, publish/archive actions, share link |
 | **Jobs & Shifts** | Manage volunteer jobs and their time-based shifts |
 | **Emails** | Customize automated email templates |
 | **Announcements** | Send messages to all event volunteers (Organizer only) |
+| **Gear** | Set up event gear items (Organizer only) |
 | **Volunteers** | List of signed-up volunteers with search and filters |
 | **Attendance** | Mark shift-level attendance |
+| **Gear Pickup** | Track volunteer gear pickup (Organizer and Volunteer Admin) |
 
 Settings are accessible from the user menu in the sidebar. See [Settings and Account](settings-and-account.md) for details.
