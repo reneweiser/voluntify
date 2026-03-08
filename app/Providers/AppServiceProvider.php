@@ -3,11 +3,9 @@
 namespace App\Providers;
 
 use App\Http\Middleware\ResolveOrganization;
-use App\Listeners\RecordActivityListener;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -33,8 +31,6 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureLivewire();
-
-        Event::subscribe(RecordActivityListener::class);
     }
 
     /**
