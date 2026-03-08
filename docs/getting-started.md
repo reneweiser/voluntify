@@ -69,7 +69,7 @@ The sidebar contains the main navigation:
 | **Dashboard** | Overview of upcoming events and key metrics |
 | **Events** | List, create, and manage events |
 | **Scanner** | QR ticket scanner for event entrances (Organizer and Entrance Staff only) |
-| **Logs** | View application logs (Organizer only) |
+| **Activity Log** | View organization activity log (Organizer only) |
 
 Within an event, tabs let you navigate between sections:
 

@@ -65,3 +65,18 @@ If a volunteer signs up for multiple shifts at the same event, they get one tick
 - **Add job instructions**: Fill in the Instructions field for each job. These are included in pre-shift reminder emails so volunteers know where to go and what to bring.
 - **Monitor signups**: Check the **Volunteers** tab to see who has signed up and which shifts still need people.
 - **Share widely**: The public URL is safe to share publicly -- it doesn't expose any admin functionality.
+
+## Public Event API
+
+Voluntify provides a JSON API endpoint for external integrations, allowing you to embed event data on your website or build custom signup forms.
+
+**Endpoint**: `GET /api/v1/events/{publicToken}`
+
+The `publicToken` is the same token used in your public event URL. The endpoint is publicly accessible (no authentication required) and returns event details including jobs, shifts, and remaining capacity.
+
+**Rate limit**: 60 requests per minute per IP address. Responses are cached for 60 seconds.
+
+**Example use cases**:
+- Embed event details and shift availability on your organization's website.
+- Build a custom signup form that checks capacity before submitting.
+- Display upcoming volunteer opportunities in a third-party app or intranet.

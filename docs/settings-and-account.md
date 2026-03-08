@@ -52,19 +52,35 @@ Customize the visual appearance of the application.
 
 ## Organization Switching
 
-The organization switcher is located at the top of the sidebar. Click it to see all organizations you belong to, and select one to switch your active context. All pages (Dashboard, Events, Settings, etc.) reflect the currently selected organization.
+The organization switcher is located at the top of the sidebar. Click it to see all organizations you belong to, and select one to switch your active context. All pages (Dashboard, Events, Settings, etc.) reflect the currently selected organization. Your selection is persisted across sessions -- when you log back in, you'll return to the last organization you were viewing.
 
 To create a new organization directly from the switcher, click **Create new organization**. Enter a name and the slug will be auto-generated. Click **Create** to finish.
 
-## Log Viewer
+To leave an organization, see [Managing Your Members > Leave an Organization](managing-your-team.md#leave-an-organization).
 
-**Path**: Logs (in the sidebar)
+## Activity Log
+
+**Path**: Activity Log (in the sidebar)
 **Who can access**: Organizer only.
 
-View structured application logs. The log viewer shows log entries with:
-- Timestamp
-- Log level (info, warning, error, etc.)
-- Message content
-- Collapsible context data
+View an audit trail of actions taken across your organization. The activity log tracks 20 event types across 8 categories, showing who did what and when.
 
-Use this to troubleshoot issues like failed email deliveries or sync errors.
+### Filters
+
+- **Event** -- Filter by a specific event.
+- **Category** -- Filter by activity category.
+- **Actor** -- Filter by the user who performed the action.
+- **Date range** -- Filter by time period.
+
+### Categories
+
+| Category | What It Tracks |
+|---|---|
+| **Event** | Event creation, updates, publishing, archiving, cloning |
+| **Job** | Job creation, updates, deletion |
+| **Shift** | Shift creation, updates, deletion |
+| **Volunteer** | Volunteer signups, promotions |
+| **Attendance** | Attendance status changes |
+| **Member** | Member invitations, role changes, removals, departures |
+| **Email** | Email template changes, SMTP configuration |
+| **System** | Organization-level changes |

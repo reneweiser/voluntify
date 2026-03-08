@@ -30,15 +30,16 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | **Scanner** | | | |
 | Use QR scanner | Yes | -- | Yes |
 | Use manual lookup | Yes | -- | Yes |
-| **Team Management** | | | |
-| View team members | Yes | -- | -- |
-| Invite / remove team members | Yes | -- | -- |
-| Change team member roles | Yes | -- | -- |
+| **Member Management** | | | |
+| View members | Yes | -- | -- |
+| Invite / remove members | Yes | -- | -- |
+| Change member roles | Yes | -- | -- |
+| Leave organization | Yes | Yes | Yes |
 | **Settings** | | | |
 | Edit own profile and password | Yes | Yes | Yes |
 | Set up two-factor authentication | Yes | Yes | Yes |
 | Configure email / SMTP settings | Yes | -- | -- |
-| View application logs | Yes | -- | -- |
+| View activity log | Yes | -- | -- |
 | **Organizations** | | | |
 | Switch organizations | Yes | Yes | Yes |
 | Create new organization | Yes | Yes | Yes |

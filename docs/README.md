@@ -13,7 +13,7 @@ Voluntify is a volunteer management platform for organizations running events. I
 - [Checking In Volunteers](checking-in-volunteers.md) -- QR scanner, manual lookup, offline mode
 - [Tracking Attendance](tracking-attendance.md) -- Mark shift-level attendance
 - [Managing Volunteers](managing-volunteers.md) -- View volunteer data, export CSV, dashboard metrics
-- [Managing Your Team](managing-your-team.md) -- Invite staff, assign roles, onboarding checklists
+- [Managing Your Members](managing-your-team.md) -- Invite staff, assign roles, onboarding checklists
 - [Settings and Account](settings-and-account.md) -- Profile, password, 2FA, email, appearance
 
 ## Reference
