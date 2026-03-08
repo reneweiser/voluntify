@@ -26,7 +26,7 @@ class ResolveOrganization
         if ($organizations->count() === 1) {
             $organization = $organizations->first();
         } else {
-            $preferredId = session('current_organization_id');
+            $preferredId = session('current_organization_id') ?? $user->current_organization_id;
 
             if ($preferredId) {
                 $organization = $organizations->firstWhere('id', $preferredId);
@@ -36,6 +36,11 @@ class ResolveOrganization
         }
 
         session(['current_organization_id' => $organization->id]);
+
+        if ($user->current_organization_id !== $organization->id) {
+            $user->updateQuietly(['current_organization_id' => $organization->id]);
+        }
+
         app()->instance(Organization::class, $organization);
 
         return $next($request);
