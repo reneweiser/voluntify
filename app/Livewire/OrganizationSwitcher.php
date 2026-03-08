@@ -37,6 +37,7 @@ class OrganizationSwitcher extends Component
         Gate::authorize('view', $organization);
 
         session(['current_organization_id' => $organization->id]);
+        auth()->user()->updateQuietly(['current_organization_id' => $organization->id]);
 
         $this->redirect(route('dashboard'), navigate: true);
     }
@@ -62,6 +63,7 @@ class OrganizationSwitcher extends Component
         );
 
         session(['current_organization_id' => $organization->id]);
+        auth()->user()->updateQuietly(['current_organization_id' => $organization->id]);
 
         $this->reset('showCreateModal', 'newOrgName', 'newOrgSlug');
 
