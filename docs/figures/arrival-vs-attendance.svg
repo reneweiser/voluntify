@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" height="250">
+  <title>Comparison of event arrival (entrance scanning) versus shift attendance (per-shift tracking)</title>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  </style>
+  <!-- Left card: Event Arrival -->
+  <rect x="20" y="16" width="310" height="160" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+  <text x="175" y="44" text-anchor="middle" fill="#059669" font-size="15" font-weight="700">Event Arrival</text>
+  <line x1="40" y1="56" x2="310" y2="56" stroke="#059669" stroke-width="0.5" opacity="0.4"/>
+  <text x="40" y="80" fill="#1f2937" font-size="12"><tspan font-weight="600" fill="#6b7280">When:</tspan> At the entrance</text>
+  <text x="40" y="100" fill="#1f2937" font-size="12"><tspan font-weight="600" fill="#6b7280">Who:</tspan> Entrance Staff</text>
+  <text x="40" y="120" fill="#1f2937" font-size="12"><tspan font-weight="600" fill="#6b7280">How:</tspan> QR scan or manual lookup</text>
+  <text x="40" y="140" fill="#1f2937" font-size="12"><tspan font-weight="600" fill="#6b7280">Result:</tspan> Arrived / Not arrived</text>
+  <text x="40" y="162" fill="#6b7280" font-size="11" font-style="italic">One per volunteer per event</text>
+  <!-- VS divider -->
+  <text x="350" y="104" text-anchor="middle" fill="#d1d5db" font-size="18" font-weight="700">vs</text>
+  <!-- Right card: Shift Attendance -->
+  <rect x="380" y="16" width="300" height="160" rx="8" fill="#f0f4f8" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="530" y="44" text-anchor="middle" fill="#475569" font-size="15" font-weight="700">Shift Attendance</text>
+  <line x1="400" y1="56" x2="660" y2="56" stroke="#94a3b8" stroke-width="0.5" opacity="0.4"/>
+  <text x="400" y="80" fill="#1f2937" font-size="12"><tspan font-weight="600" fill="#6b7280">When:</tspan> During or after shift</text>
+  <text x="400" y="100" fill="#1f2937" font-size="12"><tspan font-weight="600" fill="#6b7280">Who:</tspan> Volunteer Admin</text>
+  <text x="400" y="120" fill="#1f2937" font-size="12"><tspan font-weight="600" fill="#6b7280">How:</tspan> Manual status selection</text>
+  <text x="400" y="140" fill="#1f2937" font-size="12"><tspan font-weight="600" fill="#6b7280">Result:</tspan> On Time / Late / No Show</text>
+  <text x="400" y="162" fill="#6b7280" font-size="11" font-style="italic">One per volunteer per shift</text>
+  <!-- Conflict callout -->
+  <rect x="20" y="196" width="660" height="40" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>
+  <text x="350" y="220" text-anchor="middle" fill="#1f2937" font-size="12">
+    <tspan font-weight="600" fill="#f59e0b">Conflict indicator:</tspan> Highlights when a volunteer arrived at the event but was marked No Show for a shift
+  </text>
+</svg>

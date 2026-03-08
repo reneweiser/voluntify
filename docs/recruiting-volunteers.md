@@ -2,6 +2,8 @@
 
 This guide covers how to publish your event, share the signup link, and what the volunteer experience looks like.
 
+![Volunteer journey from browsing the event to receiving a QR ticket](figures/volunteer-journey.svg)
+
 ## Publish Your Event
 
 Before volunteers can sign up, your event must be published. See [Creating Events > Publish an Event](creating-events.md#publish-an-event) for steps.

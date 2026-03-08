@@ -36,6 +36,8 @@ This gives you a fullscreen app experience without browser chrome, and ensures t
 3. The scanner automatically detects and validates the QR code. No button press needed.
 4. A result panel slides up showing the scan result.
 
+![Scanner workflow: camera detects QR, validates, shows result by color](figures/scanner-workflow.svg)
+
 ### Scan Result States
 
 | Color | Meaning | What to Do |
@@ -61,6 +63,8 @@ Manual lookup works offline using the downloaded volunteer data.
 ## Offline Mode
 
 The scanner is designed to work without internet. Here's how offline mode works:
+
+![Offline sync: device validates locally and syncs arrivals when back online](figures/offline-sync.svg)
 
 - **QR validation**: Happens entirely on-device using downloaded cryptographic keys. No server call needed.
 - **Volunteer lookup**: Searches the locally cached volunteer list.

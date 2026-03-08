@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 240" width="720" height="240">
+  <title>Offline sync architecture: device stores cached data and queues arrivals locally, syncs with server when online</title>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  </style>
+  <defs>
+    <marker id="ar-r" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="10" markerHeight="7" orient="auto-start-auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#059669"/>
+    </marker>
+  </defs>
+  <!-- Device zone -->
+  <rect x="20" y="16" width="300" height="170" rx="10" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="170" y="40" text-anchor="middle" fill="#1f2937" font-size="14" font-weight="700">Device (Offline-capable)</text>
+  <!-- Device items -->
+  <rect x="40" y="56" width="120" height="36" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+  <text x="100" y="79" text-anchor="middle" fill="#059669" font-size="11" font-weight="600">Cached Data</text>
+  <rect x="40" y="102" width="120" height="36" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+  <text x="100" y="125" text-anchor="middle" fill="#059669" font-size="11" font-weight="600">JWT Validation</text>
+  <rect x="180" y="56" width="120" height="36" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>
+  <text x="240" y="79" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">Arrival Queue</text>
+  <rect x="180" y="102" width="120" height="36" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+  <text x="240" y="125" text-anchor="middle" fill="#059669" font-size="11" font-weight="600">Crypto Keys</text>
+  <text x="170" y="165" text-anchor="middle" fill="#6b7280" font-size="10" font-style="italic">On-device validation, no server needed</text>
+  <!-- Server zone -->
+  <rect x="420" y="16" width="280" height="170" rx="10" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="560" y="40" text-anchor="middle" fill="#1f2937" font-size="14" font-weight="700">Server</text>
+  <!-- Server items -->
+  <rect x="440" y="56" width="240" height="36" rx="6" fill="#f9fafb" stroke="#d1d5db" stroke-width="1"/>
+  <text x="560" y="79" text-anchor="middle" fill="#1f2937" font-size="11" font-weight="600">Volunteer Database</text>
+  <rect x="440" y="102" width="240" height="36" rx="6" fill="#f9fafb" stroke="#d1d5db" stroke-width="1"/>
+  <text x="560" y="125" text-anchor="middle" fill="#1f2937" font-size="11" font-weight="600">Arrival Records</text>
+  <text x="560" y="165" text-anchor="middle" fill="#6b7280" font-size="10" font-style="italic">Source of truth</text>
+  <!-- Arrows -->
+  <line x1="420" y1="74" x2="322" y2="74" stroke="#059669" stroke-width="1.5" marker-end="url(#ar-r)"/>
+  <text x="371" y="68" text-anchor="middle" fill="#059669" font-size="10" font-weight="500">Download</text>
+  <text x="371" y="80" text-anchor="middle" fill="#059669" font-size="10" font-weight="500">data</text>
+  <line x1="320" y1="120" x2="418" y2="120" stroke="#059669" stroke-width="1.5" marker-end="url(#ar-r)"/>
+  <text x="371" y="115" text-anchor="middle" fill="#059669" font-size="10" font-weight="500">Sync</text>
+  <text x="371" y="127" text-anchor="middle" fill="#059669" font-size="10" font-weight="500">arrivals</text>
+  <!-- Status badges -->
+  <rect x="140" y="202" width="180" height="26" rx="13" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+  <text x="230" y="220" text-anchor="middle" fill="#059669" font-size="11" font-weight="600">Online: immediate sync</text>
+  <rect x="400" y="202" width="200" height="26" rx="13" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>
+  <text x="500" y="220" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">Offline: N pending arrivals</text>
+</svg>

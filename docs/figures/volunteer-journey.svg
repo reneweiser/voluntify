@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180" width="800" height="180">
+  <title>Volunteer journey: browse event, sign up, verify email, receive ticket with QR code</title>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  </style>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="10" markerHeight="7" orient="auto-start-auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#059669"/>
+    </marker>
+  </defs>
+  <!-- Phase labels -->
+  <rect x="20" y="10" width="240" height="22" rx="4" fill="#d1fae5"/>
+  <text x="140" y="25" text-anchor="middle" fill="#059669" font-size="10" font-weight="600">PUBLIC PAGE</text>
+  <rect x="290" y="10" width="240" height="22" rx="4" fill="#fef3c7"/>
+  <text x="410" y="25" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="600">EMAIL VERIFICATION</text>
+  <rect x="560" y="10" width="220" height="22" rx="4" fill="#d1fae5"/>
+  <text x="670" y="25" text-anchor="middle" fill="#059669" font-size="10" font-weight="600">TICKET DELIVERY</text>
+  <!-- Step 1: Browse -->
+  <rect x="20" y="50" width="110" height="56" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="75" y="75" text-anchor="middle" fill="#1f2937" font-size="12" font-weight="600">Browse</text>
+  <text x="75" y="92" text-anchor="middle" fill="#6b7280" font-size="10">View event</text>
+  <!-- Arrow -->
+  <line x1="130" y1="78" x2="148" y2="78" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Step 2: Sign up -->
+  <rect x="158" y="50" width="110" height="56" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="213" y="75" text-anchor="middle" fill="#1f2937" font-size="12" font-weight="600">Sign Up</text>
+  <text x="213" y="92" text-anchor="middle" fill="#6b7280" font-size="10">Select shift</text>
+  <!-- Arrow -->
+  <line x1="268" y1="78" x2="298" y2="78" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Step 3: Verification email -->
+  <rect x="308" y="50" width="110" height="56" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="363" y="75" text-anchor="middle" fill="#1f2937" font-size="12" font-weight="600">Verify Email</text>
+  <text x="363" y="92" text-anchor="middle" fill="#6b7280" font-size="10">Sent automatically</text>
+  <!-- Arrow -->
+  <line x1="418" y1="78" x2="436" y2="78" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Step 4: Confirm -->
+  <rect x="446" y="50" width="110" height="56" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="501" y="75" text-anchor="middle" fill="#1f2937" font-size="12" font-weight="600">Confirm</text>
+  <text x="501" y="92" text-anchor="middle" fill="#6b7280" font-size="10">Click link</text>
+  <!-- Arrow -->
+  <line x1="556" y1="78" x2="574" y2="78" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Step 5: Ticket email -->
+  <rect x="584" y="50" width="100" height="56" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="634" y="75" text-anchor="middle" fill="#1f2937" font-size="12" font-weight="600">Ticket Email</text>
+  <text x="634" y="92" text-anchor="middle" fill="#6b7280" font-size="10">Magic link</text>
+  <!-- Arrow -->
+  <line x1="684" y1="78" x2="702" y2="78" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Step 6: QR Ticket (highlight) -->
+  <rect x="712" y="50" width="68" height="56" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+  <text x="746" y="75" text-anchor="middle" fill="#059669" font-size="12" font-weight="700">QR</text>
+  <text x="746" y="92" text-anchor="middle" fill="#059669" font-size="10">Ticket</text>
+  <!-- Bottom caption -->
+  <text x="400" y="140" text-anchor="middle" fill="#6b7280" font-size="11">No account or password needed — volunteers sign up with name and email only</text>
+</svg>

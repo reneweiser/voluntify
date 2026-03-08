@@ -2,6 +2,8 @@
 
 Voluntify has three staff roles and one external role. Staff roles are assigned per organization.
 
+![Role hierarchy: Organizer, Volunteer Admin, Entrance Staff, and external Volunteer](figures/role-hierarchy.svg)
+
 ## Permission Matrix
 
 | Action | Organizer | Volunteer Admin | Entrance Staff |
