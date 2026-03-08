@@ -12,7 +12,7 @@ This guide covers inviting staff members, assigning roles, and onboarding new te
    - **Name** -- The team member's full name.
    - **Email** -- Their email address.
    - **Role** -- Choose from Organizer, Volunteer Admin, or Entrance Staff.
-4. Click **Invite**.
+4. Click **Send invitation**.
 
 The new team member receives an email with a temporary password. They'll be prompted to set a new password on first login.
 
@@ -30,14 +30,14 @@ For a full breakdown of what each role can do, see [Roles and Permissions](roles
 
 1. Go to **Settings > Team**.
 2. Find the team member in the list.
-3. Change their role using the role selector.
+3. Change their role using the role dropdown. The change takes effect immediately -- no save button needed.
 
 ## Remove a Team Member
 
 1. Go to **Settings > Team**.
 2. Find the team member in the list.
-3. Click **Remove**.
-4. Confirm the removal.
+3. Click the delete icon.
+4. In the confirmation modal, type the team member's email address to confirm, then click **Remove member**.
 
 Removing a team member revokes their access to all events in the organization.
 

@@ -12,7 +12,7 @@ Update your name and email address. All team members can edit their own profile.
 
 **Path**: Settings > Password
 
-Change your password. You'll need to enter your current password and then your new password twice to confirm.
+Change your password. You'll need to enter your current password and then your new password twice to confirm. A real-time requirements checklist updates as you type, showing which rules your new password satisfies (length, mixed case, numbers, symbols).
 
 ## Two-Factor Authentication
 
@@ -49,6 +49,12 @@ Configure email delivery settings for your organization. This controls how Volun
 **Path**: Settings > Appearance
 
 Customize the visual appearance of the application.
+
+## Organization Switching
+
+The organization switcher is located at the top of the sidebar. Click it to see all organizations you belong to, and select one to switch your active context. All pages (Dashboard, Events, Settings, etc.) reflect the currently selected organization.
+
+To create a new organization directly from the switcher, click **Create new organization**. Enter a name and the slug will be auto-generated. Click **Create** to finish.
 
 ## Log Viewer
 

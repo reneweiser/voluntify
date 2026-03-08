@@ -11,7 +11,7 @@ This guide walks you through setting up your first event in Voluntify.
 
 ### 1. Accept Your Invitation
 
-You'll receive an email with a temporary password. Log in at your organization's Voluntify URL, then set a new password when prompted.
+You'll receive an email with a temporary password. Log in at your organization's Voluntify URL, then set a new password when prompted. A real-time requirements checklist shows which password rules you've satisfied as you type.
 
 ### 2. Create an Event
 
@@ -65,6 +65,7 @@ The sidebar contains the main navigation:
 
 | Sidebar Item | What It Does |
 |---|---|
+| **Organization switcher** | Switch between organizations or create a new one (top of sidebar) |
 | **Dashboard** | Overview of upcoming events and key metrics |
 | **Events** | List, create, and manage events |
 | **Scanner** | QR ticket scanner for event entrances (Organizer and Entrance Staff only) |

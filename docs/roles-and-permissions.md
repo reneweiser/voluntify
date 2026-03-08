@@ -39,6 +39,9 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | Set up two-factor authentication | Yes | Yes | Yes |
 | Configure email / SMTP settings | Yes | -- | -- |
 | View application logs | Yes | -- | -- |
+| **Organizations** | | | |
+| Switch organizations | Yes | Yes | Yes |
+| Create new organization | Yes | Yes | Yes |
 | **Dashboard** | | | |
 | View dashboard | Yes | Yes | Yes |
 | "Create Event" quick action | Yes | -- | -- |
