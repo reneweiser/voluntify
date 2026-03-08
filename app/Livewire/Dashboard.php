@@ -64,10 +64,11 @@ class Dashboard extends Component
                 ->where('starts_at', '>=', now())
                 ->select('id')
         ))
-            ->whereColumn(
-                DB::raw('(SELECT COUNT(*) FROM shift_signups WHERE shift_signups.shift_id = shifts.id)'),
+            ->where(
+                ShiftSignup::selectRaw('count(*)')
+                    ->whereColumn('shift_signups.shift_id', 'shifts.id'),
                 '<',
-                'capacity'
+                DB::raw('shifts.capacity')
             )
             ->count();
     }

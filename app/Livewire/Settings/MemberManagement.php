@@ -2,14 +2,12 @@
 
 namespace App\Livewire\Settings;
 
-use App\Actions\CreateOrganization;
+use App\Actions\InviteMember;
 use App\Enums\StaffRole;
+use App\Exceptions\MemberAlreadyExistsException;
 use App\Models\Organization;
 use App\Models\User;
-use App\Notifications\AddedToOrganization;
-use App\Notifications\StaffInvitation;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -142,43 +140,17 @@ class MemberManagement extends Component
             'inviteRole' => ['required', 'string', 'in:organizer,volunteer_admin,entrance_staff'],
         ]);
 
-        $user = User::where('email', $this->inviteEmail)->first();
-        $isExistingUser = (bool) $user;
-
-        if (! $user) {
-            $password = Str::random(16);
-
-            $user = DB::transaction(function () use ($password) {
-                $user = User::create([
-                    'name' => $this->inviteName,
-                    'email' => $this->inviteEmail,
-                    'password' => $password,
-                    'must_change_password' => true,
-                    'email_verified_at' => now(),
-                ]);
-
-                (new CreateOrganization)->execute($user, $user->name."'s Organization", isPersonal: true);
-
-                return $user;
-            });
-
-            $user->notify(new StaffInvitation($this->organization(), $password));
-        }
-
-        if ($this->organization()->users()->where('user_id', $user->id)->exists()) {
+        try {
+            app(InviteMember::class)->execute(
+                $this->organization(),
+                $this->inviteName,
+                $this->inviteEmail,
+                StaffRole::from($this->inviteRole),
+            );
+        } catch (MemberAlreadyExistsException) {
             $this->addError('inviteEmail', 'This user is already a member.');
 
             return;
-        }
-
-        $staffRole = StaffRole::from($this->inviteRole);
-
-        $this->organization()->users()->attach($user, [
-            'role' => $staffRole,
-        ]);
-
-        if ($isExistingUser) {
-            $user->notify(new AddedToOrganization($this->organization(), $staffRole));
         }
 
         $this->reset('inviteName', 'inviteEmail', 'inviteRole');

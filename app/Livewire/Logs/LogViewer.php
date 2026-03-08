@@ -3,6 +3,7 @@
 namespace App\Livewire\Logs;
 
 use App\Enums\StaffRole;
+use App\Services\LogParser;
 use Illuminate\Support\Facades\Process;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -56,8 +57,6 @@ class LogViewer extends Component
         return array_values($basenames);
     }
 
-    private const LOG_ENTRY_PATTERN = '/^\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]\s\w+\.(ERROR|WARNING|INFO|DEBUG|NOTICE|CRITICAL|ALERT|EMERGENCY):\s(.*)$/';
-
     /** @return list<array{level: string, timestamp: string, message: string, trace: string}> */
     #[Computed]
     public function logContent(): array
@@ -84,7 +83,7 @@ class LogViewer extends Component
         }
 
         $lines = explode("\n", $result->output());
-        $entries = $this->parseLogEntries($lines);
+        $entries = app(LogParser::class)->parse($lines);
 
         if ($this->search !== '') {
             $search = $this->search;
@@ -115,61 +114,6 @@ class LogViewer extends Component
             'INFO' => 'border-l-blue-500',
             default => 'border-l-zinc-500',
         };
-    }
-
-    /**
-     * @param  list<string>  $lines
-     * @return list<array{level: string, timestamp: string, message: string, trace: string}>
-     */
-    private function parseLogEntries(array $lines): array
-    {
-        $entries = [];
-        $current = null;
-        $orphanLines = [];
-
-        foreach ($lines as $line) {
-            if (preg_match(self::LOG_ENTRY_PATTERN, $line, $matches)) {
-                if ($current !== null) {
-                    $current['trace'] = rtrim($current['trace']);
-                    $entries[] = $current;
-                } elseif (count($orphanLines) > 0) {
-                    $entries[] = [
-                        'level' => 'DEBUG',
-                        'timestamp' => '',
-                        'message' => array_shift($orphanLines),
-                        'trace' => rtrim(implode("\n", $orphanLines)),
-                    ];
-                    $orphanLines = [];
-                }
-
-                $current = [
-                    'level' => $matches[2],
-                    'timestamp' => $matches[1],
-                    'message' => $matches[3],
-                    'trace' => '',
-                ];
-            } elseif ($current !== null) {
-                $current['trace'] .= ($current['trace'] !== '' ? "\n" : '').$line;
-            } else {
-                if ($line !== '') {
-                    $orphanLines[] = $line;
-                }
-            }
-        }
-
-        if ($current !== null) {
-            $current['trace'] = rtrim($current['trace']);
-            $entries[] = $current;
-        } elseif (count($orphanLines) > 0) {
-            $entries[] = [
-                'level' => 'DEBUG',
-                'timestamp' => '',
-                'message' => array_shift($orphanLines),
-                'trace' => rtrim(implode("\n", $orphanLines)),
-            ];
-        }
-
-        return $entries;
     }
 
     public function downloadLog(): mixed
