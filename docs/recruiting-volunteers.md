@@ -56,10 +56,40 @@ The magic link opens their ticket page, which shows:
 - Their name and email.
 - Event details.
 - All shifts they're signed up for.
+- A **Manage Your Shifts** link that opens the volunteer portal (see below).
 
 Volunteers should save this page or screenshot the QR code for easy access on event day. The magic link works without logging in -- no password needed.
 
 If a volunteer signs up for multiple shifts at the same event, they get one ticket covering all their shifts.
+
+## Volunteer Portal
+
+The volunteer portal gives volunteers a self-service view of their shifts and any announcements from organizers. Volunteers access it via the **Manage Your Shifts** link on their ticket page -- no login required.
+
+The portal shows three sections:
+
+- **Upcoming Shifts** -- All future shifts the volunteer is signed up for, sorted by date. Each entry shows the event name, job, and shift time.
+- **Past Shifts** -- Completed shifts, sorted most recent first.
+- **Announcements** -- Messages sent by the organizer (e.g., parking changes, schedule updates). Only sent announcements appear here.
+
+If the link has expired, volunteers see a message asking them to request a new magic link from the organizer.
+
+## Cancelling a Signup
+
+If the organizer has enabled cancellations for an event (see [Creating Events > Edit Event Details](creating-events.md#edit-event-details)), volunteers can cancel their own shift signups from the portal.
+
+1. Open the volunteer portal via the **Manage Your Shifts** link on the ticket page.
+2. Find the shift under **Upcoming Shifts**.
+3. Click **Cancel** next to the shift.
+4. Confirm the cancellation in the modal that appears.
+
+The spot is freed immediately and becomes available for other volunteers.
+
+Cancellation is only available if:
+- The organizer set a **Cancellation Cutoff** on the event.
+- The shift starts more than the cutoff number of hours from now.
+
+If cancellation is disabled or the cutoff has passed, the cancel button won't appear.
 
 ## Tips for Recruiting
 

@@ -25,7 +25,8 @@ The event is created in **Draft** status. You'll be taken to the event detail pa
 2. Click **Edit**.
 3. Update the name, dates, location, or description.
 4. Optionally upload a **title image** (JPG, PNG, or WebP, max 2 MB). This appears as a hero image on the public signup page.
-5. Click **Save**.
+5. Optionally set a **Cancellation Cutoff (hours)** -- This allows volunteers to cancel their own signups up to the specified number of hours before a shift starts. Leave empty to disable volunteer self-cancellation.
+6. Click **Save**.
 
 To remove a title image, click **Delete Image** while editing.
 
@@ -86,6 +87,21 @@ Voluntify sends automated emails to volunteers. You can customize these per even
 Use **Preview** to see how the email will look with sample data. To revert to the default template, click **Reset to Default**.
 
 A badge shows whether you're using a **Customized** or **Default** template.
+
+**Who can do this**: Organizer only.
+
+## Send Announcements
+
+Announcements let you send messages to all volunteers signed up for an event. Use them to communicate changes like updated parking instructions, schedule adjustments, or last-minute reminders.
+
+1. Go to the event's **Announcements** tab.
+2. Write the announcement **Subject** and **Body**.
+3. The recipient count shows how many volunteers will receive the message.
+4. Click **Send**.
+
+Sent announcements are also visible to volunteers in their [Volunteer Portal](recruiting-volunteers.md#volunteer-portal).
+
+The **Announcements** tab shows a history of all sent announcements with their subject, send date, and recipient count.
 
 **Who can do this**: Organizer only.
 

@@ -45,6 +45,9 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | **Organizations** | | | |
 | Switch organizations | Yes | Yes | Yes |
 | Create new organization | Yes | Yes | Yes |
+| **Announcements** | | | |
+| Send announcements | Yes | -- | -- |
+| View announcement history | Yes | -- | -- |
 | **Dashboard** | | | |
 | View dashboard | Yes | Yes | Yes |
 | "Create Event" quick action | Yes | -- | -- |
@@ -58,8 +61,9 @@ Volunteers can:
 - Receive email notifications (signup confirmation, pre-shift reminders).
 - Access their QR ticket via a magic link (no password required).
 - Present their QR code at the event entrance.
+- Access the [Volunteer Portal](recruiting-volunteers.md#volunteer-portal) to view their shifts and read announcements.
+- Cancel their own shift signups if the organizer has enabled cancellations and the cutoff window hasn't passed.
 
 Volunteers **cannot**:
 - Access the admin interface (Dashboard, Events, Scanner, Settings).
 - View other volunteers' information.
-- Modify their signups after registering (they would need to contact the organizer).
