@@ -3,21 +3,15 @@ name: tests
 on:
   push:
     branches:
-      - main
       - staging
   pull_request:
     branches:
       - main
-      - staging
 
 jobs:
   ci:
     runs-on: ubuntu-latest
     environment: Testing
-    strategy:
-      matrix:
-        php-version: ['8.4', '8.5']
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -25,7 +19,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php-version }}
+          php-version: '8.5'
           tools: composer:v2
           coverage: xdebug
 
