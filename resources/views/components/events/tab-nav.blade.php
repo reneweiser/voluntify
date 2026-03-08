@@ -45,6 +45,26 @@
             {{ __('Announcements') }}
         </flux:navbar.item>
     @endcan
+    @can('manageGear', $event)
+        <flux:navbar.item
+            :href="route('events.gear', $event)"
+            :current="request()->routeIs('events.gear')"
+            icon="gift"
+            wire:navigate
+        >
+            {{ __('Gear') }}
+        </flux:navbar.item>
+    @endcan
+    @can('trackGearPickup', $event)
+        <flux:navbar.item
+            :href="route('events.gear-tracker', $event)"
+            :current="request()->routeIs('events.gear-tracker')"
+            icon="hand-raised"
+            wire:navigate
+        >
+            {{ __('Gear Pickup') }}
+        </flux:navbar.item>
+    @endcan
     @can('markAttendance', $event)
         <flux:navbar.item
             :href="route('events.attendance', $event)"

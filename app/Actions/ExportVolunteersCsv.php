@@ -9,7 +9,7 @@ use Illuminate\Support\LazyCollection;
 class ExportVolunteersCsv
 {
     /**
-     * @return LazyCollection<int, array{name: string, email: string, phone: ?string, shifts: string, arrived: string, attendance: string}>
+     * @return LazyCollection<int, array{name: string, email: string, phone: ?string, shifts: string, arrived: string, attendance: string, gear: string}>
      */
     public function execute(Event $event, ?string $search = null): LazyCollection
     {
@@ -20,6 +20,8 @@ class ExportVolunteersCsv
                 'shiftSignups.shift.volunteerJob',
                 'shiftSignups.attendanceRecord',
                 'eventArrivals' => fn ($q) => $q->where('event_id', $event->id),
+                'volunteerGear' => fn ($q) => $q->whereHas('gearItem', fn ($sq) => $sq->where('event_id', $event->id)),
+                'volunteerGear.gearItem',
             ])
             ->orderBy('name')
             ->cursor()
@@ -32,6 +34,9 @@ class ExportVolunteersCsv
                     ->implode('; '),
                 'arrived' => $volunteer->eventArrivals->isNotEmpty() ? 'Yes' : 'No',
                 'attendance' => $this->attendanceStatus($volunteer),
+                'gear' => $volunteer->volunteerGear
+                    ->map(fn ($g) => $g->size ? "{$g->gearItem->name} ({$g->size})" : $g->gearItem->name)
+                    ->implode('; '),
             ]);
     }
 

@@ -52,6 +52,19 @@ class EventPolicy
             ->exists();
     }
 
+    public function manageGear(User $user, Event $event): bool
+    {
+        return $this->isOrganizer($user, $event->organization);
+    }
+
+    public function trackGearPickup(User $user, Event $event): bool
+    {
+        return $event->organization->users()
+            ->where('user_id', $user->id)
+            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::VolunteerAdmin])
+            ->exists();
+    }
+
     public function scan(User $user, Event $event): bool
     {
         return $event->organization->users()

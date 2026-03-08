@@ -12,10 +12,12 @@ class ProcessVolunteerSignup
     public function __construct(
         private SignUpVolunteerForShifts $signUpAction,
         private SendEmailVerification $sendVerification,
+        private AssignGearToVolunteer $assignGear,
     ) {}
 
     /**
      * @param  array<int>  $shiftIds
+     * @param  array<int, string|null>|null  $gearSelections
      */
     public function execute(
         string $name,
@@ -23,6 +25,7 @@ class ProcessVolunteerSignup
         Event $event,
         array $shiftIds,
         ?string $phone = null,
+        ?array $gearSelections = null,
     ): SignupOutcome {
         $volunteer = Volunteer::firstOrCreate(
             ['email' => $email],
@@ -42,12 +45,16 @@ class ProcessVolunteerSignup
                 phone: $phone,
             );
 
+            if ($gearSelections !== null) {
+                $this->assignGear->execute($volunteer, $event, $gearSelections);
+            }
+
             VolunteerSignedUp::dispatch($volunteer, $event, count($shiftIds));
 
             return SignupOutcome::completed($result);
         }
 
-        $this->sendVerification->execute($volunteer, $event, $shiftIds);
+        $this->sendVerification->execute($volunteer, $event, $shiftIds, $gearSelections);
 
         return SignupOutcome::pendingVerification($email);
     }

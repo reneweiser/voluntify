@@ -109,6 +109,49 @@ it('skips verification for returning verified volunteer on new event', function 
     Notification::assertSentTo($volunteer, SignupConfirmation::class);
 });
 
+it('creates gear records for verified volunteer with gear selections', function () {
+    Volunteer::factory()->verified()->create(['email' => 'gear@example.com']);
+
+    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $badge = \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $outcome = $action->execute(
+        name: 'Gear Person',
+        email: 'gear@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+        phone: null,
+        gearSelections: [$tshirt->id => 'M'],
+    );
+
+    expect($outcome->type)->toBe(\App\Enums\SignupOutcomeType::Completed);
+    expect(\App\Models\VolunteerGear::count())->toBe(2);
+
+    $tshirtGear = \App\Models\VolunteerGear::where('event_gear_item_id', $tshirt->id)->first();
+    expect($tshirtGear->size)->toBe('M');
+});
+
+it('stores gear selections on verification token for unverified volunteer', function () {
+    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $action->execute(
+        name: 'Unverified Gear',
+        email: 'unverified-gear@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+        phone: null,
+        gearSelections: [$tshirt->id => 'L'],
+    );
+
+    $token = EmailVerificationToken::first();
+    expect($token->gear_selections)->toBe([$tshirt->id => 'L']);
+    expect(\App\Models\VolunteerGear::count())->toBe(0);
+});
+
 it('updates phone number for existing volunteer', function () {
     Volunteer::factory()->verified()->create([
         'email' => 'test@example.com',

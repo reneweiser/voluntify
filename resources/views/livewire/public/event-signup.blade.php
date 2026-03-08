@@ -111,6 +111,32 @@
                 <flux:callout variant="danger" class="mb-4">{{ $message }}</flux:callout>
             @enderror
 
+            {{-- Gear selection --}}
+            @if ($this->gearItems->isNotEmpty())
+                <div class="space-y-4 mb-8">
+                    <flux:heading size="lg">{{ __('Event Gear') }}</flux:heading>
+
+                    @foreach ($this->gearItems as $item)
+                        <div wire:key="gear-{{ $item->id }}" class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
+                            <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-1">{{ $item->name }}</div>
+                            @if ($item->requires_size)
+                                <flux:field>
+                                    <flux:label>{{ __('Size') }}</flux:label>
+                                    <flux:select wire:model="gearSelections.{{ $item->id }}" placeholder="{{ __('Select size...') }}">
+                                        @foreach ($item->available_sizes as $size)
+                                            <flux:select.option :value="$size">{{ $size }}</flux:select.option>
+                                        @endforeach
+                                    </flux:select>
+                                    <flux:error name="gearSelections.{{ $item->id }}" />
+                                </flux:field>
+                            @else
+                                <flux:text size="sm" class="text-zinc-500">{{ __('Included with your signup') }}</flux:text>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
             {{-- Volunteer info --}}
             <div class="space-y-4 mb-6">
                 <flux:heading size="lg">{{ __('Your Information') }}</flux:heading>

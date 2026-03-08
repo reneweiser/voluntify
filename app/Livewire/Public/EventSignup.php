@@ -6,6 +6,7 @@ use App\Actions\ProcessVolunteerSignup;
 use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -27,6 +28,9 @@ class EventSignup extends Component
     /** @var array<int> */
     public array $selectedShiftIds = [];
 
+    /** @var array<int, string|null> */
+    public array $gearSelections = [];
+
     public bool $signupComplete = false;
 
     public bool $pendingVerification = false;
@@ -41,6 +45,12 @@ class EventSignup extends Component
     }
 
     #[Computed]
+    public function gearItems(): Collection
+    {
+        return $this->event->gearItems()->get();
+    }
+
+    #[Computed]
     public function jobs(): \Illuminate\Database\Eloquent\Collection
     {
         return $this->event->volunteerJobs()
@@ -50,7 +60,14 @@ class EventSignup extends Component
 
     public function signup(): void
     {
-        $this->validate([
+        $gearRules = [];
+        foreach ($this->gearItems as $item) {
+            if ($item->requires_size) {
+                $gearRules['gearSelections.'.$item->id] = ['required', 'string', Rule::in($item->available_sizes)];
+            }
+        }
+
+        $this->validate(array_merge([
             'volunteerName' => ['required', 'string', 'max:255'],
             'volunteerEmail' => ['required', 'email', 'max:255'],
             'volunteerPhone' => ['nullable', 'string', 'max:20'],
@@ -62,17 +79,22 @@ class EventSignup extends Component
                     $this->event->volunteerJobs()->select('id'),
                 )),
             ],
-        ]);
+        ], $gearRules));
 
         $action = app(ProcessVolunteerSignup::class);
 
         try {
+            $gearSelections = $this->gearItems->isNotEmpty()
+                ? collect($this->gearSelections)->filter()->all()
+                : null;
+
             $outcome = $action->execute(
                 name: $this->volunteerName,
                 email: $this->volunteerEmail,
                 event: $this->event,
                 shiftIds: array_map('intval', $this->selectedShiftIds),
                 phone: $this->volunteerPhone ?: null,
+                gearSelections: $gearSelections,
             );
 
             if ($outcome->isPendingVerification()) {

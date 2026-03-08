@@ -70,6 +70,11 @@ class Volunteer extends Model
         return $this->hasOne(VolunteerPromotion::class);
     }
 
+    public function volunteerGear(): HasMany
+    {
+        return $this->hasMany(VolunteerGear::class);
+    }
+
     public function scopeForEvent(Builder $query, int $eventId): void
     {
         $query->whereHas('tickets', fn (Builder $q) => $q->where('event_id', $eventId));

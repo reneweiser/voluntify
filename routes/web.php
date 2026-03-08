@@ -7,6 +7,7 @@ use App\Livewire\Auth\ChangePassword;
 use App\Livewire\Events\AttendanceTracker;
 use App\Livewire\Events\EmailTemplateEditor;
 use App\Livewire\Events\EventAnnouncements;
+use App\Livewire\Events\EventGearSetup;
 use App\Livewire\Events\EventList;
 use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
@@ -58,6 +59,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('events/{eventId}/volunteers/{volunteerId}', VolunteerDetail::class)->name('events.volunteers.show');
     Route::livewire('events/{eventId}/attendance', AttendanceTracker::class)->name('events.attendance');
     Route::livewire('events/{eventId}/announcements', EventAnnouncements::class)->name('events.announcements');
+    Route::livewire('events/{eventId}/gear', EventGearSetup::class)->name('events.gear');
+    Route::livewire('events/{eventId}/gear-tracker', \App\Livewire\Events\GearTracker::class)->name('events.gear-tracker');
     Route::livewire('activity-log', ActivityFeed::class)->name('activity-log');
 
     // Scanner UI

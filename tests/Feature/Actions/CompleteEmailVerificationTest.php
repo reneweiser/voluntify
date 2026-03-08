@@ -117,6 +117,28 @@ it('throws ModelNotFoundException for invalid token', function () {
     expect(fn () => $action->execute('invalid-token'))->toThrow(ModelNotFoundException::class);
 });
 
+it('creates gear records from token gear selections on verification', function () {
+    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $badge = \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+
+    $plainToken = Str::random(64);
+    EmailVerificationToken::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'event_id' => $this->event->id,
+        'shift_ids' => [$this->shift->id],
+        'gear_selections' => [$tshirt->id => 'L'],
+        'token_hash' => HashedToken::fromPlaintext($plainToken)->hash,
+        'expires_at' => now()->addHours(24),
+    ]);
+
+    $action = app(CompleteEmailVerification::class);
+    $action->execute($plainToken);
+
+    expect(\App\Models\VolunteerGear::count())->toBe(2);
+    expect(\App\Models\VolunteerGear::where('event_gear_item_id', $tshirt->id)->first()->size)->toBe('L');
+    expect(\App\Models\VolunteerGear::where('event_gear_item_id', $badge->id)->first()->size)->toBeNull();
+});
+
 it('throws DomainException for archived event', function () {
     $archivedEvent = Event::factory()->for($this->org)->archived()->create();
     $job = VolunteerJob::factory()->for($archivedEvent)->create();

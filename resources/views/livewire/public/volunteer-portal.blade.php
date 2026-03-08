@@ -58,6 +58,33 @@
             @endif
         </div>
 
+        {{-- Event Gear --}}
+        @if ($this->gearAssignments->isNotEmpty())
+            <div class="mb-8">
+                <flux:heading size="lg" class="mb-3">{{ __('Event Gear') }}</flux:heading>
+                <div class="space-y-3">
+                    @foreach ($this->gearAssignments as $gear)
+                        <div wire:key="gear-{{ $gear->id }}" class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4">
+                            <div>
+                                <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $gear->gearItem->name }}</div>
+                                <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ $gear->gearItem->event->name }}
+                                    @if ($gear->size)
+                                        &middot; {{ __('Size:') }} {{ $gear->size }}
+                                    @endif
+                                </div>
+                            </div>
+                            @if ($gear->picked_up_at)
+                                <flux:badge size="sm" color="emerald">{{ __('Picked Up') }}</flux:badge>
+                            @else
+                                <flux:badge size="sm" color="zinc">{{ __('Not Picked Up') }}</flux:badge>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         {{-- Announcements --}}
         <div class="mb-8">
             <flux:heading size="lg" class="mb-3">{{ __('Announcements') }}</flux:heading>

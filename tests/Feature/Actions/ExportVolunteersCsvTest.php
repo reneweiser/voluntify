@@ -64,6 +64,31 @@ it('respects search filter', function () {
         ->and($rows[0]['name'])->toBe('Alice Match');
 });
 
+it('includes gear column with item names and sizes', function () {
+    $volunteer = Volunteer::factory()->create(['name' => 'Gear Volunteer']);
+    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
+
+    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $badge = \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+
+    \App\Models\VolunteerGear::factory()->create([
+        'event_gear_item_id' => $tshirt->id,
+        'volunteer_id' => $volunteer->id,
+        'size' => 'L',
+    ]);
+    \App\Models\VolunteerGear::factory()->create([
+        'event_gear_item_id' => $badge->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $action = new ExportVolunteersCsv;
+    $rows = $action->execute($this->event)->toArray();
+
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['gear'])->toContain('T-Shirt (L)')
+        ->and($rows[0]['gear'])->toContain('Badge');
+});
+
 it('handles empty list', function () {
     $action = new ExportVolunteersCsv;
     $rows = $action->execute($this->event)->toArray();

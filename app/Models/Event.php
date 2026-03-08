@@ -85,6 +85,11 @@ class Event extends Model
         return $this->hasMany(EventAnnouncement::class);
     }
 
+    public function gearItems(): HasMany
+    {
+        return $this->hasMany(EventGearItem::class)->orderBy('sort_order');
+    }
+
     public function isCancellationAllowed(): bool
     {
         return $this->cancellation_cutoff_hours !== null;
