@@ -46,8 +46,7 @@
                             @else
                                 <flux:select
                                     size="sm"
-                                    wire:change="updateRole({{ $member->id }}, $event.target.value)"
-                                    :value="$member->pivot->role->value"
+                                    wire:model.live="memberRoles.{{ $member->id }}"
                                 >
                                     <flux:select.option value="organizer">{{ __('Organizer') }}</flux:select.option>
                                     <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>
@@ -58,44 +57,41 @@
                                     variant="danger"
                                     size="sm"
                                     icon="trash"
-                                    wire:click="removeMember({{ $member->id }})"
-                                    wire:confirm="{{ __('Are you sure you want to remove this member?') }}"
+                                    wire:click="confirmRemoveMember({{ $member->id }})"
                                 />
                             @endif
                         </div>
                     </div>
                 @endforeach
             </div>
+
+            <flux:modal wire:model="showRemoveModal" focusable class="max-w-lg">
+                @if ($this->memberToRemove)
+                    <form wire:submit="removeMember" class="space-y-6">
+                        <div>
+                            <flux:heading size="lg">{{ __('Remove team member') }}</flux:heading>
+
+                            <flux:subheading>
+                                {{ __('You are about to remove :name from this organization. This action cannot be undone.', ['name' => $this->memberToRemove->name]) }}
+                            </flux:subheading>
+                        </div>
+
+                        <flux:input
+                            wire:model="removeConfirmEmail"
+                            :label="__('Type :email to confirm', ['email' => $this->memberToRemove->email])"
+                        />
+
+                        <div class="flex justify-end space-x-2 rtl:space-x-reverse">
+                            <flux:modal.close>
+                                <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
+                            </flux:modal.close>
+
+                            <flux:button variant="danger" type="submit">{{ __('Remove member') }}</flux:button>
+                        </div>
+                    </form>
+                @endif
+            </flux:modal>
         </div>
 
-        <flux:separator class="mt-8" />
-
-        {{-- AI API Key --}}
-        <div class="mt-8">
-            <flux:heading size="sm">{{ __('AI API key') }}</flux:heading>
-            <flux:text size="sm" class="mt-1">{{ __('Used for AI-powered event creation features.') }}</flux:text>
-
-            @if ($this->hasAiApiKey)
-                <div class="mt-4 flex items-center gap-4">
-                    <flux:input :value="$this->maskedAiApiKey" disabled class="flex-1" />
-                    <flux:button
-                        variant="danger"
-                        size="sm"
-                        wire:click="removeAiApiKey"
-                        wire:confirm="{{ __('Are you sure you want to remove the API key?') }}"
-                    >
-                        {{ __('Remove') }}
-                    </flux:button>
-                </div>
-            @else
-                <form wire:submit="saveAiApiKey" class="mt-4 space-y-4">
-                    <flux:input wire:model="aiApiKey" :label="__('API key')" type="password" required />
-                    <flux:button variant="primary" type="submit">{{ __('Save API key') }}</flux:button>
-                </form>
-            @endif
-
-            <x-action-message on="ai-key-saved">{{ __('API key saved.') }}</x-action-message>
-            <x-action-message on="ai-key-removed">{{ __('API key removed.') }}</x-action-message>
-        </div>
     </x-settings.layout>
 </section>

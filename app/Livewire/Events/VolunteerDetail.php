@@ -7,7 +7,6 @@ use App\Enums\StaffRole;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\EventArrival;
-use App\Models\Organization;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -28,7 +27,7 @@ class VolunteerDetail extends Component
 
     public function mount(int $eventId, int $volunteerId): void
     {
-        $this->event = app(Organization::class)->events()->findOrFail($eventId);
+        $this->event = currentOrganization()->events()->findOrFail($eventId);
 
         Gate::authorize('view', $this->event);
 

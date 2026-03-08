@@ -34,18 +34,14 @@ class EventList extends Component
     public bool $showCreateModal = false;
 
     #[Computed]
-    public function organization(): ?Organization
+    public function organization(): Organization
     {
-        return app()->bound(Organization::class) ? app(Organization::class) : null;
+        return currentOrganization();
     }
 
     #[Computed]
     public function events(): \Illuminate\Database\Eloquent\Collection
     {
-        if (! $this->organization) {
-            return new \Illuminate\Database\Eloquent\Collection;
-        }
-
         $query = $this->organization->events()
             ->withCount('volunteers')
             ->latest('starts_at');
@@ -60,10 +56,6 @@ class EventList extends Component
     #[Computed]
     public function canCreateEvents(): bool
     {
-        if (! $this->organization) {
-            return false;
-        }
-
         return Gate::allows('create', [Event::class, $this->organization]);
     }
 

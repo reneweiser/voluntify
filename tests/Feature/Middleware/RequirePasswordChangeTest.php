@@ -19,7 +19,7 @@ it('allows access to change-password route when must change password', function 
 });
 
 it('does not redirect users who do not need to change password', function () {
-    $user = User::factory()->create();
+    ['user' => $user] = createUserWithOrganization();
 
     $this->actingAs($user)
         ->get(route('dashboard'))

@@ -120,25 +120,6 @@
 - Historical attendance data aggregated per volunteer
 - Real-time shift fill status visible to organizer
 
-### Feature 6: AI-Powered Event Creation
-
-**Addresses**: PP-3 (coordinator tech support), PR-1 (unified workflow)
-**Priority**: Should Have
-
-**User stories**:
-- As an organizer, I want to describe an event in natural language and have the system create it with jobs and shifts, so I can skip filling out multiple forms
-- As an organizer, I want to iteratively refine the event through conversation ("add another shift to the setup crew"), so I can adjust without navigating back and forth
-- As an organizer, I want to review what the AI created before publishing, so I stay in control
-
-**Key capabilities**:
-- In-app chat interface for organizers (browser-based, no external tools)
-- Natural language → creates event, volunteer jobs, and shifts via the same Actions as the form UI
-- Conversational — supports follow-up requests (add/modify/remove jobs and shifts)
-- Events created as draft — organizer explicitly publishes
-- Powered by Claude API (via Vercel AI Gateway), using the organization's own API key
-- Optional — organizers without a configured API key use the traditional form UI
-- The AI chat and form UI produce identical data (same Actions, same domain model)
-
 ## Pain Point Traceability
 
 | Feature | Pain Points Addressed | JTBD Fulfilled |
@@ -148,7 +129,6 @@
 | Offline QR Scanning | PP-1, FP-1, PR-1, SP-2 | Digital entrance check-in that works offline; affordable scanning |
 | Pre-Shift Notifications | PR-1, PP-3 | Job-specific info reaches volunteers automatically |
 | Shift Attendance Verification | PR-2, PR-3 | Separate event arrival from shift attendance; detect no-shows |
-| AI-Powered Event Creation | PP-3, PR-1 | Organizer creates events through conversation; no form fatigue |
 
 ## Domain Model
 
@@ -156,7 +136,7 @@
 
 | Entity | Description | Key Attributes |
 |---|---|---|
-| `organizations` | The group or nonprofit that runs events | `id`, `name`, `slug`, `ai_api_key` (encrypted, nullable — stores the org's AI API key; post-MVP) |
+| `organizations` | The group or nonprofit that runs events | `id`, `name`, `slug` |
 | `users` | Authenticated accounts for staff roles (Organizer, Volunteer Admin, Entrance Staff) | `id`, `name`, `email`, `password`, `must_change_password` |
 | `organization_user` | Pivot table: user role per organization | `organization_id`, `user_id`, `role` (enum: organizer, volunteer_admin, entrance_staff) |
 | `events` | An event run by an organization | `id`, `organization_id`, `name`, `slug`, `public_token`, `description`, `location`, `starts_at`, `ends_at`, `status` (enum: draft, published, archived), `title_image_path` (nullable — hero image stored on public disk) |
@@ -170,6 +150,7 @@
 | `magic_link_tokens` | Hashed tokens for passwordless ticket page access | `id`, `volunteer_id`, `token_hash` (SHA-256), `expires_at` |
 | `volunteer_promotions` | Audit log when a volunteer is promoted to a staff role | `id`, `volunteer_id`, `user_id` (newly created), `promoted_by` (user_id), `role`, `promoted_at` |
 | `email_templates` | Customizable email templates per event (M2.1) | `id`, `event_id`, `type` (enum: signup_confirmation, pre_shift_reminder_24h, pre_shift_reminder_4h), `subject`, `body` (text, supports `{{placeholder}}` variables), unique on `[event_id, type]` |
+| `email_verification_tokens` | GDPR double opt-in tokens for volunteer signup (cross-cutting) | `id`, `volunteer_id`, `event_id`, `shift_ids` (JSON), `token_hash` (SHA-256), `expires_at` (24h) |
 
 ### Relationships
 
@@ -188,6 +169,7 @@
 [volunteers] 1───N [magic_link_tokens]
 [volunteers] 1───0..1 [volunteer_promotions]
 [events] 1───N [email_templates]
+[volunteers] 1───N [email_verification_tokens]
 ```
 
 ### Ubiquitous Language Glossary
@@ -211,9 +193,7 @@
 | **Volunteer Admin** | A user role responsible for on-the-ground shift management. Can mark attendance. | Limited scope: sees their assigned event's volunteers and shifts. Cannot manage team or org settings. |
 | **Entrance Staff** | A user role responsible for scanning tickets and recording event arrivals at the venue entrance. | Uses the QR scanner PWA. Can also do manual volunteer lookup. Cannot manage shifts or attendance. |
 | **Offline Scanning** | The ability to validate QR tickets and record arrivals without an internet connection. | Achieved via JWT validation on-device + IndexedDB for volunteer data cache and arrival queue. Syncs when connectivity returns. |
-| **AI Chat** | An in-app conversational interface that lets organizers create events by describing them in natural language. Uses Claude API tool use to call the same Actions as the form UI. | Optional feature, gated on the organization having an AI API key configured. Only available to the Organizer role. |
-| **AI Gateway** | A proxy service (Vercel AI Gateway) that routes AI API requests. Each organization provides its own API key. | The gateway URL is configured at the application level. The API key is stored encrypted per organization. Organizers can configure/remove their key via organization settings. |
 
 ## User Validation Notes
 
-Product name "Voluntify" was pre-selected by the user as the project name. The value proposition and feature set directly reflect the user's requirements document, which specified three core workflows: volunteer recruiting (passwordless), ticket distribution (QR), and entrance validation (offline scanning). The domain model's 13 entities were designed to support the explicit requirement of separating "arrived at event" from "arrived at shift" tracking, and the `volunteer_jobs` naming convention addresses the user's Laravel tech stack (avoiding `jobs` table collision).
+Product name "Voluntify" was pre-selected by the user as the project name. The value proposition and feature set directly reflect the user's requirements document, which specified three core workflows: volunteer recruiting (passwordless), ticket distribution (QR), and entrance validation (offline scanning). The domain model's 15 entities were designed to support the explicit requirement of separating "arrived at event" from "arrived at shift" tracking, and the `volunteer_jobs` naming convention addresses the user's Laravel tech stack (avoiding `jobs` table collision).

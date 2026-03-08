@@ -47,14 +47,20 @@ it('defaults to first organization when no session preference', function () {
     expect(app(Organization::class)->id)->toBe($orgA->id);
 });
 
-it('handles user with no organizations', function () {
+it('resolves inviting org when session preference is set', function () {
     $user = User::factory()->create();
+    $personalOrg = Organization::factory()->create(['name' => "User's Organization"]);
+    $invitingOrg = Organization::factory()->create(['name' => 'Acme Corp']);
+
+    $personalOrg->users()->attach($user, ['role' => StaffRole::Organizer]);
+    $invitingOrg->users()->attach($user, ['role' => StaffRole::VolunteerAdmin]);
 
     $this->actingAs($user)
+        ->withSession(['current_organization_id' => $invitingOrg->id])
         ->get(route('dashboard'))
         ->assertOk();
 
-    expect(app()->bound(Organization::class))->toBeFalse();
+    expect(app(Organization::class)->id)->toBe($invitingOrg->id);
 });
 
 it('is registered as Livewire persistent middleware', function () {

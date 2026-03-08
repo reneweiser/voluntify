@@ -17,7 +17,6 @@ class Organization extends Model
     protected $fillable = [
         'name',
         'slug',
-        'ai_api_key',
         'smtp_host',
         'smtp_port',
         'smtp_username',
@@ -29,14 +28,12 @@ class Organization extends Model
 
     /** @var list<string> */
     protected $hidden = [
-        'ai_api_key',
         'smtp_password',
     ];
 
     protected function casts(): array
     {
         return [
-            'ai_api_key' => 'encrypted',
             'smtp_password' => 'encrypted',
             'smtp_encryption' => SmtpEncryption::class,
         ];

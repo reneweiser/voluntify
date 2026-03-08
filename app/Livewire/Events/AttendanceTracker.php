@@ -5,7 +5,6 @@ namespace App\Livewire\Events;
 use App\Actions\RecordAttendance;
 use App\Enums\AttendanceStatus;
 use App\Models\Event;
-use App\Models\Organization;
 use App\Models\ShiftSignup;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -22,7 +21,7 @@ class AttendanceTracker extends Component
 
     public function mount(int $eventId): void
     {
-        $this->event = app(Organization::class)->events()->findOrFail($eventId);
+        $this->event = currentOrganization()->events()->findOrFail($eventId);
 
         Gate::authorize('markAttendance', $this->event);
     }

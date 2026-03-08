@@ -6,7 +6,6 @@ use App\Actions\DeleteEmailTemplate;
 use App\Actions\SaveEmailTemplate;
 use App\Enums\EmailTemplateType;
 use App\Models\Event;
-use App\Models\Organization;
 use App\Services\EmailTemplateRenderer;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -32,7 +31,7 @@ class EmailTemplateEditor extends Component
 
     public function mount(int $eventId): void
     {
-        $this->event = app(Organization::class)->events()->findOrFail($eventId);
+        $this->event = currentOrganization()->events()->findOrFail($eventId);
         Gate::authorize('update', $this->event);
 
         $this->selectedType = EmailTemplateType::SignupConfirmation->value;

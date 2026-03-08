@@ -3,7 +3,6 @@
 namespace App\Livewire\Logs;
 
 use App\Enums\StaffRole;
-use App\Models\Organization;
 use Illuminate\Support\Facades\Process;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -20,7 +19,7 @@ class LogViewer extends Component
 
     public function boot(): void
     {
-        $organization = app(Organization::class);
+        $organization = currentOrganization();
 
         $hasAccess = $organization->users()
             ->where('user_id', auth()->id())

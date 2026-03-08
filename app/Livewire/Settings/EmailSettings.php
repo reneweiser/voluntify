@@ -51,7 +51,7 @@ class EmailSettings extends Component
     #[Computed]
     public function organization(): Organization
     {
-        return app(Organization::class);
+        return currentOrganization();
     }
 
     #[Computed]

@@ -10,7 +10,6 @@ use App\Actions\UpdateShift;
 use App\Actions\UpdateVolunteerJob;
 use App\Exceptions\HasSignupsException;
 use App\Models\Event;
-use App\Models\Organization;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -48,7 +47,7 @@ class JobsAndShiftsManager extends Component
 
     public function mount(int $eventId): void
     {
-        $this->event = app(Organization::class)->events()->findOrFail($eventId);
+        $this->event = currentOrganization()->events()->findOrFail($eventId);
 
         Gate::authorize('view', $this->event);
     }

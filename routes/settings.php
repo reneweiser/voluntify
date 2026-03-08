@@ -9,13 +9,10 @@ use App\Livewire\Settings\TwoFactor;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
-Route::prefix('admin')->middleware(['auth', 'resolve-org'])->group(function () {
+Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(function () {
     Route::redirect('settings', 'admin/settings/profile');
 
     Route::livewire('settings/profile', Profile::class)->name('profile.edit');
-});
-
-Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(function () {
     Route::livewire('settings/password', Password::class)->name('user-password.edit');
     Route::livewire('settings/appearance', Appearance::class)->name('appearance.edit');
     Route::livewire('settings/team', TeamManagement::class)->name('settings.team');

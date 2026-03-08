@@ -2,6 +2,7 @@
 
 > **Amended**: See [amendments/001-status-sync-m1-m2-m21-m3p1.md](amendments/001-status-sync-m1-m2-m21-m3p1.md) -- Status synced with M1, M2, M2.1, M3 Part 1 implementation
 > **Amended**: See [amendments/002-m3p2-gdpr-email-sync.md](amendments/002-m3p2-gdpr-email-sync.md) -- M3 Part 2 completion, GDPR double opt-in, branded email templates
+> **Amended**: See [amendments/003-m4-m5-m6-crosscutting-sync.md](amendments/003-m4-m5-m6-crosscutting-sync.md) -- M4, M5, M6 completion & cross-cutting features sync
 
 **Date**: 2026-03-01
 **Status**: Active
@@ -73,7 +74,7 @@ Seven flows drive the product. Full step-by-step tables are in `planning/design/
 | Queue | Laravel Queue (database driver) | Emails, notifications |
 | Database | SQLite (dev) / MySQL or PostgreSQL (prod) | |
 
-Full architecture details (QR/JWT, offline sync, AI chat, middleware) in `planning/design/app-design-spec.md` § Tech Stack.
+Full architecture details (QR/JWT, offline sync, middleware) in `planning/design/app-design-spec.md` § Tech Stack.
 
 ## Architecture Overview
 
@@ -109,6 +110,10 @@ Routes / Middleware
 | `RequirePasswordChange` | Redirects to `/change-password` if `must_change_password` is true |
 | `ResolveOrganization` | Resolves current org from user memberships, binds as typed singleton (`Organization::class`) |
 
+### Per-Organization Email
+
+`OrganizationMailerService` dynamically registers a named SMTP mailer (`org-{id}`) from the organization's SMTP settings (host, port, credentials, encryption). Falls back to the app default mailer when no SMTP is configured. Volunteer-facing notifications apply the `UsesOrganizationMailer` trait to route through the correct mailer.
+
 ## Feature Breakdown
 
 ### Milestone 1: Foundation
@@ -120,7 +125,7 @@ Routes / Middleware
 | 03 | Organization management | fullstack | Must Have | — |
 | 04 | App layout & navigation | frontend | Must Have | SP-2 |
 
-**Outcome**: Authenticated staff can log in, belong to an organization, navigate the app shell. All 13 entities exist with factories ready for TDD.
+**Outcome**: Authenticated staff can log in, belong to an organization, navigate the app shell. All 15 entities exist with factories ready for TDD.
 
 ### Milestone 2: Event Setup & Volunteer Signup
 
@@ -183,15 +188,7 @@ Note: Features 09 and 10 provide the backend Actions (`GenerateTicket`, `Generat
 | 20 | Dashboard analytics | fullstack | Could Have | PR-3 |
 | 21 | Browser integration tests | testing | Should Have | — |
 
-**Outcome**: Quality-of-life features and browser-level tests for PWA flows.
-
-### Post-MVP: AI Event Creation
-
-| # | Feature | Type | Priority | Pain points |
-|---|---|---|---|---|
-| 08 | AI-powered event creation | fullstack | Should Have | PP-3, PR-1 |
-
-**Outcome**: Organizer creates events via natural language chat. Uses same Actions as form UI. BYOK (Bring Your Own Key) per organization. Requires Anthropic PHP SDK + Vercel AI Gateway. Organization AI API keys stored encrypted (`ai_api_key` column).
+**Outcome**: Event cloning, volunteer promotion flow, CSV export, and dashboard analytics shipped. Playwright MCP runbook covers 4 browser test scenarios.
 
 ## Cross-Cutting Concerns
 
@@ -243,8 +240,12 @@ Every feature follows **red-green-refactor**. Each feature's `tasks.md` interlea
 
 All emails are dispatched as queued notifications (database queue driver):
 - `SignupConfirmation` — event details + magic link to ticket
+- `EmailVerification` — GDPR double opt-in verification link
 - `PreShiftReminder` — 24h and 4h before shift with job-specific instructions
+- `StaffInvitation` — team member invite with temp password
 - `VolunteerPromoted` — temp password + login link
+
+Volunteer-facing notifications use the `UsesOrganizationMailer` trait to route through per-org SMTP when configured (see `OrganizationMailerService`).
 
 **Customizable Templates (M2.1)**: Organizers can customize subject and body of automated emails per event via the `email_templates` table. The `EmailTemplateRenderer` service resolves custom templates by `[event_id, type]`, falling back to built-in defaults. Templates support `{{placeholder}}` variables: `volunteer_name`, `event_name`, `job_name`, `shift_date`, `shift_time`, `event_location`. Template types: `signup_confirmation`, `pre_shift_reminder_24h`, `pre_shift_reminder_4h`.
 
@@ -257,7 +258,7 @@ All emails are dispatched as queued notifications (database queue driver):
 
 ## Domain Model
 
-14 entities — full schema in `planning/design/app-concept.md` § Domain Model. Ubiquitous language glossary in the same section.
+15 entities — full schema in `planning/design/app-concept.md` § Domain Model. Ubiquitous language glossary in the same section.
 
 ```
 [organizations] 1───N [events]
@@ -274,4 +275,5 @@ All emails are dispatched as queued notifications (database queue driver):
 [volunteers] 0..1───1 [users] (when promoted)
 [volunteers] 1───N [magic_link_tokens]
 [volunteers] 1───0..1 [volunteer_promotions]
+[volunteers] 1───N [email_verification_tokens]
 ```

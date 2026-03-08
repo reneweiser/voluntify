@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->text('ai_api_key')->nullable();
             $table->timestamps();
         });
     }

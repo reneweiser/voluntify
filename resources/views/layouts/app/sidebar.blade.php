@@ -6,7 +6,7 @@
     <body class="min-h-screen bg-slate-50 dark:bg-zinc-800">
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+                <livewire:organization-switcher />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
@@ -19,8 +19,7 @@
                         {{ __('Events') }}
                     </flux:sidebar.item>
                     @php
-                        $org = app()->bound(\App\Models\Organization::class) ? app(\App\Models\Organization::class) : null;
-                        $canScan = $org && $org->users()
+                        $canScan = currentOrganization()->users()
                             ->where('user_id', auth()->id())
                             ->wherePivotIn('role', [\App\Enums\StaffRole::Organizer, \App\Enums\StaffRole::EntranceStaff])
                             ->exists();
@@ -30,7 +29,7 @@
                             {{ __('Scanner') }}
                         </flux:sidebar.item>
                     @endif
-                    @if ($org && $org->users()->where('user_id', auth()->id())->wherePivot('role', \App\Enums\StaffRole::Organizer)->exists())
+                    @if (currentOrganization()->users()->where('user_id', auth()->id())->wherePivot('role', \App\Enums\StaffRole::Organizer)->exists())
                         <flux:sidebar.item icon="document-text" :href="route('logs.index')" :current="request()->routeIs('logs.*')" wire:navigate>
                             {{ __('Logs') }}
                         </flux:sidebar.item>

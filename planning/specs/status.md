@@ -2,6 +2,7 @@
 
 > **Amended**: See [amendments/001-status-sync-m1-m2-m21-m3p1.md](amendments/001-status-sync-m1-m2-m21-m3p1.md) -- Sync status with implemented milestones
 > **Amended**: See [amendments/002-m3p2-gdpr-email-sync.md](amendments/002-m3p2-gdpr-email-sync.md) -- M3 Part 2 completion, GDPR double opt-in, branded email templates
+> **Amended**: See [amendments/003-m4-m5-m6-crosscutting-sync.md](amendments/003-m4-m5-m6-crosscutting-sync.md) -- M4, M5, M6 completion & cross-cutting features sync
 
 **Last updated**: 2026-03-07
 
@@ -9,9 +10,9 @@
 
 | Status | Count |
 |---|---|
-| Done | 21 |
+| Done | 31 |
 | In Progress | 0 |
-| Not Started | 5 |
+| Not Started | 0 |
 
 ## Features
 
@@ -67,17 +68,11 @@
 
 | # | Feature | Type | Priority | Status | Spec |
 |---|---|---|---|---|---|
-| 17 | Event cloning | fullstack | Could Have | Not Started | -- |
-| 18 | Volunteer promotion | fullstack | Could Have | Not Started | -- |
-| 19 | CSV export | backend | Could Have | Not Started | -- |
-| 20 | Dashboard analytics | fullstack | Could Have | Not Started | -- |
+| 17 | Event cloning | fullstack | Could Have | Done | CloneEvent action; replicates event + jobs + shifts as draft |
+| 18 | Volunteer promotion | fullstack | Could Have | Done | PromoteVolunteer action, VolunteerPromoted notification, temp password flow |
+| 19 | CSV export | backend | Could Have | Done | ExportVolunteersCsv action, VolunteerExportController; streamed lazy collection |
+| 20 | Dashboard analytics | fullstack | Could Have | Done | noShowRate, attendanceSummary, recentPastEvents, shiftsNeedingAttention on Dashboard |
 | 21 | Browser integration tests | testing | Should Have | Done | Playwright MCP runbook with 4 scenarios |
-
-### Post-MVP: AI Event Creation
-
-| # | Feature | Type | Priority | Status | Notes |
-|---|---|---|---|---|---|
-| 08 | AI-powered event creation | fullstack | Should Have | Not Started | BYOK storage infrastructure already built (ai_api_key on organizations, TeamManagement UI) |
 
 ### Cross-Cutting: GDPR & Email
 
@@ -85,3 +80,14 @@
 |---|---|---|---|---|---|
 | 25 | GDPR double opt-in email verification | fullstack | Must Have | Done | ProcessVolunteerSignup gates signup on email verification; EmailVerificationToken model, SendEmailVerification + CompleteEmailVerification actions, EmailVerificationPage component at /verify-email/{token} |
 | 26 | Voluntify-branded email templates | frontend | Should Have | Done | Custom Mailable styling applied to all outgoing notifications (SignupConfirmation, EmailVerification) |
+
+### Cross-Cutting: Infrastructure & Settings
+
+| # | Feature | Type | Priority | Status | Notes |
+|---|---|---|---|---|---|
+| 27 | Per-organization SMTP settings | fullstack | Should Have | Done | OrganizationMailerService, SmtpEncryption enum, EmailSettings component, SendTestEmail action, UsesOrganizationMailer trait |
+| 28 | Log viewer | fullstack | Could Have | Done | LogViewer component at /admin/logs for Organizers |
+| 29 | Organization switching | fullstack | Should Have | Done | OrganizationSwitcher component, CreateOrganization action, currentOrganization() helper, BackfillPersonalOrganizations command |
+| 30 | Scanner event select | fullstack | Should Have | Done | ScannerEventSelect component; 2-step scanner flow (select event, then scan) |
+| 31 | Delete user account | fullstack | Should Have | Done | DeleteUserForm component with password confirmation |
+| 32 | Two-factor authentication UI | fullstack | Should Have | Done | TwoFactor + RecoveryCodes components; uses Fortify 2FA backend |

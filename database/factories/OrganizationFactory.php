@@ -20,14 +20,6 @@ class OrganizationFactory extends Factory
         return [
             'name' => $name,
             'slug' => Str::slug($name),
-            'ai_api_key' => null,
         ];
-    }
-
-    public function withAiKey(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'ai_api_key' => 'sk-test-'.Str::random(40),
-        ]);
     }
 }

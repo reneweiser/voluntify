@@ -20,18 +20,14 @@ use Livewire\Component;
 class Dashboard extends Component
 {
     #[Computed]
-    public function organization(): ?Organization
+    public function organization(): Organization
     {
-        return app()->bound(Organization::class) ? app(Organization::class) : null;
+        return currentOrganization();
     }
 
     #[Computed]
     public function userRole(): ?string
     {
-        if (! $this->organization) {
-            return null;
-        }
-
         return $this->organization->users()
             ->where('user_id', auth()->id())
             ->first()
@@ -43,10 +39,6 @@ class Dashboard extends Component
     #[Computed]
     public function upcomingEventsCount(): int
     {
-        if (! $this->organization) {
-            return 0;
-        }
-
         return $this->organization->events()
             ->published()
             ->where('starts_at', '>=', now())
@@ -56,10 +48,6 @@ class Dashboard extends Component
     #[Computed]
     public function totalVolunteersCount(): int
     {
-        if (! $this->organization) {
-            return 0;
-        }
-
         return Volunteer::whereHas(
             'tickets',
             fn ($q) => $q->whereIn('event_id', $this->organization->events()->select('id'))
@@ -69,10 +57,6 @@ class Dashboard extends Component
     #[Computed]
     public function shiftsNeedingAttention(): int
     {
-        if (! $this->organization) {
-            return 0;
-        }
-
         return Shift::whereHas('volunteerJob', fn ($q) => $q->whereIn(
             'event_id',
             $this->organization->events()
@@ -91,10 +75,6 @@ class Dashboard extends Component
     #[Computed]
     public function upcomingEvents(): Collection
     {
-        if (! $this->organization) {
-            return new Collection;
-        }
-
         return $this->organization->events()
             ->published()
             ->where('starts_at', '>=', now())
@@ -107,20 +87,12 @@ class Dashboard extends Component
     #[Computed]
     public function canCreateEvents(): bool
     {
-        if (! $this->organization) {
-            return false;
-        }
-
         return Gate::allows('create', [Event::class, $this->organization]);
     }
 
     #[Computed]
     public function noShowRate(): float
     {
-        if (! $this->organization) {
-            return 0;
-        }
-
         $eventIds = $this->organization->events()->select('id');
 
         $total = AttendanceRecord::whereHas(
@@ -146,10 +118,6 @@ class Dashboard extends Component
     #[Computed]
     public function attendanceSummary(): array
     {
-        if (! $this->organization) {
-            return ['on_time' => 0, 'late' => 0, 'no_show' => 0, 'unmarked' => 0];
-        }
-
         $eventIds = $this->organization->events()->select('id');
 
         $totalSignups = ShiftSignup::whereHas(
@@ -180,10 +148,6 @@ class Dashboard extends Component
     #[Computed]
     public function recentPastEvents(): Collection
     {
-        if (! $this->organization) {
-            return new Collection;
-        }
-
         return $this->organization->events()
             ->published()
             ->where('ends_at', '<', now())

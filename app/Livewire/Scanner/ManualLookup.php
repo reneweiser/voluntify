@@ -6,7 +6,6 @@ use App\Actions\RecordArrival;
 use App\Enums\ArrivalMethod;
 use App\Enums\StaffRole;
 use App\Models\Event;
-use App\Models\Organization;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
@@ -27,7 +26,7 @@ class ManualLookup extends Component
 
     public function mount(int $eventId): void
     {
-        $organization = app(Organization::class);
+        $organization = currentOrganization();
 
         $hasAccess = $organization->users()
             ->where('user_id', auth()->id())

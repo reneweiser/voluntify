@@ -39,13 +39,13 @@ it('lists organization members', function () {
         ->assertSee($member->name);
 });
 
-it('updates a member role', function () {
+it('updates a member role via model binding', function () {
     $member = User::factory()->create();
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
         ->test(TeamManagement::class)
-        ->call('updateRole', $member->id, 'entrance_staff');
+        ->set("memberRoles.{$member->id}", 'entrance_staff');
 
     expect($this->org->users()->where('user_id', $member->id)->first()->pivot->role)
         ->toBe(StaffRole::EntranceStaff);
@@ -58,13 +58,18 @@ it('prevents self role change', function () {
         ->assertHasErrors('role');
 });
 
-it('removes a member', function () {
+it('removes a member via email confirmation modal', function () {
     $member = User::factory()->create();
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
         ->test(TeamManagement::class)
-        ->call('removeMember', $member->id);
+        ->call('confirmRemoveMember', $member->id)
+        ->assertSet('showRemoveModal', true)
+        ->assertSet('removeMemberId', $member->id)
+        ->set('removeConfirmEmail', $member->email)
+        ->call('removeMember')
+        ->assertSet('showRemoveModal', false);
 
     expect($this->org->users()->where('user_id', $member->id)->exists())->toBeFalse();
 });
@@ -72,8 +77,38 @@ it('removes a member', function () {
 it('prevents self removal', function () {
     Livewire::actingAs($this->organizer)
         ->test(TeamManagement::class)
-        ->call('removeMember', $this->organizer->id)
-        ->assertHasErrors('member');
+        ->call('confirmRemoveMember', $this->organizer->id)
+        ->assertHasErrors('member')
+        ->assertSet('showRemoveModal', false);
+});
+
+it('rejects removal when email does not match', function () {
+    $member = User::factory()->create();
+    $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(TeamManagement::class)
+        ->call('confirmRemoveMember', $member->id)
+        ->set('removeConfirmEmail', 'wrong@example.com')
+        ->call('removeMember')
+        ->assertHasErrors('removeConfirmEmail')
+        ->assertSet('showRemoveModal', true);
+
+    expect($this->org->users()->where('user_id', $member->id)->exists())->toBeTrue();
+});
+
+it('requires email to confirm removal', function () {
+    $member = User::factory()->create();
+    $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(TeamManagement::class)
+        ->call('confirmRemoveMember', $member->id)
+        ->set('removeConfirmEmail', '')
+        ->call('removeMember')
+        ->assertHasErrors('removeConfirmEmail');
+
+    expect($this->org->users()->where('user_id', $member->id)->exists())->toBeTrue();
 });
 
 it('invites a new user', function () {
@@ -91,7 +126,11 @@ it('invites a new user', function () {
     expect($newUser)->not->toBeNull()
         ->and($newUser->must_change_password)->toBeTrue()
         ->and($newUser->email_verified_at)->not->toBeNull()
-        ->and($this->org->users()->where('user_id', $newUser->id)->exists())->toBeTrue();
+        ->and($this->org->users()->where('user_id', $newUser->id)->exists())->toBeTrue()
+        ->and($newUser->organizations)->toHaveCount(2);
+
+    $personalOrg = $newUser->organizations->first(fn ($o) => $o->id !== $this->org->id);
+    expect($personalOrg->name)->toBe("New User's Organization");
 
     Notification::assertSentTo($newUser, StaffInvitation::class);
 });
@@ -107,29 +146,6 @@ it('prevents duplicate invitations', function () {
         ->set('inviteRole', 'volunteer_admin')
         ->call('inviteMember')
         ->assertHasErrors('inviteEmail');
-});
-
-it('saves an AI API key', function () {
-    Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
-        ->set('aiApiKey', 'sk-test-1234567890')
-        ->call('saveAiApiKey')
-        ->assertDispatched('ai-key-saved');
-
-    $this->org->refresh();
-    expect($this->org->ai_api_key)->toBe('sk-test-1234567890');
-});
-
-it('removes an AI API key', function () {
-    $this->org->update(['ai_api_key' => 'sk-test-existing']);
-
-    Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
-        ->call('removeAiApiKey')
-        ->assertDispatched('ai-key-removed');
-
-    $this->org->refresh();
-    expect($this->org->ai_api_key)->toBeNull();
 });
 
 it('attaches an existing user without creating a new one or sending notification', function () {
@@ -195,14 +211,4 @@ it('resets form fields after successful invite', function () {
         ->assertSet('inviteName', '')
         ->assertSet('inviteEmail', '')
         ->assertSet('inviteRole', 'volunteer_admin');
-});
-
-it('masks the AI API key', function () {
-    $this->org->update(['ai_api_key' => 'sk-test-1234567890abcdef']);
-
-    $component = Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class);
-
-    expect($component->get('maskedAiApiKey'))->toContain('sk-test-')
-        ->and($component->get('maskedAiApiKey'))->toContain('*');
 });
