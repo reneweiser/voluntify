@@ -406,33 +406,4 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             ],
         ]);
     }
-
-    /**
-     * @return array<string, string>
-     */
-    public function subscribe(): array
-    {
-        return [
-            EventCreated::class => 'handleEventCreated',
-            EventUpdated::class => 'handleEventUpdated',
-            EventPublished::class => 'handleEventPublished',
-            EventArchived::class => 'handleEventArchived',
-            EventCloned::class => 'handleEventCloned',
-            EventImageDeleted::class => 'handleEventImageDeleted',
-            JobCreated::class => 'handleJobCreated',
-            JobUpdated::class => 'handleJobUpdated',
-            JobDeleted::class => 'handleJobDeleted',
-            ShiftCreated::class => 'handleShiftCreated',
-            ShiftUpdated::class => 'handleShiftUpdated',
-            ShiftDeleted::class => 'handleShiftDeleted',
-            VolunteerSignedUp::class => 'handleVolunteerSignedUp',
-            VolunteerVerified::class => 'handleVolunteerVerified',
-            ArrivalScanned::class => 'handleArrivalScanned',
-            AttendanceRecorded::class => 'handleAttendanceRecorded',
-            MemberInvited::class => 'handleMemberInvited',
-            MemberLeft::class => 'handleMemberLeft',
-            VolunteerPromotedEvent::class => 'handleVolunteerPromotedEvent',
-            EmailTemplateUpdated::class => 'handleEmailTemplateUpdated',
-        ];
-    }
 }
