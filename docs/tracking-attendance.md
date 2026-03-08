@@ -8,7 +8,7 @@ Attendance tracking records whether volunteers showed up to their assigned shift
 
 ## Mark Attendance for a Shift
 
-1. Go to the event's **Attendance** tab.
+1. Go to **Attendance** in the event sidebar.
 2. Select a shift from the shift selector. Shifts are grouped by job.
 3. You'll see a roster of all volunteers signed up for that shift.
 4. For each volunteer, click one of the status buttons:

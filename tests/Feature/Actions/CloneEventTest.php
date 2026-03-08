@@ -70,6 +70,24 @@ it('does not copy title image path', function () {
     expect($cloned->title_image_path)->toBeNull();
 });
 
+it('clones gear items but not volunteer gear records', function () {
+    $gearItem = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    \App\Models\VolunteerGear::factory()->create(['event_gear_item_id' => $gearItem->id]);
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event);
+
+    $cloned->load('gearItems');
+
+    expect($cloned->gearItems)->toHaveCount(1)
+        ->and($cloned->gearItems->first()->name)->toBe('T-Shirt')
+        ->and($cloned->gearItems->first()->requires_size)->toBeTrue()
+        ->and($cloned->gearItems->first()->available_sizes)->toBe(['XS', 'S', 'M', 'L', 'XL', 'XXL']);
+
+    // Volunteer gear should NOT be cloned
+    expect(\App\Models\VolunteerGear::where('event_gear_item_id', $cloned->gearItems->first()->id)->count())->toBe(0);
+});
+
 it('handles event with no jobs', function () {
     $action = new CloneEvent;
     $cloned = $action->execute($this->event);

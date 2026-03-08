@@ -26,7 +26,7 @@ class VolunteerExportController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Name', 'Email', 'Phone', 'Shifts', 'Arrived', 'Attendance']);
+            fputcsv($handle, ['Name', 'Email', 'Phone', 'Shifts', 'Arrived', 'Attendance', 'Gear']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, $row);

@@ -15,6 +15,7 @@ class CompleteEmailVerification
 {
     public function __construct(
         private SignUpVolunteerForShifts $signUpAction,
+        private AssignGearToVolunteer $assignGear,
     ) {}
 
     public function execute(string $plainToken): SignupBatchResult
@@ -45,6 +46,10 @@ class CompleteEmailVerification
             shiftIds: $token->shift_ids,
             phone: $volunteer->phone,
         );
+
+        if ($token->gear_selections) {
+            $this->assignGear->execute($volunteer, $event, $token->gear_selections);
+        }
 
         VolunteerSignedUp::dispatch($volunteer, $event, count($token->shift_ids));
 

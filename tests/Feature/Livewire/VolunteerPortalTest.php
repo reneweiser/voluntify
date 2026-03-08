@@ -226,6 +226,31 @@ it('shows empty states when no upcoming shifts and no announcements', function (
         ->assertSee('No announcements');
 });
 
+it('displays assigned gear with size and pickup status', function () {
+    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $badge = \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+
+    \App\Models\VolunteerGear::factory()->create([
+        'event_gear_item_id' => $tshirt->id,
+        'volunteer_id' => $this->volunteer->id,
+        'size' => 'L',
+    ]);
+    \App\Models\VolunteerGear::factory()->create([
+        'event_gear_item_id' => $badge->id,
+        'volunteer_id' => $this->volunteer->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Event Gear')
+        ->assertSee('T-Shirt')
+        ->assertSee('L')
+        ->assertSee('Badge');
+});
+
 it('shows cancellation policy text inline', function () {
     ShiftSignup::factory()->create([
         'volunteer_id' => $this->volunteer->id,

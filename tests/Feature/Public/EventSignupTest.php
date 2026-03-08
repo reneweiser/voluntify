@@ -233,6 +233,47 @@ it('shows check your email for new unverified volunteer', function () {
         ->assertSee('Check Your Email');
 });
 
+it('shows gear selectors for events with gear items', function () {
+    \App\Models\EventGearItem::factory()->sized(['S', 'M', 'L'])->for($this->event)->create(['name' => 'T-Shirt']);
+    \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSee('T-Shirt')
+        ->assertSee('Badge');
+});
+
+it('validates size is required for size-required gear items', function () {
+    $tshirt = \App\Models\EventGearItem::factory()->sized(['S', 'M', 'L'])->for($this->event)->create(['name' => 'T-Shirt']);
+
+    Volunteer::factory()->verified()->create(['email' => 'gear-val@example.com', 'name' => 'Gear Val']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerName', 'Gear Val')
+        ->set('volunteerEmail', 'gear-val@example.com')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('signup')
+        ->assertHasErrors(['gearSelections.'.$tshirt->id]);
+});
+
+it('creates gear records on signup with gear selections', function () {
+    $tshirt = \App\Models\EventGearItem::factory()->sized(['S', 'M', 'L'])->for($this->event)->create(['name' => 'T-Shirt']);
+    \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+
+    Volunteer::factory()->verified()->create(['email' => 'gear-signup@example.com', 'name' => 'Gear Signup']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerName', 'Gear Signup')
+        ->set('volunteerEmail', 'gear-signup@example.com')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->set('gearSelections.'.$tshirt->id, 'M')
+        ->call('signup')
+        ->assertHasNoErrors()
+        ->assertSet('signupComplete', true);
+
+    expect(\App\Models\VolunteerGear::count())->toBe(2);
+    expect(\App\Models\VolunteerGear::where('event_gear_item_id', $tshirt->id)->first()->size)->toBe('M');
+});
+
 it('shows signed up for verified volunteer', function () {
     Volunteer::factory()->verified()->create(['email' => 'verified@example.com', 'name' => 'Verified']);
 

@@ -15,6 +15,7 @@ class EmailVerificationToken extends Model
         'volunteer_id',
         'event_id',
         'shift_ids',
+        'gear_selections',
         'token_hash',
         'expires_at',
     ];
@@ -23,6 +24,7 @@ class EmailVerificationToken extends Model
     {
         return [
             'shift_ids' => 'array',
+            'gear_selections' => 'array',
             'expires_at' => 'datetime',
         ];
     }

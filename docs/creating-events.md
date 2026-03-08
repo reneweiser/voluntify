@@ -21,7 +21,7 @@ The event is created in **Draft** status. You'll be taken to the event detail pa
 
 ## Edit Event Details
 
-1. Go to the event's **Overview** tab.
+1. Go to **Overview** in the event sidebar.
 2. Click **Edit**.
 3. Update the name, dates, location, or description.
 4. Optionally upload a **title image** (JPG, PNG, or WebP, max 2 MB). This appears as a hero image on the public signup page.
@@ -36,7 +36,7 @@ To remove a title image, click **Delete Image** while editing.
 
 Jobs describe the roles volunteers will fill at your event.
 
-1. Go to the event's **Jobs & Shifts** tab.
+1. Go to **Jobs & Shifts** in the event sidebar.
 2. Click **Add Job**.
 3. Enter:
    - **Name** -- The job title (e.g., "Registration Desk").
@@ -52,7 +52,7 @@ To edit or delete a job, use the controls on the job section. Deleting a job wit
 
 Shifts are time slots within a job that volunteers sign up for.
 
-1. Within a job on the **Jobs & Shifts** tab, click **Add Shift**.
+1. Within a job on the **Jobs & Shifts** page, click **Add Shift**.
 2. Set:
    - **Start Time** -- When the shift begins.
    - **End Time** -- When the shift ends.
@@ -69,7 +69,7 @@ To edit or delete a shift, use the inline controls. Deleting a shift with signup
 
 Voluntify sends automated emails to volunteers. You can customize these per event.
 
-1. Go to the event's **Emails** tab.
+1. Go to **Emails** in the event sidebar.
 2. Select the template type:
    - **Signup Confirmation** -- Sent when a volunteer signs up.
    - **Pre-Shift Reminder (24h)** -- Sent 24 hours before a shift.
@@ -94,22 +94,38 @@ A badge shows whether you're using a **Customized** or **Default** template.
 
 Announcements let you send messages to all volunteers signed up for an event. Use them to communicate changes like updated parking instructions, schedule adjustments, or last-minute reminders.
 
-1. Go to the event's **Announcements** tab.
+1. Go to **Announcements** in the event sidebar.
 2. Write the announcement **Subject** and **Body**.
 3. The recipient count shows how many volunteers will receive the message.
 4. Click **Send**.
 
 Sent announcements are also visible to volunteers in their [Volunteer Portal](recruiting-volunteers.md#volunteer-portal).
 
-The **Announcements** tab shows a history of all sent announcements with their subject, send date, and recipient count.
+The **Announcements** page shows a history of all sent announcements with their subject, send date, and recipient count.
 
 **Who can do this**: Organizer only.
+
+## Set Up Event Gear
+
+If your event involves handing out gear to volunteers (e.g., t-shirts, badges, lanyards), you can define gear items and optionally require size selection during signup.
+
+1. Go to **Gear** in the event sidebar.
+2. Click **Add Item**.
+3. Enter a **Name** for the gear item (e.g., "Volunteer T-Shirt").
+4. If the item comes in sizes, toggle **Requires Size** and enter the available sizes as comma-separated values (e.g., "S, M, L, XL").
+5. Repeat for each gear item.
+
+When gear items are configured, volunteers see a gear selection form during signup. Sized items show a size dropdown; non-sized items are assigned automatically.
+
+To remove a gear item, click the delete icon next to it. This deletes all volunteer gear assignments for that item.
+
+**Who can do this**: Organizer only. Gear pickup tracking is available to Organizer and Volunteer Admin (see the **Gear Pickup** page).
 
 ## Publish an Event
 
 Publishing makes your event visible to volunteers and enables signups.
 
-1. Go to the event's **Overview** tab.
+1. Go to **Overview** in the event sidebar.
 2. Click **Publish**.
 
 Before publishing, make sure:
@@ -125,9 +141,9 @@ Once published:
 
 ## Clone an Event
 
-Cloning creates a copy of an event with all its jobs and shifts, but no volunteer signups.
+Cloning creates a copy of an event with all its jobs, shifts, and gear items, but no volunteer signups or gear assignments.
 
-1. Go to the event's **Overview** tab.
+1. Go to **Overview** in the event sidebar.
 2. Click **Clone Event**.
 3. You'll be redirected to the new cloned event in Draft status.
 4. Update the name, dates, and any other details as needed.
@@ -140,7 +156,7 @@ This is useful for recurring events where the job structure stays the same.
 
 Archiving marks an event as completed. Archived events are read-only.
 
-1. Go to the event's **Overview** tab.
+1. Go to **Overview** in the event sidebar.
 2. Click **Archive**.
 
 Archived events:

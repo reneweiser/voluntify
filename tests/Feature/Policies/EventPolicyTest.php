@@ -84,6 +84,22 @@ it('denies non-member from marking attendance', function () {
     expect($outsider->can('markAttendance', $this->event))->toBeFalse();
 });
 
+it('allows organizer to manage gear', function () {
+    expect($this->organizer->can('manageGear', $this->event))->toBeTrue();
+});
+
+it('denies volunteer admin from managing gear', function () {
+    expect($this->volunteerAdmin->can('manageGear', $this->event))->toBeFalse();
+});
+
+it('allows organizer to track gear pickup', function () {
+    expect($this->organizer->can('trackGearPickup', $this->event))->toBeTrue();
+});
+
+it('allows volunteer admin to track gear pickup', function () {
+    expect($this->volunteerAdmin->can('trackGearPickup', $this->event))->toBeTrue();
+});
+
 describe('entrance staff', function () {
     beforeEach(function () {
         $this->entranceStaff = \App\Models\User::factory()->create();
@@ -120,5 +136,13 @@ describe('entrance staff', function () {
 
     it('allows entrance staff to scan', function () {
         expect($this->entranceStaff->can('scan', $this->event))->toBeTrue();
+    });
+
+    it('denies entrance staff from managing gear', function () {
+        expect($this->entranceStaff->can('manageGear', $this->event))->toBeFalse();
+    });
+
+    it('denies entrance staff from tracking gear pickup', function () {
+        expect($this->entranceStaff->can('trackGearPickup', $this->event))->toBeFalse();
     });
 });

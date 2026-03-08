@@ -6,7 +6,7 @@ This guide covers viewing volunteer data, exporting lists, and using the dashboa
 
 ## View Volunteers for an Event
 
-1. Go to the event's **Volunteers** tab.
+1. Go to the event's **Volunteers** page.
 2. You'll see a table of all signed-up volunteers showing:
    - Name
    - Email
@@ -37,11 +37,11 @@ The volunteer detail page shows everything about a specific volunteer for this e
 
 To export the volunteer list as a CSV file:
 
-1. Go to the event's **Volunteers** tab.
+1. Go to the event's **Volunteers** page.
 2. Click the **Export** button.
 3. A CSV file downloads with the volunteer data.
 
-The export includes volunteer names, emails, job assignments, shift times, and status information.
+The export includes volunteer names, emails, job assignments, shift times, status information, and a gear column listing assigned gear items with sizes (e.g., "T-Shirt (M); Badge").
 
 Note: Cancelled signups are excluded from volunteer counts, the volunteer list, and attendance views. Only active signups are shown.
 

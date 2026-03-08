@@ -8,6 +8,7 @@ use App\Exceptions\InvalidMagicLinkException;
 use App\Models\EventAnnouncement;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
+use App\Models\VolunteerGear;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -72,6 +73,21 @@ class VolunteerPortal extends Component
             ->get()
             ->sortByDesc('shift.starts_at')
             ->values();
+    }
+
+    #[Computed]
+    public function gearAssignments(): Collection
+    {
+        if (! $this->volunteer) {
+            return new Collection;
+        }
+
+        $eventIds = $this->volunteer->tickets()->pluck('event_id');
+
+        return VolunteerGear::where('volunteer_id', $this->volunteer->id)
+            ->whereHas('gearItem', fn ($q) => $q->whereIn('event_id', $eventIds))
+            ->with('gearItem.event')
+            ->get();
     }
 
     #[Computed]
