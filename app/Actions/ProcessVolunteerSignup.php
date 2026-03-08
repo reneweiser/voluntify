@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Events\Activity\VolunteerSignedUp;
 use App\Models\Event;
 use App\Models\Volunteer;
 use App\ValueObjects\SignupOutcome;
@@ -40,6 +41,8 @@ class ProcessVolunteerSignup
                 shiftIds: $shiftIds,
                 phone: $phone,
             );
+
+            VolunteerSignedUp::dispatch($volunteer, $event, count($shiftIds));
 
             return SignupOutcome::completed($result);
         }

@@ -1,7 +1,7 @@
 <section class="w-full">
     @include('partials.settings-heading')
 
-    <x-settings.layout :heading="__('Team management')" :subheading="__('Manage your organization\'s team members and roles')">
+    <x-settings.layout :heading="__('Members')" :subheading="__('Manage your organization\'s members and roles')">
         {{-- Invite member --}}
         <div class="mb-8">
             <flux:heading size="sm">{{ __('Invite new member') }}</flux:heading>
@@ -69,7 +69,7 @@
                 @if ($this->memberToRemove)
                     <form wire:submit="removeMember" class="space-y-6">
                         <div>
-                            <flux:heading size="lg">{{ __('Remove team member') }}</flux:heading>
+                            <flux:heading size="lg">{{ __('Remove member') }}</flux:heading>
 
                             <flux:subheading>
                                 {{ __('You are about to remove :name from this organization. This action cannot be undone.', ['name' => $this->memberToRemove->name]) }}

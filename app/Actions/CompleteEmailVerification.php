@@ -3,6 +3,8 @@
 namespace App\Actions;
 
 use App\Enums\EventStatus;
+use App\Events\Activity\VolunteerSignedUp;
+use App\Events\Activity\VolunteerVerified;
 use App\Exceptions\DomainException;
 use App\Exceptions\ExpiredVerificationException;
 use App\Models\EmailVerificationToken;
@@ -34,6 +36,8 @@ class CompleteEmailVerification
         $volunteer = $token->volunteer;
         $volunteer->markEmailAsVerified();
 
+        VolunteerVerified::dispatch($volunteer, $event);
+
         $result = $this->signUpAction->execute(
             name: $volunteer->name,
             email: $volunteer->email,
@@ -41,6 +45,8 @@ class CompleteEmailVerification
             shiftIds: $token->shift_ids,
             phone: $volunteer->phone,
         );
+
+        VolunteerSignedUp::dispatch($volunteer, $event, count($token->shift_ids));
 
         $token->delete();
 

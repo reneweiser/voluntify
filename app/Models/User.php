@@ -27,6 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'must_change_password',
         'email_verified_at',
         'current_organization_id',
+        'personal_organization_id',
     ];
 
     /**
@@ -61,6 +62,11 @@ class User extends Authenticatable implements MustVerifyEmail
             ->using(OrganizationUser::class)
             ->withPivot('role')
             ->withTimestamps();
+    }
+
+    public function isPersonalOrganization(Organization $organization): bool
+    {
+        return $this->personal_organization_id === $organization->id;
     }
 
     /**

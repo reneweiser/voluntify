@@ -9,9 +9,11 @@ use Illuminate\Support\Facades\Mail;
 
 class SendTestEmail
 {
+    public function __construct(private OrganizationMailerService $mailerService) {}
+
     public function execute(Organization $organization, string $recipientEmail): void
     {
-        $mailerName = app(OrganizationMailerService::class)
+        $mailerName = $this->mailerService
             ->resolveMailerName($organization);
 
         $fromAddress = $organization->smtp_from_address ?: config('mail.from.address');

@@ -2,21 +2,20 @@
 
 namespace App\Livewire\Settings;
 
-use App\Actions\CreateOrganization;
+use App\Actions\InviteMember;
 use App\Enums\StaffRole;
+use App\Exceptions\MemberAlreadyExistsException;
 use App\Models\Organization;
 use App\Models\User;
-use App\Notifications\StaffInvitation;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Team')]
-class TeamManagement extends Component
+#[Title('Members')]
+class MemberManagement extends Component
 {
     public string $inviteName = '';
 
@@ -34,7 +33,7 @@ class TeamManagement extends Component
 
     public function mount(): void
     {
-        Gate::authorize('manageTeam', $this->organization());
+        Gate::authorize('manageMembers', $this->organization());
     }
 
     public function rendering(): void
@@ -63,7 +62,7 @@ class TeamManagement extends Component
 
     public function updateRole(int $userId, string $role): void
     {
-        Gate::authorize('manageTeam', $this->organization());
+        Gate::authorize('manageMembers', $this->organization());
 
         if ($userId === Auth::id()) {
             $this->addError('role', 'You cannot change your own role.');
@@ -106,7 +105,7 @@ class TeamManagement extends Component
 
     public function removeMember(): void
     {
-        Gate::authorize('manageTeam', $this->organization());
+        Gate::authorize('manageMembers', $this->organization());
 
         $member = $this->memberToRemove;
 
@@ -133,7 +132,7 @@ class TeamManagement extends Component
 
     public function inviteMember(): void
     {
-        Gate::authorize('manageTeam', $this->organization());
+        Gate::authorize('manageMembers', $this->organization());
 
         $this->validate([
             'inviteName' => ['required', 'string', 'max:255'],
@@ -141,37 +140,18 @@ class TeamManagement extends Component
             'inviteRole' => ['required', 'string', 'in:organizer,volunteer_admin,entrance_staff'],
         ]);
 
-        $user = User::where('email', $this->inviteEmail)->first();
-
-        if (! $user) {
-            $password = Str::random(16);
-
-            $user = DB::transaction(function () use ($password) {
-                $user = User::create([
-                    'name' => $this->inviteName,
-                    'email' => $this->inviteEmail,
-                    'password' => $password,
-                    'must_change_password' => true,
-                    'email_verified_at' => now(),
-                ]);
-
-                (new CreateOrganization)->execute($user, $user->name."'s Organization");
-
-                return $user;
-            });
-
-            $user->notify(new StaffInvitation($this->organization(), $password));
-        }
-
-        if ($this->organization()->users()->where('user_id', $user->id)->exists()) {
+        try {
+            app(InviteMember::class)->execute(
+                $this->organization(),
+                $this->inviteName,
+                $this->inviteEmail,
+                StaffRole::from($this->inviteRole),
+            );
+        } catch (MemberAlreadyExistsException) {
             $this->addError('inviteEmail', 'This user is already a member.');
 
             return;
         }
-
-        $this->organization()->users()->attach($user, [
-            'role' => StaffRole::from($this->inviteRole),
-        ]);
 
         $this->reset('inviteName', 'inviteEmail', 'inviteRole');
         $this->inviteRole = 'volunteer_admin';

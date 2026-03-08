@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\EventStatus;
+use App\Events\Activity\EventCloned;
 use App\Models\Event;
 use Illuminate\Support\Facades\DB;
 
@@ -10,7 +11,7 @@ class CloneEvent
 {
     public function execute(Event $event): Event
     {
-        return DB::transaction(function () use ($event) {
+        $clonedEvent = DB::transaction(function () use ($event) {
             $event->load('volunteerJobs.shifts');
 
             $clonedEvent = $event->replicate([
@@ -41,5 +42,11 @@ class CloneEvent
 
             return $clonedEvent->fresh();
         });
+
+        if (auth()->user()) {
+            EventCloned::dispatch($clonedEvent, $event, auth()->user());
+        }
+
+        return $clonedEvent;
     }
 }

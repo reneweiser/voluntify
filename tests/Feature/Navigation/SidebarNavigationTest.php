@@ -13,22 +13,22 @@ it('shows events link in sidebar', function () {
         ->assertSee('Events');
 });
 
-it('shows team link in settings for organizers', function () {
+it('shows members link in settings for organizers', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization(StaffRole::Organizer);
     app()->instance(Organization::class, $org);
 
     $this->actingAs($user)
         ->get(route('profile.edit'))
         ->assertOk()
-        ->assertSee('Team');
+        ->assertSee('Members');
 });
 
-it('hides team link in settings for non-organizers', function () {
+it('hides members link in settings for non-organizers', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization(StaffRole::VolunteerAdmin);
     app()->instance(Organization::class, $org);
 
     $this->actingAs($user)
         ->get(route('profile.edit'))
         ->assertOk()
-        ->assertDontSee('Team');
+        ->assertDontSee('Members');
 });

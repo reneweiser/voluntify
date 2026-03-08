@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\EventStatus;
+use App\Events\Activity\EventPublished;
 use App\Exceptions\DomainException;
 use App\Exceptions\EventNotReadyException;
 use App\Models\Event;
@@ -28,6 +29,10 @@ class PublishEvent
         }
 
         $event->update(['status' => EventStatus::Published]);
+
+        if (auth()->user()) {
+            EventPublished::dispatch($event->refresh(), auth()->user());
+        }
 
         return $event->refresh();
     }

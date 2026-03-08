@@ -1,9 +1,10 @@
 <?php
 
 use App\Enums\StaffRole;
-use App\Livewire\Settings\TeamManagement;
+use App\Livewire\Settings\MemberManagement;
 use App\Models\Organization;
 use App\Models\User;
+use App\Notifications\AddedToOrganization;
 use App\Notifications\StaffInvitation;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -13,11 +14,11 @@ beforeEach(function () {
     app()->instance(Organization::class, $this->org);
 });
 
-it('renders the team management page for organizers', function () {
+it('renders the member management page for organizers', function () {
     $this->actingAs($this->organizer)
-        ->get(route('settings.team'))
+        ->get(route('settings.members'))
         ->assertOk()
-        ->assertSeeLivewire(TeamManagement::class);
+        ->assertSeeLivewire(MemberManagement::class);
 });
 
 it('denies access to non-organizers', function () {
@@ -25,7 +26,7 @@ it('denies access to non-organizers', function () {
     $this->org->users()->attach($user, ['role' => StaffRole::VolunteerAdmin]);
 
     $this->actingAs($user)
-        ->get(route('settings.team'))
+        ->get(route('settings.members'))
         ->assertForbidden();
 });
 
@@ -34,7 +35,7 @@ it('lists organization members', function () {
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->assertSee($this->organizer->name)
         ->assertSee($member->name);
 });
@@ -44,7 +45,7 @@ it('updates a member role via model binding', function () {
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->set("memberRoles.{$member->id}", 'entrance_staff');
 
     expect($this->org->users()->where('user_id', $member->id)->first()->pivot->role)
@@ -53,7 +54,7 @@ it('updates a member role via model binding', function () {
 
 it('prevents self role change', function () {
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->call('updateRole', $this->organizer->id, 'volunteer_admin')
         ->assertHasErrors('role');
 });
@@ -63,7 +64,7 @@ it('removes a member via email confirmation modal', function () {
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->call('confirmRemoveMember', $member->id)
         ->assertSet('showRemoveModal', true)
         ->assertSet('removeMemberId', $member->id)
@@ -76,7 +77,7 @@ it('removes a member via email confirmation modal', function () {
 
 it('prevents self removal', function () {
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->call('confirmRemoveMember', $this->organizer->id)
         ->assertHasErrors('member')
         ->assertSet('showRemoveModal', false);
@@ -87,7 +88,7 @@ it('rejects removal when email does not match', function () {
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->call('confirmRemoveMember', $member->id)
         ->set('removeConfirmEmail', 'wrong@example.com')
         ->call('removeMember')
@@ -102,7 +103,7 @@ it('requires email to confirm removal', function () {
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->call('confirmRemoveMember', $member->id)
         ->set('removeConfirmEmail', '')
         ->call('removeMember')
@@ -115,7 +116,7 @@ it('invites a new user', function () {
     Notification::fake();
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->set('inviteName', 'New User')
         ->set('inviteEmail', 'newuser@example.com')
         ->set('inviteRole', 'volunteer_admin')
@@ -140,7 +141,7 @@ it('prevents duplicate invitations', function () {
     $this->org->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->set('inviteName', $member->name)
         ->set('inviteEmail', $member->email)
         ->set('inviteRole', 'volunteer_admin')
@@ -148,13 +149,13 @@ it('prevents duplicate invitations', function () {
         ->assertHasErrors('inviteEmail');
 });
 
-it('attaches an existing user without creating a new one or sending notification', function () {
+it('attaches an existing user and sends AddedToOrganization notification', function () {
     Notification::fake();
 
     $existingUser = User::factory()->create(['email' => 'existing@example.com']);
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->set('inviteName', 'Ignored Name')
         ->set('inviteEmail', 'existing@example.com')
         ->set('inviteRole', 'entrance_staff')
@@ -166,12 +167,32 @@ it('attaches an existing user without creating a new one or sending notification
         ->and($this->org->users()->where('user_id', $existingUser->id)->first()->pivot->role)
         ->toBe(StaffRole::EntranceStaff);
 
-    Notification::assertNothingSent();
+    Notification::assertSentTo($existingUser, AddedToOrganization::class, function ($notification) {
+        return $notification->organization->id === $this->org->id
+            && $notification->role === StaffRole::EntranceStaff;
+    });
+    Notification::assertNotSentTo($existingUser, StaffInvitation::class);
+});
+
+it('does not send AddedToOrganization when inviting a new user', function () {
+    Notification::fake();
+
+    Livewire::actingAs($this->organizer)
+        ->test(MemberManagement::class)
+        ->set('inviteName', 'Brand New')
+        ->set('inviteEmail', 'brandnew@example.com')
+        ->set('inviteRole', 'volunteer_admin')
+        ->call('inviteMember')
+        ->assertDispatched('member-invited');
+
+    $newUser = User::where('email', 'brandnew@example.com')->first();
+    Notification::assertSentTo($newUser, StaffInvitation::class);
+    Notification::assertNotSentTo($newUser, AddedToOrganization::class);
 });
 
 it('validates invite name is required', function () {
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->set('inviteName', '')
         ->set('inviteEmail', 'valid@example.com')
         ->set('inviteRole', 'volunteer_admin')
@@ -181,7 +202,7 @@ it('validates invite name is required', function () {
 
 it('validates invite email format', function () {
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->set('inviteName', 'Test')
         ->set('inviteEmail', 'not-an-email')
         ->set('inviteRole', 'volunteer_admin')
@@ -191,7 +212,7 @@ it('validates invite email format', function () {
 
 it('validates invite role must be valid', function () {
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->set('inviteName', 'Test')
         ->set('inviteEmail', 'test@example.com')
         ->set('inviteRole', 'superadmin')
@@ -203,7 +224,7 @@ it('resets form fields after successful invite', function () {
     Notification::fake();
 
     Livewire::actingAs($this->organizer)
-        ->test(TeamManagement::class)
+        ->test(MemberManagement::class)
         ->set('inviteName', 'New User')
         ->set('inviteEmail', 'newuser-reset@example.com')
         ->set('inviteRole', 'entrance_staff')

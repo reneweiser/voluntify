@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\EventStatus;
+use App\Events\Activity\EventArchived;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 
@@ -19,6 +20,10 @@ class ArchiveEvent
         }
 
         $event->update(['status' => EventStatus::Archived]);
+
+        if (auth()->user()) {
+            EventArchived::dispatch($event->refresh(), auth()->user());
+        }
 
         return $event->refresh();
     }

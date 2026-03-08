@@ -7,6 +7,7 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
+    $this->user->update(['personal_organization_id' => $this->org->id]);
 
     app()->instance(Organization::class, $this->org);
 });
@@ -75,4 +76,48 @@ it('validates required fields on create', function () {
         ->set('newOrgName', '')
         ->call('createOrganization')
         ->assertHasErrors(['newOrgName' => 'required']);
+});
+
+it('shows leave button for non-personal organizations', function () {
+    $secondOrg = Organization::factory()->create(['name' => 'Other Org']);
+    $secondOrg->users()->attach($this->user, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($this->user)
+        ->test(OrganizationSwitcher::class)
+        ->assertSeeHtml('confirmLeaveOrganization('.$secondOrg->id.')');
+});
+
+it('hides leave button for personal organization', function () {
+    Livewire::actingAs($this->user)
+        ->test(OrganizationSwitcher::class)
+        ->assertDontSeeHtml('confirmLeaveOrganization('.$this->org->id.')');
+});
+
+it('can leave a non-personal organization via the component', function () {
+    $secondOrg = Organization::factory()->create();
+    $secondOrg->users()->attach($this->user, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($this->user)
+        ->test(OrganizationSwitcher::class)
+        ->call('confirmLeaveOrganization', $secondOrg->id)
+        ->assertSet('showLeaveModal', true)
+        ->assertSet('leaveOrganizationId', $secondOrg->id)
+        ->call('leaveOrganization')
+        ->assertRedirect(route('dashboard'));
+
+    expect($secondOrg->users()->where('user_id', $this->user->id)->exists())->toBeFalse();
+});
+
+it('shows error when trying to leave as sole organizer', function () {
+    $secondOrg = Organization::factory()->create();
+    $secondOrg->users()->attach($this->user, ['role' => StaffRole::Organizer]);
+
+    Livewire::actingAs($this->user)
+        ->test(OrganizationSwitcher::class)
+        ->call('confirmLeaveOrganization', $secondOrg->id)
+        ->call('leaveOrganization')
+        ->assertHasErrors('leave')
+        ->assertSet('showLeaveModal', true);
+
+    expect($secondOrg->users()->where('user_id', $this->user->id)->exists())->toBeTrue();
 });

@@ -25,7 +25,7 @@ class BackfillPersonalOrganizations extends Command
         $this->info("Found {$users->count()} user(s) without organizations.");
 
         $users->each(function (User $user) use ($action) {
-            $action->execute($user, $user->name."'s Organization");
+            $action->execute($user, $user->name."'s Organization", isPersonal: true);
             $this->line("  Created organization for {$user->email}");
         });
 

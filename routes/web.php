@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ScannerApiController;
 use App\Http\Controllers\VolunteerExportController;
+use App\Livewire\ActivityFeed;
 use App\Livewire\Auth\ChangePassword;
 use App\Livewire\Events\AttendanceTracker;
 use App\Livewire\Events\EmailTemplateEditor;
@@ -10,7 +11,6 @@ use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
 use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
-use App\Livewire\Logs\LogViewer;
 use App\Livewire\Public\EmailVerificationPage;
 use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\VolunteerTicket;
@@ -54,9 +54,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::get('events/{eventId}/volunteers/export', [VolunteerExportController::class, 'export'])->name('events.volunteers.export');
     Route::livewire('events/{eventId}/volunteers/{volunteerId}', VolunteerDetail::class)->name('events.volunteers.show');
     Route::livewire('events/{eventId}/attendance', AttendanceTracker::class)->name('events.attendance');
-
-    // Logs
-    Route::livewire('logs', LogViewer::class)->name('logs.index');
+    Route::livewire('activity-log', ActivityFeed::class)->name('activity-log');
 
     // Scanner UI
     Route::livewire('scanner', ScannerEventSelect::class)->name('scanner.index');
