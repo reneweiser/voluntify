@@ -28,6 +28,7 @@ class Event extends Model
         'ends_at',
         'status',
         'title_image_path',
+        'cancellation_cutoff_hours',
     ];
 
     protected function casts(): array
@@ -36,6 +37,7 @@ class Event extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'status' => EventStatus::class,
+            'cancellation_cutoff_hours' => 'integer',
         ];
     }
 
@@ -76,6 +78,16 @@ class Event extends Model
     public function emailTemplates(): HasMany
     {
         return $this->hasMany(EmailTemplate::class);
+    }
+
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(EventAnnouncement::class);
+    }
+
+    public function isCancellationAllowed(): bool
+    {
+        return $this->cancellation_cutoff_hours !== null;
     }
 
     public function titleImageUrl(): ?string

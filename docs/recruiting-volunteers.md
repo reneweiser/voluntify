@@ -2,6 +2,8 @@
 
 This guide covers how to publish your event, share the signup link, and what the volunteer experience looks like.
 
+![Volunteer journey from browsing the event to receiving a QR ticket](figures/volunteer-journey.svg)
+
 ## Publish Your Event
 
 Before volunteers can sign up, your event must be published. See [Creating Events > Publish an Event](creating-events.md#publish-an-event) for steps.
@@ -54,10 +56,40 @@ The magic link opens their ticket page, which shows:
 - Their name and email.
 - Event details.
 - All shifts they're signed up for.
+- A **Manage Your Shifts** link that opens the volunteer portal (see below).
 
 Volunteers should save this page or screenshot the QR code for easy access on event day. The magic link works without logging in -- no password needed.
 
 If a volunteer signs up for multiple shifts at the same event, they get one ticket covering all their shifts.
+
+## Volunteer Portal
+
+The volunteer portal gives volunteers a self-service view of their shifts and any announcements from organizers. Volunteers access it via the **Manage Your Shifts** link on their ticket page -- no login required.
+
+The portal shows three sections:
+
+- **Upcoming Shifts** -- All future shifts the volunteer is signed up for, sorted by date. Each entry shows the event name, job, and shift time.
+- **Past Shifts** -- Completed shifts, sorted most recent first.
+- **Announcements** -- Messages sent by the organizer (e.g., parking changes, schedule updates). Only sent announcements appear here.
+
+If the link has expired, volunteers see a message asking them to request a new magic link from the organizer.
+
+## Cancelling a Signup
+
+If the organizer has enabled cancellations for an event (see [Creating Events > Edit Event Details](creating-events.md#edit-event-details)), volunteers can cancel their own shift signups from the portal.
+
+1. Open the volunteer portal via the **Manage Your Shifts** link on the ticket page.
+2. Find the shift under **Upcoming Shifts**.
+3. Click **Cancel** next to the shift.
+4. Confirm the cancellation in the modal that appears.
+
+The spot is freed immediately and becomes available for other volunteers.
+
+Cancellation is only available if:
+- The organizer set a **Cancellation Cutoff** on the event.
+- The shift starts more than the cutoff number of hours from now.
+
+If cancellation is disabled or the cutoff has passed, the cancel button won't appear.
 
 ## Tips for Recruiting
 
@@ -65,3 +97,18 @@ If a volunteer signs up for multiple shifts at the same event, they get one tick
 - **Add job instructions**: Fill in the Instructions field for each job. These are included in pre-shift reminder emails so volunteers know where to go and what to bring.
 - **Monitor signups**: Check the **Volunteers** tab to see who has signed up and which shifts still need people.
 - **Share widely**: The public URL is safe to share publicly -- it doesn't expose any admin functionality.
+
+## Public Event API
+
+Voluntify provides a JSON API endpoint for external integrations, allowing you to embed event data on your website or build custom signup forms.
+
+**Endpoint**: `GET /api/v1/events/{publicToken}`
+
+The `publicToken` is the same token used in your public event URL. The endpoint is publicly accessible (no authentication required) and returns event details including jobs, shifts, and remaining capacity.
+
+**Rate limit**: 60 requests per minute per IP address. Responses are cached for 60 seconds.
+
+**Example use cases**:
+- Embed event details and shift availability on your organization's website.
+- Build a custom signup form that checks capacity before submitting.
+- Display upcoming volunteer opportunities in a third-party app or intranet.

@@ -121,6 +121,27 @@ it('prevents marking attendance on a different event shift', function () {
         ->call('markStatus', $signup->id, 'on_time');
 })->throws(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
 
+it('excludes cancelled signups from attendance view', function () {
+    $active = Volunteer::factory()->create(['name' => 'Active Volunteer']);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $active->id,
+        'shift_id' => $this->shift->id,
+    ]);
+
+    $cancelled = Volunteer::factory()->create(['name' => 'Cancelled Volunteer']);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $cancelled->id,
+        'shift_id' => $this->shift->id,
+        'cancelled_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(AttendanceTracker::class, ['eventId' => $this->event->id])
+        ->set('selectedShiftId', $this->shift->id)
+        ->assertSee('Active Volunteer')
+        ->assertDontSee('Cancelled Volunteer');
+});
+
 it('shows empty state when no shift selected', function () {
     Livewire::actingAs($this->user)
         ->test(AttendanceTracker::class, ['eventId' => $this->event->id])

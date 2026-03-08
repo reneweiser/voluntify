@@ -15,7 +15,7 @@ class UpdateShift
         CarbonInterface $endsAt,
         int $capacity,
     ): Shift {
-        if ($capacity < $shift->signups()->count()) {
+        if ($capacity < $shift->activeSignups()->count()) {
             throw new DomainException('Cannot reduce capacity below current number of signups.');
         }
 

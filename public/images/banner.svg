@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@700;800;900&amp;display=swap');
+      .hero { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-weight: 900; font-size: 72px; letter-spacing: 0.08em; }
+      .tagline { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-weight: 700; font-size: 22px; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" rx="16" fill="#1A1A1A"/>
+
+  <!-- Decorative floating shapes -->
+  <circle cx="120" cy="100" r="40" fill="#E63946" opacity="0.12"/>
+  <circle cx="1160" cy="540" r="55" fill="#059669" opacity="0.10"/>
+  <circle cx="1050" cy="90" r="28" fill="#F4D03F" opacity="0.10"/>
+  <circle cx="200" cy="520" r="35" fill="#264653" opacity="0.15"/>
+  <polygon points="90,480 120,430 150,480" fill="#F4D03F" opacity="0.10"/>
+  <polygon points="1180,160 1210,110 1240,160" fill="#E63946" opacity="0.10"/>
+  <polygon points="300,80 320,45 340,80" fill="#059669" opacity="0.08"/>
+  <polygon points="950,570 975,530 1000,570" fill="#264653" opacity="0.12"/>
+  <circle cx="640" cy="50" r="18" fill="#F4D03F" opacity="0.06"/>
+  <circle cx="400" cy="600" r="22" fill="#E63946" opacity="0.08"/>
+  <circle cx="900" cy="610" r="15" fill="#059669" opacity="0.08"/>
+  <circle cx="80" cy="320" r="12" fill="#F4D03F" opacity="0.08"/>
+  <circle cx="1220" cy="350" r="16" fill="#264653" opacity="0.10"/>
+
+  <!-- Logo (scaled from favicon.svg) -->
+  <g transform="translate(604, 100) scale(2.5)">
+    <circle cx="16" cy="4" r="3.8" fill="#059669"/>
+    <path fill="#059669" d="M1 13h7.5L16 34l7.5-21H31L19.5 40q-3.5 3-7 0Z"/>
+  </g>
+
+  <!-- Hero words -->
+  <text x="640" y="330" text-anchor="middle" class="hero" fill="#FFFFFF">ORGANIZE.</text>
+  <text x="640" y="410" text-anchor="middle" class="hero" fill="#F4D03F">MOBILIZE.</text>
+  <text x="640" y="490" text-anchor="middle" class="hero" fill="#059669">VOLUNTIFY.</text>
+
+  <!-- Tagline -->
+  <text x="640" y="545" text-anchor="middle" class="tagline" fill="#a1a1aa">Recruit volunteers, distribute QR tickets, and validate arrivals</text>
+</svg>

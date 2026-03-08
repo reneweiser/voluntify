@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 210" width="760" height="210">
+  <title>Role hierarchy: Organizer has full access, Volunteer Admin handles attendance, Entrance Staff handles scanning, Volunteers are external</title>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  </style>
+  <!-- Staff label -->
+  <text x="20" y="18" fill="#6b7280" font-size="11" font-weight="600" letter-spacing="1">STAFF ROLES</text>
+  <line x1="20" y1="26" x2="560" y2="26" stroke="#d1d5db" stroke-width="1"/>
+  <!-- Organizer -->
+  <rect x="20" y="40" width="170" height="150" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+  <text x="105" y="66" text-anchor="middle" fill="#059669" font-size="14" font-weight="700">Organizer</text>
+  <text x="105" y="84" text-anchor="middle" fill="#6b7280" font-size="11">Full access</text>
+  <line x1="40" y1="96" x2="170" y2="96" stroke="#d1d5db" stroke-width="1"/>
+  <text x="36" y="114" fill="#1f2937" font-size="11">Create &amp; manage events</text>
+  <text x="36" y="132" fill="#1f2937" font-size="11">Manage members</text>
+  <text x="36" y="150" fill="#1f2937" font-size="11">Configure settings</text>
+  <text x="36" y="168" fill="#1f2937" font-size="11">Scan &amp; track attendance</text>
+  <!-- Volunteer Admin -->
+  <rect x="205" y="40" width="170" height="150" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="1"/>
+  <text x="290" y="66" text-anchor="middle" fill="#059669" font-size="14" font-weight="700">Volunteer Admin</text>
+  <text x="290" y="84" text-anchor="middle" fill="#6b7280" font-size="11">Attendance focus</text>
+  <line x1="225" y1="96" x2="355" y2="96" stroke="#d1d5db" stroke-width="1"/>
+  <text x="221" y="114" fill="#1f2937" font-size="11">View events &amp; volunteers</text>
+  <text x="221" y="132" fill="#1f2937" font-size="11">Mark shift attendance</text>
+  <text x="221" y="150" fill="#1f2937" font-size="11">Export volunteer CSV</text>
+  <!-- Entrance Staff -->
+  <rect x="390" y="40" width="170" height="150" rx="8" fill="#f0fdf4" stroke="#059669" stroke-width="0.75"/>
+  <text x="475" y="66" text-anchor="middle" fill="#059669" font-size="14" font-weight="700">Entrance Staff</text>
+  <text x="475" y="84" text-anchor="middle" fill="#6b7280" font-size="11">Scanning focus</text>
+  <line x1="410" y1="96" x2="540" y2="96" stroke="#d1d5db" stroke-width="1"/>
+  <text x="406" y="114" fill="#1f2937" font-size="11">Use QR scanner</text>
+  <text x="406" y="132" fill="#1f2937" font-size="11">Manual name lookup</text>
+  <text x="406" y="150" fill="#1f2937" font-size="11">View events</text>
+  <!-- Divider -->
+  <line x1="580" y1="34" x2="580" y2="190" stroke="#d1d5db" stroke-width="1" stroke-dasharray="6,4"/>
+  <!-- External label -->
+  <text x="600" y="18" fill="#6b7280" font-size="11" font-weight="600" letter-spacing="1">EXTERNAL</text>
+  <line x1="600" y1="26" x2="740" y2="26" stroke="#d1d5db" stroke-width="1"/>
+  <!-- Volunteer -->
+  <rect x="600" y="40" width="140" height="150" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="670" y="66" text-anchor="middle" fill="#1f2937" font-size="14" font-weight="700">Volunteer</text>
+  <text x="670" y="84" text-anchor="middle" fill="#6b7280" font-size="11">No account needed</text>
+  <line x1="620" y1="96" x2="720" y2="96" stroke="#d1d5db" stroke-width="1"/>
+  <text x="616" y="114" fill="#1f2937" font-size="11">Sign up for shifts</text>
+  <text x="616" y="132" fill="#1f2937" font-size="11">View QR ticket</text>
+  <text x="616" y="150" fill="#1f2937" font-size="11">Receive emails</text>
+</svg>

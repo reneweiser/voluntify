@@ -1,3 +1,5 @@
+![Voluntify Banner](public/images/banner.svg)
+
 # Voluntify
 
 Volunteer management for event-running organizations. Volunteers sign up without creating an account, receive QR-coded event tickets via magic links, and get validated at the entrance — even offline.

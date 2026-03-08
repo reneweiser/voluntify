@@ -2,6 +2,8 @@
 
 Attendance tracking records whether volunteers showed up to their assigned shifts and whether they were on time. This is separate from entrance scanning -- arrival confirms they're at the event, attendance confirms they reported to their shift.
 
+![Comparison of event arrival vs shift attendance tracking](figures/arrival-vs-attendance.svg)
+
 **Who can mark attendance**: Organizer and Volunteer Admin.
 
 ## Mark Attendance for a Shift

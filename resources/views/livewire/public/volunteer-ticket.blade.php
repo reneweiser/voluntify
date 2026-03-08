@@ -27,6 +27,13 @@
             </div>
         </div>
 
+        {{-- Portal link --}}
+        <div class="mb-6 text-center">
+            <flux:button variant="subtle" :href="route('volunteer.portal', $magicToken)" icon="clipboard-document-list">
+                {{ __('Manage Your Shifts') }}
+            </flux:button>
+        </div>
+
         {{-- Shift assignments --}}
         @if ($this->shiftSignups->isNotEmpty())
             <div>

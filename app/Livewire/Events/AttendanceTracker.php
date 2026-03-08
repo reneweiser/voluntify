@@ -31,8 +31,8 @@ class AttendanceTracker extends Component
     {
         return $this->event->volunteerJobs()
             ->with(['shifts' => fn ($q) => $q->withCount([
-                'signups',
-                'signups as attended_count' => fn ($q) => $q->has('attendanceRecord'),
+                'activeSignups as signups_count',
+                'activeSignups as attended_count' => fn ($q) => $q->has('attendanceRecord'),
             ])->orderBy('starts_at')])
             ->get()
             ->pluck('shifts')
@@ -47,7 +47,9 @@ class AttendanceTracker extends Component
             return new Collection;
         }
 
-        return ShiftSignup::where('shift_id', $this->selectedShiftId)
+        return ShiftSignup::query()
+            ->active()
+            ->where('shift_id', $this->selectedShiftId)
             ->whereHas('shift.volunteerJob', fn ($q) => $q->where('event_id', $this->event->id))
             ->with([
                 'volunteer.eventArrivals' => fn ($q) => $q->where('event_id', $this->event->id),

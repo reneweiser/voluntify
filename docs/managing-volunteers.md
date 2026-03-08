@@ -43,6 +43,8 @@ To export the volunteer list as a CSV file:
 
 The export includes volunteer names, emails, job assignments, shift times, and status information.
 
+Note: Cancelled signups are excluded from volunteer counts, the volunteer list, and attendance views. Only active signups are shown.
+
 ## Dashboard Overview
 
 The **Dashboard** (accessible from the sidebar) provides an at-a-glance overview:

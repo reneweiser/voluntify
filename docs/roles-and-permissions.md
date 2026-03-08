@@ -2,6 +2,8 @@
 
 Voluntify has three staff roles and one external role. Staff roles are assigned per organization.
 
+![Role hierarchy: Organizer, Volunteer Admin, Entrance Staff, and external Volunteer](figures/role-hierarchy.svg)
+
 ## Permission Matrix
 
 | Action | Organizer | Volunteer Admin | Entrance Staff |
@@ -30,18 +32,22 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | **Scanner** | | | |
 | Use QR scanner | Yes | -- | Yes |
 | Use manual lookup | Yes | -- | Yes |
-| **Team Management** | | | |
-| View team members | Yes | -- | -- |
-| Invite / remove team members | Yes | -- | -- |
-| Change team member roles | Yes | -- | -- |
+| **Member Management** | | | |
+| View members | Yes | -- | -- |
+| Invite / remove members | Yes | -- | -- |
+| Change member roles | Yes | -- | -- |
+| Leave organization | Yes | Yes | Yes |
 | **Settings** | | | |
 | Edit own profile and password | Yes | Yes | Yes |
 | Set up two-factor authentication | Yes | Yes | Yes |
 | Configure email / SMTP settings | Yes | -- | -- |
-| View application logs | Yes | -- | -- |
+| View activity log | Yes | -- | -- |
 | **Organizations** | | | |
 | Switch organizations | Yes | Yes | Yes |
 | Create new organization | Yes | Yes | Yes |
+| **Announcements** | | | |
+| Send announcements | Yes | -- | -- |
+| View announcement history | Yes | -- | -- |
 | **Dashboard** | | | |
 | View dashboard | Yes | Yes | Yes |
 | "Create Event" quick action | Yes | -- | -- |
@@ -55,8 +61,9 @@ Volunteers can:
 - Receive email notifications (signup confirmation, pre-shift reminders).
 - Access their QR ticket via a magic link (no password required).
 - Present their QR code at the event entrance.
+- Access the [Volunteer Portal](recruiting-volunteers.md#volunteer-portal) to view their shifts and read announcements.
+- Cancel their own shift signups if the organizer has enabled cancellations and the cutoff window hasn't passed.
 
 Volunteers **cannot**:
 - Access the admin interface (Dashboard, Events, Scanner, Settings).
 - View other volunteers' information.
-- Modify their signups after registering (they would need to contact the organizer).

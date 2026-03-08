@@ -133,6 +133,13 @@
                 </flux:field>
 
                 <flux:field>
+                    <flux:label>{{ __('Cancellation Cutoff (hours)') }}</flux:label>
+                    <flux:input type="number" wire:model="cancellationCutoffHours" min="1" max="168" placeholder="{{ __('Disabled — leave empty') }}" />
+                    <flux:description>{{ __('Volunteers can cancel signups up to this many hours before their shift. Leave empty to disable.') }}</flux:description>
+                    <flux:error name="cancellationCutoffHours" />
+                </flux:field>
+
+                <flux:field>
                     <flux:label>{{ __('Title Image') }}</flux:label>
                     @if ($event->titleImageUrl() && !$titleImage)
                         <div class="flex items-center gap-3 mb-2">

@@ -6,6 +6,7 @@ use App\Livewire\ActivityFeed;
 use App\Livewire\Auth\ChangePassword;
 use App\Livewire\Events\AttendanceTracker;
 use App\Livewire\Events\EmailTemplateEditor;
+use App\Livewire\Events\EventAnnouncements;
 use App\Livewire\Events\EventList;
 use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
@@ -13,6 +14,7 @@ use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
 use App\Livewire\Public\EmailVerificationPage;
 use App\Livewire\Public\EventSignup;
+use App\Livewire\Public\VolunteerPortal;
 use App\Livewire\Public\VolunteerTicket;
 use App\Livewire\Scanner\ManualLookup;
 use App\Livewire\Scanner\QrScanner;
@@ -36,6 +38,7 @@ if (app()->environment('local')) {
 // Public routes (no auth required)
 Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public');
 Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunteer.ticket');
+Route::livewire('my-portal/{magicToken}', VolunteerPortal::class)->name('volunteer.portal');
 Route::livewire('verify-email/{token}', EmailVerificationPage::class)->name('volunteer.verify-email');
 
 // Auth-only (no org required)
@@ -54,6 +57,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::get('events/{eventId}/volunteers/export', [VolunteerExportController::class, 'export'])->name('events.volunteers.export');
     Route::livewire('events/{eventId}/volunteers/{volunteerId}', VolunteerDetail::class)->name('events.volunteers.show');
     Route::livewire('events/{eventId}/attendance', AttendanceTracker::class)->name('events.attendance');
+    Route::livewire('events/{eventId}/announcements', EventAnnouncements::class)->name('events.announcements');
     Route::livewire('activity-log', ActivityFeed::class)->name('activity-log');
 
     // Scanner UI

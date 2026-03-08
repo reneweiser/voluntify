@@ -40,11 +40,16 @@ That's it -- volunteers can now sign up for shifts, and they'll receive a QR-cod
 ### Event Lifecycle
 
 Events move through three statuses:
+
+![Event lifecycle: Draft to Published to Archived, with Clone back to Draft](figures/event-lifecycle.svg)
+
 - **Draft** -- Being set up. Not visible to volunteers.
 - **Published** -- Live and accepting signups. Volunteers can see the public page and register.
 - **Archived** -- Event is over. Read-only, no new signups.
 
 ### Jobs vs Shifts
+
+![Job and shift hierarchy: an event contains jobs, each job contains shifts](figures/job-shift-hierarchy.svg)
 
 - A **Job** is a role volunteers fill (e.g., "Food Service", "Setup Crew").
 - A **Shift** is a specific time slot within a job (e.g., "9:00 AM - 12:00 PM, 5 spots").
@@ -69,7 +74,7 @@ The sidebar contains the main navigation:
 | **Dashboard** | Overview of upcoming events and key metrics |
 | **Events** | List, create, and manage events |
 | **Scanner** | QR ticket scanner for event entrances (Organizer and Entrance Staff only) |
-| **Logs** | View application logs (Organizer only) |
+| **Activity Log** | View organization activity log (Organizer only) |
 
 Within an event, tabs let you navigate between sections:
 
@@ -78,6 +83,7 @@ Within an event, tabs let you navigate between sections:
 | **Overview** | Event details, metrics, publish/archive actions, share link |
 | **Jobs & Shifts** | Manage volunteer jobs and their time-based shifts |
 | **Emails** | Customize automated email templates |
+| **Announcements** | Send messages to all event volunteers (Organizer only) |
 | **Volunteers** | List of signed-up volunteers with search and filters |
 | **Attendance** | Mark shift-level attendance |
 
