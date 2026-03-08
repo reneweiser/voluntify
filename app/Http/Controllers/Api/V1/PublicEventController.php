@@ -13,7 +13,7 @@ class PublicEventController extends Controller
         $event = Event::query()
             ->published()
             ->where('public_token', $publicToken)
-            ->with(['organization', 'volunteerJobs.shifts' => fn ($q) => $q->withCount('signups')->orderBy('starts_at')])
+            ->with(['organization', 'volunteerJobs.shifts' => fn ($q) => $q->withCount('activeSignups as signups_count')->orderBy('starts_at')])
             ->firstOrFail();
 
         return new EventResource($event);

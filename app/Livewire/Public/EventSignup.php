@@ -44,7 +44,7 @@ class EventSignup extends Component
     public function jobs(): \Illuminate\Database\Eloquent\Collection
     {
         return $this->event->volunteerJobs()
-            ->with(['shifts' => fn ($q) => $q->withCount('signups')->orderBy('starts_at')])
+            ->with(['shifts' => fn ($q) => $q->withCount('activeSignups as signups_count')->orderBy('starts_at')])
             ->get();
     }
 

@@ -22,8 +22,11 @@ class VolunteerTicket extends Component
 
     public bool $expired = false;
 
+    public string $magicToken = '';
+
     public function mount(string $magicToken): void
     {
+        $this->magicToken = $magicToken;
         try {
             $this->volunteer = app(VerifyMagicLink::class)->execute($magicToken);
         } catch (InvalidMagicLinkException $e) {

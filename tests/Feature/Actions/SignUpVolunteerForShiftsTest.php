@@ -187,6 +187,46 @@ it('throws DomainException when a shift does not belong to the event', function 
     ))->toThrow(\App\Exceptions\DomainException::class, 'One or more shifts do not belong to this event.');
 });
 
+it('cancelled signups do not count toward capacity', function () {
+    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
+    $cancelled = Volunteer::factory()->create();
+    ShiftSignup::factory()->create([
+        'shift_id' => $fullShift->id,
+        'volunteer_id' => $cancelled->id,
+        'cancelled_at' => now(),
+    ]);
+
+    $result = $this->action->execute(
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        event: $this->event,
+        shiftIds: [$fullShift->id],
+    );
+
+    expect($result->hasNewSignups())->toBeTrue()
+        ->and($result->newSignups)->toHaveCount(1);
+});
+
+it('re-signup reactivates a cancelled row', function () {
+    $volunteer = Volunteer::factory()->create(['email' => 'returning@example.com']);
+    $signup = ShiftSignup::factory()->create([
+        'shift_id' => $this->shift1->id,
+        'volunteer_id' => $volunteer->id,
+        'cancelled_at' => now(),
+    ]);
+
+    $result = $this->action->execute(
+        name: 'Returning',
+        email: 'returning@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift1->id],
+    );
+
+    expect($result->hasNewSignups())->toBeTrue()
+        ->and($result->newSignups)->toHaveCount(1)
+        ->and($signup->fresh()->cancelled_at)->toBeNull();
+});
+
 it('creates volunteer via firstOrCreate and updates phone for returning volunteer', function () {
     $existing = Volunteer::factory()->create([
         'email' => 'returning@example.com',

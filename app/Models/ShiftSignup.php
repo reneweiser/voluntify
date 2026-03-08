@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,7 +27,27 @@ class ShiftSignup extends Model
             'signed_up_at' => 'datetime',
             'notification_24h_sent' => 'boolean',
             'notification_4h_sent' => 'boolean',
+            'cancelled_at' => 'datetime',
         ];
+    }
+
+    public function scopeActive(Builder $query): void
+    {
+        $query->whereNull('cancelled_at');
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->cancelled_at !== null;
+    }
+
+    public function isCancellable(int $cutoffHours): bool
+    {
+        if ($this->isCancelled()) {
+            return false;
+        }
+
+        return $this->shift->starts_at->isAfter(now()->addHours($cutoffHours));
     }
 
     public function volunteer(): BelongsTo

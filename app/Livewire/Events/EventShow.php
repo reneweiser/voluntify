@@ -37,6 +37,8 @@ class EventShow extends Component
 
     public $titleImage;
 
+    public $cancellationCutoffHours = '';
+
     public bool $editing = false;
 
     public function mount(int $eventId): void
@@ -110,6 +112,7 @@ class EventShow extends Component
             'startsAt' => ['required', 'date'],
             'endsAt' => ['required', 'date', 'after:startsAt'],
             'titleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'cancellationCutoffHours' => ['nullable', 'integer', 'min:1', 'max:168'],
         ]);
 
         try {
@@ -122,6 +125,7 @@ class EventShow extends Component
                 startsAt: Carbon::parse($this->startsAt),
                 endsAt: Carbon::parse($this->endsAt),
                 titleImage: $this->titleImage,
+                cancellationCutoffHours: $this->cancellationCutoffHours !== '' ? (int) $this->cancellationCutoffHours : null,
             );
 
             $this->titleImage = null;
@@ -183,5 +187,6 @@ class EventShow extends Component
         $this->location = $this->event->location ?? '';
         $this->startsAt = $this->event->starts_at->format('Y-m-d\TH:i');
         $this->endsAt = $this->event->ends_at->format('Y-m-d\TH:i');
+        $this->cancellationCutoffHours = $this->event->cancellation_cutoff_hours ?? '';
     }
 }

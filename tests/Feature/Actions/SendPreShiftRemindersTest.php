@@ -141,6 +141,15 @@ it('skips unverified volunteers', function () {
     Notification::assertNothingSent();
 });
 
+it('skips cancelled signups', function () {
+    $signup = createSignupWithShiftStartingIn(20, ['cancelled_at' => now()]);
+
+    $count = $this->action->execute(ReminderWindow::TwentyFourHour);
+
+    expect($count)->toBe(0);
+    Notification::assertNothingSent();
+});
+
 it('returns correct count', function () {
     createSignupWithShiftStartingIn(20);
     createSignupWithShiftStartingIn(22);

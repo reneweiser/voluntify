@@ -12,6 +12,7 @@ class SendPreShiftReminders
     public function execute(ReminderWindow $window): int
     {
         $signups = ShiftSignup::query()
+            ->active()
             ->where($window->flagColumn(), false)
             ->whereHas('shift', fn ($q) => $q
                 ->where('starts_at', '>', now())

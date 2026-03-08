@@ -58,11 +58,11 @@ class SignUpVolunteerForShifts
             foreach ($sortedShiftIds as $shiftId) {
                 $shift = Shift::lockForUpdate()->findOrFail($shiftId);
 
-                $alreadySignedUp = ShiftSignup::where('volunteer_id', $volunteer->id)
+                $existingSignup = ShiftSignup::where('volunteer_id', $volunteer->id)
                     ->where('shift_id', $shift->id)
-                    ->exists();
+                    ->first();
 
-                if ($alreadySignedUp) {
+                if ($existingSignup && ! $existingSignup->isCancelled()) {
                     $skippedDuplicate[] = $shift;
 
                     continue;
@@ -74,11 +74,18 @@ class SignUpVolunteerForShifts
                     continue;
                 }
 
-                $newSignups[] = ShiftSignup::create([
-                    'volunteer_id' => $volunteer->id,
-                    'shift_id' => $shift->id,
-                    'signed_up_at' => now(),
-                ]);
+                if ($existingSignup && $existingSignup->isCancelled()) {
+                    $existingSignup->cancelled_at = null;
+                    $existingSignup->signed_up_at = now();
+                    $existingSignup->save();
+                    $newSignups[] = $existingSignup;
+                } else {
+                    $newSignups[] = ShiftSignup::create([
+                        'volunteer_id' => $volunteer->id,
+                        'shift_id' => $shift->id,
+                        'signed_up_at' => now(),
+                    ]);
+                }
             }
 
             $this->generateTicket->execute($volunteer, $event);

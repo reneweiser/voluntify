@@ -21,6 +21,7 @@ class UpdateEvent
         CarbonInterface $startsAt,
         CarbonInterface $endsAt,
         ?UploadedFile $titleImage = null,
+        ?int $cancellationCutoffHours = null,
     ): Event {
         if ($event->status === EventStatus::Archived) {
             throw new DomainException('Cannot update an archived event.');
@@ -35,6 +36,7 @@ class UpdateEvent
             'location' => $location,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
+            'cancellation_cutoff_hours' => $cancellationCutoffHours,
         ];
 
         if ($titleImage) {

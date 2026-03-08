@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Enums\ActivityCategory;
+use App\Events\Activity\AnnouncementSent;
 use App\Events\Activity\ArrivalScanned;
 use App\Events\Activity\AttendanceRecorded;
 use App\Events\Activity\EmailTemplateUpdated;
@@ -20,11 +21,13 @@ use App\Events\Activity\MemberLeft;
 use App\Events\Activity\ShiftCreated;
 use App\Events\Activity\ShiftDeleted;
 use App\Events\Activity\ShiftUpdated;
+use App\Events\Activity\SignupCancelled;
 use App\Events\Activity\VolunteerPromotedEvent;
 use App\Events\Activity\VolunteerSignedUp;
 use App\Events\Activity\VolunteerVerified;
 use App\Models\ActivityLog;
 use App\Models\Event;
+use App\Models\EventAnnouncement;
 use App\Models\EventArrival;
 use App\Models\Organization;
 use App\Models\User;
@@ -403,6 +406,48 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'description' => "Updated {$e->templateType->value} email template for {$e->event->name}",
             'properties' => [
                 'template_type' => $e->templateType->value,
+            ],
+        ]);
+    }
+
+    public function handleSignupCancelled(SignupCancelled $e): void
+    {
+        $e->signup->loadMissing('shift.volunteerJob.event');
+
+        $event = $e->signup->shift->volunteerJob->event;
+
+        ActivityLog::create([
+            'organization_id' => $event->organization_id,
+            'event_id' => $event->id,
+            'causer_type' => Volunteer::class,
+            'causer_id' => $e->volunteer->id,
+            'subject_type' => Volunteer::class,
+            'subject_id' => $e->volunteer->id,
+            'action' => 'cancelled',
+            'category' => ActivityCategory::Volunteer,
+            'description' => "{$e->volunteer->name} cancelled signup for {$e->signup->shift->volunteerJob->name}",
+            'properties' => [
+                'volunteer_name' => $e->volunteer->name,
+                'job_name' => $e->signup->shift->volunteerJob->name,
+                'shift_starts_at' => $e->signup->shift->starts_at->toISOString(),
+            ],
+        ]);
+    }
+
+    public function handleAnnouncementSent(AnnouncementSent $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->event->organization_id,
+            'event_id' => $e->event->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->sender->id,
+            'subject_type' => EventAnnouncement::class,
+            'subject_id' => $e->announcement->id,
+            'action' => 'sent',
+            'category' => ActivityCategory::Email,
+            'description' => "Sent announcement \"{$e->announcement->subject}\" for {$e->event->name}",
+            'properties' => [
+                'subject' => $e->announcement->subject,
             ],
         ]);
     }
