@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\ArrivalMethod;
+use App\Events\Activity\ArrivalScanned;
 use App\Models\EventArrival;
 use App\Models\Ticket;
 use App\Models\User;
@@ -20,7 +21,7 @@ class RecordArrival
 
         $flagged = $existingArrival !== null;
 
-        return EventArrival::create([
+        $arrival = EventArrival::create([
             'ticket_id' => $ticket->id,
             'volunteer_id' => $ticket->volunteer_id,
             'event_id' => $ticket->event_id,
@@ -30,5 +31,9 @@ class RecordArrival
             'flagged' => $flagged,
             'flag_reason' => $flagged ? 'Duplicate scan — volunteer already checked in.' : null,
         ]);
+
+        ArrivalScanned::dispatch($arrival, $scannedBy);
+
+        return $arrival;
     }
 }

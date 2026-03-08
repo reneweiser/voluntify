@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\EventStatus;
+use App\Events\Activity\EventCreated;
 use App\Models\Event;
 use App\Models\Organization;
 use Carbon\CarbonInterface;
@@ -34,6 +35,10 @@ class CreateEvent
         if ($titleImage) {
             $path = $titleImage->store("events/{$event->id}", 'public');
             $event->update(['title_image_path' => $path]);
+        }
+
+        if (auth()->user()) {
+            EventCreated::dispatch($event, auth()->user());
         }
 
         return $event;

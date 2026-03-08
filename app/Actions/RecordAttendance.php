@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\AttendanceStatus;
+use App\Events\Activity\AttendanceRecorded;
 use App\Models\AttendanceRecord;
 use App\Models\EventArrival;
 use App\Models\ShiftSignup;
@@ -20,6 +21,8 @@ class RecordAttendance
                 'recorded_at' => now(),
             ],
         );
+
+        AttendanceRecorded::dispatch($record, $signup, $recordedBy);
 
         $record->conflictDetected = false;
 

@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\StaffRole;
+use App\Events\Activity\MemberInvited;
 use App\Exceptions\MemberAlreadyExistsException;
 use App\Models\Organization;
 use App\Models\User;
@@ -47,6 +48,10 @@ class InviteMember
         $organization->users()->attach($user, [
             'role' => $role,
         ]);
+
+        if (auth()->user()) {
+            MemberInvited::dispatch($organization, $user->name, $email, $role, auth()->user());
+        }
 
         if ($isExistingUser) {
             $user->notify(new AddedToOrganization($organization, $role));

@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\StaffRole;
+use App\Events\Activity\VolunteerPromotedEvent;
 use App\Exceptions\UserAlreadyInOrganizationException;
 use App\Exceptions\VolunteerAlreadyPromotedException;
 use App\Models\Organization;
@@ -60,6 +61,8 @@ class PromoteVolunteer
                 'promoted_at' => now(),
             ]);
         });
+
+        VolunteerPromotedEvent::dispatch($promotion, $organization, $promotedBy);
 
         if ($isNewUser) {
             $promotion->user->notify(new VolunteerPromoted(

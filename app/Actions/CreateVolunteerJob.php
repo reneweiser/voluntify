@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Events\Activity\JobCreated;
 use App\Models\Event;
 use App\Models\VolunteerJob;
 
@@ -13,10 +14,16 @@ class CreateVolunteerJob
         ?string $description,
         ?string $instructions,
     ): VolunteerJob {
-        return $event->volunteerJobs()->create([
+        $job = $event->volunteerJobs()->create([
             'name' => $name,
             'description' => $description,
             'instructions' => $instructions,
         ]);
+
+        if (auth()->user()) {
+            JobCreated::dispatch($job, auth()->user());
+        }
+
+        return $job;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\StaffRole;
+use App\Events\Activity\MemberLeft;
 use App\Exceptions\DomainException;
 use App\Models\Organization;
 use App\Models\User;
@@ -26,6 +27,8 @@ class LeaveOrganization
         if ($isSoleOrganizer) {
             throw new DomainException('You are the sole organizer. Transfer the organizer role to another member first.');
         }
+
+        MemberLeft::dispatch($organization, $user);
 
         $organization->users()->detach($user->id);
 
