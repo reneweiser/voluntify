@@ -32,17 +32,17 @@ it('denies non-organizers from updating the organization', function () {
 it('allows organizers to manage the team', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization(StaffRole::Organizer);
 
-    expect($user->can('manageTeam', $org))->toBeTrue();
+    expect($user->can('manageMembers', $org))->toBeTrue();
 });
 
 it('denies volunteer admins from managing the team', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization(StaffRole::VolunteerAdmin);
 
-    expect($user->can('manageTeam', $org))->toBeFalse();
+    expect($user->can('manageMembers', $org))->toBeFalse();
 });
 
 it('denies entrance staff from managing the team', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization(StaffRole::EntranceStaff);
 
-    expect($user->can('manageTeam', $org))->toBeFalse();
+    expect($user->can('manageMembers', $org))->toBeFalse();
 });

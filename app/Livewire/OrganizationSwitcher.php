@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Actions\CreateOrganization;
+use App\Actions\LeaveOrganization;
+use App\Exceptions\DomainException;
 use App\Models\Organization;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -18,6 +20,10 @@ class OrganizationSwitcher extends Component
 
     public string $newOrgSlug = '';
 
+    public bool $showLeaveModal = false;
+
+    public ?int $leaveOrganizationId = null;
+
     #[Computed]
     public function organizations(): Collection
     {
@@ -28,6 +34,16 @@ class OrganizationSwitcher extends Component
     public function activeOrganization(): Organization
     {
         return currentOrganization();
+    }
+
+    #[Computed]
+    public function organizationToLeave(): ?Organization
+    {
+        if (! $this->leaveOrganizationId) {
+            return null;
+        }
+
+        return $this->organizations->firstWhere('id', $this->leaveOrganizationId);
     }
 
     public function switchOrganization(int $organizationId): void
@@ -66,6 +82,35 @@ class OrganizationSwitcher extends Component
         auth()->user()->updateQuietly(['current_organization_id' => $organization->id]);
 
         $this->reset('showCreateModal', 'newOrgName', 'newOrgSlug');
+
+        $this->redirect(route('dashboard'), navigate: true);
+    }
+
+    public function confirmLeaveOrganization(int $id): void
+    {
+        $this->leaveOrganizationId = $id;
+        $this->resetErrorBag('leave');
+        $this->showLeaveModal = true;
+    }
+
+    public function leaveOrganization(LeaveOrganization $action): void
+    {
+        $organization = $this->organizationToLeave;
+
+        if (! $organization) {
+            return;
+        }
+
+        try {
+            $action->execute(auth()->user(), $organization);
+        } catch (DomainException $e) {
+            $this->addError('leave', $e->getMessage());
+
+            return;
+        }
+
+        $this->showLeaveModal = false;
+        $this->reset('leaveOrganizationId');
 
         $this->redirect(route('dashboard'), navigate: true);
     }

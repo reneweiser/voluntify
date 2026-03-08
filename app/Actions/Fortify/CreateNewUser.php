@@ -33,7 +33,7 @@ class CreateNewUser implements CreatesNewUsers
                 'password' => $input['password'],
             ]);
 
-            (new CreateOrganization)->execute($user, $user->name."'s Organization");
+            (new CreateOrganization)->execute($user, $user->name."'s Organization", isPersonal: true);
 
             return $user;
         });

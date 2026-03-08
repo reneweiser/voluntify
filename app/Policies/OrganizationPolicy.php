@@ -23,7 +23,7 @@ class OrganizationPolicy
         return $this->hasRole($user, $organization, StaffRole::Organizer);
     }
 
-    public function manageTeam(User $user, Organization $organization): bool
+    public function manageMembers(User $user, Organization $organization): bool
     {
         return $this->hasRole($user, $organization, StaffRole::Organizer);
     }
