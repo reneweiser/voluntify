@@ -3,13 +3,16 @@
 namespace App\Livewire\Events;
 
 use App\Actions\ArchiveEvent;
+use App\Actions\AssignEventsToGroup;
 use App\Actions\CloneEvent;
 use App\Actions\DeleteEventImage;
 use App\Actions\PublishEvent;
+use App\Actions\RemoveEventFromGroup;
 use App\Actions\UpdateEvent;
 use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
+use App\Models\EventGroup;
 use App\Models\Shift;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -40,6 +43,8 @@ class EventShow extends Component
     public $cancellationCutoffHours = '';
 
     public bool $editing = false;
+
+    public string $selectedGroupId = '';
 
     public function mount(int $eventId): void
     {
@@ -85,6 +90,28 @@ class EventShow extends Component
         }
 
         return route('events.public', $this->event->public_token);
+    }
+
+    #[Computed]
+    public function availableGroups(): \Illuminate\Database\Eloquent\Collection
+    {
+        return currentOrganization()->eventGroups()->orderBy('name')->get();
+    }
+
+    public function updateGroup(): void
+    {
+        Gate::authorize('update', $this->event);
+
+        if ($this->selectedGroupId === '') {
+            $action = app(RemoveEventFromGroup::class);
+            $action->execute($this->event);
+        } else {
+            $group = EventGroup::findOrFail((int) $this->selectedGroupId);
+            $action = app(AssignEventsToGroup::class);
+            $action->execute($group, [$this->event->id]);
+        }
+
+        $this->event->refresh();
     }
 
     public function startEditing(): void
@@ -188,5 +215,6 @@ class EventShow extends Component
         $this->startsAt = $this->event->starts_at->format('Y-m-d\TH:i');
         $this->endsAt = $this->event->ends_at->format('Y-m-d\TH:i');
         $this->cancellationCutoffHours = $this->event->cancellation_cutoff_hours ?? '';
+        $this->selectedGroupId = $this->event->event_group_id ? (string) $this->event->event_group_id : '';
     }
 }

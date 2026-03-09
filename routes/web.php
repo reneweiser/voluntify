@@ -8,12 +8,15 @@ use App\Livewire\Events\AttendanceTracker;
 use App\Livewire\Events\EmailTemplateEditor;
 use App\Livewire\Events\EventAnnouncements;
 use App\Livewire\Events\EventGearSetup;
+use App\Livewire\Events\EventGroupList;
+use App\Livewire\Events\EventGroupShow;
 use App\Livewire\Events\EventList;
 use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
 use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
 use App\Livewire\Public\EmailVerificationPage;
+use App\Livewire\Public\EventGroupPage;
 use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\VolunteerPortal;
 use App\Livewire\Public\VolunteerTicket;
@@ -37,6 +40,7 @@ if (app()->environment('local')) {
 }
 
 // Public routes (no auth required)
+Route::livewire('groups/{publicToken}', EventGroupPage::class)->name('event-groups.public');
 Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public');
 Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunteer.ticket');
 Route::livewire('my-portal/{magicToken}', VolunteerPortal::class)->name('volunteer.portal');
@@ -51,6 +55,8 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(function () {
     Route::livewire('dashboard', \App\Livewire\Dashboard::class)->name('dashboard');
     Route::livewire('events', EventList::class)->name('events.index');
+    Route::livewire('event-groups', EventGroupList::class)->name('event-groups.index');
+    Route::livewire('event-groups/{groupId}', EventGroupShow::class)->name('event-groups.show');
     Route::livewire('events/{eventId}', EventShow::class)->name('events.show');
     Route::livewire('events/{eventId}/jobs', JobsAndShiftsManager::class)->name('events.jobs');
     Route::livewire('events/{eventId}/emails', EmailTemplateEditor::class)->name('events.emails');

@@ -20,6 +20,8 @@ This glossary defines the shared vocabulary used throughout Voluntify. Consisten
 
 **Event** -- A specific occasion (festival, cleanup day, gala) with a date, location, and volunteer needs. Events are the central organizing unit in Voluntify.
 
+**Event Group** -- An optional container for organizing related events (e.g., a festival with multiple days). Event groups have a shared public landing page where volunteers can discover and sign up for individual events.
+
 **Draft** -- An event status meaning the event is still being set up. Draft events are not visible to volunteers.
 
 **Published** -- An event status meaning the event is live. Published events have a public signup page and accept volunteer signups.

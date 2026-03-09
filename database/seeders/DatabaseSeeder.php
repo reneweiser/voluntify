@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\EventStatus;
 use App\Enums\StaffRole;
 use App\Models\Event;
+use App\Models\EventGroup;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
@@ -48,6 +49,14 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->seedEventData($event2);
+
+        // Event group with both published events
+        $group = EventGroup::factory()->for($org)->create([
+            'name' => 'Spring Festival Weekend',
+            'description' => 'A multi-event weekend festival with community activities.',
+        ]);
+        $event1->update(['event_group_id' => $group->id]);
+        $event2->update(['event_group_id' => $group->id]);
 
         // Draft event
         Event::factory()->for($org)->create([

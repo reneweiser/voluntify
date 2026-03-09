@@ -95,3 +95,13 @@ it('handles event with no jobs', function () {
     expect($cloned->exists)->toBeTrue()
         ->and($cloned->volunteerJobs)->toHaveCount(0);
 });
+
+it('does not copy event_group_id', function () {
+    $group = \App\Models\EventGroup::factory()->for($this->org)->create();
+    $this->event->update(['event_group_id' => $group->id]);
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event);
+
+    expect($cloned->event_group_id)->toBeNull();
+});
