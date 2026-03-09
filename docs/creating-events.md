@@ -25,8 +25,9 @@ The event is created in **Draft** status. You'll be taken to the event detail pa
 2. Click **Edit**.
 3. Update the name, dates, location, or description.
 4. Optionally upload a **title image** (JPG, PNG, or WebP, max 2 MB). This appears as a hero image on the public signup page.
-5. Optionally set a **Cancellation Cutoff (hours)** -- This allows volunteers to cancel their own signups up to the specified number of hours before a shift starts. Leave empty to disable volunteer self-cancellation.
-6. Click **Save**.
+5. Optionally assign the event to an **Event Group** using the dropdown. See [Organizing Event Groups](managing-event-groups.md) for details.
+6. Optionally set a **Cancellation Cutoff (hours)** -- This allows volunteers to cancel their own signups up to the specified number of hours before a shift starts. Leave empty to disable volunteer self-cancellation.
+7. Click **Save**.
 
 To remove a title image, click **Delete Image** while editing.
 
