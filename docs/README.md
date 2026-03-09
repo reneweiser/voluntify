@@ -19,3 +19,4 @@ Voluntify is a volunteer management platform for organizations running events. I
 ## Reference
 
 - [Roles and Permissions](roles-and-permissions.md) -- What each role can do
+- [Ubiquitous Language](ubiquitous-language.md) -- Glossary of domain terms used throughout Voluntify
