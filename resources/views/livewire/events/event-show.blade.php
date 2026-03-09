@@ -35,6 +35,17 @@
         <flux:callout variant="danger" class="mb-4">{{ $message }}</flux:callout>
     @enderror
 
+    {{-- Group badge --}}
+    @if ($event->eventGroup)
+        <div class="mb-4">
+            <a href="{{ route('event-groups.show', $event->eventGroup) }}" wire:navigate class="inline-flex items-center gap-1.5">
+                <flux:badge size="sm" color="sky" icon="folder">
+                    {{ $event->eventGroup->name }}
+                </flux:badge>
+            </a>
+        </div>
+    @endif
+
     <x-events.layout :event="$event">
         {{-- Share link for published events --}}
         @if ($this->publicUrl)
@@ -137,6 +148,18 @@
                         <flux:description>{{ __('Volunteers can cancel signups up to this many hours before their shift. Leave empty to disable.') }}</flux:description>
                         <flux:error name="cancellationCutoffHours" />
                     </flux:field>
+
+                    @if ($this->availableGroups->isNotEmpty())
+                        <flux:field>
+                            <flux:label>{{ __('Event Group') }}</flux:label>
+                            <flux:select wire:model="selectedGroupId" wire:change="updateGroup" placeholder="{{ __('None') }}">
+                                <flux:select.option value="">{{ __('None') }}</flux:select.option>
+                                @foreach ($this->availableGroups as $group)
+                                    <flux:select.option :value="$group->id">{{ $group->name }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        </flux:field>
+                    @endif
 
                     <flux:field>
                         <flux:label>{{ __('Title Image') }}</flux:label>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasTitleImage;
 use App\Enums\EventStatus;
 use App\ValueObjects\PublicToken;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,7 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Event extends Model
@@ -18,8 +18,11 @@ class Event extends Model
     /** @use HasFactory<\Database\Factories\EventFactory> */
     use HasFactory;
 
+    use HasTitleImage;
+
     protected $fillable = [
         'organization_id',
+        'event_group_id',
         'name',
         'slug',
         'description',
@@ -90,18 +93,14 @@ class Event extends Model
         return $this->hasMany(EventGearItem::class)->orderBy('sort_order');
     }
 
+    public function eventGroup(): BelongsTo
+    {
+        return $this->belongsTo(EventGroup::class);
+    }
+
     public function isCancellationAllowed(): bool
     {
         return $this->cancellation_cutoff_hours !== null;
-    }
-
-    public function titleImageUrl(): ?string
-    {
-        if (! $this->title_image_path) {
-            return null;
-        }
-
-        return Storage::disk('public')->url($this->title_image_path);
     }
 
     public static function generateUniqueSlug(Organization $organization, string $name): string
