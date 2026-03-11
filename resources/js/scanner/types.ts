@@ -42,6 +42,10 @@ export interface ArrivalRecord {
     flag_reason: string | null;
 }
 
+/**
+ * Ed25519 public keys (base64-encoded, 32 bytes each) for offline JWT verification.
+ * These are public verification keys only — they cannot sign/forge tokens.
+ */
 export interface ScannerKeys {
     current: string;
     previous: string;

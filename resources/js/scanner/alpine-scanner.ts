@@ -131,6 +131,7 @@ export function scannerApp(config: { eventId: number }) {
 
                 // Validate JWT
                 const jwtResult = await validateJwt(jwtToken, keys);
+
                 if (!jwtResult.valid || !jwtResult.volunteerId) {
                     this.state = 'invalid';
                     this.errorMessage = jwtResult.error ?? 'Invalid QR code';

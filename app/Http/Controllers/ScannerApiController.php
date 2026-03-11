@@ -57,15 +57,15 @@ class ScannerApiController extends Controller
                 ]),
             ]),
             'arrivals' => $arrivals,
-            'keys' => [
-                'current' => $jwtKeyService->deriveKey($event->id),
-                'previous' => $jwtKeyService->previousPeriodKey($event->id),
-            ],
+            'keys' => $jwtKeyService->publicKeys($event->id),
         ]);
     }
 
-    public function sync(int $eventId, SyncArrivalsRequest $request, RecordArrival $recordArrival): JsonResponse
-    {
+    public function sync(
+        int $eventId,
+        SyncArrivalsRequest $request,
+        RecordArrival $recordArrival,
+    ): JsonResponse {
         $organization = currentOrganization();
         $event = Event::where('id', $eventId)
             ->where('organization_id', $organization->id)

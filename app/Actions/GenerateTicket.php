@@ -22,7 +22,7 @@ class GenerateTicket
             return $existing;
         }
 
-        $key = $this->jwtKeyService->deriveKey($event->id);
+        $signingKey = $this->jwtKeyService->signingKey($event->id);
 
         $payload = [
             'volunteer_id' => $volunteer->id,
@@ -30,7 +30,7 @@ class GenerateTicket
             'iat' => now()->timestamp,
         ];
 
-        $jwt = JWT::encode($payload, $key, 'HS256');
+        $jwt = JWT::encode($payload, $signingKey, 'EdDSA');
 
         return Ticket::create([
             'volunteer_id' => $volunteer->id,

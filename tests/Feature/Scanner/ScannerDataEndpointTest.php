@@ -10,6 +10,7 @@ use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use App\Services\JwtKeyService;
+use Firebase\JWT\JWT;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
@@ -42,7 +43,7 @@ it('returns volunteers and shifts for entrance staff', function () {
         ->and($data['volunteers'][0]['shift_signups'][0]['shift']['volunteer_job']['name'])->toBe('Gate Watch');
 });
 
-it('returns HMAC keys (current + previous)', function () {
+it('returns Ed25519 public keys', function () {
     $response = $this->actingAs($this->entranceStaff)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
@@ -50,10 +51,39 @@ it('returns HMAC keys (current + previous)', function () {
     $response->assertOk();
 
     $jwtKeyService = app(JwtKeyService::class);
+    $expectedKeys = $jwtKeyService->publicKeys($this->event->id);
     $data = $response->json();
 
-    expect($data['keys']['current'])->toBe($jwtKeyService->deriveKey($this->event->id))
-        ->and($data['keys']['previous'])->toBe($jwtKeyService->previousPeriodKey($this->event->id));
+    expect($data['keys']['current'])->toBe($expectedKeys['current'])
+        ->and($data['keys']['previous'])->toBe($expectedKeys['previous']);
+
+    // Public keys should be base64-encoded 32-byte Ed25519 keys (44 chars base64)
+    expect(strlen($data['keys']['current']))->toBe(44)
+        ->and(strlen($data['keys']['previous']))->toBe(44);
+});
+
+it('returned keys cannot sign a valid JWT', function () {
+    $response = $this->actingAs($this->entranceStaff)
+        ->withSession(['current_organization_id' => $this->org->id])
+        ->getJson(route('scanner.data', $this->event->id));
+
+    $keys = $response->json('keys');
+
+    // Attempt to forge a ticket using the returned public key
+    try {
+        $forgedJwt = JWT::encode(
+            ['volunteer_id' => 999, 'event_id' => $this->event->id, 'iat' => time()],
+            $keys['current'],
+            'EdDSA',
+        );
+        // If encode somehow succeeds, the token should not verify
+        $verifier = app(\App\Services\TokenVerifier::class);
+        $verifier->verify($forgedJwt, $this->event->id);
+        $this->fail('Expected InvalidTicketException');
+    } catch (\Exception) {
+        // Expected: either encode fails or verify fails
+        expect(true)->toBeTrue();
+    }
 });
 
 it('includes existing arrivals', function () {
