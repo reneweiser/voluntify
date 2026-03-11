@@ -14,8 +14,9 @@ class SendEmailVerification
     /**
      * @param  array<int>  $shiftIds
      * @param  array<int, string|null>|null  $gearSelections
+     * @param  array<int, mixed>|null  $customFieldResponses
      */
-    public function execute(Volunteer $volunteer, Event $event, array $shiftIds, ?array $gearSelections = null): void
+    public function execute(Volunteer $volunteer, Event $event, array $shiftIds, ?array $gearSelections = null, ?array $customFieldResponses = null): void
     {
         $plainToken = Str::random(64);
         $hashed = HashedToken::fromPlaintext($plainToken);
@@ -25,6 +26,7 @@ class SendEmailVerification
             'event_id' => $event->id,
             'shift_ids' => $shiftIds,
             'gear_selections' => $gearSelections,
+            'custom_field_responses' => $customFieldResponses,
             'token_hash' => $hashed->hash,
             'expires_at' => now()->addHours(24),
         ]);

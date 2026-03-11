@@ -144,6 +144,40 @@
                 </div>
             @endif
 
+            {{-- Custom registration fields --}}
+            @if ($this->customRegistrationFields->isNotEmpty())
+                <div class="space-y-4 mb-8">
+                    <flux:heading size="lg">{{ __('Additional Information') }}</flux:heading>
+
+                    @foreach ($this->customRegistrationFields as $field)
+                        <flux:field wire:key="custom-field-{{ $field->id }}">
+                            <flux:label>
+                                {{ $field->label }}
+                                @if (!$field->required)
+                                    <span class="text-zinc-400 font-normal">({{ __('optional') }})</span>
+                                @endif
+                            </flux:label>
+
+                            @if ($field->type->value === 'text' && !empty($field->options['multiline']))
+                                <flux:textarea wire:model="customFieldResponses.{{ $field->id }}" placeholder="{{ $field->options['placeholder'] ?? '' }}" />
+                            @elseif ($field->type->value === 'text')
+                                <flux:input wire:model="customFieldResponses.{{ $field->id }}" placeholder="{{ $field->options['placeholder'] ?? '' }}" />
+                            @elseif ($field->type->value === 'select')
+                                <flux:select wire:model="customFieldResponses.{{ $field->id }}" placeholder="{{ __('Select...') }}">
+                                    @foreach ($field->options['choices'] ?? [] as $choice)
+                                        <flux:select.option :value="$choice">{{ $choice }}</flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                            @elseif ($field->type->value === 'checkbox')
+                                <flux:checkbox wire:model="customFieldResponses.{{ $field->id }}" label="{{ $field->label }}" />
+                            @endif
+
+                            <flux:error name="customFieldResponses.{{ $field->id }}" />
+                        </flux:field>
+                    @endforeach
+                </div>
+            @endif
+
             {{-- Volunteer info --}}
             <div class="space-y-4 mb-6">
                 <flux:heading size="lg">{{ __('Your Information') }}</flux:heading>

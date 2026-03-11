@@ -5,6 +5,7 @@ namespace App\Livewire\Public;
 use App\Actions\CancelShiftSignup;
 use App\Actions\VerifyMagicLink;
 use App\Exceptions\InvalidMagicLinkException;
+use App\Models\CustomFieldResponse;
 use App\Models\EventAnnouncement;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
@@ -73,6 +74,21 @@ class VolunteerPortal extends Component
             ->get()
             ->sortByDesc('shift.starts_at')
             ->values();
+    }
+
+    #[Computed]
+    public function customFieldResponses(): Collection
+    {
+        if (! $this->volunteer) {
+            return new Collection;
+        }
+
+        $eventIds = $this->volunteer->tickets()->pluck('event_id');
+
+        return CustomFieldResponse::where('volunteer_id', $this->volunteer->id)
+            ->whereHas('field', fn ($q) => $q->withoutGlobalScopes()->whereIn('event_id', $eventIds))
+            ->with(['field' => fn ($q) => $q->withTrashed()->with('event')])
+            ->get();
     }
 
     #[Computed]

@@ -85,6 +85,26 @@
             </div>
         @endif
 
+        {{-- Registration Info --}}
+        @if ($this->customFieldResponses->isNotEmpty())
+            <div class="mb-8">
+                <flux:heading size="lg" class="mb-3">{{ __('Registration Info') }}</flux:heading>
+                @foreach ($this->customFieldResponses->groupBy(fn ($r) => $r->field->event->name) as $eventName => $responses)
+                    <div class="mb-4">
+                        <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400 mb-2">{{ $eventName }}</flux:text>
+                        <div class="space-y-2">
+                            @foreach ($responses as $response)
+                                <div class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3">
+                                    <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">{{ $response->field->label }}</flux:text>
+                                    <flux:text>{{ $response->field->type->displayValue($response->value) }}</flux:text>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         {{-- Announcements --}}
         <div class="mb-8">
             <flux:heading size="lg" class="mb-3">{{ __('Announcements') }}</flux:heading>

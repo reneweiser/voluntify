@@ -84,6 +84,14 @@ it('denies non-member from marking attendance', function () {
     expect($outsider->can('markAttendance', $this->event))->toBeFalse();
 });
 
+it('allows organizer to manage custom fields', function () {
+    expect($this->organizer->can('manageCustomFields', $this->event))->toBeTrue();
+});
+
+it('denies volunteer admin from managing custom fields', function () {
+    expect($this->volunteerAdmin->can('manageCustomFields', $this->event))->toBeFalse();
+});
+
 it('allows organizer to manage gear', function () {
     expect($this->organizer->can('manageGear', $this->event))->toBeTrue();
 });

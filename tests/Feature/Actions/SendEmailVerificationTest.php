@@ -47,6 +47,14 @@ it('hashes the token with SHA-256 and does not store plain token', function () {
         ->and(ctype_xdigit($token->token_hash))->toBeTrue();
 });
 
+it('stores custom_field_responses on token when provided', function () {
+    $action = app(SendEmailVerification::class);
+    $action->execute($this->volunteer, $this->event, [1], null, [42 => 'Vegan']);
+
+    $token = EmailVerificationToken::first();
+    expect($token->custom_field_responses)->toBe([42 => 'Vegan']);
+});
+
 it('includes verification URL in the notification', function () {
     $action = app(SendEmailVerification::class);
     $action->execute($this->volunteer, $this->event, [1]);

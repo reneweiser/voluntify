@@ -12,7 +12,7 @@ class CloneEvent
     public function execute(Event $event): Event
     {
         $clonedEvent = DB::transaction(function () use ($event) {
-            $event->load(['volunteerJobs.shifts', 'gearItems']);
+            $event->load(['volunteerJobs.shifts', 'gearItems', 'customRegistrationFields']);
 
             $clonedEvent = $event->replicate([
                 'id',
@@ -45,6 +45,12 @@ class CloneEvent
                 $clonedItem = $gearItem->replicate(['id', 'event_id', 'created_at', 'updated_at']);
                 $clonedItem->event_id = $clonedEvent->id;
                 $clonedItem->save();
+            }
+
+            foreach ($event->customRegistrationFields as $field) {
+                $clonedField = $field->replicate(['id', 'event_id', 'deleted_at', 'created_at', 'updated_at']);
+                $clonedField->event_id = $clonedEvent->id;
+                $clonedField->save();
             }
 
             return $clonedEvent->fresh();

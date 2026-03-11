@@ -30,6 +30,9 @@ class EventSignup extends Component
     /** @var array<int, string|null> */
     public array $gearSelections = [];
 
+    /** @var array<int, mixed> */
+    public array $customFieldResponses = [];
+
     public bool $signupComplete = false;
 
     public bool $pendingVerification = false;
@@ -45,6 +48,12 @@ class EventSignup extends Component
     public function gearItems(): Collection
     {
         return $this->event->gearItems()->get();
+    }
+
+    #[Computed]
+    public function customRegistrationFields(): Collection
+    {
+        return $this->event->customRegistrationFields()->get();
     }
 
     #[Computed]
@@ -64,6 +73,11 @@ class EventSignup extends Component
             }
         }
 
+        $customFieldRules = [];
+        foreach ($this->customRegistrationFields as $field) {
+            $customFieldRules['customFieldResponses.'.$field->id] = $field->type->validationRules($field->options ?? [], $field->required);
+        }
+
         $this->validate(array_merge([
             'volunteerName' => ['required', 'string', 'max:255'],
             'volunteerEmail' => ['required', 'email', 'max:255'],
@@ -76,13 +90,17 @@ class EventSignup extends Component
                     $this->event->volunteerJobs()->select('id'),
                 )),
             ],
-        ], $gearRules));
+        ], $gearRules, $customFieldRules));
 
         $action = app(ProcessVolunteerSignup::class);
 
         try {
             $gearSelections = $this->gearItems->isNotEmpty()
                 ? collect($this->gearSelections)->filter()->all()
+                : null;
+
+            $customFieldResponses = $this->customRegistrationFields->isNotEmpty()
+                ? $this->customFieldResponses
                 : null;
 
             $outcome = $action->execute(
@@ -92,6 +110,7 @@ class EventSignup extends Component
                 shiftIds: array_map('intval', $this->selectedShiftIds),
                 phone: $this->volunteerPhone ?: null,
                 gearSelections: $gearSelections,
+                customFieldResponses: $customFieldResponses,
             );
 
             if ($outcome->isPendingVerification()) {

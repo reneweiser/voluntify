@@ -123,6 +123,55 @@ it('hides promote button when already promoted', function () {
         ->assertSee('Staff Member');
 });
 
+it('shows custom field responses on volunteer detail', function () {
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Dietary Needs']);
+    \App\Models\CustomFieldResponse::factory()->create([
+        'custom_registration_field_id' => $field->id,
+        'volunteer_id' => $this->volunteer->id,
+        'value' => 'Vegan',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Dietary Needs')
+        ->assertSee('Vegan');
+});
+
+it('shows checkbox response as Yes/No on volunteer detail', function () {
+    $field = \App\Models\CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release']);
+    \App\Models\CustomFieldResponse::factory()->create([
+        'custom_registration_field_id' => $field->id,
+        'volunteer_id' => $this->volunteer->id,
+        'value' => '1',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Photo Release')
+        ->assertSee('Yes');
+});
+
+it('shows archived field with suffix on volunteer detail', function () {
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Old Field']);
+    \App\Models\CustomFieldResponse::factory()->create([
+        'custom_registration_field_id' => $field->id,
+        'volunteer_id' => $this->volunteer->id,
+        'value' => 'something',
+    ]);
+    $field->delete();
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Old Field')
+        ->assertSee('archived');
+});
+
+it('hides custom fields section when no responses', function () {
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertDontSee('Registration Info');
+});
+
 it('promotes volunteer and creates user', function () {
     Notification::fake();
 

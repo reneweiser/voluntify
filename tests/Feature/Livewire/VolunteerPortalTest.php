@@ -251,6 +251,33 @@ it('displays assigned gear with size and pickup status', function () {
         ->assertSee('Badge');
 });
 
+it('shows custom field responses grouped by event', function () {
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Dietary Needs']);
+    \App\Models\CustomFieldResponse::factory()->create([
+        'custom_registration_field_id' => $field->id,
+        'volunteer_id' => $this->volunteer->id,
+        'value' => 'Vegan',
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Registration Info')
+        ->assertSee('Dietary Needs')
+        ->assertSee('Vegan');
+});
+
+it('hides registration info section when no responses', function () {
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('Registration Info');
+});
+
 it('shows cancellation policy text inline', function () {
     ShiftSignup::factory()->create([
         'volunteer_id' => $this->volunteer->id,

@@ -49,6 +49,23 @@
             </div>
         </div>
 
+        {{-- Custom field responses --}}
+        @if ($this->customFieldResponses->isNotEmpty())
+            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-6 mb-6">
+                <flux:heading size="lg" class="mb-4">{{ __('Registration Info') }}</flux:heading>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    @foreach ($this->customFieldResponses as $response)
+                        <div>
+                            <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">
+                                {{ $response->field->label }}@if ($response->field->trashed()) ({{ __('archived') }})@endif
+                            </flux:text>
+                            <flux:text>{{ $response->field->type->displayValue($response->value) }}</flux:text>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         {{-- Shift assignments --}}
         <flux:heading size="lg" class="mb-4">{{ __('Shift Assignments') }}</flux:heading>
 
