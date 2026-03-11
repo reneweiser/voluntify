@@ -46,48 +46,30 @@ class CustomFieldSetup extends Component
     public function addField(): void
     {
         Gate::authorize('manageCustomFields', $this->event);
-
-        $this->validate([
-            'newFieldLabel' => ['required', 'string', 'max:255'],
-            'newFieldOptions' => $this->newFieldType === 'select' ? ['required', 'string'] : ['nullable'],
-        ]);
-
-        $type = CustomFieldType::from($this->newFieldType);
-        $options = $this->buildOptions($type);
-
-        try {
-            $type->validateOptions($options);
-        } catch (DomainException $e) {
-            $this->addError('newFieldOptions', $e->getMessage());
-
+        $result = $this->validateAndBuildOptions();
+        if (! $result) {
             return;
         }
 
-        if ($this->newFieldRequired && ! $this->showSignupWarning && $this->eventHasSignups()) {
+        if ($this->newFieldRequired && $this->eventHasSignups()) {
             $this->showSignupWarning = true;
 
             return;
         }
 
-        $maxSort = $this->event->customRegistrationFields()->withTrashed()->max('sort_order') ?? 0;
-
-        CustomRegistrationField::create([
-            'event_id' => $this->event->id,
-            'label' => $this->newFieldLabel,
-            'type' => $type,
-            'options' => $options ?: null,
-            'required' => $this->newFieldRequired,
-            'sort_order' => $maxSort + 1,
-        ]);
-
-        $this->reset('newFieldLabel', 'newFieldType', 'newFieldOptions', 'newFieldRequired', 'newFieldMultiline', 'showSignupWarning');
-        unset($this->customFields);
+        $this->saveField(...$result);
     }
 
     public function confirmAddField(): void
     {
         $this->showSignupWarning = false;
-        $this->addField();
+        Gate::authorize('manageCustomFields', $this->event);
+        $result = $this->validateAndBuildOptions();
+        if (! $result) {
+            return;
+        }
+
+        $this->saveField(...$result);
     }
 
     public function dismissWarning(): void
@@ -129,6 +111,45 @@ class CustomFieldSetup extends Component
     public function getTemplatesProperty(): array
     {
         return CustomFieldTemplates::all();
+    }
+
+    /** @return array{CustomFieldType, array<string, mixed>}|null */
+    private function validateAndBuildOptions(): ?array
+    {
+        $this->validate([
+            'newFieldLabel' => ['required', 'string', 'max:255'],
+            'newFieldOptions' => $this->newFieldType === 'select' ? ['required', 'string'] : ['nullable'],
+        ]);
+
+        $type = CustomFieldType::from($this->newFieldType);
+        $options = $this->buildOptions($type);
+
+        try {
+            $type->validateOptions($options);
+        } catch (DomainException $e) {
+            $this->addError('newFieldOptions', $e->getMessage());
+
+            return null;
+        }
+
+        return [$type, $options];
+    }
+
+    private function saveField(CustomFieldType $type, array $options): void
+    {
+        $maxSort = $this->event->customRegistrationFields()->withTrashed()->max('sort_order') ?? 0;
+
+        CustomRegistrationField::create([
+            'event_id' => $this->event->id,
+            'label' => $this->newFieldLabel,
+            'type' => $type,
+            'options' => $options ?: null,
+            'required' => $this->newFieldRequired,
+            'sort_order' => $maxSort + 1,
+        ]);
+
+        $this->reset('newFieldLabel', 'newFieldType', 'newFieldOptions', 'newFieldRequired', 'newFieldMultiline', 'showSignupWarning');
+        unset($this->customFields);
     }
 
     private function buildOptions(CustomFieldType $type): array

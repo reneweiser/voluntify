@@ -120,3 +120,42 @@ it('shows confirmation when adding required field to event with signups', functi
     // Field not saved yet
     expect(CustomRegistrationField::count())->toBe(0);
 });
+
+it('creates field and closes warning when confirming required field with signups', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    $volunteer = Volunteer::factory()->create();
+    \App\Models\Ticket::factory()->create(['event_id' => $this->event->id, 'volunteer_id' => $volunteer->id]);
+    ShiftSignup::factory()->create(['shift_id' => $shift->id, 'volunteer_id' => $volunteer->id]);
+
+    Livewire::actingAs($this->user)
+        ->test(CustomFieldSetup::class, ['eventId' => $this->event->id])
+        ->set('newFieldLabel', 'Required field')
+        ->set('newFieldRequired', true)
+        ->call('addField')
+        ->assertSet('showSignupWarning', true)
+        ->call('confirmAddField')
+        ->assertSet('showSignupWarning', false);
+
+    expect(CustomRegistrationField::count())->toBe(1);
+    expect(CustomRegistrationField::first()->label)->toBe('Required field');
+});
+
+it('skips warning for non-required field even when event has signups', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    $volunteer = Volunteer::factory()->create();
+    \App\Models\Ticket::factory()->create(['event_id' => $this->event->id, 'volunteer_id' => $volunteer->id]);
+    ShiftSignup::factory()->create(['shift_id' => $shift->id, 'volunteer_id' => $volunteer->id]);
+
+    Livewire::actingAs($this->user)
+        ->test(CustomFieldSetup::class, ['eventId' => $this->event->id])
+        ->set('newFieldLabel', 'Optional notes')
+        ->set('newFieldType', 'text')
+        ->set('newFieldRequired', false)
+        ->call('addField')
+        ->assertSet('showSignupWarning', false)
+        ->assertHasNoErrors();
+
+    expect(CustomRegistrationField::count())->toBe(1);
+});
