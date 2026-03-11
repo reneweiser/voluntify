@@ -32,6 +32,8 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | **Gear** | | | |
 | Set up gear items (add / remove) | Yes | -- | -- |
 | Track gear pickup | Yes | Yes | -- |
+| **Custom Fields** | | | |
+| Set up custom registration fields | Yes | -- | -- |
 | **Scanner** | | | |
 | Use QR scanner | Yes | -- | Yes |
 | Use manual lookup | Yes | -- | Yes |
@@ -66,6 +68,7 @@ Volunteers can:
 - Present their QR code at the event entrance.
 - Access the [Volunteer Portal](recruiting-volunteers.md#volunteer-portal) to view their shifts and read announcements.
 - Cancel their own shift signups if the organizer has enabled cancellations and the cutoff window hasn't passed.
+- Fill in custom registration fields during signup.
 - View their gear assignments and pickup status in the portal.
 
 Volunteers **cannot**:
