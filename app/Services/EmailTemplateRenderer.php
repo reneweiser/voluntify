@@ -15,11 +15,11 @@ class EmailTemplateRenderer
         ],
         'pre_shift_reminder_24h' => [
             'subject' => 'Reminder: Your shift for {{event_name}} is tomorrow',
-            'body' => "Hello {{volunteer_name}}!\n\nThis is a reminder that your shift for **{{event_name}}** is coming up tomorrow.\n\n**Job:** {{job_name}}\n**Shift:** {{shift_date}} {{shift_time}}\n{{event_location}}\nSee you there!",
+            'body' => "Hello {{volunteer_name}}!\n\nThis is a reminder that your shift for **{{event_name}}** is coming up tomorrow.\n\n**Job:** {{job_name}}\n**Shift:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\nSee you there!",
         ],
         'pre_shift_reminder_4h' => [
             'subject' => 'Reminder: Your shift for {{event_name}} starts soon',
-            'body' => "Hello {{volunteer_name}}!\n\nYour shift for **{{event_name}}** starts in a few hours.\n\n**Job:** {{job_name}}\n**Shift:** {{shift_date}} {{shift_time}}\n{{event_location}}\nSee you soon!",
+            'body' => "Hello {{volunteer_name}}!\n\nYour shift for **{{event_name}}** starts in a few hours.\n\n**Job:** {{job_name}}\n**Shift:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\nSee you soon!",
         ],
         'email_verification' => [
             'subject' => 'Verify your email for {{event_name}}',
@@ -83,6 +83,7 @@ class EmailTemplateRenderer
                 'shift_date',
                 'shift_time',
                 'event_location',
+                'cheat_sheet_url',
             ],
             EmailTemplateType::EmailVerification => [
                 'volunteer_name',

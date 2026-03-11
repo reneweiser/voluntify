@@ -18,6 +18,7 @@ use App\Livewire\Events\VolunteerList;
 use App\Livewire\Public\EmailVerificationPage;
 use App\Livewire\Public\EventGroupPage;
 use App\Livewire\Public\EventSignup;
+use App\Livewire\Public\JobCheatSheet;
 use App\Livewire\Public\VolunteerPortal;
 use App\Livewire\Public\VolunteerTicket;
 use App\Livewire\Scanner\ManualLookup;
@@ -42,6 +43,7 @@ if (app()->environment('local')) {
 // Public routes (no auth required)
 Route::livewire('groups/{publicToken}', EventGroupPage::class)->name('event-groups.public');
 Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public');
+Route::livewire('events/{publicToken}/jobs/{jobId}/cheat-sheet', JobCheatSheet::class)->name('events.jobs.cheat-sheet');
 Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunteer.ticket');
 Route::livewire('my-portal/{magicToken}', VolunteerPortal::class)->name('volunteer.portal');
 Route::livewire('verify-email/{token}', EmailVerificationPage::class)->name('volunteer.verify-email');

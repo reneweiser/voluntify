@@ -3,7 +3,6 @@
 namespace App\Livewire\Public;
 
 use App\Actions\ProcessVolunteerSignup;
-use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Collection;
@@ -39,9 +38,7 @@ class EventSignup extends Component
 
     public function mount(string $publicToken): void
     {
-        $this->event = Event::where('public_token', $publicToken)
-            ->where('status', EventStatus::Published)
-            ->firstOrFail();
+        $this->event = Event::publishedByToken($publicToken)->firstOrFail();
     }
 
     #[Computed]
