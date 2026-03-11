@@ -22,7 +22,7 @@ Share this link however you'd like -- email, social media, your organization's w
 When a volunteer opens your event's public link, they see:
 
 1. **Event header** -- The event name, dates, location, and description. If you uploaded a title image, it appears as a hero banner.
-2. **Job listing** -- An accordion of volunteer jobs. Each job shows its name and description.
+2. **Job listing** -- An accordion of volunteer jobs. Each job shows its name and description. Jobs with instructions also display a "View Instructions" link to a standalone cheat sheet page.
 3. **Available shifts** -- Within each job, shift cards show the time slot, capacity, and remaining spots (e.g., "3 of 5 spots filled").
 4. **Signup form** -- When a volunteer selects a shift, a form appears asking for:
    - **Name** (required)
@@ -96,7 +96,7 @@ If cancellation is disabled or the cutoff has passed, the cancel button won't ap
 ## Tips for Recruiting
 
 - **Customize your emails**: Use the [Email Template Editor](creating-events.md#customize-email-templates) to add event-specific information to confirmation and reminder emails.
-- **Add job instructions**: Fill in the Instructions field for each job. These are included in pre-shift reminder emails so volunteers know where to go and what to bring.
+- **Add job instructions**: Fill in the Instructions field for each job. Instructions are published as a cheat sheet page linked from the public signup page, and included in pre-shift reminder emails so volunteers know where to go and what to bring.
 - **Monitor signups**: Check the **Volunteers** page to see who has signed up and which shifts still need people.
 - **Share widely**: The public URL is safe to share publicly -- it doesn't expose any admin functionality.
 

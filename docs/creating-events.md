@@ -41,7 +41,7 @@ Jobs describe the roles volunteers will fill at your event.
 3. Enter:
    - **Name** -- The job title (e.g., "Registration Desk").
    - **Description** -- What the job involves. Shown on the public signup page.
-   - **Instructions** -- Detailed info for volunteers (e.g., where to report, what to bring). Included in pre-shift reminder emails.
+   - **Instructions** -- Detailed info for volunteers (e.g., where to report, what to bring). Instructions are published as a standalone cheat sheet page linked from the public signup page and included in pre-shift reminder emails.
 4. Save the job.
 
 To edit or delete a job, use the controls on the job section. Deleting a job with existing signups will ask for confirmation.
@@ -82,6 +82,7 @@ Voluntify sends automated emails to volunteers. You can customize these per even
    - `{{shift_date}}` -- The shift date
    - `{{shift_time}}` -- The shift start time
    - `{{event_location}}` -- The event location
+   - `{{cheat_sheet_url}}` -- Link to the job's cheat sheet page (pre-shift reminders only)
 5. Click **Save**.
 
 Use **Preview** to see how the email will look with sample data. To revert to the default template, click **Reset to Default**.
