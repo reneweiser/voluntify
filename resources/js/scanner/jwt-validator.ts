@@ -76,15 +76,6 @@ export async function validateJwt(token: string, keys: ScannerKeys): Promise<Jwt
         return { valid: false, volunteerId: null, error: 'Unsupported algorithm' };
     }
 
-    // Legacy HS256 tokens: return special error so scanner can queue for server verification
-    if (header.alg === 'HS256') {
-        return {
-            valid: false,
-            volunteerId: (payload.volunteer_id as number) ?? null,
-            error: 'legacy_token',
-        };
-    }
-
     // EdDSA verification
     if (header.alg === 'EdDSA') {
         // Try current key first

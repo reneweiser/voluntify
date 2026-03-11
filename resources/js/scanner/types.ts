@@ -57,7 +57,6 @@ export interface OutboxEntry {
     volunteer_id: number;
     method: 'qr_scan' | 'manual_lookup';
     scanned_at: string;
-    jwt_token?: string;
 }
 
 export interface ScannerData {

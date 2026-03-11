@@ -5,9 +5,7 @@ use App\Enums\StaffRole;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Volunteer;
-use App\Services\JwtKeyService;
 use App\Services\TokenVerifier;
-use Firebase\JWT\JWT;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
@@ -46,7 +44,7 @@ it('full round-trip: generate EdDSA ticket → scanner data → verify → sync 
     $decoded = $verifier->verify($ticket->jwt_token, $this->event->id);
     expect($decoded->volunteer_id)->toBe($this->volunteer->id);
 
-    // 4. POST sync with jwt_token — arrival recorded
+    // 4. POST sync — arrival recorded
     $syncResponse = $this->actingAs($this->entranceStaff)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
@@ -55,82 +53,10 @@ it('full round-trip: generate EdDSA ticket → scanner data → verify → sync 
                     'ticket_id' => $ticket->id,
                     'method' => 'qr_scan',
                     'scanned_at' => now()->toDateTimeString(),
-                    'jwt_token' => $ticket->jwt_token,
                 ],
             ],
         ]);
 
     $syncResponse->assertOk();
-    expect(EventArrival::count())->toBe(1)
-        ->and($syncResponse->json('rejected'))->toBeEmpty();
-});
-
-it('rejects forged jwt_token in sync', function () {
-    $ticket = app(GenerateTicket::class)->execute($this->volunteer, $this->event);
-
-    // Forge a JWT with random key
-    $keypair = sodium_crypto_sign_keypair();
-    $forgedKey = base64_encode(sodium_crypto_sign_secretkey($keypair));
-    $forgedJwt = JWT::encode(
-        ['volunteer_id' => $this->volunteer->id, 'event_id' => $this->event->id, 'iat' => time()],
-        $forgedKey,
-        'EdDSA',
-    );
-
-    $response = $this->actingAs($this->entranceStaff)
-        ->withSession(['current_organization_id' => $this->org->id])
-        ->postJson(route('scanner.sync', $this->event->id), [
-            'arrivals' => [
-                [
-                    'ticket_id' => $ticket->id,
-                    'method' => 'qr_scan',
-                    'scanned_at' => now()->toDateTimeString(),
-                    'jwt_token' => $forgedJwt,
-                ],
-            ],
-        ]);
-
-    $response->assertOk();
-    expect(EventArrival::count())->toBe(0)
-        ->and($response->json('rejected'))->toHaveCount(1);
-});
-
-it('full round-trip with legacy HMAC ticket (backward compat)', function () {
-    // Create an HMAC ticket manually (simulating existing DB record)
-    $jwtKeyService = app(JwtKeyService::class);
-    $hmacKey = $jwtKeyService->deriveKey($this->event->id);
-    $hmacJwt = JWT::encode(
-        ['volunteer_id' => $this->volunteer->id, 'event_id' => $this->event->id, 'iat' => time()],
-        $hmacKey,
-        'HS256',
-    );
-
-    $ticket = \App\Models\Ticket::factory()->create([
-        'volunteer_id' => $this->volunteer->id,
-        'event_id' => $this->event->id,
-        'jwt_token' => $hmacJwt,
-    ]);
-
-    // Server-side TokenVerifier should still validate it
-    $verifier = app(TokenVerifier::class);
-    $decoded = $verifier->verify($ticket->jwt_token, $this->event->id);
-    expect($decoded->volunteer_id)->toBe($this->volunteer->id);
-
-    // Sync with legacy jwt_token should succeed
-    $response = $this->actingAs($this->entranceStaff)
-        ->withSession(['current_organization_id' => $this->org->id])
-        ->postJson(route('scanner.sync', $this->event->id), [
-            'arrivals' => [
-                [
-                    'ticket_id' => $ticket->id,
-                    'method' => 'qr_scan',
-                    'scanned_at' => now()->toDateTimeString(),
-                    'jwt_token' => $hmacJwt,
-                ],
-            ],
-        ]);
-
-    $response->assertOk();
-    expect(EventArrival::count())->toBe(1)
-        ->and($response->json('rejected'))->toBeEmpty();
+    expect(EventArrival::count())->toBe(1);
 });

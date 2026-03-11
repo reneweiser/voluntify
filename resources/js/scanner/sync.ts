@@ -27,7 +27,6 @@ export async function syncOutbox(eventId: number, syncUrl: string): Promise<void
                     ticket_id: e.ticket_id,
                     method: e.method,
                     scanned_at: e.scanned_at,
-                    ...(e.jwt_token ? { jwt_token: e.jwt_token } : {}),
                 })),
             }),
         });

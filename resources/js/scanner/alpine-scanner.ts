@@ -43,7 +43,6 @@ export function scannerApp(config: { eventId: number }) {
         _syncUrl: '',
         _dataUrl: '',
         _processing: false,
-        _lastJwtToken: '' as string,
 
         async init() {
             await openScannerDb();
@@ -133,16 +132,10 @@ export function scannerApp(config: { eventId: number }) {
                 // Validate JWT
                 const jwtResult = await validateJwt(jwtToken, keys);
 
-                // Legacy HS256 tokens: extract volunteerId from payload, queue for server verification
-                if (jwtResult.error === 'legacy_token' && jwtResult.volunteerId) {
-                    this._lastJwtToken = jwtToken;
-                    // Fall through to volunteer lookup with extracted volunteerId
-                } else if (!jwtResult.valid || !jwtResult.volunteerId) {
+                if (!jwtResult.valid || !jwtResult.volunteerId) {
                     this.state = 'invalid';
                     this.errorMessage = jwtResult.error ?? 'Invalid QR code';
                     return;
-                } else {
-                    this._lastJwtToken = jwtToken;
                 }
 
                 // Look up volunteer
@@ -182,7 +175,6 @@ export function scannerApp(config: { eventId: number }) {
                 volunteer_id: this.result.volunteerId,
                 method: 'qr_scan' as const,
                 scanned_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-                ...(this._lastJwtToken ? { jwt_token: this._lastJwtToken } : {}),
             };
 
             // Add to local arrivals tracking

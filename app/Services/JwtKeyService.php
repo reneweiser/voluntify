@@ -2,10 +2,7 @@
 
 namespace App\Services;
 
-use App\Exceptions\InvalidTicketException;
 use Carbon\Carbon;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 
 class JwtKeyService
 {
@@ -66,26 +63,6 @@ class JwtKeyService
         return [base64_encode($signingKey), base64_encode($publicKey)];
     }
 
-    /**
-     * @deprecated Use signingKey() for Ed25519. Kept for legacy HMAC fallback.
-     */
-    public function deriveKey(int $eventId, ?Carbon $at = null): string
-    {
-        $periodDate = $this->periodResolver->currentPeriodDate($at);
-
-        return hash_hmac('sha256', $eventId.':'.$periodDate, config('app.key'));
-    }
-
-    /**
-     * @deprecated Use signingKey() for Ed25519. Kept for legacy HMAC fallback.
-     */
-    public function previousPeriodKey(int $eventId, ?Carbon $at = null): string
-    {
-        $periodDate = $this->periodResolver->previousPeriodDate($at);
-
-        return hash_hmac('sha256', $eventId.':'.$periodDate, config('app.key'));
-    }
-
     public function currentPeriodDate(?Carbon $at = null): string
     {
         return $this->periodResolver->currentPeriodDate($at);
@@ -94,31 +71,5 @@ class JwtKeyService
     public function previousPeriodDate(?Carbon $at = null): string
     {
         return $this->periodResolver->previousPeriodDate($at);
-    }
-
-    /**
-     * Validate a JWT token against current and previous period keys.
-     *
-     * @deprecated Use TokenVerifier::verify() instead.
-     *
-     * @throws InvalidTicketException
-     */
-    public function validateToken(string $jwt, int $eventId): \stdClass
-    {
-        $currentKey = $this->deriveKey($eventId);
-
-        try {
-            return JWT::decode($jwt, new Key($currentKey, 'HS256'));
-        } catch (\Exception) {
-            // Fall through to try previous period key
-        }
-
-        $previousKey = $this->previousPeriodKey($eventId);
-
-        try {
-            return JWT::decode($jwt, new Key($previousKey, 'HS256'));
-        } catch (\Exception $e) {
-            throw new InvalidTicketException('Invalid or expired ticket.', previous: $e);
-        }
     }
 }

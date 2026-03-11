@@ -32,33 +32,6 @@ async function createEdDSAJwt(
     return `${signingInput}.${base64UrlEncode(new Uint8Array(signature))}`;
 }
 
-/**
- * Create an HS256-signed JWT using Web Crypto.
- */
-async function createHS256Jwt(
-    payload: Record<string, unknown>,
-    secret: string,
-): Promise<string> {
-    const header = { alg: 'HS256', typ: 'JWT' };
-    const encoder = new TextEncoder();
-    const headerB64 = base64UrlEncodeStr(JSON.stringify(header));
-    const payloadB64 = base64UrlEncodeStr(JSON.stringify(payload));
-    const signingInput = `${headerB64}.${payloadB64}`;
-
-    const key = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(secret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign'],
-    );
-
-    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signingInput));
-    const sigB64 = base64UrlEncode(new Uint8Array(signature));
-
-    return `${signingInput}.${sigB64}`;
-}
-
 describe('Ed25519 verification', () => {
     let privateKey: Uint8Array;
     let publicKeyB64: string;
@@ -122,36 +95,18 @@ describe('Ed25519 verification', () => {
     });
 });
 
-describe('legacy HS256 handling', () => {
-    const keys: ScannerKeys = { current: 'some-public-key', previous: 'other-public-key' };
-
-    it('returns legacy_token error with volunteerId for HS256 tokens', async () => {
-        const token = await createHS256Jwt(
-            { volunteer_id: 7, event_id: 1, iat: Math.floor(Date.now() / 1000) },
-            'some-hmac-secret',
-        );
-
-        const result = await validateJwt(token, keys);
-        expect(result.valid).toBe(false);
-        expect(result.error).toBe('legacy_token');
-        expect(result.volunteerId).toBe(7);
-    });
-
-    it('does not attempt HMAC verification (no secret available)', async () => {
-        // Even if we use the public key as HMAC secret, it should return legacy_token, not try to verify
-        const token = await createHS256Jwt(
-            { volunteer_id: 7, event_id: 1, iat: Math.floor(Date.now() / 1000) },
-            keys.current,
-        );
-
-        const result = await validateJwt(token, keys);
-        expect(result.valid).toBe(false);
-        expect(result.error).toBe('legacy_token');
-    });
-});
-
 describe('security', () => {
     const keys: ScannerKeys = { current: 'some-key-base64', previous: 'other-key-base64' };
+
+    it('rejects HS256 token as unsupported algorithm', async () => {
+        const header = base64UrlEncodeStr(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+        const payload = base64UrlEncodeStr(JSON.stringify({ volunteer_id: 7, event_id: 1, iat: Math.floor(Date.now() / 1000) }));
+        const token = `${header}.${payload}.fake-signature`;
+
+        const result = await validateJwt(token, keys);
+        expect(result.valid).toBe(false);
+        expect(result.error).toBe('Unsupported algorithm');
+    });
 
     it('rejects token with alg: none', async () => {
         const header = base64UrlEncodeStr(JSON.stringify({ alg: 'none', typ: 'JWT' }));

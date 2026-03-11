@@ -11,7 +11,7 @@ class TokenVerifier
     public function __construct(private JwtKeyService $jwtKeyService) {}
 
     /**
-     * Validate a JWT token against all known keys (EdDSA current/previous + legacy HMAC current/previous).
+     * Validate a JWT token against EdDSA current/previous period public keys.
      *
      * @throws InvalidTicketException
      */
@@ -38,12 +38,8 @@ class TokenVerifier
         $publicKeys = $this->jwtKeyService->publicKeys($eventId);
 
         return [
-            // EdDSA keys (preferred)
             new Key($publicKeys['current'], 'EdDSA'),
             new Key($publicKeys['previous'], 'EdDSA'),
-            // Legacy HMAC keys (backward compatibility)
-            new Key($this->jwtKeyService->deriveKey($eventId), 'HS256'),
-            new Key($this->jwtKeyService->previousPeriodKey($eventId), 'HS256'),
         ];
     }
 }

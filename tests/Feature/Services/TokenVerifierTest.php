@@ -82,52 +82,10 @@ describe('EdDSA tokens', function () {
     })->throws(InvalidTicketException::class);
 });
 
-describe('legacy HMAC fallback', function () {
-    it('verifies HS256 token with current HMAC key', function () {
-        Carbon::setTestNow('2025-06-15 10:00:00');
-
-        $hmacKey = $this->jwtKeyService->deriveKey(5);
-        $jwt = JWT::encode(['volunteer_id' => 1, 'event_id' => 5, 'iat' => time()], $hmacKey, 'HS256');
-
-        $decoded = $this->verifier->verify($jwt, 5);
-
-        expect($decoded->volunteer_id)->toBe(1)
-            ->and($decoded->event_id)->toBe(5);
-    });
-
-    it('verifies HS256 token with previous HMAC key', function () {
-        Carbon::setTestNow('2025-06-15 10:00:00');
-
-        $hmacKey = $this->jwtKeyService->previousPeriodKey(5);
-        $jwt = JWT::encode(['volunteer_id' => 1, 'event_id' => 5, 'iat' => time()], $hmacKey, 'HS256');
-
-        $decoded = $this->verifier->verify($jwt, 5);
-
-        expect($decoded->volunteer_id)->toBe(1)
-            ->and($decoded->event_id)->toBe(5);
-    });
-
-    it('rejects HS256 token with wrong HMAC key', function () {
-        $wrongKey = hash_hmac('sha256', 'wrong-data', 'wrong-secret');
-        $jwt = JWT::encode(['volunteer_id' => 1, 'event_id' => 5, 'iat' => time()], $wrongKey, 'HS256');
-
-        $this->verifier->verify($jwt, 5);
-    })->throws(InvalidTicketException::class);
-});
-
 describe('security: algorithm confusion', function () {
-    it('rejects HS256 token using public key as HMAC secret', function () {
-        Carbon::setTestNow('2025-06-15 10:00:00');
-
-        // Get the Ed25519 public key (base64)
-        $publicKeyB64 = $this->jwtKeyService->publicKey(5);
-
-        // Craft HS256 token using public key as the HMAC secret (alg substitution attack)
-        $jwt = JWT::encode(
-            ['volunteer_id' => 1, 'event_id' => 5, 'iat' => time()],
-            $publicKeyB64,
-            'HS256',
-        );
+    it('rejects HS256 token (unsupported algorithm)', function () {
+        $hmacKey = hash_hmac('sha256', 'test-data', 'test-secret');
+        $jwt = JWT::encode(['volunteer_id' => 1, 'event_id' => 5, 'iat' => time()], $hmacKey, 'HS256');
 
         $this->verifier->verify($jwt, 5);
     })->throws(InvalidTicketException::class);
