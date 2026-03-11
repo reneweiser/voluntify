@@ -66,6 +66,13 @@
                             @if ($job->description)
                                 <flux:text size="sm" class="mt-1">{{ $job->description }}</flux:text>
                             @endif
+                            @if ($job->instructions)
+                                <a href="{{ route('jobs.cheat-sheet', ['publicToken' => $event->public_token, 'jobId' => $job->id]) }}" target="_blank"
+                                   class="inline-flex items-center gap-1 mt-2 text-sm text-emerald-600 dark:text-emerald-400 hover:underline">
+                                    <flux:icon name="document-text" variant="mini" class="size-4" />
+                                    {{ __('View Instructions') }}
+                                </a>
+                            @endif
                         </div>
 
                         <div class="p-4 space-y-3">

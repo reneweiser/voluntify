@@ -69,3 +69,29 @@ it('is queued', function () {
     expect(new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h))
         ->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
 });
+
+it('includes cheat sheet link when job has instructions', function () {
+    $this->job->update(['instructions' => 'Bring gloves and safety glasses.']);
+
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
+    $mail = $notification->toMail($this->volunteer);
+
+    $cheatSheetUrl = route('jobs.cheat-sheet', [
+        'publicToken' => $this->event->public_token,
+        'jobId' => $this->job->id,
+    ]);
+
+    expect(implode(' ', $mail->introLines))->toContain($cheatSheetUrl);
+});
+
+it('omits cheat sheet link when job has no instructions', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create(['instructions' => null]);
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+
+    $notification = new PreShiftReminder($this->event, $shift, EmailTemplateType::PreShiftReminder24h);
+    $mail = $notification->toMail($this->volunteer);
+
+    expect(implode(' ', $mail->introLines))
+        ->not->toContain('cheat-sheet')
+        ->not->toContain('Instructions');
+});
