@@ -65,6 +65,16 @@
             {{ __('Gear Pickup') }}
         </flux:navlist.item>
     @endcan
+    @can('manageCustomFields', $event)
+        <flux:navlist.item
+            :href="route('events.custom-fields', $event)"
+            :current="request()->routeIs('events.custom-fields')"
+            icon="adjustments-horizontal"
+            wire:navigate
+        >
+            {{ __('Custom Fields') }}
+        </flux:navlist.item>
+    @endcan
     @can('markAttendance', $event)
         <flux:navlist.item
             :href="route('events.attendance', $event)"

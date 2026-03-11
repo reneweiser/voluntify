@@ -123,6 +123,29 @@ To remove a gear item, click the delete icon next to it. This deletes all volunt
 
 **Who can do this**: Organizer only. Gear pickup tracking is available to Organizer and Volunteer Admin (see the **Gear Pickup** page).
 
+## Set Up Custom Registration Fields
+
+If you need to collect additional information from volunteers during signup -- like dietary restrictions, t-shirt sizes, or emergency contacts -- you can add custom registration fields to your event.
+
+1. Go to **Custom Fields** in the event sidebar.
+2. Click **Add Field**.
+3. Configure the field:
+   - **Label** -- The question or field name (e.g., "Do you have any dietary restrictions?").
+   - **Type** -- Choose from:
+     - **Text** -- A single-line text input. Toggle **Multiline** for longer answers.
+     - **Select** -- A dropdown with predefined choices. Enter choices as comma-separated values (e.g., "Vegetarian, Vegan, Gluten-Free, None").
+     - **Checkbox** -- A simple yes/no toggle.
+   - **Required** -- Toggle on if volunteers must fill in this field to complete their signup.
+4. Repeat for each field you need.
+
+**Quick templates**: Click a template button to instantly add a commonly used field -- **Emergency Contact**, **Dietary Restrictions**, **T-Shirt Size**, **First Aid Certificate**, **Previous Experience**, or **Photo Release**. You can customize the field after adding it.
+
+**Removing fields**: Click the delete icon next to a field to remove it. Existing responses from volunteers who already signed up are preserved -- the field simply no longer appears on the signup form for new signups.
+
+**Adding required fields to events with existing signups**: If you add a required field to an event that already has volunteers signed up, a confirmation dialog warns you that existing volunteers won't have filled in this field.
+
+**Who can do this**: Organizer only.
+
 ## Publish an Event
 
 Publishing makes your event visible to volunteers and enables signups.
@@ -143,7 +166,7 @@ Once published:
 
 ## Clone an Event
 
-Cloning creates a copy of an event with all its jobs, shifts, and gear items, but no volunteer signups or gear assignments.
+Cloning creates a copy of an event with all its jobs, shifts, gear items, and custom registration fields, but no volunteer signups, gear assignments, or custom field responses.
 
 1. Go to **Overview** in the event sidebar.
 2. Click **Clone Event**.

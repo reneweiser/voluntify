@@ -52,6 +52,11 @@ class EventPolicy
             ->exists();
     }
 
+    public function manageCustomFields(User $user, Event $event): bool
+    {
+        return $this->isOrganizer($user, $event->organization);
+    }
+
     public function manageGear(User $user, Event $event): bool
     {
         return $this->isOrganizer($user, $event->organization);

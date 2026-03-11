@@ -84,6 +84,7 @@ Within an event, a sidebar lets you navigate between sections:
 | **Jobs & Shifts** | Manage volunteer jobs and their time-based shifts |
 | **Emails** | Customize automated email templates |
 | **Announcements** | Send messages to all event volunteers (Organizer only) |
+| **Custom Fields** | Define custom registration questions (Organizer only) |
 | **Gear** | Set up event gear items (Organizer only) |
 | **Volunteers** | List of signed-up volunteers with search and filters |
 | **Attendance** | Mark shift-level attendance |

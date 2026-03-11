@@ -4,16 +4,18 @@ namespace App\Actions;
 
 use App\Models\Event;
 use App\Models\Volunteer;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\LazyCollection;
 
 class ExportVolunteersCsv
 {
     /**
-     * @return LazyCollection<int, array{name: string, email: string, phone: ?string, shifts: string, arrived: string, attendance: string, gear: string}>
+     * @param  Collection<int, \App\Models\CustomRegistrationField>|null  $customFields
+     * @return LazyCollection<int, array<string, string>>
      */
-    public function execute(Event $event, ?string $search = null): LazyCollection
+    public function execute(Event $event, ?string $search = null, ?Collection $customFields = null): LazyCollection
     {
-        return Volunteer::forEvent($event->id)
+        $query = Volunteer::forEvent($event->id)
             ->when($search, fn ($q) => $q->search($search))
             ->with([
                 'shiftSignups' => fn ($q) => $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->where('event_id', $event->id)),
@@ -22,22 +24,44 @@ class ExportVolunteersCsv
                 'eventArrivals' => fn ($q) => $q->where('event_id', $event->id),
                 'volunteerGear' => fn ($q) => $q->whereHas('gearItem', fn ($sq) => $sq->where('event_id', $event->id)),
                 'volunteerGear.gearItem',
-            ])
+            ]);
+
+        if ($customFields !== null && $customFields->isNotEmpty()) {
+            $query->withCustomFields($event->id);
+        }
+
+        return $query
             ->orderBy('name')
             ->cursor()
-            ->map(fn (Volunteer $volunteer) => [
-                'name' => $volunteer->name,
-                'email' => $volunteer->email,
-                'phone' => $volunteer->phone ?? '',
-                'shifts' => $volunteer->shiftSignups
-                    ->map(fn ($s) => $s->shift->volunteerJob->name.': '.$s->shift->starts_at->format('M d, g:i A'))
-                    ->implode('; '),
-                'arrived' => $volunteer->eventArrivals->isNotEmpty() ? 'Yes' : 'No',
-                'attendance' => $this->attendanceStatus($volunteer),
-                'gear' => $volunteer->volunteerGear
-                    ->map(fn ($g) => $g->size ? "{$g->gearItem->name} ({$g->size})" : $g->gearItem->name)
-                    ->implode('; '),
-            ]);
+            ->map(function (Volunteer $volunteer) use ($customFields) {
+                $row = [
+                    'name' => $volunteer->name,
+                    'email' => $volunteer->email,
+                    'phone' => $volunteer->phone ?? '',
+                    'shifts' => $volunteer->shiftSignups
+                        ->map(fn ($s) => $s->shift->volunteerJob->name.': '.$s->shift->starts_at->format('M d, g:i A'))
+                        ->implode('; '),
+                    'arrived' => $volunteer->eventArrivals->isNotEmpty() ? 'Yes' : 'No',
+                    'attendance' => $this->attendanceStatus($volunteer),
+                    'gear' => $volunteer->volunteerGear
+                        ->map(fn ($g) => $g->size ? "{$g->gearItem->name} ({$g->size})" : $g->gearItem->name)
+                        ->implode('; '),
+                ];
+
+                if ($customFields !== null) {
+                    foreach ($customFields as $field) {
+                        $columnLabel = $field->label.($field->trashed() ? ' (archived)' : '');
+                        $response = $volunteer->customFieldResponses
+                            ->firstWhere('custom_registration_field_id', $field->id);
+
+                        $row['custom_field_'.$columnLabel] = $response
+                            ? $field->type->displayValue($response->value)
+                            : '';
+                    }
+                }
+
+                return $row;
+            });
     }
 
     private function attendanceStatus(Volunteer $volunteer): string

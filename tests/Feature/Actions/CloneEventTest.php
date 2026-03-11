@@ -88,6 +88,47 @@ it('clones gear items but not volunteer gear records', function () {
     expect(\App\Models\VolunteerGear::where('event_gear_item_id', $cloned->gearItems->first()->id)->count())->toBe(0);
 });
 
+it('clones custom registration fields but not responses', function () {
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create([
+        'label' => 'Emergency Contact',
+        'type' => 'text',
+        'required' => true,
+        'sort_order' => 1,
+    ]);
+    $volunteer = \App\Models\Volunteer::factory()->create();
+    \App\Models\CustomFieldResponse::factory()->create([
+        'custom_registration_field_id' => $field->id,
+        'volunteer_id' => $volunteer->id,
+        'value' => 'Mom: 555-1234',
+    ]);
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event);
+
+    $cloned->load('customRegistrationFields');
+
+    expect($cloned->customRegistrationFields)->toHaveCount(1)
+        ->and($cloned->customRegistrationFields->first()->label)->toBe('Emergency Contact')
+        ->and($cloned->customRegistrationFields->first()->required)->toBeTrue();
+
+    // Responses should NOT be cloned
+    expect(\App\Models\CustomFieldResponse::where('custom_registration_field_id', $cloned->customRegistrationFields->first()->id)->count())->toBe(0);
+});
+
+it('does not clone soft-deleted custom fields', function () {
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Active']);
+    $deletedField = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Deleted']);
+    $deletedField->delete();
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event);
+
+    $cloned->load('customRegistrationFields');
+
+    expect($cloned->customRegistrationFields)->toHaveCount(1)
+        ->and($cloned->customRegistrationFields->first()->label)->toBe('Active');
+});
+
 it('handles event with no jobs', function () {
     $action = new CloneEvent;
     $cloned = $action->execute($this->event);

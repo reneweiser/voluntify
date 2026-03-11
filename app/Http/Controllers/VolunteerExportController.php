@@ -20,13 +20,19 @@ class VolunteerExportController extends Controller
         Gate::authorize('view', $event);
 
         $search = $request->query('search');
-        $rows = $action->execute($event, $search);
+        $customFields = $event->customRegistrationFields()->withTrashed()->get();
+        $rows = $action->execute($event, $search, $customFields->isNotEmpty() ? $customFields : null);
 
         $filename = str($event->name)->slug().'-volunteers.csv';
 
-        return response()->streamDownload(function () use ($rows) {
+        $headers = ['Name', 'Email', 'Phone', 'Shifts', 'Arrived', 'Attendance', 'Gear'];
+        foreach ($customFields as $field) {
+            $headers[] = $field->label.($field->trashed() ? ' (archived)' : '');
+        }
+
+        return response()->streamDownload(function () use ($rows, $headers) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Name', 'Email', 'Phone', 'Shifts', 'Arrived', 'Attendance', 'Gear']);
+            fputcsv($handle, $headers);
 
             foreach ($rows as $row) {
                 fputcsv($handle, $row);

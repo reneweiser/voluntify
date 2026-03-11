@@ -152,6 +152,44 @@ it('stores gear selections on verification token for unverified volunteer', func
     expect(\App\Models\VolunteerGear::count())->toBe(0);
 });
 
+it('records custom field responses for verified volunteer', function () {
+    Volunteer::factory()->verified()->create(['email' => 'custom@example.com']);
+
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $outcome = $action->execute(
+        name: 'Custom Person',
+        email: 'custom@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+        customFieldResponses: [$field->id => 'Vegan'],
+    );
+
+    expect($outcome->type)->toBe(\App\Enums\SignupOutcomeType::Completed);
+    expect(\App\Models\CustomFieldResponse::count())->toBe(1);
+    expect(\App\Models\CustomFieldResponse::first()->value)->toBe('Vegan');
+});
+
+it('stores custom_field_responses on token for unverified volunteer', function () {
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $action->execute(
+        name: 'Unverified Custom',
+        email: 'unverified-custom@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+        customFieldResponses: [$field->id => 'Vegan'],
+    );
+
+    $token = EmailVerificationToken::first();
+    expect($token->custom_field_responses)->toBe([$field->id => 'Vegan']);
+    expect(\App\Models\CustomFieldResponse::count())->toBe(0);
+});
+
 it('updates phone number for existing volunteer', function () {
     Volunteer::factory()->verified()->create([
         'email' => 'test@example.com',

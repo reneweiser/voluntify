@@ -29,6 +29,7 @@ When a volunteer opens your event's public link, they see:
    - **Email** (required)
    - **Phone** (optional)
 5. **Gear selection** (if applicable) -- If the event has gear items, a gear form appears after the signup fields. Sized items show a size dropdown; non-sized items are listed as informational.
+6. **Custom registration fields** (if configured) -- If the organizer has added custom fields, an **Additional Information** section appears with the configured questions. Required fields are marked with an asterisk. Field types include text inputs, dropdowns, and checkboxes.
 
 The volunteer clicks **Sign Up** to register. If a shift is full, it shows a "Full" badge and the signup button is disabled.
 
@@ -67,11 +68,12 @@ If a volunteer signs up for multiple shifts at the same event, they get one tick
 
 The volunteer portal gives volunteers a self-service view of their shifts and any announcements from organizers. Volunteers access it via the **Manage Your Shifts** link on their ticket page -- no login required.
 
-The portal shows four sections:
+The portal shows five sections:
 
 - **Upcoming Shifts** -- All future shifts the volunteer is signed up for, sorted by date. Each entry shows the event name, job, and shift time.
 - **Past Shifts** -- Completed shifts, sorted most recent first.
 - **Event Gear** -- Gear assigned to the volunteer, showing the item name, event name, size (if applicable), and pickup status (Picked Up / Not Picked Up).
+- **Registration Info** -- The volunteer's custom field responses, grouped by event. Shows answers to any custom registration fields they filled in during signup.
 - **Announcements** -- Messages sent by the organizer (e.g., parking changes, schedule updates). Only sent announcements appear here.
 
 If the link has expired, volunteers see a message asking them to request a new magic link from the organizer.

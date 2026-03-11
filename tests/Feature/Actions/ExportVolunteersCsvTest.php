@@ -89,6 +89,76 @@ it('includes gear column with item names and sizes', function () {
         ->and($rows[0]['gear'])->toContain('Badge');
 });
 
+it('includes custom field columns in export', function () {
+    $volunteer = Volunteer::factory()->create(['name' => 'Alice']);
+    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
+
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
+    \App\Models\CustomFieldResponse::factory()->create([
+        'custom_registration_field_id' => $field->id,
+        'volunteer_id' => $volunteer->id,
+        'value' => 'Vegan',
+    ]);
+
+    $fields = $this->event->customRegistrationFields()->withTrashed()->get();
+    $action = new ExportVolunteersCsv;
+    $rows = $action->execute($this->event, null, $fields)->toArray();
+
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['custom_field_Diet'])->toBe('Vegan');
+});
+
+it('shows Yes/No for checkbox fields', function () {
+    $volunteer = Volunteer::factory()->create(['name' => 'Bob']);
+    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
+
+    $field = \App\Models\CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release']);
+    \App\Models\CustomFieldResponse::factory()->create([
+        'custom_registration_field_id' => $field->id,
+        'volunteer_id' => $volunteer->id,
+        'value' => '1',
+    ]);
+
+    $fields = $this->event->customRegistrationFields()->withTrashed()->get();
+    $action = new ExportVolunteersCsv;
+    $rows = $action->execute($this->event, null, $fields)->toArray();
+
+    expect($rows[0]['custom_field_Photo Release'])->toBe('Yes');
+});
+
+it('marks archived field columns with suffix', function () {
+    $volunteer = Volunteer::factory()->create(['name' => 'Carol']);
+    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
+
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Old Field']);
+    \App\Models\CustomFieldResponse::factory()->create([
+        'custom_registration_field_id' => $field->id,
+        'volunteer_id' => $volunteer->id,
+        'value' => 'some value',
+    ]);
+    $field->delete();
+
+    $fields = $this->event->customRegistrationFields()->withTrashed()->get();
+    $action = new ExportVolunteersCsv;
+    $rows = $action->execute($this->event, null, $fields)->toArray();
+
+    expect($rows[0])->toHaveKey('custom_field_Old Field (archived)');
+});
+
+it('handles volunteers without custom field responses', function () {
+    $volunteer = Volunteer::factory()->create(['name' => 'Dan']);
+    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
+
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Notes']);
+
+    $fields = $this->event->customRegistrationFields()->withTrashed()->get();
+    $action = new ExportVolunteersCsv;
+    $rows = $action->execute($this->event, null, $fields)->toArray();
+
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['custom_field_Notes'])->toBe('');
+});
+
 it('handles empty list', function () {
     $action = new ExportVolunteersCsv;
     $rows = $action->execute($this->event)->toArray();

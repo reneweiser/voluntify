@@ -75,6 +75,19 @@ class Volunteer extends Model
         return $this->hasMany(VolunteerGear::class);
     }
 
+    public function customFieldResponses(): HasMany
+    {
+        return $this->hasMany(CustomFieldResponse::class);
+    }
+
+    public function scopeWithCustomFields(Builder $query, int $eventId): void
+    {
+        $query->with(['customFieldResponses' => function ($q) use ($eventId) {
+            $q->whereHas('field', fn ($fq) => $fq->withTrashed()->where('event_id', $eventId))
+                ->with(['field' => fn ($fq) => $fq->withTrashed()]);
+        }]);
+    }
+
     public function scopeForEvent(Builder $query, int $eventId): void
     {
         $query->whereHas('tickets', fn (Builder $q) => $q->where('event_id', $eventId));

@@ -44,6 +44,10 @@ This glossary defines the shared vocabulary used throughout Voluntify. Consisten
 
 **Cancellation Cutoff** -- An optional per-event setting that defines how many hours before a shift a volunteer can still cancel their signup. If no cutoff is set, volunteers cannot self-cancel.
 
+**Custom Registration Field** -- An organizer-defined form field added to an event's signup page. Supports three types: text (single-line or multiline), select (dropdown with predefined choices), and checkbox. Fields can be marked as required. Removing a field preserves existing responses but hides the field from new signups.
+
+**Custom Field Response** -- A volunteer's answer to a custom registration field, recorded during signup. Responses are visible on the volunteer detail page, in the volunteer portal, and in CSV exports.
+
 ## Tickets & Scanning
 
 **Ticket** -- A QR-coded credential issued to a volunteer for event entrance. Each volunteer receives one ticket per event, covering all their shifts. Tickets are accessed via a magic link -- no login required.

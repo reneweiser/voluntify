@@ -139,6 +139,26 @@ it('creates gear records from token gear selections on verification', function (
     expect(\App\Models\VolunteerGear::where('event_gear_item_id', $badge->id)->first()->size)->toBeNull();
 });
 
+it('creates custom field responses from token on verification', function () {
+    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
+
+    $plainToken = Str::random(64);
+    EmailVerificationToken::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'event_id' => $this->event->id,
+        'shift_ids' => [$this->shift->id],
+        'custom_field_responses' => [$field->id => 'Vegan'],
+        'token_hash' => HashedToken::fromPlaintext($plainToken)->hash,
+        'expires_at' => now()->addHours(24),
+    ]);
+
+    $action = app(CompleteEmailVerification::class);
+    $action->execute($plainToken);
+
+    expect(\App\Models\CustomFieldResponse::count())->toBe(1);
+    expect(\App\Models\CustomFieldResponse::first()->value)->toBe('Vegan');
+});
+
 it('throws DomainException for archived event', function () {
     $archivedEvent = Event::factory()->for($this->org)->archived()->create();
     $job = VolunteerJob::factory()->for($archivedEvent)->create();

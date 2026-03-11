@@ -35,6 +35,19 @@ class VolunteerDetail extends Component
     }
 
     #[Computed]
+    public function customFieldResponses(): Collection
+    {
+        $fieldIds = \App\Models\CustomRegistrationField::withTrashed()
+            ->where('event_id', $this->event->id)
+            ->pluck('id');
+
+        return $this->volunteer->customFieldResponses()
+            ->whereIn('custom_registration_field_id', $fieldIds)
+            ->with(['field' => fn ($q) => $q->withTrashed()])
+            ->get();
+    }
+
+    #[Computed]
     public function shiftSignups(): Collection
     {
         return $this->volunteer->shiftSignups()

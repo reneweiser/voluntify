@@ -32,6 +32,7 @@ The volunteer detail page shows everything about a specific volunteer for this e
 - **Shift assignments** -- All shifts they're signed up for, with job names and times.
 - **Arrival status** -- Whether they've been scanned in at the event entrance and when.
 - **Attendance records** -- Their per-shift attendance status (On Time / Late / No Show).
+- **Custom field responses** -- Answers to any custom registration fields the volunteer filled in during signup. Archived (removed) fields are shown with an "(archived)" label.
 
 ## Export CSV
 
@@ -41,7 +42,7 @@ To export the volunteer list as a CSV file:
 2. Click the **Export** button.
 3. A CSV file downloads with the volunteer data.
 
-The export includes volunteer names, emails, job assignments, shift times, status information, and a gear column listing assigned gear items with sizes (e.g., "T-Shirt (M); Badge").
+The export includes volunteer names, emails, job assignments, shift times, status information, a gear column listing assigned gear items with sizes (e.g., "T-Shirt (M); Badge"), and columns for each custom registration field. Checkbox fields export as "Yes" or "No". Archived (removed) fields include an "(archived)" suffix in the column header.
 
 Note: Cancelled signups are excluded from volunteer counts, the volunteer list, and attendance views. Only active signups are shown.
 

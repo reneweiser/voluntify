@@ -16,6 +16,7 @@ class EmailVerificationToken extends Model
         'event_id',
         'shift_ids',
         'gear_selections',
+        'custom_field_responses',
         'token_hash',
         'expires_at',
     ];
@@ -25,6 +26,7 @@ class EmailVerificationToken extends Model
         return [
             'shift_ids' => 'array',
             'gear_selections' => 'array',
+            'custom_field_responses' => 'array',
             'expires_at' => 'datetime',
         ];
     }

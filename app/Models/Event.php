@@ -93,6 +93,11 @@ class Event extends Model
         return $this->hasMany(EventGearItem::class)->orderBy('sort_order');
     }
 
+    public function customRegistrationFields(): HasMany
+    {
+        return $this->hasMany(CustomRegistrationField::class)->orderBy('sort_order');
+    }
+
     public function eventGroup(): BelongsTo
     {
         return $this->belongsTo(EventGroup::class);
