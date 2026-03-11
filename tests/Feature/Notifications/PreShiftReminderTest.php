@@ -76,7 +76,7 @@ it('includes cheat sheet link when job has instructions', function () {
     $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
     $mail = $notification->toMail($this->volunteer);
 
-    $cheatSheetUrl = route('jobs.cheat-sheet', [
+    $cheatSheetUrl = route('events.jobs.cheat-sheet', [
         'publicToken' => $this->event->public_token,
         'jobId' => $this->job->id,
     ]);

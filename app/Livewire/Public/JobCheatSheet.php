@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Public;
 
-use App\Enums\EventStatus;
 use App\Models\Event;
 use App\Models\VolunteerJob;
 use Livewire\Attributes\Layout;
@@ -19,16 +18,11 @@ class JobCheatSheet extends Component
 
     public function mount(string $publicToken, int $jobId): void
     {
-        $this->event = Event::where('public_token', $publicToken)
-            ->where('status', EventStatus::Published)
-            ->firstOrFail();
+        $this->event = Event::publishedByToken($publicToken)->firstOrFail();
 
-        $this->job = VolunteerJob::where('id', $jobId)
-            ->where('event_id', $this->event->id)
-            ->firstOrFail();
-
-        if (empty($this->job->instructions)) {
-            abort(404);
-        }
+        $this->job = $this->event->volunteerJobs()
+            ->whereNotNull('instructions')
+            ->where('instructions', '!=', '')
+            ->findOrFail($jobId);
     }
 }

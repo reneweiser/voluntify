@@ -122,4 +122,9 @@ class Event extends Model
     {
         $query->where('status', EventStatus::Published);
     }
+
+    public function scopePublishedByToken(Builder $query, string $publicToken): void
+    {
+        $query->where('public_token', $publicToken)->published();
+    }
 }

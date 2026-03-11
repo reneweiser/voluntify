@@ -21,7 +21,7 @@ beforeEach(function () {
 });
 
 it('renders cheat sheet page for job with instructions', function () {
-    $this->get(route('jobs.cheat-sheet', [
+    $this->get(route('events.jobs.cheat-sheet', [
         'publicToken' => $this->event->public_token,
         'jobId' => $this->jobWithInstructions->id,
     ]))
@@ -31,7 +31,7 @@ it('renders cheat sheet page for job with instructions', function () {
 });
 
 it('returns 404 when job has no instructions', function () {
-    $this->get(route('jobs.cheat-sheet', [
+    $this->get(route('events.jobs.cheat-sheet', [
         'publicToken' => $this->event->public_token,
         'jobId' => $this->jobWithoutInstructions->id,
     ]))
@@ -39,7 +39,7 @@ it('returns 404 when job has no instructions', function () {
 });
 
 it('returns 404 for invalid public token', function () {
-    $this->get(route('jobs.cheat-sheet', [
+    $this->get(route('events.jobs.cheat-sheet', [
         'publicToken' => 'invalid-token',
         'jobId' => $this->jobWithInstructions->id,
     ]))
@@ -49,7 +49,7 @@ it('returns 404 for invalid public token', function () {
 it('returns 404 when job does not belong to event', function () {
     $otherEvent = Event::factory()->for($this->org)->published()->create();
 
-    $this->get(route('jobs.cheat-sheet', [
+    $this->get(route('events.jobs.cheat-sheet', [
         'publicToken' => $otherEvent->public_token,
         'jobId' => $this->jobWithInstructions->id,
     ]))
@@ -60,12 +60,12 @@ it('shows instruction link on public event page for jobs with instructions', fun
     Shift::factory()->for($this->jobWithInstructions, 'volunteerJob')->create();
     Shift::factory()->for($this->jobWithoutInstructions, 'volunteerJob')->create();
 
-    $cheatSheetUrl = route('jobs.cheat-sheet', [
+    $cheatSheetUrl = route('events.jobs.cheat-sheet', [
         'publicToken' => $this->event->public_token,
         'jobId' => $this->jobWithInstructions->id,
     ]);
 
-    $noInstructionsUrl = route('jobs.cheat-sheet', [
+    $noInstructionsUrl = route('events.jobs.cheat-sheet', [
         'publicToken' => $this->event->public_token,
         'jobId' => $this->jobWithoutInstructions->id,
     ]);
@@ -73,4 +73,29 @@ it('shows instruction link on public event page for jobs with instructions', fun
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->assertSeeHtml($cheatSheetUrl)
         ->assertDontSeeHtml($noInstructionsUrl);
+});
+
+it('returns 404 for draft event', function () {
+    $draftEvent = Event::factory()->for($this->org)->create();
+    $job = VolunteerJob::factory()->for($draftEvent)->create([
+        'instructions' => 'Some instructions',
+    ]);
+
+    $this->get(route('events.jobs.cheat-sheet', [
+        'publicToken' => $draftEvent->public_token,
+        'jobId' => $job->id,
+    ]))
+        ->assertNotFound();
+});
+
+it('returns 404 when instructions are empty string', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create([
+        'instructions' => '',
+    ]);
+
+    $this->get(route('events.jobs.cheat-sheet', [
+        'publicToken' => $this->event->public_token,
+        'jobId' => $job->id,
+    ]))
+        ->assertNotFound();
 });

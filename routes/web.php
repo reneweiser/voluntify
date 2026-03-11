@@ -39,7 +39,7 @@ if (app()->environment('local')) {
 
 // Public routes (no auth required)
 Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public');
-Route::livewire('events/{publicToken}/jobs/{jobId}/cheat-sheet', JobCheatSheet::class)->name('jobs.cheat-sheet');
+Route::livewire('events/{publicToken}/jobs/{jobId}/cheat-sheet', JobCheatSheet::class)->name('events.jobs.cheat-sheet');
 Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunteer.ticket');
 Route::livewire('my-portal/{magicToken}', VolunteerPortal::class)->name('volunteer.portal');
 Route::livewire('verify-email/{token}', EmailVerificationPage::class)->name('volunteer.verify-email');

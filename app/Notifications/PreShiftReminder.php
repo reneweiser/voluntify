@@ -37,7 +37,7 @@ class PreShiftReminder extends Notification implements ShouldQueue
         $job = $this->shift->volunteerJob;
 
         $cheatSheetUrl = $job->instructions
-            ? route('jobs.cheat-sheet', ['publicToken' => $this->event->public_token, 'jobId' => $job->id])
+            ? route('events.jobs.cheat-sheet', ['publicToken' => $this->event->public_token, 'jobId' => $job->id])
             : '';
 
         $renderer = app(EmailTemplateRenderer::class);
