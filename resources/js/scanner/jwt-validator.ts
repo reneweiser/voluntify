@@ -1,4 +1,5 @@
 import type { ScannerKeys } from './types';
+import * as ed from '@noble/ed25519';
 
 export interface JwtResult {
     valid: boolean;
@@ -6,36 +7,27 @@ export interface JwtResult {
     error?: string;
 }
 
-function base64UrlDecode(str: string): string {
+function base64UrlDecode(str: string): Uint8Array {
     const padded = str.replace(/-/g, '+').replace(/_/g, '/');
-    return atob(padded);
-}
-
-function base64UrlEncode(str: string): string {
-    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function verifySignature(token: string, secret: string): Promise<boolean> {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-        return false;
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
     }
+    return bytes;
+}
 
-    const signingInput = `${parts[0]}.${parts[1]}`;
-    const signature = parts[2];
-    const encoder = new TextEncoder();
-
-    const key = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(secret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['verify']
-    );
-
-    const signatureBytes = Uint8Array.from(base64UrlDecode(signature), (c) => c.charCodeAt(0));
-
-    return crypto.subtle.verify('HMAC', key, signatureBytes, encoder.encode(signingInput));
+function parseHeader(token: string): Record<string, unknown> | null {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return null;
+        }
+        const headerBytes = base64UrlDecode(parts[0]);
+        return JSON.parse(new TextDecoder().decode(headerBytes));
+    } catch {
+        return null;
+    }
 }
 
 function parsePayload(token: string): Record<string, unknown> | null {
@@ -44,40 +36,75 @@ function parsePayload(token: string): Record<string, unknown> | null {
         if (parts.length !== 3) {
             return null;
         }
-        return JSON.parse(base64UrlDecode(parts[1]));
+        const payloadBytes = base64UrlDecode(parts[1]);
+        return JSON.parse(new TextDecoder().decode(payloadBytes));
     } catch {
         return null;
     }
 }
 
+async function verifyEd25519(token: string, publicKeyB64: string): Promise<boolean> {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return false;
+        }
+
+        const signingInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+        const signature = base64UrlDecode(parts[2]);
+        const publicKey = Uint8Array.from(atob(publicKeyB64), (c) => c.charCodeAt(0));
+
+        return await ed.verifyAsync(signature, signingInput, publicKey);
+    } catch {
+        return false;
+    }
+}
+
 export async function validateJwt(token: string, keys: ScannerKeys): Promise<JwtResult> {
+    const header = parseHeader(token);
+    if (!header) {
+        return { valid: false, volunteerId: null, error: 'Malformed token' };
+    }
+
     const payload = parsePayload(token);
     if (!payload) {
         return { valid: false, volunteerId: null, error: 'Malformed token' };
     }
 
-    // Check expiration
-    const now = Math.floor(Date.now() / 1000);
-    if (typeof payload.exp === 'number' && payload.exp < now) {
-        return { valid: false, volunteerId: null, error: 'Token expired' };
+    // Reject alg: none
+    if (header.alg === 'none' || !header.alg) {
+        return { valid: false, volunteerId: null, error: 'Unsupported algorithm' };
     }
 
-    // Try current key first, then previous key
-    const currentValid = await verifySignature(token, keys.current);
-    if (currentValid) {
+    // Legacy HS256 tokens: return special error so scanner can queue for server verification
+    if (header.alg === 'HS256') {
         return {
-            valid: true,
+            valid: false,
             volunteerId: (payload.volunteer_id as number) ?? null,
+            error: 'legacy_token',
         };
     }
 
-    const previousValid = await verifySignature(token, keys.previous);
-    if (previousValid) {
-        return {
-            valid: true,
-            volunteerId: (payload.volunteer_id as number) ?? null,
-        };
+    // EdDSA verification
+    if (header.alg === 'EdDSA') {
+        // Try current key first
+        if (await verifyEd25519(token, keys.current)) {
+            return {
+                valid: true,
+                volunteerId: (payload.volunteer_id as number) ?? null,
+            };
+        }
+
+        // Fall back to previous key
+        if (await verifyEd25519(token, keys.previous)) {
+            return {
+                valid: true,
+                volunteerId: (payload.volunteer_id as number) ?? null,
+            };
+        }
+
+        return { valid: false, volunteerId: null, error: 'Invalid signature' };
     }
 
-    return { valid: false, volunteerId: null, error: 'Invalid signature' };
+    return { valid: false, volunteerId: null, error: 'Unsupported algorithm' };
 }

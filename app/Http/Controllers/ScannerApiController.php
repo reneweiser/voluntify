@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Ticket;
 use App\Services\JwtKeyService;
+use App\Services\TokenVerifier;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
@@ -57,15 +58,16 @@ class ScannerApiController extends Controller
                 ]),
             ]),
             'arrivals' => $arrivals,
-            'keys' => [
-                'current' => $jwtKeyService->deriveKey($event->id),
-                'previous' => $jwtKeyService->previousPeriodKey($event->id),
-            ],
+            'keys' => $jwtKeyService->publicKeys($event->id),
         ]);
     }
 
-    public function sync(int $eventId, SyncArrivalsRequest $request, RecordArrival $recordArrival): JsonResponse
-    {
+    public function sync(
+        int $eventId,
+        SyncArrivalsRequest $request,
+        RecordArrival $recordArrival,
+        TokenVerifier $tokenVerifier,
+    ): JsonResponse {
         $organization = currentOrganization();
         $event = Event::where('id', $eventId)
             ->where('organization_id', $organization->id)
@@ -73,7 +75,23 @@ class ScannerApiController extends Controller
 
         Gate::authorize('scan', $event);
 
+        $rejected = [];
+
         foreach ($request->validated()['arrivals'] as $arrivalData) {
+            // Validate JWT if provided
+            if (! empty($arrivalData['jwt_token'])) {
+                try {
+                    $tokenVerifier->verify($arrivalData['jwt_token'], $event->id);
+                } catch (\Exception) {
+                    $rejected[] = [
+                        'ticket_id' => $arrivalData['ticket_id'],
+                        'reason' => 'Invalid JWT token.',
+                    ];
+
+                    continue;
+                }
+            }
+
             $ticket = Ticket::where('event_id', $event->id)->findOrFail($arrivalData['ticket_id']);
 
             $recordArrival->execute(
@@ -88,6 +106,7 @@ class ScannerApiController extends Controller
 
         return response()->json([
             'arrivals' => $arrivals,
+            'rejected' => $rejected,
         ]);
     }
 }

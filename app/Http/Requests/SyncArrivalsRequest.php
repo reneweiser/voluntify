@@ -23,6 +23,7 @@ class SyncArrivalsRequest extends FormRequest
             'arrivals.*.ticket_id' => ['required', 'integer', 'exists:tickets,id'],
             'arrivals.*.method' => ['required', 'string', Rule::in(array_column(ArrivalMethod::cases(), 'value'))],
             'arrivals.*.scanned_at' => ['required', 'date'],
+            'arrivals.*.jwt_token' => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

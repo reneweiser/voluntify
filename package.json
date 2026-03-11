@@ -9,6 +9,7 @@
         "test:e2e:setup": "bash e2e/setup.sh"
     },
     "dependencies": {
+        "@noble/ed25519": "^3.0.0",
         "@tailwindcss/vite": "^4.1.11",
         "autoprefixer": "^10.4.20",
         "axios": "^1.7.4",
