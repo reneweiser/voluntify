@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StaffRole;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -14,6 +15,9 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    /** @var array<int, StaffRole|false> */
+    private array $roleCache = [];
 
     /**
      * The attributes that are mass assignable.
@@ -62,6 +66,21 @@ class User extends Authenticatable implements MustVerifyEmail
             ->using(OrganizationUser::class)
             ->withPivot('role')
             ->withTimestamps();
+    }
+
+    public function cachedRoleFor(Organization $organization): ?StaffRole
+    {
+        if (! array_key_exists($organization->id, $this->roleCache)) {
+            $pivot = $this->organizations()
+                ->where('organization_id', $organization->id)
+                ->first()?->pivot;
+
+            $this->roleCache[$organization->id] = $pivot?->role ?? false;
+        }
+
+        $cached = $this->roleCache[$organization->id];
+
+        return $cached === false ? null : $cached;
     }
 
     public function isPersonalOrganization(Organization $organization): bool

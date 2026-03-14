@@ -11,78 +11,61 @@ class EventPolicy
 {
     public function viewAny(User $user, Organization $organization): bool
     {
-        return $organization->users()->where('user_id', $user->id)->exists();
+        return $user->cachedRoleFor($organization) !== null;
     }
 
     public function view(User $user, Event $event): bool
     {
-        return $event->organization->users()->where('user_id', $user->id)->exists();
+        return $user->cachedRoleFor($event->organization) !== null;
     }
 
     public function create(User $user, Organization $organization): bool
     {
-        return $this->isOrganizer($user, $organization);
+        return $user->cachedRoleFor($organization) === StaffRole::Organizer;
     }
 
     public function update(User $user, Event $event): bool
     {
-        return $this->isOrganizer($user, $event->organization);
+        return $user->cachedRoleFor($event->organization) === StaffRole::Organizer;
     }
 
     public function publish(User $user, Event $event): bool
     {
-        return $this->isOrganizer($user, $event->organization);
+        return $user->cachedRoleFor($event->organization) === StaffRole::Organizer;
     }
 
     public function archive(User $user, Event $event): bool
     {
-        return $this->isOrganizer($user, $event->organization);
+        return $user->cachedRoleFor($event->organization) === StaffRole::Organizer;
     }
 
     public function manageJobs(User $user, Event $event): bool
     {
-        return $this->isOrganizer($user, $event->organization);
+        return $user->cachedRoleFor($event->organization) === StaffRole::Organizer;
     }
 
     public function markAttendance(User $user, Event $event): bool
     {
-        return $event->organization->users()
-            ->where('user_id', $user->id)
-            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::VolunteerAdmin])
-            ->exists();
+        return in_array($user->cachedRoleFor($event->organization), [StaffRole::Organizer, StaffRole::VolunteerAdmin]);
     }
 
     public function manageCustomFields(User $user, Event $event): bool
     {
-        return $this->isOrganizer($user, $event->organization);
+        return $user->cachedRoleFor($event->organization) === StaffRole::Organizer;
     }
 
     public function manageGear(User $user, Event $event): bool
     {
-        return $this->isOrganizer($user, $event->organization);
+        return $user->cachedRoleFor($event->organization) === StaffRole::Organizer;
     }
 
     public function trackGearPickup(User $user, Event $event): bool
     {
-        return $event->organization->users()
-            ->where('user_id', $user->id)
-            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::VolunteerAdmin])
-            ->exists();
+        return in_array($user->cachedRoleFor($event->organization), [StaffRole::Organizer, StaffRole::VolunteerAdmin]);
     }
 
     public function scan(User $user, Event $event): bool
     {
-        return $event->organization->users()
-            ->where('user_id', $user->id)
-            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::EntranceStaff])
-            ->exists();
-    }
-
-    private function isOrganizer(User $user, Organization $organization): bool
-    {
-        return $organization->users()
-            ->where('user_id', $user->id)
-            ->wherePivot('role', StaffRole::Organizer)
-            ->exists();
+        return in_array($user->cachedRoleFor($event->organization), [StaffRole::Organizer, StaffRole::EntranceStaff]);
     }
 }
