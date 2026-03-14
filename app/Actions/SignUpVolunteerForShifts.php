@@ -22,11 +22,9 @@ class SignUpVolunteerForShifts
      * @param  array<int>  $shiftIds
      */
     public function execute(
-        string $name,
-        string $email,
+        Volunteer $volunteer,
         Event $event,
         array $shiftIds,
-        ?string $phone = null,
     ): SignupBatchResult {
         $eventJobIds = $event->volunteerJobs()->pluck('id');
         $validShiftIds = Shift::whereIn('volunteer_job_id', $eventJobIds)
@@ -41,15 +39,7 @@ class SignUpVolunteerForShifts
         $sortedShiftIds = $shiftIds;
         sort($sortedShiftIds);
 
-        $result = DB::transaction(function () use ($name, $email, $phone, $event, $sortedShiftIds) {
-            $volunteer = Volunteer::firstOrCreate(
-                ['email' => $email],
-                ['name' => $name, 'phone' => $phone],
-            );
-
-            if ($phone !== null && $volunteer->phone !== $phone) {
-                $volunteer->update(['phone' => $phone]);
-            }
+        $result = DB::transaction(function () use ($volunteer, $event, $sortedShiftIds) {
 
             $newSignups = [];
             $skippedFull = [];

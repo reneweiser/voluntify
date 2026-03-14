@@ -19,18 +19,14 @@ class SignUpVolunteer
      * @return array{volunteer: Volunteer, signup: ShiftSignup}
      */
     public function execute(
-        string $name,
-        string $email,
+        Volunteer $volunteer,
         Event $event,
         Shift $shift,
-        ?string $phone = null,
     ): array {
         $result = $this->batchAction->execute(
-            name: $name,
-            email: $email,
+            volunteer: $volunteer,
             event: $event,
             shiftIds: [$shift->id],
-            phone: $phone,
         );
 
         if (count($result->skippedFull) > 0) {

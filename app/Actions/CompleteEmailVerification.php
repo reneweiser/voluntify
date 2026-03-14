@@ -41,11 +41,9 @@ class CompleteEmailVerification
         VolunteerVerified::dispatch($volunteer, $event);
 
         $result = $this->signUpAction->execute(
-            name: $volunteer->name,
-            email: $volunteer->email,
+            volunteer: $volunteer,
             event: $event,
             shiftIds: $token->shift_ids,
-            phone: $volunteer->phone,
         );
 
         if ($token->gear_selections) {

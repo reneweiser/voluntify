@@ -41,11 +41,9 @@ class ProcessVolunteerSignup
 
         if ($volunteer->isEmailVerified()) {
             $result = $this->signUpAction->execute(
-                name: $name,
-                email: $email,
+                volunteer: $volunteer,
                 event: $event,
                 shiftIds: $shiftIds,
-                phone: $phone,
             );
 
             if ($gearSelections !== null) {

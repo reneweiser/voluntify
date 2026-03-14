@@ -24,38 +24,25 @@ beforeEach(function () {
     $this->action = app(SignUpVolunteer::class);
 });
 
-it('creates volunteer and signup records', function () {
+it('creates signup for volunteer', function () {
+    $volunteer = Volunteer::factory()->create();
+
     $result = $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
+        volunteer: $volunteer,
         event: $this->event,
         shift: $this->shift,
     );
 
-    expect($result['volunteer']->name)->toBe('Jane Doe')
-        ->and($result['volunteer']->email)->toBe('jane@example.com')
+    expect($result['volunteer']->id)->toBe($volunteer->id)
         ->and($result['signup']->shift_id)->toBe($this->shift->id)
-        ->and($result['signup']->volunteer_id)->toBe($result['volunteer']->id);
-});
-
-it('upserts volunteer by email', function () {
-    $existing = Volunteer::factory()->create(['email' => 'returning@example.com', 'name' => 'Original Name']);
-
-    $result = $this->action->execute(
-        name: 'Different Name',
-        email: 'returning@example.com',
-        event: $this->event,
-        shift: $this->shift,
-    );
-
-    expect($result['volunteer']->id)->toBe($existing->id)
-        ->and(Volunteer::where('email', 'returning@example.com')->count())->toBe(1);
+        ->and($result['signup']->volunteer_id)->toBe($volunteer->id);
 });
 
 it('generates a ticket for the volunteer', function () {
+    $volunteer = Volunteer::factory()->create();
+
     $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
+        volunteer: $volunteer,
         event: $this->event,
         shift: $this->shift,
     );
@@ -64,27 +51,25 @@ it('generates a ticket for the volunteer', function () {
 });
 
 it('generates a magic link token', function () {
+    $volunteer = Volunteer::factory()->create();
+
     $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
+        volunteer: $volunteer,
         event: $this->event,
         shift: $this->shift,
     );
-
-    $volunteer = Volunteer::where('email', 'jane@example.com')->first();
 
     expect($volunteer->magicLinkTokens()->count())->toBe(1);
 });
 
 it('dispatches signup confirmation notification with shift array', function () {
+    $volunteer = Volunteer::factory()->create();
+
     $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
+        volunteer: $volunteer,
         event: $this->event,
         shift: $this->shift,
     );
-
-    $volunteer = Volunteer::where('email', 'jane@example.com')->first();
 
     Notification::assertSentTo($volunteer, SignupConfirmation::class, function ($notification) {
         return is_array($notification->shiftIds) && count($notification->shiftIds) === 1;
@@ -92,103 +77,43 @@ it('dispatches signup confirmation notification with shift array', function () {
 });
 
 it('throws ShiftFullException when shift is at capacity', function () {
-    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
     $volunteer = Volunteer::factory()->create();
-    ShiftSignup::factory()->create(['shift_id' => $fullShift->id, 'volunteer_id' => $volunteer->id]);
+    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
+    $otherVolunteer = Volunteer::factory()->create();
+    ShiftSignup::factory()->create(['shift_id' => $fullShift->id, 'volunteer_id' => $otherVolunteer->id]);
 
     expect(fn () => $this->action->execute(
-        name: 'New Person',
-        email: 'new@example.com',
+        volunteer: $volunteer,
         event: $this->event,
         shift: $fullShift,
     ))->toThrow(ShiftFullException::class);
 });
 
 it('throws AlreadySignedUpException for duplicate signup', function () {
+    $volunteer = Volunteer::factory()->create();
+
     $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
+        volunteer: $volunteer,
         event: $this->event,
         shift: $this->shift,
     );
 
     expect(fn () => $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
+        volunteer: $volunteer,
         event: $this->event,
         shift: $this->shift,
     ))->toThrow(AlreadySignedUpException::class);
 });
 
-it('stores phone number when provided', function () {
-    $result = $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
-        event: $this->event,
-        shift: $this->shift,
-        phone: '+15551234567',
-    );
-
-    expect($result['volunteer']->phone)->toBe('+15551234567');
-});
-
-it('stores null phone when not provided', function () {
-    $result = $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
-        event: $this->event,
-        shift: $this->shift,
-    );
-
-    expect($result['volunteer']->phone)->toBeNull();
-});
-
-it('updates phone for returning volunteer when new phone is provided', function () {
-    Volunteer::factory()->create([
-        'email' => 'returning@example.com',
-        'phone' => '+10000000000',
-    ]);
-
-    $otherShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
-
-    $result = $this->action->execute(
-        name: 'Returning',
-        email: 'returning@example.com',
-        event: $this->event,
-        shift: $otherShift,
-        phone: '+19999999999',
-    );
-
-    expect($result['volunteer']->fresh()->phone)->toBe('+19999999999');
-});
-
-it('preserves existing phone for returning volunteer when phone is null', function () {
-    Volunteer::factory()->create([
-        'email' => 'returning@example.com',
-        'phone' => '+10000000000',
-    ]);
-
-    $otherShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
-
-    $result = $this->action->execute(
-        name: 'Returning',
-        email: 'returning@example.com',
-        event: $this->event,
-        shift: $otherShift,
-    );
-
-    expect($result['volunteer']->fresh()->phone)->toBe('+10000000000');
-});
-
 it('throws DomainException when shift does not belong to event', function () {
+    $volunteer = Volunteer::factory()->create();
     $otherOrg = Organization::factory()->create();
     $otherEvent = Event::factory()->for($otherOrg)->published()->create();
     $otherJob = VolunteerJob::factory()->for($otherEvent)->create();
     $otherShift = Shift::factory()->for($otherJob, 'volunteerJob')->create(['capacity' => 5]);
 
     expect(fn () => $this->action->execute(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
+        volunteer: $volunteer,
         event: $this->event,
         shift: $otherShift,
     ))->toThrow(\App\Exceptions\DomainException::class, 'One or more shifts do not belong to this event.');
