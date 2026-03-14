@@ -28,12 +28,7 @@ class Dashboard extends Component
     #[Computed]
     public function userRole(): ?string
     {
-        return $this->organization->users()
-            ->where('user_id', auth()->id())
-            ->first()
-            ?->pivot
-            ?->role
-            ?->value;
+        return auth()->user()->cachedRoleFor($this->organization)?->value;
     }
 
     #[Computed]
@@ -95,23 +90,14 @@ class Dashboard extends Component
     #[Computed]
     public function noShowRate(): float
     {
-        $eventIds = $this->organization->events()->select('id');
-
-        $total = AttendanceRecord::whereHas(
-            'shiftSignup.shift.volunteerJob',
-            fn ($q) => $q->whereIn('event_id', $eventIds)
-        )->count();
+        $summary = $this->attendanceSummary;
+        $total = $summary['on_time'] + $summary['late'] + $summary['no_show'];
 
         if ($total === 0) {
             return 0;
         }
 
-        $noShows = AttendanceRecord::whereHas(
-            'shiftSignup.shift.volunteerJob',
-            fn ($q) => $q->whereIn('event_id', $eventIds)
-        )->where('status', AttendanceStatus::NoShow)->count();
-
-        return round(($noShows / $total) * 100, 1);
+        return round(($summary['no_show'] / $total) * 100, 1);
     }
 
     /**
