@@ -25,7 +25,7 @@
                             ->exists();
                         $canScan = $isOrganizer || currentOrganization()->users()
                             ->where('user_id', auth()->id())
-                            ->wherePivot('role', \App\Enums\StaffRole::EntranceStaff)
+                            ->wherePivotIn('role', [\App\Enums\StaffRole::EntranceStaff, \App\Enums\StaffRole::VolunteerAdmin])
                             ->exists();
                     @endphp
                     @if ($canScan)

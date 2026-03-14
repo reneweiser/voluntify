@@ -11,13 +11,13 @@ use App\Models\User;
 
 class RecordAttendance
 {
-    public function execute(ShiftSignup $signup, AttendanceStatus $status, User $recordedBy): AttendanceRecord
+    public function execute(ShiftSignup $signup, AttendanceStatus $status, ?User $recordedBy = null): AttendanceRecord
     {
         $record = AttendanceRecord::updateOrCreate(
             ['shift_signup_id' => $signup->id],
             [
                 'status' => $status,
-                'recorded_by' => $recordedBy->id,
+                'recorded_by' => $recordedBy?->id,
                 'recorded_at' => now(),
             ],
         );

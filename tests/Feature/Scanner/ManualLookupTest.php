@@ -36,11 +36,11 @@ it('renders for organizer', function () {
         ->assertSeeLivewire(ManualLookup::class);
 });
 
-it('returns 403 for volunteer admin', function () {
+it('renders for volunteer admin', function () {
     $this->actingAs($this->volunteerAdmin)
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('scanner.lookup', $this->event))
-        ->assertForbidden();
+        ->assertOk();
 });
 
 it('shows event name', function () {

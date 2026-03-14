@@ -149,6 +149,13 @@
                         <flux:error name="cancellationCutoffHours" />
                     </flux:field>
 
+                    <flux:field>
+                        <flux:label>{{ __('Attendance Grace Period (minutes)') }}</flux:label>
+                        <flux:input type="number" wire:model="attendanceGraceMinutes" min="0" max="120" placeholder="{{ __('No grace period — leave empty') }}" />
+                        <flux:description>{{ __('Minutes after shift start within which a scan is still marked as on-time. Leave empty for no grace period.') }}</flux:description>
+                        <flux:error name="attendanceGraceMinutes" />
+                    </flux:field>
+
                     @if ($this->availableGroups->isNotEmpty())
                         <flux:field>
                             <flux:label>{{ __('Event Group') }}</flux:label>

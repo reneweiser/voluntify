@@ -22,7 +22,7 @@ class QrScanner extends Component
 
         $hasAccess = $organization->users()
             ->where('user_id', auth()->id())
-            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::EntranceStaff])
+            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::EntranceStaff, StaffRole::VolunteerAdmin])
             ->exists();
 
         if (! $hasAccess) {

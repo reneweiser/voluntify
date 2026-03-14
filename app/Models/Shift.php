@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\AttendanceStatus;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -55,5 +57,16 @@ class Shift extends Model
         $count = $this->active_signups_count ?? $this->activeSignups()->count();
 
         return max(0, $this->capacity - $count);
+    }
+
+    public function attendanceStatusAt(CarbonInterface $scannedAt, ?int $graceMinutes = null): AttendanceStatus
+    {
+        $deadline = $graceMinutes !== null
+            ? $this->starts_at->copy()->addMinutes($graceMinutes)
+            : $this->starts_at;
+
+        return $scannedAt->lte($deadline)
+            ? AttendanceStatus::OnTime
+            : AttendanceStatus::Late;
     }
 }

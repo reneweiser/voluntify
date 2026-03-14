@@ -28,10 +28,10 @@ it('shows scanner link for entrance staff', function () {
         ->assertSee('Scanner');
 });
 
-it('hides scanner link for volunteer admin', function () {
+it('shows scanner link for volunteer admin', function () {
     $this->actingAs($this->volunteerAdmin)
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertDontSee('Scanner');
+        ->assertSee('Scanner');
 });

@@ -41,6 +41,8 @@ class EventShow extends Component
 
     public $cancellationCutoffHours = '';
 
+    public $attendanceGraceMinutes = '';
+
     public bool $editing = false;
 
     public string $selectedGroupId = '';
@@ -139,6 +141,7 @@ class EventShow extends Component
             'endsAt' => ['required', 'date', 'after:startsAt'],
             'titleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'cancellationCutoffHours' => ['nullable', 'integer', 'min:1', 'max:168'],
+            'attendanceGraceMinutes' => ['nullable', 'integer', 'min:0', 'max:120'],
         ]);
 
         try {
@@ -152,6 +155,7 @@ class EventShow extends Component
                 endsAt: Carbon::parse($this->endsAt),
                 titleImage: $this->titleImage,
                 cancellationCutoffHours: $this->cancellationCutoffHours !== '' ? (int) $this->cancellationCutoffHours : null,
+                attendanceGraceMinutes: $this->attendanceGraceMinutes !== '' ? (int) $this->attendanceGraceMinutes : null,
             );
 
             $this->titleImage = null;
@@ -214,6 +218,7 @@ class EventShow extends Component
         $this->startsAt = $this->event->starts_at->format('Y-m-d\TH:i');
         $this->endsAt = $this->event->ends_at->format('Y-m-d\TH:i');
         $this->cancellationCutoffHours = $this->event->cancellation_cutoff_hours ?? '';
+        $this->attendanceGraceMinutes = $this->event->attendance_grace_minutes ?? '';
         $this->selectedGroupId = $this->event->event_group_id ? (string) $this->event->event_group_id : '';
     }
 }
