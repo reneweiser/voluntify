@@ -6,7 +6,6 @@ use App\Actions\AssignEventsToGroup;
 use App\Actions\DeleteEventGroup;
 use App\Actions\RemoveEventFromGroup;
 use App\Actions\UpdateEventGroup;
-use App\Models\Event;
 use App\Models\EventGroup;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Gate;
@@ -142,7 +141,7 @@ class EventGroupShow extends Component
     {
         Gate::authorize('update', $this->group);
 
-        $event = Event::findOrFail($eventId);
+        $event = currentOrganization()->events()->findOrFail($eventId);
 
         $action = app(RemoveEventFromGroup::class);
         $action->execute($event);
