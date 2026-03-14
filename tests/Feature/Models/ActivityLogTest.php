@@ -303,3 +303,25 @@ it('has activity logs relationship on Organization', function () {
     expect($this->organization->activityLogs)->toHaveCount(1)
         ->and($this->organization->activityLogs->first()->description)->toBe('test');
 });
+
+it('can be created via factory', function () {
+    $log = ActivityLog::factory()->create();
+
+    expect($log->exists)->toBeTrue()
+        ->and($log->action)->toBeString()
+        ->and($log->category)->toBeInstanceOf(ActivityCategory::class)
+        ->and($log->description)->toBeString()
+        ->and($log->organization_id)->not->toBeNull();
+});
+
+it('factory supports forEvent and causedBy states', function () {
+    $log = ActivityLog::factory()
+        ->forEvent($this->event)
+        ->causedBy($this->user)
+        ->create();
+
+    expect($log->event_id)->toBe($this->event->id)
+        ->and($log->organization_id)->toBe($this->event->organization_id)
+        ->and($log->causer_type)->toBe(User::class)
+        ->and($log->causer_id)->toBe($this->user->id);
+});
