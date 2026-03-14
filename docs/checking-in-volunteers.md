@@ -2,7 +2,7 @@
 
 This guide covers using the QR scanner and manual lookup to check in volunteers at your event entrance.
 
-**Who can use the scanner**: Organizer and Entrance Staff only.
+**Who can use the scanner**: Organizer, Volunteer Admin, and Entrance Staff. The features available depend on your role -- see [Role-Based Scanner Behavior](#role-based-scanner-behavior) below.
 
 ## Before the Event
 
@@ -48,6 +48,25 @@ This gives you a fullscreen app experience without browser chrome, and ensures t
 
 After confirming an arrival, the scanner returns to the viewfinder, ready for the next volunteer.
 
+### Shift Context on Scan Results
+
+When a volunteer's QR code is scanned, the result panel shows their shift assignments with color-coded status indicators:
+
+| Color | Status | Meaning |
+|---|---|---|
+| **Green** | Attended | Attendance was already recorded for this shift. |
+| **Red** | Missed | The shift ended without an attendance record. |
+| **Blue** | Active | The shift is currently in progress. |
+| **Gray** | Upcoming | The shift hasn't started yet. |
+
+This helps you see at a glance whether the volunteer has been accounted for across their shifts.
+
+### Recording Shift Attendance from the Scanner
+
+Organizers and Volunteer Admins can mark shift attendance directly from a scan result. Each active or upcoming shift shows a **Mark** button. Tapping it records the volunteer's attendance status (On Time or Late) based on the current time and the event's [attendance grace period](tracking-attendance.md#attendance-grace-period).
+
+This is a faster alternative to switching to the Attendance tab -- you can handle both arrival and attendance in one workflow.
+
 ## Manual Name Lookup
 
 If a volunteer can't present their QR code (forgot their phone, dead battery, lost ticket), use manual lookup:
@@ -57,6 +76,7 @@ If a volunteer can't present their QR code (forgot their phone, dead battery, lo
 3. Results appear as you type, showing matching volunteers with their job and shift info.
 4. Select the correct volunteer.
 5. Tap **Confirm Arrival** to record their check-in.
+6. If you're an Organizer or Volunteer Admin, each of the volunteer's shifts shows a **Mark** button to record attendance directly from this page.
 
 Manual lookup works offline using the downloaded volunteer data.
 
@@ -69,7 +89,8 @@ The scanner is designed to work without internet. Here's how offline mode works:
 - **QR validation**: Happens entirely on-device using downloaded cryptographic keys. No server call needed.
 - **Volunteer lookup**: Searches the locally cached volunteer list.
 - **Arrival recording**: Arrivals are saved to a local queue on your device.
-- **Automatic sync**: When your device reconnects to the internet, queued arrivals are automatically synced to the server.
+- **Attendance recording**: Attendance records marked from the scanner are also queued locally when offline.
+- **Automatic sync**: When your device reconnects to the internet, queued arrivals and attendance records are automatically synced to the server.
 
 A sync status indicator shows:
 - **Online**: Arrivals sync immediately.
@@ -83,3 +104,18 @@ You don't need to do anything special to use offline mode. It happens automatica
 - **Multiple staff**: Multiple Entrance Staff can scan at different entrances simultaneously. Each device maintains its own local data. Duplicate scans are handled automatically -- if volunteer A is scanned at entrance 1, and then again at entrance 2, the second scan will show "Already arrived."
 - **Key rotation**: The scanner validates tickets using cryptographic keys that rotate at 4:00 AM. For events spanning past 4 AM, the scanner automatically accepts both the current and previous period's keys, so no tickets are rejected at the boundary.
 - **Stale data**: If a volunteer signed up after you downloaded the data, their QR code will still validate (the JWT is self-contained), but you'll see a note that they're not in the cached list. You can still confirm their arrival, or tap **Refresh Data** to re-download the latest volunteer list.
+
+## Role-Based Scanner Behavior
+
+Not all roles see the same features on the scanner page:
+
+| Capability | Organizer | Volunteer Admin | Entrance Staff |
+|---|:---:|:---:|:---:|
+| Scan QR codes | Yes | Yes | Yes |
+| Use manual lookup | Yes | Yes | Yes |
+| Confirm arrival | Yes | -- | Yes |
+| Mark shift attendance | Yes | Yes | -- |
+
+- **Entrance Staff** focus on arrival confirmation only. They cannot mark shift attendance.
+- **Volunteer Admins** focus on shift attendance tracking. They can use the scanner and manual lookup pages but cannot confirm arrivals via the QR sync endpoint.
+- **Organizers** have full access to both arrival confirmation and attendance marking.

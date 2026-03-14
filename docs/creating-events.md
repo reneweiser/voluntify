@@ -27,7 +27,8 @@ The event is created in **Draft** status. You'll be taken to the event detail pa
 4. Optionally upload a **title image** (JPG, PNG, or WebP, max 2 MB). This appears as a hero image on the public signup page.
 5. Optionally assign the event to an **Event Group** using the dropdown. See [Organizing Event Groups](managing-event-groups.md) for details.
 6. Optionally set a **Cancellation Cutoff (hours)** -- This allows volunteers to cancel their own signups up to the specified number of hours before a shift starts. Leave empty to disable volunteer self-cancellation.
-7. Click **Save**.
+7. Optionally set an **Attendance Grace Period (minutes)** -- Defines how many minutes after a shift starts a scan is still considered "On Time." Scans after the grace window are marked "Late." Leave empty for no grace period (any scan after shift start is Late). See [Attendance Grace Period](tracking-attendance.md#attendance-grace-period) for details.
+8. Click **Save**.
 
 To remove a title image, click **Delete Image** while editing.
 
@@ -166,7 +167,7 @@ Once published:
 
 ## Clone an Event
 
-Cloning creates a copy of an event with all its jobs, shifts, gear items, and custom registration fields, but no volunteer signups, gear assignments, or custom field responses.
+Cloning creates a copy of an event with all its jobs, shifts, gear items, custom registration fields, and email templates, but no volunteer signups, gear assignments, or custom field responses.
 
 1. Go to **Overview** in the event sidebar.
 2. Click **Clone Event**.
@@ -174,6 +175,20 @@ Cloning creates a copy of an event with all its jobs, shifts, gear items, and cu
 4. Update the name, dates, and any other details as needed.
 
 This is useful for recurring events where the job structure stays the same.
+
+**Who can do this**: Organizer only.
+
+## Enroll Volunteers Manually
+
+If you need to add a volunteer to additional shifts after they've already signed up -- for example, reassigning them or filling a gap -- you can enroll them manually without going through the public signup page.
+
+1. Go to **Enroll** in the event sidebar.
+2. Search for an existing event volunteer by name or email.
+3. Select the shifts you want to enroll them in. Shifts are grouped by job and show capacity and remaining spots.
+4. Toggle **Send notification email** on or off depending on whether the volunteer should be notified.
+5. Click **Enroll**.
+
+After enrollment, a result summary shows how many shifts were enrolled, how many were skipped because they're full, and how many were skipped because the volunteer was already signed up.
 
 **Who can do this**: Organizer only.
 

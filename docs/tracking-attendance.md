@@ -38,3 +38,25 @@ At the top of the roster, a summary shows the count of:
 - Unmarked (no status set yet)
 
 This helps you quickly see how many volunteers still need to be accounted for.
+
+## Attendance via QR Scanner
+
+In addition to the Attendance tab, Organizers and Volunteer Admins can mark attendance directly from the QR scanner and Manual Lookup pages. Each scan result shows the volunteer's shifts with a **Mark** button for recording attendance on the spot.
+
+This is useful during busy events when you want to handle arrival and attendance in a single step. See [Recording Shift Attendance from the Scanner](checking-in-volunteers.md#recording-shift-attendance-from-the-scanner) for details.
+
+## Attendance Grace Period
+
+The attendance grace period is an optional per-event setting that defines how many minutes after a shift starts a scan is still considered **On Time**. Scans after the grace window are marked **Late**.
+
+For example, if a shift starts at 10:00 AM and the grace period is 15 minutes, a volunteer scanned at 10:12 AM is marked On Time. A volunteer scanned at 10:16 AM is marked Late.
+
+If no grace period is set, any scan after the shift start time is marked Late.
+
+Configure this in **Edit Event Details** under **Attendance Grace Period (minutes)**. See [Edit Event Details](creating-events.md#edit-event-details).
+
+## Automatic No-Show Detection
+
+Voluntify automatically marks volunteers as **No Show** if their shift ended more than 2 hours ago and no attendance was recorded. This runs hourly in the background, so you don't need to manually go through every shift to flag no-shows.
+
+You can still override an automatic No Show by changing the volunteer's status on the Attendance tab or from the scanner -- for example, if they did show up but weren't scanned.

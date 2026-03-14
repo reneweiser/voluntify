@@ -20,6 +20,7 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | View jobs and shifts | Yes | Yes (read-only) | -- |
 | Create / edit / delete jobs | Yes | -- | -- |
 | Create / edit / delete shifts | Yes | -- | -- |
+| Enroll volunteers manually | Yes | -- | -- |
 | **Email Templates** | | | |
 | View and edit email templates | Yes | -- | -- |
 | **Volunteers** | | | |
@@ -35,8 +36,9 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | **Custom Fields** | | | |
 | Set up custom registration fields | Yes | -- | -- |
 | **Scanner** | | | |
-| Use QR scanner | Yes | -- | Yes |
-| Use manual lookup | Yes | -- | Yes |
+| Use QR scanner | Yes | Yes | Yes |
+| Use manual lookup | Yes | Yes | Yes |
+| Mark attendance from scanner | Yes | Yes | -- |
 | **Member Management** | | | |
 | View members | Yes | -- | -- |
 | Invite / remove members | Yes | -- | -- |

@@ -44,6 +44,8 @@ This glossary defines the shared vocabulary used throughout Voluntify. Consisten
 
 **Cancellation Cutoff** -- An optional per-event setting that defines how many hours before a shift a volunteer can still cancel their signup. If no cutoff is set, volunteers cannot self-cancel.
 
+**Manual Enrollment** -- The act of an Organizer manually enrolling an existing event volunteer into additional shifts, bypassing the public signup page. Useful for reassigning or adding shifts after initial signup.
+
 **Custom Registration Field** -- An organizer-defined form field added to an event's signup page. Supports three types: text (single-line or multiline), select (dropdown with predefined choices), and checkbox. Fields can be marked as required. Removing a field preserves existing responses but hides the field from new signups.
 
 **Custom Field Response** -- A volunteer's answer to a custom registration field, recorded during signup. Responses are visible on the volunteer detail page, in the volunteer portal, and in CSV exports.
@@ -62,7 +64,9 @@ This glossary defines the shared vocabulary used throughout Voluntify. Consisten
 
 **Manual Lookup** -- An alternative to QR scanning where Entrance Staff search for a volunteer by name to record their arrival. Used when a volunteer cannot present their QR code.
 
-**Offline Scanning** -- The ability to validate QR tickets and record arrivals without an internet connection. Arrival records are stored on the device and automatically synced when connectivity returns.
+**Shift Context** -- The real-time shift status information displayed on a scan result, showing each of the volunteer's shifts classified as attended (green), missed (red), active (blue), or upcoming (gray).
+
+**Offline Scanning** -- The ability to validate QR tickets and record arrivals without an internet connection. Arrival and attendance records are stored on the device and automatically synced when connectivity returns.
 
 ## Attendance
 
@@ -72,7 +76,9 @@ This glossary defines the shared vocabulary used throughout Voluntify. Consisten
 
 **Late** -- An attendance status indicating the volunteer arrived at their shift station after the shift started.
 
-**No-Show** -- An attendance status indicating the volunteer did not show up for their shift at all. A volunteer can arrive at the event (recorded as an event arrival) but still be a no-show for their shift if they don't report to their station.
+**No-Show** -- An attendance status indicating the volunteer did not show up for their shift at all. A volunteer can arrive at the event (recorded as an event arrival) but still be a no-show for their shift if they don't report to their station. Volunteers are automatically marked as No-Show if their shift ended more than 2 hours ago with no attendance record.
+
+**Attendance Grace Period** -- An optional per-event setting defining how many minutes after a shift start a scan is still marked as On Time. Scans after the grace window are marked Late. If not set, any scan after shift start is Late.
 
 ## Gear
 
