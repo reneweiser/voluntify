@@ -137,6 +137,26 @@ it('handles event with no jobs', function () {
         ->and($cloned->volunteerJobs)->toHaveCount(0);
 });
 
+it('clones email templates', function () {
+    \App\Models\EmailTemplate::factory()->for($this->event)->create([
+        'type' => \App\Enums\EmailTemplateType::SignupConfirmation,
+        'subject' => 'Welcome!',
+    ]);
+    \App\Models\EmailTemplate::factory()->for($this->event)->create([
+        'type' => \App\Enums\EmailTemplateType::PreShiftReminder24h,
+        'subject' => 'Reminder',
+    ]);
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event);
+
+    $cloned->load('emailTemplates');
+
+    expect($cloned->emailTemplates)->toHaveCount(2)
+        ->and($cloned->emailTemplates->pluck('subject')->sort()->values()->all())->toBe(['Reminder', 'Welcome!'])
+        ->and($cloned->emailTemplates->pluck('event_id')->unique()->all())->toBe([$cloned->id]);
+});
+
 it('does not copy event_group_id', function () {
     $group = \App\Models\EventGroup::factory()->for($this->org)->create();
     $this->event->update(['event_group_id' => $group->id]);
