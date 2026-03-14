@@ -73,6 +73,14 @@ it('shift spotsRemaining ignores cancelled signups', function () {
     expect($shift->spotsRemaining())->toBe(1);
 });
 
+it('cancelled_at is mass assignable via update', function () {
+    $signup = ShiftSignup::factory()->create(['shift_id' => $this->shift->id]);
+
+    $signup->update(['cancelled_at' => now()]);
+
+    expect($signup->fresh()->cancelled_at)->not->toBeNull();
+});
+
 it('ShiftSignup isCancelled returns correct boolean', function () {
     $active = ShiftSignup::factory()->create(['shift_id' => $this->shift->id]);
     $cancelled = ShiftSignup::factory()->create([
