@@ -19,6 +19,7 @@ class ShiftSignup extends Model
         'signed_up_at',
         'notification_24h_sent',
         'notification_4h_sent',
+        'cancelled_at',
     ];
 
     protected function casts(): array
