@@ -33,11 +33,16 @@
                     <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
                         <p class="text-lg font-semibold text-white" x-text="result?.name"></p>
                         <p class="text-sm text-zinc-400" x-text="result?.email"></p>
-                        <div class="mt-3 flex gap-2">
+                        <div class="mt-3 flex gap-2" x-show="canConfirmArrival">
                             <flux:button variant="primary" x-on:click="confirmArrival()" class="flex-1">
                                 Confirm Arrival
                             </flux:button>
                             <flux:button variant="ghost" x-on:click="dismiss()" class="flex-1">
+                                Dismiss
+                            </flux:button>
+                        </div>
+                        <div class="mt-3" x-show="!canConfirmArrival">
+                            <flux:button variant="ghost" x-on:click="dismiss()" class="w-full">
                                 Dismiss
                             </flux:button>
                         </div>
@@ -65,6 +70,43 @@
                     <div class="rounded-xl border border-emerald-600/50 bg-emerald-900/20 p-4">
                         <p class="font-semibold text-emerald-400">Arrival Confirmed</p>
                         <p class="text-sm text-zinc-300" x-text="result?.name"></p>
+                    </div>
+                </template>
+
+                {{-- Shift context + attendance --}}
+                <template x-if="result?.shifts?.length > 0 && state !== 'invalid'">
+                    <div class="mt-3 rounded-xl border border-zinc-700 bg-zinc-800/50 p-3">
+                        <p class="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-400">Shifts</p>
+                        <div class="space-y-1.5">
+                            <template x-for="shift in result.shifts" :key="shift.signupId">
+                                <div class="flex items-center justify-between gap-2 text-sm">
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="inline-block size-2 shrink-0 rounded-full"
+                                            :class="{
+                                                'bg-emerald-400': shift.status === 'attended',
+                                                'bg-red-400': shift.status === 'missed',
+                                                'bg-blue-400': shift.status === 'active',
+                                                'bg-zinc-400': shift.status === 'upcoming',
+                                            }"
+                                        ></span>
+                                        <span class="text-zinc-200" x-text="shift.jobName"></span>
+                                        <span class="text-zinc-500" x-text="new Date(shift.startsAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) + '–' + new Date(shift.endsAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})"></span>
+                                    </div>
+                                    <template x-if="canMarkAttendance && (shift.status === 'active' || shift.status === 'upcoming') && !isAttendanceRecorded(shift.signupId)">
+                                        <button
+                                            x-on:click="confirmAttendance(shift.signupId)"
+                                            class="rounded bg-blue-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-blue-500"
+                                        >
+                                            Mark
+                                        </button>
+                                    </template>
+                                    <template x-if="isAttendanceRecorded(shift.signupId)">
+                                        <span class="text-xs text-emerald-400">Recorded</span>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </template>
             </div>

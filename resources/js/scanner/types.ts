@@ -10,9 +10,16 @@ export interface Shift {
     volunteer_job: VolunteerJob;
 }
 
+export interface AttendanceRecord {
+    id: number;
+    shift_signup_id: number;
+    status: 'on_time' | 'late' | 'no_show';
+}
+
 export interface ShiftSignup {
     id: number;
     shift: Shift;
+    attendance_record?: AttendanceRecord | null;
 }
 
 export interface Ticket {
@@ -53,15 +60,20 @@ export interface ScannerKeys {
 
 export interface OutboxEntry {
     id?: number;
-    ticket_id: number;
-    volunteer_id: number;
-    method: 'qr_scan' | 'manual_lookup';
+    type: 'arrival' | 'attendance';
+    ticket_id?: number;
+    volunteer_id?: number;
+    method?: 'qr_scan' | 'manual_lookup';
     scanned_at: string;
+    shift_signup_id?: number;
+    status?: 'on_time' | 'late' | 'no_show';
 }
 
 export interface ScannerData {
-    event: { id: number; name: string };
+    event: { id: number; name: string; attendance_grace_minutes: number | null };
+    user_role: 'organizer' | 'entrance_staff' | 'volunteer_admin' | null;
     volunteers: Volunteer[];
     arrivals: ArrivalRecord[];
+    attendance_records: AttendanceRecord[];
     keys: ScannerKeys;
 }
