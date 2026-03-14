@@ -66,7 +66,8 @@ class Dashboard extends Component
         ))
             ->where(
                 ShiftSignup::selectRaw('count(*)')
-                    ->whereColumn('shift_signups.shift_id', 'shifts.id'),
+                    ->whereColumn('shift_signups.shift_id', 'shifts.id')
+                    ->whereNull('shift_signups.cancelled_at'),
                 '<',
                 DB::raw('shifts.capacity')
             )
