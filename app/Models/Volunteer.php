@@ -95,9 +95,23 @@ class Volunteer extends Model
 
     public function scopeSearch(Builder $query, string $search): void
     {
-        $query->where(function (Builder $q) use ($search) {
-            $q->where('name', 'LIKE', '%'.$search.'%')
-                ->orWhere('email', 'LIKE', '%'.$search.'%');
-        });
+        $useLike = mb_strlen($search) < 3 || $query->getConnection()->getDriverName() !== 'mysql';
+
+        if ($useLike) {
+            $query->where(function (Builder $q) use ($search) {
+                $q->where('name', 'LIKE', '%'.$search.'%')
+                    ->orWhere('email', 'LIKE', '%'.$search.'%');
+            });
+
+            return;
+        }
+
+        $term = str_replace(['+', '-', '*', '~', '<', '>', '(', ')', '"'], '', $search);
+        $booleanTerm = '+'.implode('* +', explode(' ', trim($term))).'*';
+
+        $query->whereRaw(
+            'MATCH(name, email) AGAINST(? IN BOOLEAN MODE)',
+            [$booleanTerm],
+        );
     }
 }

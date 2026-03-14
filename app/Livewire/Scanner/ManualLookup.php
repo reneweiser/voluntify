@@ -3,12 +3,15 @@
 namespace App\Livewire\Scanner;
 
 use App\Actions\RecordArrival;
+use App\Actions\RecordAttendance;
 use App\Enums\ArrivalMethod;
 use App\Enums\StaffRole;
 use App\Models\Event;
+use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -30,7 +33,7 @@ class ManualLookup extends Component
 
         $hasAccess = $organization->users()
             ->where('user_id', auth()->id())
-            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::EntranceStaff])
+            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::EntranceStaff, StaffRole::VolunteerAdmin])
             ->exists();
 
         if (! $hasAccess) {
@@ -51,9 +54,10 @@ class ManualLookup extends Component
 
         return Volunteer::query()
             ->forEvent($this->eventId)
-            ->where('name', 'like', '%'.$this->search.'%')
+            ->search($this->search)
             ->with([
                 'shiftSignups.shift.volunteerJob',
+                'shiftSignups.attendanceRecord',
                 'eventArrivals' => fn ($q) => $q->where('event_id', $this->eventId),
                 'tickets' => fn ($q) => $q->where('event_id', $this->eventId),
             ])
@@ -75,6 +79,28 @@ class ManualLookup extends Component
         unset($this->volunteers);
 
         $this->dispatch('arrival-confirmed', volunteerId: $volunteerId, flagged: $arrival->flagged);
+    }
+
+    public function recordAttendance(int $signupId): void
+    {
+        Gate::authorize('markAttendance', $this->event);
+
+        $eventJobIds = $this->event->volunteerJobs()->pluck('id');
+
+        $signup = ShiftSignup::whereHas(
+            'shift',
+            fn ($q) => $q->whereIn('volunteer_job_id', $eventJobIds),
+        )->with('shift')->findOrFail($signupId);
+
+        $status = $signup->shift->attendanceStatusAt(now(), $this->event->attendance_grace_minutes);
+
+        app(RecordAttendance::class)->execute(
+            signup: $signup,
+            status: $status,
+            recordedBy: auth()->user(),
+        );
+
+        unset($this->volunteers);
     }
 
     public function updatedSearch(): void
