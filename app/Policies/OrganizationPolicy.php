@@ -15,24 +15,16 @@ class OrganizationPolicy
 
     public function view(User $user, Organization $organization): bool
     {
-        return $organization->users()->where('user_id', $user->id)->exists();
+        return $user->cachedRoleFor($organization) !== null;
     }
 
     public function update(User $user, Organization $organization): bool
     {
-        return $this->hasRole($user, $organization, StaffRole::Organizer);
+        return $user->cachedRoleFor($organization) === StaffRole::Organizer;
     }
 
     public function manageMembers(User $user, Organization $organization): bool
     {
-        return $this->hasRole($user, $organization, StaffRole::Organizer);
-    }
-
-    private function hasRole(User $user, Organization $organization, StaffRole $role): bool
-    {
-        return $organization->users()
-            ->where('user_id', $user->id)
-            ->wherePivot('role', $role)
-            ->exists();
+        return $user->cachedRoleFor($organization) === StaffRole::Organizer;
     }
 }

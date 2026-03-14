@@ -17,22 +17,20 @@ class ResolveOrganization
             return $next($request);
         }
 
-        $organizations = $user->organizations;
+        $preferredId = session('current_organization_id') ?? $user->current_organization_id;
 
-        if ($organizations->isEmpty()) {
-            return $next($request);
+        if ($preferredId) {
+            $organization = $user->organizations()
+                ->where('organization_id', $preferredId)
+                ->first();
         }
 
-        if ($organizations->count() === 1) {
-            $organization = $organizations->first();
-        } else {
-            $preferredId = session('current_organization_id') ?? $user->current_organization_id;
+        if (! isset($organization) || ! $organization) {
+            $organization = $user->organizations()->first();
+        }
 
-            if ($preferredId) {
-                $organization = $organizations->firstWhere('id', $preferredId);
-            }
-
-            $organization ??= $organizations->first();
+        if (! $organization) {
+            return $next($request);
         }
 
         session(['current_organization_id' => $organization->id]);
