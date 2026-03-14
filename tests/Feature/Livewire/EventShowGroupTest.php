@@ -5,6 +5,7 @@ use App\Livewire\Events\EventShow;
 use App\Models\Event;
 use App\Models\EventGroup;
 use App\Models\Organization;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -26,6 +27,19 @@ it('does not show group badge when event is ungrouped', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventShow::class, ['eventId' => $this->event->id])
         ->assertDontSee('Festival Group');
+});
+
+it('rejects assigning event to a group from another organization', function () {
+    $otherOrg = Organization::factory()->create();
+    $foreignGroup = EventGroup::factory()->for($otherOrg)->create();
+
+    expect(fn () => Livewire::actingAs($this->organizer)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->set('selectedGroupId', (string) $foreignGroup->id)
+        ->call('updateGroup')
+    )->toThrow(ModelNotFoundException::class);
+
+    expect($this->event->fresh()->event_group_id)->toBeNull();
 });
 
 it('allows assigning event to a group via dropdown', function () {

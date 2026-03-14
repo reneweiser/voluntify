@@ -5,6 +5,7 @@ use App\Livewire\Events\EventGroupShow;
 use App\Models\Event;
 use App\Models\EventGroup;
 use App\Models\Organization;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -70,6 +71,16 @@ it('removes an event from the group', function () {
         ->assertHasNoErrors();
 
     expect($event->fresh()->event_group_id)->toBeNull();
+});
+
+it('rejects removing an event from another organization', function () {
+    $otherOrg = Organization::factory()->create();
+    $foreignEvent = Event::factory()->for($otherOrg)->create();
+
+    expect(fn () => Livewire::actingAs($this->organizer)
+        ->test(EventGroupShow::class, ['groupId' => $this->group->id])
+        ->call('removeEvent', $foreignEvent->id)
+    )->toThrow(ModelNotFoundException::class);
 });
 
 it('deletes the group and redirects', function () {

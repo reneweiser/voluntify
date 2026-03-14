@@ -12,7 +12,6 @@ use App\Actions\UpdateEvent;
 use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
-use App\Models\EventGroup;
 use App\Models\Shift;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -106,7 +105,7 @@ class EventShow extends Component
             $action = app(RemoveEventFromGroup::class);
             $action->execute($this->event);
         } else {
-            $group = EventGroup::findOrFail((int) $this->selectedGroupId);
+            $group = currentOrganization()->eventGroups()->findOrFail((int) $this->selectedGroupId);
             $action = app(AssignEventsToGroup::class);
             $action->execute($group, [$this->event->id]);
         }
