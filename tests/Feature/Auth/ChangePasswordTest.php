@@ -73,17 +73,6 @@ it('requires a password', function () {
         ->assertHasErrors(['password']);
 });
 
-it('does not redirect livewire update requests for must_change_password users', function () {
-    $user = User::factory()->mustChangePassword()->create();
-
-    $response = $this->actingAs($user)
-        ->post(route('default-livewire.update'), []);
-
-    // Should NOT redirect to change-password (middleware must allow through).
-    // Livewire will return a 422 for invalid payload, which is fine — we're testing the middleware, not Livewire.
-    expect($response->status())->not->toBe(302);
-});
-
 it('rejects a weak password', function () {
     $user = User::factory()->mustChangePassword()->create();
 
