@@ -74,6 +74,24 @@ test('shows shifts needing attention count', function () {
         ->assertSee('1'); // shifts needing attention
 });
 
+test('shiftsNeedingAttention excludes cancelled signups', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    $event = Event::factory()->for($org)->published()->create(['starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(4)]);
+    $job = VolunteerJob::factory()->for($event)->create();
+    // Shift with capacity 1, 1 cancelled signup -> should still need attention
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 1]);
+    ShiftSignup::factory()->create([
+        'shift_id' => $shift->id,
+        'cancelled_at' => now(),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('1'); // shift still needs attention because signup is cancelled
+});
+
 test('lists upcoming events in table', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization();
     app()->instance(Organization::class, $org);
