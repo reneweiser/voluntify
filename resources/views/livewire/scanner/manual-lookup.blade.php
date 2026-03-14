@@ -75,10 +75,19 @@
                                 <p class="text-sm text-zinc-400">{{ $volunteer->email }}</p>
 
                                 @foreach ($volunteer->shiftSignups as $signup)
-                                    <p class="mt-1 text-sm text-zinc-300">
-                                        {{ $signup->shift->volunteerJob->name }}
-                                        &middot; {{ $signup->shift->starts_at->format('g:i A') }}–{{ $signup->shift->ends_at->format('g:i A') }}
-                                    </p>
+                                    <div class="mt-1 flex items-center gap-2 text-sm text-zinc-300">
+                                        <span>{{ $signup->shift->volunteerJob->name }} &middot; {{ $signup->shift->starts_at->format('g:i A') }}–{{ $signup->shift->ends_at->format('g:i A') }}</span>
+                                        @if ($signup->attendanceRecord)
+                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                                                {{ $signup->attendanceRecord->status->value === 'no_show' ? 'bg-red-900/30 text-red-400' : 'bg-emerald-900/30 text-emerald-400' }}">
+                                                {{ str_replace('_', ' ', ucfirst($signup->attendanceRecord->status->value)) }}
+                                            </span>
+                                        @elseif (auth()->user()->can('markAttendance', $this->event))
+                                            <button wire:click="recordAttendance({{ $signup->id }})" class="rounded bg-blue-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-blue-500">
+                                                {{ __('Mark') }}
+                                            </button>
+                                        @endif
+                                    </div>
                                 @endforeach
                             </div>
 

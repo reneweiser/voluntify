@@ -25,6 +25,7 @@ class SignUpVolunteerForShifts
         Volunteer $volunteer,
         Event $event,
         array $shiftIds,
+        bool $sendNotification = true,
     ): SignupBatchResult {
         $eventJobIds = $event->volunteerJobs()->pluck('id');
         $validShiftIds = Shift::whereIn('volunteer_job_id', $eventJobIds)
@@ -101,7 +102,7 @@ class SignUpVolunteerForShifts
             skippedDuplicate: $result['skippedDuplicate'],
         );
 
-        if ($batchResult->hasNewSignups()) {
+        if ($sendNotification && $batchResult->hasNewSignups()) {
             $shiftIds = collect($result['newSignups'])
                 ->map(fn (ShiftSignup $signup) => $signup->shift_id)
                 ->all();

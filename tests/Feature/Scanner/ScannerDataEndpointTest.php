@@ -105,14 +105,71 @@ it('includes existing arrivals', function () {
     expect($response->json('arrivals'))->toHaveCount(1);
 });
 
-it('returns 403 for volunteer admin', function () {
+it('includes attendance_record in shift_signups', function () {
+    $volunteer = Volunteer::factory()->create();
+    Ticket::factory()->for($volunteer)->for($this->event)->create();
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    $signup = ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
+
+    \App\Models\AttendanceRecord::factory()->create([
+        'shift_signup_id' => $signup->id,
+        'status' => \App\Enums\AttendanceStatus::OnTime,
+        'recorded_by' => $this->organizer->id,
+    ]);
+
+    $response = $this->actingAs($this->entranceStaff)
+        ->withSession(['current_organization_id' => $this->org->id])
+        ->getJson(route('scanner.data', $this->event->id));
+
+    $response->assertOk();
+
+    $signupData = $response->json('volunteers.0.shift_signups.0');
+    expect($signupData['attendance_record'])->not->toBeNull()
+        ->and($signupData['attendance_record']['status'])->toBe('on_time')
+        ->and($signupData['attendance_record']['shift_signup_id'])->toBe($signup->id);
+});
+
+it('returns null attendance_record when none exists', function () {
+    $volunteer = Volunteer::factory()->create();
+    Ticket::factory()->for($volunteer)->for($this->event)->create();
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
+
+    $response = $this->actingAs($this->entranceStaff)
+        ->withSession(['current_organization_id' => $this->org->id])
+        ->getJson(route('scanner.data', $this->event->id));
+
+    $response->assertOk();
+
+    $signupData = $response->json('volunteers.0.shift_signups.0');
+    expect($signupData['attendance_record'])->toBeNull();
+});
+
+it('returns user_role and grace minutes in data response', function () {
+    $this->event->update(['attendance_grace_minutes' => 10]);
+
+    $response = $this->actingAs($this->organizer)
+        ->withSession(['current_organization_id' => $this->org->id])
+        ->getJson(route('scanner.data', $this->event->id));
+
+    $response->assertOk();
+    expect($response->json('user_role'))->toBe('organizer')
+        ->and($response->json('event.attendance_grace_minutes'))->toBe(10)
+        ->and($response->json('attendance_records'))->toBeArray();
+});
+
+it('allows volunteer admin access for attendance tracking', function () {
     $volunteerAdmin = \App\Models\User::factory()->create();
     $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
 
-    $this->actingAs($volunteerAdmin)
+    $response = $this->actingAs($volunteerAdmin)
         ->withSession(['current_organization_id' => $this->org->id])
-        ->getJson(route('scanner.data', $this->event->id))
-        ->assertForbidden();
+        ->getJson(route('scanner.data', $this->event->id));
+
+    $response->assertOk();
+    expect($response->json('user_role'))->toBe('volunteer_admin');
 });
 
 it('redirects unauthenticated user', function () {

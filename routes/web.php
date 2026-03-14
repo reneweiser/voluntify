@@ -14,6 +14,7 @@ use App\Livewire\Events\EventGroupShow;
 use App\Livewire\Events\EventList;
 use App\Livewire\Events\EventShow;
 use App\Livewire\Events\JobsAndShiftsManager;
+use App\Livewire\Events\ManualEnrollment;
 use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
 use App\Livewire\Public\EmailVerificationPage;
@@ -66,6 +67,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('events/{eventId}/volunteers', VolunteerList::class)->name('events.volunteers');
     Route::get('events/{eventId}/volunteers/export', [VolunteerExportController::class, 'export'])->name('events.volunteers.export');
     Route::livewire('events/{eventId}/volunteers/{volunteerId}', VolunteerDetail::class)->name('events.volunteers.show');
+    Route::livewire('events/{eventId}/enroll', ManualEnrollment::class)->name('events.enroll');
     Route::livewire('events/{eventId}/attendance', AttendanceTracker::class)->name('events.attendance');
     Route::livewire('events/{eventId}/announcements', EventAnnouncements::class)->name('events.announcements');
     Route::livewire('events/{eventId}/custom-fields', CustomFieldSetup::class)->name('events.custom-fields');
@@ -81,6 +83,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     // Scanner API
     Route::get('scanner/api/events/{eventId}/data', [ScannerApiController::class, 'data'])->name('scanner.data');
     Route::post('scanner/api/events/{eventId}/sync', [ScannerApiController::class, 'sync'])->name('scanner.sync');
+    Route::post('scanner/api/events/{eventId}/attendance-sync', [ScannerApiController::class, 'syncAttendance'])->name('scanner.attendance-sync');
 });
 
 require __DIR__.'/settings.php';

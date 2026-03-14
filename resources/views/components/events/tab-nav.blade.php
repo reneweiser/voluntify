@@ -45,6 +45,16 @@
             {{ __('Announcements') }}
         </flux:navlist.item>
     @endcan
+    @can('manageJobs', $event)
+        <flux:navlist.item
+            :href="route('events.enroll', $event)"
+            :current="request()->routeIs('events.enroll')"
+            icon="user-plus"
+            wire:navigate
+        >
+            {{ __('Enroll') }}
+        </flux:navlist.item>
+    @endcan
     @can('manageGear', $event)
         <flux:navlist.item
             :href="route('events.gear', $event)"

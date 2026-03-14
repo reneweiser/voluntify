@@ -32,6 +32,7 @@ class Event extends Model
         'status',
         'title_image_path',
         'cancellation_cutoff_hours',
+        'attendance_grace_minutes',
     ];
 
     protected function casts(): array
@@ -41,6 +42,7 @@ class Event extends Model
             'ends_at' => 'datetime',
             'status' => EventStatus::class,
             'cancellation_cutoff_hours' => 'integer',
+            'attendance_grace_minutes' => 'integer',
         ];
     }
 

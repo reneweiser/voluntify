@@ -14,6 +14,6 @@ class AttendanceRecorded
     public function __construct(
         public readonly AttendanceRecord $record,
         public readonly ShiftSignup $signup,
-        public readonly User $causer,
+        public readonly ?User $causer,
     ) {}
 }

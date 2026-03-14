@@ -1,7 +1,7 @@
-import type { Volunteer, ScannerKeys, OutboxEntry } from './types';
+import type { Volunteer, ScannerKeys, OutboxEntry, AttendanceRecord } from './types';
 
 const DB_NAME = 'voluntify-scanner';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbInstance: IDBDatabase | null = null;
 
@@ -29,6 +29,11 @@ export function openScannerDb(): Promise<IDBDatabase> {
 
             if (!db.objectStoreNames.contains('keys')) {
                 db.createObjectStore('keys', { keyPath: 'eventId' });
+            }
+
+            if (!db.objectStoreNames.contains('attendance')) {
+                const store = db.createObjectStore('attendance', { keyPath: ['eventId', 'id'] });
+                store.createIndex('byEvent', 'eventId', { unique: false });
             }
         };
 
@@ -126,6 +131,27 @@ export async function getOutboxCount(eventId: number): Promise<number> {
     const store = await tx('outbox', 'readonly');
     const index = store.index('byEvent');
     return reqToPromise(index.count(eventId));
+}
+
+export async function storeAttendanceRecords(eventId: number, records: AttendanceRecord[]): Promise<void> {
+    const store = await tx('attendance', 'readwrite');
+
+    const index = store.index('byEvent');
+    const existingKeys = await reqToPromise(index.getAllKeys(eventId));
+    for (const key of existingKeys) {
+        store.delete(key);
+    }
+
+    for (const r of records) {
+        store.put({ ...r, eventId });
+    }
+}
+
+export async function getAttendanceRecords(eventId: number): Promise<AttendanceRecord[]> {
+    const store = await tx('attendance', 'readonly');
+    const index = store.index('byEvent');
+    const results = await reqToPromise(index.getAll(eventId));
+    return results.map(({ eventId: _, ...record }) => record as AttendanceRecord);
 }
 
 /** Reset the cached db instance (for testing). */
