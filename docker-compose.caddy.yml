@@ -1,0 +1,119 @@
+# Voluntify — Docker Compose for multi-service VPS with shared Caddy reverse proxy
+#
+# Prerequisites:
+#   - A shared Caddy container already running on the VPS, attached to the "caddy" Docker network
+#   - A DNS A record pointing your domain to the VPS IP
+#   - A .env file configured for production (see docs/deployment-caddy.md)
+#
+# Add this block to your shared Caddyfile, then reload Caddy:
+#
+#   voluntify.example.com {
+#       reverse_proxy voluntify-app:80
+#   }
+#
+# Usage:
+#   docker compose -f docker-compose.caddy.yml up -d
+
+services:
+  app:
+    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
+    # To build from source instead of pulling from GHCR, comment out "image" above and uncomment:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: voluntify-app
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ":80"
+    env_file: .env
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    volumes:
+      - app-storage:/app/storage/app
+    networks:
+      - caddy
+      - voluntify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  scheduler:
+    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    entrypoint: ["php"]
+    command: ["artisan", "schedule:work"]
+    env_file: .env
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - app-storage:/app/storage/app
+    networks:
+      - voluntify
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  queue:
+    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    entrypoint: ["php"]
+    command: ["artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    env_file: .env
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - app-storage:/app/storage/app
+    networks:
+      - voluntify
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: "${DB_DATABASE:-voluntify}"
+      MARIADB_USER: "${DB_USERNAME:-voluntify}"
+      MARIADB_PASSWORD: "${DB_PASSWORD}"
+      MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD}"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks:
+      - voluntify
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  caddy:
+    external: true
+  voluntify:
+    driver: bridge
+
+volumes:
+  app-storage:
+  mariadb-data:
