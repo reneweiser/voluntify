@@ -40,13 +40,19 @@ class EventGearSetup extends Component
 
         $this->validate([
             'newItemName' => ['required', 'string', 'max:255'],
-            'newItemSizes' => ['nullable', 'string'],
+            'newItemSizes' => ['required_if:newItemRequiresSize,true', 'string', 'max:500', 'regex:/[a-zA-Z0-9]/'],
         ]);
 
         $sizes = null;
         if ($this->newItemRequiresSize && $this->newItemSizes !== '') {
             $sizes = array_map('trim', explode(',', $this->newItemSizes));
             $sizes = array_values(array_filter($sizes));
+        }
+
+        if ($this->newItemRequiresSize && empty($sizes)) {
+            $this->addError('newItemSizes', __('At least one valid size is required.'));
+
+            return;
         }
 
         $maxSort = $this->event->gearItems()->max('sort_order') ?? 0;

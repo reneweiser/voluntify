@@ -24,7 +24,7 @@ class AssignGearToVolunteer
                     throw new DomainException("Size is required for \"{$item->name}\".");
                 }
 
-                if (! in_array($size, $item->available_sizes, true)) {
+                if (! in_array($size, $item->available_sizes ?? [], true)) {
                     throw new DomainException("Invalid size \"{$size}\" for \"{$item->name}\".");
                 }
             }

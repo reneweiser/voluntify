@@ -130,7 +130,7 @@
                                 <flux:field>
                                     <flux:label>{{ __('Size') }}</flux:label>
                                     <flux:select wire:model="gearSelections.{{ $item->id }}" placeholder="{{ __('Select size...') }}">
-                                        @foreach ($item->available_sizes as $size)
+                                        @foreach ($item->available_sizes ?? [] as $size)
                                             <flux:select.option :value="$size">{{ $size }}</flux:select.option>
                                         @endforeach
                                     </flux:select>

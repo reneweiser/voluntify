@@ -57,7 +57,7 @@ class EventSignup extends Component
     }
 
     #[Computed]
-    public function jobs(): \Illuminate\Database\Eloquent\Collection
+    public function jobs(): Collection
     {
         return $this->event->volunteerJobs()
             ->with(['shifts' => fn ($q) => $q->withCount('activeSignups as signups_count')->orderBy('starts_at')])
@@ -69,7 +69,7 @@ class EventSignup extends Component
         $gearRules = [];
         foreach ($this->gearItems as $item) {
             if ($item->requires_size) {
-                $gearRules['gearSelections.'.$item->id] = ['required', 'string', Rule::in($item->available_sizes)];
+                $gearRules['gearSelections.'.$item->id] = ['required', 'string', Rule::in($item->available_sizes ?? [])];
             }
         }
 

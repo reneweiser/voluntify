@@ -78,3 +78,76 @@ it('renders existing gear items', function () {
         ->test(EventGearSetup::class, ['eventId' => $this->event->id])
         ->assertSee('Vest');
 });
+
+it('rejects adding sized item when sizes field is empty', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'T-Shirt')
+        ->set('newItemRequiresSize', true)
+        ->set('newItemSizes', '')
+        ->call('addItem')
+        ->assertHasErrors(['newItemSizes']);
+
+    expect(EventGearItem::count())->toBe(0);
+});
+
+it('rejects adding sized item when sizes field is only commas', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'T-Shirt')
+        ->set('newItemRequiresSize', true)
+        ->set('newItemSizes', ',,,')
+        ->call('addItem')
+        ->assertHasErrors(['newItemSizes']);
+
+    expect(EventGearItem::count())->toBe(0);
+});
+
+it('rejects adding sized item when sizes field is only whitespace', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'T-Shirt')
+        ->set('newItemRequiresSize', true)
+        ->set('newItemSizes', '   ')
+        ->call('addItem')
+        ->assertHasErrors(['newItemSizes']);
+
+    expect(EventGearItem::count())->toBe(0);
+});
+
+it('rejects adding sized item when sizes field is commas and whitespace', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'T-Shirt')
+        ->set('newItemRequiresSize', true)
+        ->set('newItemSizes', ' , , ')
+        ->call('addItem')
+        ->assertHasErrors(['newItemSizes']);
+
+    expect(EventGearItem::count())->toBe(0);
+});
+
+it('accepts valid comma-separated sizes', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'T-Shirt')
+        ->set('newItemRequiresSize', true)
+        ->set('newItemSizes', 'S, M, L, XL')
+        ->call('addItem')
+        ->assertHasNoErrors();
+
+    $item = EventGearItem::first();
+    expect($item->available_sizes)->toBe(['S', 'M', 'L', 'XL']);
+});
+
+it('accepts non-sized item without sizes field', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'Badge')
+        ->set('newItemRequiresSize', false)
+        ->set('newItemSizes', '')
+        ->call('addItem')
+        ->assertHasNoErrors();
+
+    expect(EventGearItem::count())->toBe(1);
+});

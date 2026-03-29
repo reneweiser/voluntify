@@ -49,6 +49,18 @@ it('throws exception when size-required item has no size provided', function () 
     $action->execute($this->volunteer, $this->event, []);
 })->throws(DomainException::class, 'Size is required');
 
+it('throws domain exception when sized item has null available_sizes', function () {
+    $tshirt = EventGearItem::factory()->for($this->event)->create([
+        'name' => 'T-Shirt',
+        'requires_size' => true,
+        'available_sizes' => null,
+    ]);
+
+    $action = new AssignGearToVolunteer;
+
+    $action->execute($this->volunteer, $this->event, [$tshirt->id => 'M']);
+})->throws(DomainException::class, 'Invalid size');
+
 it('does not create duplicates on re-assignment', function () {
     $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
     $badge = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);

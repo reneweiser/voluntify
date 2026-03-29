@@ -1,8 +1,11 @@
 <?php
 
 use App\Livewire\Public\EventSignup;
+use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
+use App\Models\EmailVerificationToken;
 use App\Models\Event;
+use App\Models\EventGearItem;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\Volunteer;
@@ -61,7 +64,7 @@ it('completes signup flow with custom field responses through email verification
         ->call('signup')
         ->assertSet('pendingVerification', true);
 
-    $token = \App\Models\EmailVerificationToken::first();
+    $token = EmailVerificationToken::first();
     expect($token->custom_field_responses)->toBe([$field->id => 'Vegan']);
 });
 
@@ -77,6 +80,18 @@ it('completes signup with custom fields for verified volunteer', function () {
         ->call('signup')
         ->assertSet('signupComplete', true);
 
-    expect(\App\Models\CustomFieldResponse::count())->toBe(1)
-        ->and(\App\Models\CustomFieldResponse::first()->value)->toBe('Vegan');
+    expect(CustomFieldResponse::count())->toBe(1)
+        ->and(CustomFieldResponse::first()->value)->toBe('Vegan');
+});
+
+it('renders without error when gear item has requires_size true but available_sizes is null', function () {
+    EventGearItem::factory()->for($this->event)->create([
+        'name' => 'Broken T-Shirt',
+        'requires_size' => true,
+        'available_sizes' => null,
+    ]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSuccessful()
+        ->assertSee('Broken T-Shirt');
 });
