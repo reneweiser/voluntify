@@ -24,4 +24,4 @@ Voluntify is a volunteer management platform for organizations running events. I
 
 ## Deployment
 
-- [Deploying with Docker + Caddy](deployment-caddy.md) -- Docker Compose setup with Caddy reverse proxy
+- [Deploying with Docker + Caddy](deployment.md) -- Docker Compose setup with Caddy reverse proxy

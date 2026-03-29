@@ -3,7 +3,7 @@
 # Prerequisites:
 #   - A shared Caddy container already running on the VPS, attached to the "caddy" Docker network
 #   - A DNS A record pointing your domain to the VPS IP
-#   - A .env file configured for production (see docs/deployment-caddy.md)
+#   - A .env file configured for production (see docs/deployment.md)
 #
 # Add this block to your shared Caddyfile, then reload Caddy:
 #
@@ -12,7 +12,7 @@
 #   }
 #
 # Usage:
-#   docker compose -f docker-compose.caddy.yml up -d
+#   docker compose -f docker-compose.prod.yml up -d
 
 services:
   app:

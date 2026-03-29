@@ -46,7 +46,7 @@ APP_URL=https://voluntify.example.com
 # Generate after first build — see step 3
 APP_KEY=
 
-# Database — DB_HOST must match the service name in docker-compose.caddy.yml
+# Database — DB_HOST must match the service name in docker-compose.prod.yml
 DB_CONNECTION=mysql
 DB_HOST=mariadb
 DB_PORT=3306
@@ -102,7 +102,7 @@ Replace `caddy` with your Caddy container's name if different.
 ## 3. Generate APP_KEY
 
 ```bash
-docker compose -f docker-compose.caddy.yml run --rm app php artisan key:generate --show
+docker compose -f docker-compose.prod.yml run --rm app php artisan key:generate --show
 ```
 
 Copy the output (`base64:...`) into your `.env` as the `APP_KEY` value.
@@ -112,7 +112,7 @@ Copy the output (`base64:...`) into your `.env` as the `APP_KEY` value.
 Validate your environment before starting all services:
 
 ```bash
-docker compose -f docker-compose.caddy.yml run --rm app php artisan config:show
+docker compose -f docker-compose.prod.yml run --rm app php artisan config:show
 ```
 
 This catches common mistakes (wrong `DB_HOST`, missing `APP_KEY`, bad credentials) before committing to a full startup.
@@ -120,13 +120,13 @@ This catches common mistakes (wrong `DB_HOST`, missing `APP_KEY`, bad credential
 ## 5. Deploy
 
 ```bash
-docker compose -f docker-compose.caddy.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 Verify all services are healthy:
 
 ```bash
-docker compose -f docker-compose.caddy.yml ps
+docker compose -f docker-compose.prod.yml ps
 ```
 
 All services should show `healthy` or `running`. The `app` service has a 60-second start period for migrations and cache warming.
@@ -134,7 +134,7 @@ All services should show `healthy` or `running`. The `app` service has a 60-seco
 Check the app logs to confirm startup:
 
 ```bash
-docker compose -f docker-compose.caddy.yml logs app
+docker compose -f docker-compose.prod.yml logs app
 ```
 
 You should see config/route/view caching, migrations running, and FrankenPHP starting.
@@ -156,8 +156,6 @@ Every push to `main` triggers the `docker` GitHub Actions workflow, which:
 
 No manual image builds are needed — merging a PR to `main` is sufficient.
 
-**Note:** This CI workflow supports the Caddy-based deployment described in this document. The Coolify deployment uses Nixpacks builds from source and is unaffected.
-
 ## Updates
 
 Voluntify uses a single Docker image for all services. After CI pushes a new image to GHCR, update the VPS:
@@ -167,18 +165,18 @@ Voluntify uses a single Docker image for all services. After CI pushes a new ima
 docker inspect --format='{{.Config.Image}}' voluntify-app
 
 # 2. Pull the new image
-docker compose -f docker-compose.caddy.yml pull
+docker compose -f docker-compose.prod.yml pull
 
 # 3. Take a DB snapshot before applying changes
-docker compose -f docker-compose.caddy.yml exec mariadb \
+docker compose -f docker-compose.prod.yml exec mariadb \
   mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" voluntify > backup_pre_update.sql
 
 # 4. Recreate containers (entrypoint.sh runs migrations automatically)
-docker compose -f docker-compose.caddy.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # 5. Verify
-docker compose -f docker-compose.caddy.yml ps
-docker compose -f docker-compose.caddy.yml logs --tail=50 app
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs --tail=50 app
 ```
 
 **Note:** There is a brief downtime window while the app container restarts (FrankenPHP re-caches config and runs migrations on start). This is typically under 30 seconds.
@@ -189,14 +187,14 @@ If a migration fails or the new version has issues:
 
 ```bash
 # Roll back the last migration batch
-docker compose -f docker-compose.caddy.yml exec app \
+docker compose -f docker-compose.prod.yml exec app \
   php artisan migrate:rollback --step=1
 
 # Revert to the previous image
-IMAGE_TAG=previous-tag docker compose -f docker-compose.caddy.yml up -d
+IMAGE_TAG=previous-tag docker compose -f docker-compose.prod.yml up -d
 
 # Or restore from DB snapshot
-docker compose -f docker-compose.caddy.yml exec -T mariadb \
+docker compose -f docker-compose.prod.yml exec -T mariadb \
   mariadb -u root -p"$MARIADB_ROOT_PASSWORD" voluntify < backup_pre_update.sql
 ```
 
@@ -205,14 +203,14 @@ docker compose -f docker-compose.caddy.yml exec -T mariadb \
 ### Database
 
 ```bash
-docker compose -f docker-compose.caddy.yml exec mariadb \
+docker compose -f docker-compose.prod.yml exec mariadb \
   mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" voluntify > backup_$(date +%Y%m%d).sql
 ```
 
 ### File Storage
 
 ```bash
-docker compose -f docker-compose.caddy.yml cp app:/app/storage/app ./backup-storage-$(date +%Y%m%d)/
+docker compose -f docker-compose.prod.yml cp app:/app/storage/app ./backup-storage-$(date +%Y%m%d)/
 ```
 
 ### Automated Backups
@@ -221,21 +219,21 @@ Add to your VPS crontab (`crontab -e`):
 
 ```cron
 # Daily DB backup at 2am, keep 7 days
-0 2 * * * cd /path/to/voluntify && docker compose -f docker-compose.caddy.yml exec -T mariadb mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" voluntify | gzip > /backups/voluntify/db_$(date +\%Y\%m\%d).sql.gz && find /backups/voluntify -name "db_*.sql.gz" -mtime +7 -delete
+0 2 * * * cd /path/to/voluntify && docker compose -f docker-compose.prod.yml exec -T mariadb mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" voluntify | gzip > /backups/voluntify/db_$(date +\%Y\%m\%d).sql.gz && find /backups/voluntify -name "db_*.sql.gz" -mtime +7 -delete
 
 # Weekly storage backup on Sunday at 3am, keep 4 weeks
-0 3 * * 0 cd /path/to/voluntify && docker compose -f docker-compose.caddy.yml cp app:/app/storage/app /backups/voluntify/storage_$(date +\%Y\%m\%d)/ && find /backups/voluntify -maxdepth 1 -name "storage_*" -mtime +28 -exec rm -rf {} +
+0 3 * * 0 cd /path/to/voluntify && docker compose -f docker-compose.prod.yml cp app:/app/storage/app /backups/voluntify/storage_$(date +\%Y\%m\%d)/ && find /backups/voluntify -maxdepth 1 -name "storage_*" -mtime +28 -exec rm -rf {} +
 ```
 
 ### Restoring
 
 ```bash
 # Database
-docker compose -f docker-compose.caddy.yml exec -T mariadb \
+docker compose -f docker-compose.prod.yml exec -T mariadb \
   mariadb -u root -p"$MARIADB_ROOT_PASSWORD" voluntify < backup_20260325.sql
 
 # Storage
-docker compose -f docker-compose.caddy.yml cp ./backup-storage-20260325/. app:/app/storage/app/
+docker compose -f docker-compose.prod.yml cp ./backup-storage-20260325/. app:/app/storage/app/
 ```
 
 ## Logs and Debugging
@@ -244,12 +242,12 @@ docker compose -f docker-compose.caddy.yml cp ./backup-storage-20260325/. app:/a
 
 ```bash
 # All services
-docker compose -f docker-compose.caddy.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Specific service
-docker compose -f docker-compose.caddy.yml logs -f app
-docker compose -f docker-compose.caddy.yml logs -f queue
-docker compose -f docker-compose.caddy.yml logs -f scheduler
+docker compose -f docker-compose.prod.yml logs -f app
+docker compose -f docker-compose.prod.yml logs -f queue
+docker compose -f docker-compose.prod.yml logs -f scheduler
 ```
 
 With `LOG_CHANNEL=stderr`, all Laravel application logs flow through Docker's logging driver and are accessible via `docker compose logs`.
@@ -257,7 +255,7 @@ With `LOG_CHANNEL=stderr`, all Laravel application logs flow through Docker's lo
 ### Health Check Status
 
 ```bash
-docker compose -f docker-compose.caddy.yml ps
+docker compose -f docker-compose.prod.yml ps
 ```
 
 The `app` service health check hits `http://localhost/up` every 30 seconds. If it fails 5 times in a row, Docker marks the container as unhealthy and restarts it.
@@ -286,7 +284,7 @@ The `scheduler` and `queue` services override the image entrypoint to `["php"]` 
 - They read `.env` directly at runtime (no cached config)
 - After changing `.env`, you must recreate them:
   ```bash
-  docker compose -f docker-compose.caddy.yml up -d scheduler queue
+  docker compose -f docker-compose.prod.yml up -d scheduler queue
   ```
 
 ### Storage Volumes
