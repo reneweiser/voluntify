@@ -145,22 +145,38 @@ Test the full chain:
 curl -f https://voluntify.example.com/up
 ```
 
+## Continuous Integration
+
+Every push to `main` triggers the `docker` GitHub Actions workflow, which:
+
+1. Runs the full test suite
+2. Builds the Docker image from the `Dockerfile`
+3. Pushes to GHCR with tags `latest` and the commit SHA
+4. Prunes old untagged images (keeps the 10 most recent)
+
+No manual image builds are needed — merging a PR to `main` is sufficient.
+
+**Note:** This CI workflow supports the Caddy-based deployment described in this document. The Coolify deployment uses Nixpacks builds from source and is unaffected.
+
 ## Updates
 
-Voluntify uses a single Docker image for all services. To update:
+Voluntify uses a single Docker image for all services. After CI pushes a new image to GHCR, update the VPS:
 
 ```bash
-# 1. Pull the new image
+# 1. Record the current image SHA (for rollback)
+docker inspect --format='{{.Config.Image}}' voluntify-app
+
+# 2. Pull the new image
 docker compose -f docker-compose.caddy.yml pull
 
-# 2. Take a DB snapshot before applying changes
+# 3. Take a DB snapshot before applying changes
 docker compose -f docker-compose.caddy.yml exec mariadb \
   mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" voluntify > backup_pre_update.sql
 
-# 3. Recreate containers (entrypoint.sh runs migrations automatically)
+# 4. Recreate containers (entrypoint.sh runs migrations automatically)
 docker compose -f docker-compose.caddy.yml up -d
 
-# 4. Verify
+# 5. Verify
 docker compose -f docker-compose.caddy.yml ps
 docker compose -f docker-compose.caddy.yml logs --tail=50 app
 ```

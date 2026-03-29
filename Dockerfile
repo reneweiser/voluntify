@@ -1,5 +1,5 @@
 # Stage 1 — Install PHP dependencies
-FROM composer:latest AS composer-deps
+FROM composer:2 AS composer-deps
 
 WORKDIR /app
 
