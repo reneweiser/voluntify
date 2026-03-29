@@ -5,6 +5,7 @@ namespace App\Enums;
 enum ActivityCategory: string
 {
     case Event = 'event';
+    case EventGroup = 'event_group';
     case Job = 'job';
     case Shift = 'shift';
     case Volunteer = 'volunteer';
@@ -17,6 +18,7 @@ enum ActivityCategory: string
     {
         return match ($this) {
             self::Event => 'Event',
+            self::EventGroup => 'Event Group',
             self::Job => 'Job',
             self::Shift => 'Shift',
             self::Volunteer => 'Volunteer',
@@ -31,6 +33,7 @@ enum ActivityCategory: string
     {
         return match ($this) {
             self::Event => 'calendar',
+            self::EventGroup => 'folder',
             self::Job => 'briefcase',
             self::Shift => 'clock',
             self::Volunteer => 'user-group',
@@ -45,6 +48,7 @@ enum ActivityCategory: string
     {
         return match ($this) {
             self::Event => 'blue',
+            self::EventGroup => 'rose',
             self::Job => 'purple',
             self::Shift => 'amber',
             self::Volunteer => 'emerald',

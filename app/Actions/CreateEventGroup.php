@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Events\Activity\EventGroupCreated as EventGroupCreatedActivity;
 use App\Models\EventGroup;
 use App\Models\Organization;
 use Illuminate\Http\UploadedFile;
@@ -22,6 +23,10 @@ class CreateEventGroup
         if ($titleImage) {
             $path = $titleImage->store("event-groups/{$group->id}", 'public');
             $group->update(['title_image_path' => $path]);
+        }
+
+        if (auth()->user()) {
+            EventGroupCreatedActivity::dispatch($group, auth()->user());
         }
 
         return $group;

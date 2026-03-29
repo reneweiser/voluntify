@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Events\Activity\EventAssignedToGroup;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\EventGroup;
@@ -22,5 +23,11 @@ class AssignEventsToGroup
         }
 
         Event::whereIn('id', $eventIds)->update(['event_group_id' => $eventGroup->id]);
+
+        if (auth()->user()) {
+            foreach ($events as $event) {
+                EventAssignedToGroup::dispatch($eventGroup, $event, auth()->user());
+            }
+        }
     }
 }

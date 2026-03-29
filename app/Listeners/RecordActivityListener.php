@@ -8,10 +8,15 @@ use App\Events\Activity\ArrivalScanned;
 use App\Events\Activity\AttendanceRecorded;
 use App\Events\Activity\EmailTemplateUpdated;
 use App\Events\Activity\EventArchived;
+use App\Events\Activity\EventAssignedToGroup;
 use App\Events\Activity\EventCloned;
 use App\Events\Activity\EventCreated;
+use App\Events\Activity\EventGroupCreated;
+use App\Events\Activity\EventGroupDeleted;
+use App\Events\Activity\EventGroupUpdated;
 use App\Events\Activity\EventImageDeleted;
 use App\Events\Activity\EventPublished;
+use App\Events\Activity\EventRemovedFromGroup;
 use App\Events\Activity\EventUpdated;
 use App\Events\Activity\JobCreated;
 use App\Events\Activity\JobDeleted;
@@ -29,6 +34,7 @@ use App\Models\ActivityLog;
 use App\Models\Event;
 use App\Models\EventAnnouncement;
 use App\Models\EventArrival;
+use App\Models\EventGroup;
 use App\Models\Organization;
 use App\Models\User;
 use App\Models\Volunteer;
@@ -448,6 +454,94 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'description' => "Sent announcement \"{$e->announcement->subject}\" for {$e->event->name}",
             'properties' => [
                 'subject' => $e->announcement->subject,
+            ],
+        ]);
+    }
+
+    public function handleEventGroupCreated(EventGroupCreated $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->eventGroup->organization_id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => EventGroup::class,
+            'subject_id' => $e->eventGroup->id,
+            'action' => 'created',
+            'category' => ActivityCategory::EventGroup,
+            'description' => "Created event group {$e->eventGroup->name}",
+            'properties' => [
+                'name' => $e->eventGroup->name,
+            ],
+        ]);
+    }
+
+    public function handleEventGroupUpdated(EventGroupUpdated $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->eventGroup->organization_id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => EventGroup::class,
+            'subject_id' => $e->eventGroup->id,
+            'action' => 'updated',
+            'category' => ActivityCategory::EventGroup,
+            'description' => "Updated event group {$e->eventGroup->name}",
+            'properties' => [
+                'changed' => $e->changed,
+            ],
+        ]);
+    }
+
+    public function handleEventGroupDeleted(EventGroupDeleted $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->organizationId,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => Organization::class,
+            'subject_id' => $e->organizationId,
+            'action' => 'deleted',
+            'category' => ActivityCategory::EventGroup,
+            'description' => "Deleted event group {$e->groupName}",
+            'properties' => [
+                'name' => $e->groupName,
+                'ungrouped_events' => $e->ungroupedEventNames,
+            ],
+        ]);
+    }
+
+    public function handleEventAssignedToGroup(EventAssignedToGroup $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->eventGroup->organization_id,
+            'event_id' => $e->event->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => EventGroup::class,
+            'subject_id' => $e->eventGroup->id,
+            'action' => 'assigned',
+            'category' => ActivityCategory::EventGroup,
+            'description' => "Assigned event {$e->event->name} to group {$e->eventGroup->name}",
+            'properties' => [
+                'event_name' => $e->event->name,
+            ],
+        ]);
+    }
+
+    public function handleEventRemovedFromGroup(EventRemovedFromGroup $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->organizationId,
+            'event_id' => $e->event->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => Event::class,
+            'subject_id' => $e->event->id,
+            'action' => 'removed',
+            'category' => ActivityCategory::EventGroup,
+            'description' => "Removed event {$e->event->name} from group {$e->groupName}",
+            'properties' => [
+                'group_name' => $e->groupName,
             ],
         ]);
     }
