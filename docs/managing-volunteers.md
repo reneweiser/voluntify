@@ -34,6 +34,29 @@ The volunteer detail page shows everything about a specific volunteer for this e
 - **Attendance records** -- Their per-shift attendance status (On Time / Late / No Show).
 - **Custom field responses** -- Answers to any custom registration fields the volunteer filled in during signup. Archived (removed) fields are shown with an "(archived)" label.
 
+## Promote a Volunteer to Staff
+
+If a volunteer has proven reliable and you'd like to give them a staff role in your organization, you can promote them directly from their detail page.
+
+1. Go to the event's **Volunteers** page and click the volunteer's row.
+2. Click **Promote to Staff**.
+3. Select a role:
+   - **Volunteer Admin** -- Can view volunteers and mark shift attendance.
+   - **Entrance Staff** -- Can use the QR scanner and manual lookup.
+   - **Organizer** -- Full administrative access.
+4. Click **Promote**.
+
+What happens next depends on whether the volunteer's email already belongs to a Voluntify user:
+
+- **New user**: A user account is created with a temporary password. The volunteer receives a notification email with their login credentials and must set a new password on first login.
+- **Existing user**: The user is added to your organization with the selected role directly. No notification email is sent -- the organization will appear in their organization switcher on next login.
+
+Once promoted, the volunteer's detail page shows a **Staff Member** badge instead of the promote button.
+
+For onboarding tips for new staff members, see [Managing Your Members > Onboarding Checklists](managing-your-team.md#onboarding-checklist-entrance-staff).
+
+**Who can do this**: Organizer only.
+
 ## Export CSV
 
 To export the volunteer list as a CSV file:

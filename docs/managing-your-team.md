@@ -28,6 +28,8 @@ If the email belongs to an existing user (e.g., they're already in another organ
 
 For a full breakdown of what each role can do, see [Roles and Permissions](roles-and-permissions.md).
 
+Volunteers can also be promoted to staff members directly from the volunteer detail page. See [Managing Volunteers > Promote a Volunteer to Staff](managing-volunteers.md#promote-a-volunteer-to-staff).
+
 ## Change a Member's Role
 
 1. Go to **Settings > Members**.

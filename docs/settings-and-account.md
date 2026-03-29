@@ -84,3 +84,21 @@ View an audit trail of actions taken across your organization. The activity log 
 | **Member** | Member invitations, role changes, removals, departures |
 | **Email** | Email template changes, SMTP configuration |
 | **System** | Organization-level changes |
+
+## Delete Account
+
+**Path**: Settings > Profile (bottom of the page)
+
+To permanently delete your account:
+
+1. Go to Settings > Profile.
+2. Scroll to the **Delete account** section.
+3. Click **Delete account**.
+4. Enter your password to confirm.
+5. Click **Delete account** in the confirmation dialog.
+
+Your account and all associated data are permanently deleted and you are logged out immediately. Organizations you belonged to and their data (events, volunteers, etc.) are not deleted, but may become inaccessible if you were the sole Organizer.
+
+This action cannot be undone. If you are the only Organizer in an organization, [transfer the Organizer role](managing-your-team.md#change-a-members-role) to another member before deleting your account.
+
+The delete account option only appears for users with a verified email address.

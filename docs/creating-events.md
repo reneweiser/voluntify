@@ -122,7 +122,7 @@ When gear items are configured, volunteers see a gear selection form during sign
 
 To remove a gear item, click the delete icon next to it. This deletes all volunteer gear assignments for that item.
 
-**Who can do this**: Organizer only. Gear pickup tracking is available to Organizer and Volunteer Admin (see the **Gear Pickup** page).
+**Who can do this**: Organizer only. Gear pickup tracking is available to Organizer and Volunteer Admin (see [Track Gear Pickup](#track-gear-pickup) below).
 
 ## Set Up Custom Registration Fields
 
@@ -146,6 +146,19 @@ If you need to collect additional information from volunteers during signup -- l
 **Adding required fields to events with existing signups**: If you add a required field to an event that already has volunteers signed up, a confirmation dialog warns you that existing volunteers won't have filled in this field.
 
 **Who can do this**: Organizer only.
+
+## Track Gear Pickup
+
+On event day, use the Gear Pickup page to record which volunteers have collected their gear.
+
+1. Go to **Gear Pickup** in the event sidebar.
+2. Search for a volunteer by name using the search bar.
+3. The page shows each volunteer with their assigned gear items and sizes.
+4. Click a gear item to toggle its pickup status between **Picked Up** and **Not Picked Up**.
+
+If a volunteer was not assigned a gear item during signup (e.g., the item was added after they signed up), you can assign and mark it as picked up in one step directly from this page.
+
+**Who can do this**: Organizer and Volunteer Admin.
 
 ## Publish an Event
 

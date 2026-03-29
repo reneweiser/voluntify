@@ -27,6 +27,7 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | View volunteer list | Yes | Yes | -- |
 | View volunteer details | Yes | Yes | -- |
 | Export volunteer CSV | Yes | Yes | -- |
+| Promote volunteer to staff | Yes | -- | -- |
 | **Attendance** | | | |
 | View attendance | Yes | Yes | -- |
 | Mark attendance (On Time / Late / No Show) | Yes | Yes | -- |
@@ -38,6 +39,7 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | **Scanner** | | | |
 | Use QR scanner | Yes | Yes | Yes |
 | Use manual lookup | Yes | Yes | Yes |
+| Confirm arrival | Yes | -- | Yes |
 | Mark attendance from scanner | Yes | Yes | -- |
 | **Member Management** | | | |
 | View members | Yes | -- | -- |
@@ -47,6 +49,7 @@ Voluntify has three staff roles and one external role. Staff roles are assigned 
 | **Settings** | | | |
 | Edit own profile and password | Yes | Yes | Yes |
 | Set up two-factor authentication | Yes | Yes | Yes |
+| Delete own account | Yes | Yes | Yes |
 | Configure email / SMTP settings | Yes | -- | -- |
 | View activity log | Yes | -- | -- |
 | **Organizations** | | | |
