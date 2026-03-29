@@ -9,7 +9,7 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "chillerlan/php-qrcode": "^5.0",
         "firebase/php-jwt": "^7.0",
         "laravel/fortify": "^1.30",
