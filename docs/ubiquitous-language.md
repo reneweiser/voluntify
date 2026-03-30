@@ -4,106 +4,179 @@ This glossary defines the shared vocabulary used throughout Voluntify. Consisten
 
 ## People & Roles
 
-**Organization** -- The group, nonprofit, or club that creates and runs events. Every event, team member, and volunteer exists within an organization. A person can belong to multiple organizations.
+**Organisation** -- The group, nonprofit, or club that creates and runs projects. Every project, event, team member, and volunteer exists within an organisation. A person can belong to multiple organisations.
 
-**Organizer** -- A staff role with full administrative access. Organizers can create events, manage team members, configure settings, and access all data within their organization.
+> Example: "SKHC e.V." is an organisation that manages the "Hochschulball 2026" project.
 
-**Volunteer Admin** -- A staff role responsible for on-the-ground shift management. Volunteer Admins can view volunteers, mark shift attendance, and track gear pickup, but cannot manage events, team members, or organization settings.
+**Organizer** -- A staff role with full administrative access. Organizers have permanent accounts and can create projects, events, manage team members, configure settings, and access all data. Organizers exist at two levels:
+- **Org-Level Organizer** -- automatic access to all projects and events in the organisation.
+- **Project-Level Organizer** -- access to all events within that project only.
 
-**Entrance Staff** -- A staff role responsible for scanning tickets at the venue entrance. Entrance Staff use the QR scanner and manual lookup to record arrivals, but have no access to shift management or settings.
+> Why two levels? A club president needs access to everything (org-level), while a hired event coordinator only needs access to the events they manage (project-level).
 
-**Member** -- Any user who belongs to an organization in a staff role (Organizer, Volunteer Admin, or Entrance Staff). Members log into the admin interface with an email and password.
+**Volunteer Admin** -- A scanner-based role responsible for on-the-ground shift management. Volunteer Admins **do not have permanent accounts** -- they receive a temporary scanner link via email that is valid for a configured time window. They can check in volunteers, mark attendance, and track gear pickup via the Volunteer Admin Scanner.
 
-**Volunteer** -- A person who signs up to help at an event. Volunteers do not need an account -- they sign up with just their name and email. A volunteer may later be promoted to a staff member.
+> Example: A trusted volunteer is promoted to Volunteer Admin for the evening shift. They receive a scanner link 30 minutes before their time window starts.
 
-## Events & Scheduling
+**Entry Staff** -- A scanner-based role responsible for scanning tickets at the venue entrance. Entry Staff **do not have permanent accounts** -- like Volunteer Admins, they receive a temporary scanner link. Their view is limited to QR scanning and a guest list.
 
-**Event** -- A specific occasion (festival, cleanup day, gala) with a date, location, and volunteer needs. Events are the central organizing unit in Voluntify.
+> Why no permanent accounts for Volunteer Admin and Entry Staff? These roles are typically filled by volunteers or short-term helpers who work one event. Giving them scanner-only access via a temporary link keeps security tight and onboarding frictionless.
 
-**Event Group** -- An optional container for organizing related events (e.g., a festival with multiple days). Event groups have a shared public landing page where volunteers can discover and sign up for individual events.
+**Member** -- Any user who belongs to an organisation in a staff role with a permanent account. Currently, only Organizers are permanent members. Members log into the admin interface with email and password.
 
-**Draft** -- An event status meaning the event is still being set up. Draft events are not visible to volunteers.
+**Volunteer** -- A person who signs up to help at an event. Volunteers do not need an account -- they interact via magic links and a public signup flow. A volunteer belongs to a **project** (not to a single event) and can sign up for shifts across multiple events in that project.
 
-**Published** -- An event status meaning the event is live. Published events have a public signup page and accept volunteer signups.
+> Example: A volunteer signs up for "Hochschulball 2026" and selects shifts at both the "Aufbautag" and "Hauptabend" events -- they remain one volunteer record in the project.
 
-**Archived** -- An event status meaning the event is over. Archived events are read-only and no longer accept signups.
+## Projects & Events
 
-**Volunteer Job** -- A named function or role at an event, such as "Catering," "Registration Desk," or "Parking." Jobs carry instructions -- the specific information volunteers need (dress code, location, meeting point).
+**Project** -- The mandatory top-level container for organising events. Every event belongs to a project. A project groups related events (e.g. all events for a festival), holds shared resources (Gear, Custom Fields, Scanner configs, Volunteers), and has its own public website.
 
-**Shift** -- A time slot within a job that volunteers sign up for. Each shift has a start time, end time, and capacity (the maximum number of volunteers).
+> Example: The project "Hochschulball 2026" contains the events "Aufbautag", "Hauptabend", and "Abbautag". All volunteers, T-Shirt gear, and custom fields are shared across these events.
 
-**Capacity** -- The maximum number of volunteers who can sign up for a shift. Once a shift reaches capacity, it is full and no longer accepts signups.
+> Why mandatory? Without a project, shared resources like gear or custom fields would need to be duplicated per event. The project is the natural home for cross-event data.
+
+**Project Website** -- A permanent public page at `/p/{token}` that lists all published events of a project. Activated on the first publish of any event. Before first publish, logged-in Organizers see a preview; everyone else gets a 404.
+
+**Event** -- A specific occasion within a project (e.g. "Aufbautag", "Hauptabend") with a date, location, and volunteer needs.
+
+**Event Lifecycle** -- Events move through four stages:
+
+```text
+Draft --> Published Open <--> Published Closed --> Archived
+```
+
+- **Draft** -- Being set up. Not visible on the project website. Can be taken back to Draft from Published for maintenance.
+- **Published Open** -- Live on the project website with a signup CTA. Volunteers can sign up.
+- **Published Closed** -- Visible on the project website with an "Anmeldung abgelaufen" label. No new signups. Triggered by a deadline or manually.
+- **Archived** -- Completed. Read-only. Removed from the project website. Must be archived before the project can be fully cleaned up.
+
+> Why four stages instead of three? "Published Open" and "Published Closed" are distinct because an event may still be visible for informational purposes (location, schedule) even after signups close. The old model conflated "visible" with "accepting signups".
+
+**Volunteer Job** -- A named function at an event, such as "Einlass", "Bar", or "Bühne". Jobs carry descriptions and optional instructions (cheat sheets).
+
+**Shift** -- A time slot within a job that volunteers sign up for. Each shift has a date (always required), optional start and end times, optional custom display text, and a capacity.
+
+> Example: A shift can be "10:00--14:00 Uhr" (exact times), "ab 10:00 Uhr" (start only), "nach Bedarf" (custom text, no times), or "10:00 Uhr -- bis Veranstaltungsende" (start time with custom end text).
+
+> Why are times optional? Some jobs don't have fixed hours -- setup crews may work "as needed". Custom display text handles these cases without forcing organizers to invent fake times.
+
+**Capacity** -- The maximum number of volunteers for a shift. Once full, the shift shows a "Voll" badge and blocks further signups.
 
 ## Signup & Verification
 
-**Signup** -- The act of a volunteer claiming a spot on one or more shifts at an event. Volunteers sign up through the public event page with just their name and email.
+**Signup Flow** -- A multi-step process for volunteer registration:
 
-**Shift Signup** -- The individual record linking a volunteer to a specific shift. One volunteer can have multiple shift signups at the same event (for different shifts).
+1. **Schritt 1 -- E-Mail:** Volunteer enters their email. New users verify via email; returning users receive a magic link.
+2. **Schritt 2 -- Daten + Schichtauswahl:** Personal data (Vorname, Nachname, optional Telefon) followed by shift selection. A 20-minute reservation timer starts.
+3. **Schritt 3 -- Custom Fields + Gear:** Project-level and event-level custom fields, plus Typ-1 gear selection (e.g. T-shirt size).
+4. **Schritt 4 -- Zusammenfassung:** Review and confirm with "Verbindlich anmelden".
 
-**Email Verification (Double Opt-In)** -- After signing up, a volunteer receives a verification email and must click a confirmation link before their signup is finalized. This ensures the email address is valid and the signup is intentional.
+> Why data before shifts? Collecting personal data first means the volunteer's identity is known before they occupy capacity. If the timer expires, their reservation is released cleanly.
 
-**Cancellation Cutoff** -- An optional per-event setting that defines how many hours before a shift a volunteer can still cancel their signup. If no cutoff is set, volunteers cannot self-cancel.
+**Email Verification (Double Opt-In)** -- New volunteers must confirm their email before proceeding. The verification link/code is valid for 24 hours. No shifts are reserved during verification -- the 20-minute timer only starts after verification is complete.
 
-**Manual Enrollment** -- The act of an Organizer manually enrolling an existing event volunteer into additional shifts, bypassing the public signup page. Useful for reassigning or adding shifts after initial signup.
+**Shift Reservation** -- When a volunteer begins Schritt 2, selected shifts are temporarily held for 20 minutes. If the timer expires, spots are released for others. The countdown is visible during Schritt 2--4.
 
-**Custom Registration Field** -- An organizer-defined form field added to an event's signup page. Supports three types: text (single-line or multiline), select (dropdown with predefined choices), and checkbox. Fields can be marked as required. Removing a field preserves existing responses but hides the field from new signups.
+**Overlap Check** -- The system prevents a volunteer from signing up for shifts with overlapping times, even across different jobs. Directly adjacent shifts (12:00--14:00 and 14:00--16:00) are allowed. Shifts without times skip the overlap check silently.
 
-**Custom Field Response** -- A volunteer's answer to a custom registration field, recorded during signup. Responses are visible on the volunteer detail page, in the volunteer portal, and in CSV exports.
+**Cancellation** -- Self-service shift cancellation by volunteers, if the Organizer has enabled it at project level. Can include a deadline (e.g. "not later than 24 hours before shift start"). Freed capacity is immediately available.
+
+**Manual Volunteer Creation** -- An Organizer can create a volunteer record directly (bypassing the signup flow). Only email is required; all other fields are optional. The volunteer receives an email with a portal link to complete their registration.
+
+> Example: An Organizer adds a volunteer who was recruited in person. They enter only the email -- the volunteer completes name, shift selection, and T-shirt size via the portal later.
 
 ## Tickets & Scanning
 
-**Ticket** -- A QR-coded credential issued to a volunteer for event entrance. Each volunteer receives one ticket per event, covering all their shifts. Tickets are accessed via a magic link -- no login required.
+**QR Code** -- A scannable code issued to each volunteer, valid for an entire project. One QR code per project membership -- it covers all events. The code is never regenerated.
 
-**QR Code** -- The scannable barcode on a volunteer's ticket. It encodes the information needed to verify the volunteer's identity at the entrance, even without an internet connection.
+> Why per project, not per event? A volunteer helping at both "Aufbautag" and "Hauptabend" needs only one code. The scanner checks shift eligibility per event at scan time.
 
-**Magic Link** -- A unique, time-limited URL sent to a volunteer's email that grants access to their ticket page without needing to log in. Each magic link is single-use and expires after a set period.
+**Magic Link** -- A unique URL sent to a volunteer's email that grants access to the Helfer-Portal without a password. Used for both signup continuation and portal access. Expires after a configured period; volunteers can request a new one.
 
-**Event Arrival** -- The record that a volunteer physically showed up at the event venue. Recorded by Entrance Staff when they scan a QR code or look up a volunteer manually. This is distinct from shift attendance.
+**Scanner** -- A mobile-first web interface used by Entry Staff and Volunteer Admins to process volunteers. Scanners are configured at project level, each with a type, scope, time window, and assigned operators.
 
-**QR Scan** -- The act of scanning a volunteer's QR code at the entrance to record their event arrival.
+**Entry Staff Scanner** -- Scanner type for entrance control. Shows full-screen color-coded results:
+- **Green** -- valid ticket, access granted (shows volunteer name).
+- **Yellow** -- already checked in (shows name + last scan time/location).
+- **Red** -- no access (shows reason + "Nächsten scannen" button).
 
-**Manual Lookup** -- An alternative to QR scanning where Entrance Staff search for a volunteer by name to record their arrival. Used when a volunteer cannot present their QR code.
+After each result, a **manual "Nächsten scannen" button** must be tapped to proceed. No auto-dismiss.
 
-**Shift Context** -- The real-time shift status information displayed on a scan result, showing each of the volunteer's shifts classified as attended (green), missed (red), active (blue), or upcoming (gray).
+> Why no auto-dismiss? At crowded entrances, accidental taps could dismiss results before the operator reads them. The manual button ensures every result is consciously acknowledged.
 
-**Offline Scanning** -- The ability to validate QR tickets and record arrivals without an internet connection. Arrival and attendance records are stored on the device and automatically synced when connectivity returns.
+**Volunteer Admin Scanner** -- Scanner type for shift management and gear pickup. Modes: check-in only, gear pickup only, or both. Shows a detailed volunteer view (name, shifts, gear status). Includes a **Schichtliste** tab for browsing all volunteers per shift.
+
+**Scanner Time Window** -- Each scanner has a configured start and end time. The scanner is locked outside this window. A 10-minute countdown warning appears before expiry. Organizers can extend the time window after it expires (e.g. for late gear pickup).
+
+**Offline Scanning** -- Scanners cache volunteer data in encrypted IndexedDB for offline use. Data auto-expires at the end of the time window or after 3 days. Online/offline sync is automatic.
+
+**Eligibility** -- A volunteer can use their QR code (for entry or gear pickup) only if they have at least one shift in the past or future. A volunteer with zero shifts is not eligible.
 
 ## Attendance
 
-**Attendance Record** -- The record of whether a volunteer showed up to their assigned shift. Recorded by a Volunteer Admin or Organizer at the shift level -- separate from the event arrival at the entrance.
+**Event Arrival** -- The record that a volunteer physically showed up at the venue. Recorded by Entry Staff via QR scan or manual lookup. Distinct from shift attendance.
 
-**On Time** -- An attendance status indicating the volunteer arrived at their shift station on time.
+**Attendance Record** -- Whether a volunteer reported to their assigned shift. Recorded by Volunteer Admin. Statuses: **On Time**, **Late**, **No Show**.
 
-**Late** -- An attendance status indicating the volunteer arrived at their shift station after the shift started.
+**Attendance Grace Period** -- An optional per-event setting defining how many minutes after a shift starts a scan is still "On Time". After the grace window: "Late". If not set, any arrival after shift start is "Late".
 
-**No-Show** -- An attendance status indicating the volunteer did not show up for their shift at all. A volunteer can arrive at the event (recorded as an event arrival) but still be a no-show for their shift if they don't report to their station. Volunteers are automatically marked as No-Show if their shift ended more than 2 hours ago with no attendance record.
-
-**Attendance Grace Period** -- An optional per-event setting defining how many minutes after a shift start a scan is still marked as On Time. Scans after the grace window are marked Late. If not set, any scan after shift start is Late.
+**Automatic No-Show Detection** -- Volunteers are auto-marked "No Show" if their shift ended 2+ hours ago with no attendance record.
 
 ## Gear
 
-**Event Gear Item** -- A piece of equipment or material that an event provides to volunteers, such as a t-shirt, walkie-talkie, or name badge. Gear items are defined per event and may optionally have sizes.
+**Gear** -- Equipment or materials provided to volunteers. Defined at **project level** (not per event) so a volunteer receives e.g. one T-shirt for the entire project, not one per event.
 
-**Volunteer Gear** -- The assignment of a gear item to a specific volunteer at an event. Tracks whether the item has been picked up.
+**Typ 1 (Größenauswahl)** -- Gear with a selection option (e.g. T-shirt size, jacket color). One entitlement per volunteer. The volunteer chooses during signup (Schritt 3). States are **configurable by the Organizer** -- not hardcoded.
 
-**Gear Pickup** -- The act of a volunteer collecting their assigned gear. Recorded by an Organizer or Volunteer Admin, typically at a check-in station.
+> Example: An Organizer defines a "T-Shirt" gear item with states "Ausstehend", "Abgeholt", "Nicht vorrätig". Another Organizer might use "Bereit", "Ausgegeben", "Rückgabe ausstehend" for a walkie-talkie.
+
+> Why configurable states? Different organisations have different workflows. A food festival tracking meal vouchers has different states than a music festival tracking radios. Hardcoded enums would force one-size-fits-all.
+
+**Typ 2 (Mengenausgabe)** -- Gear tracked by quantity (e.g. drink tokens, meal vouchers). Multiple pickups tracked individually. Scanner shows "2 / 3 abgeholt".
+
+**"Auswahl ausstehend"** -- A scanner status shown for Typ-1 gear when the volunteer hasn't made their selection yet (e.g. Organizer created the volunteer manually without choosing a T-shirt size). Gear pickup is blocked until the volunteer completes the selection via the portal.
+
+> Why generic "Auswahl ausstehend" instead of "Größe ausstehend"? Typ-1 options aren't always sizes -- they could be colors, variants, or preferences. The label must be universal.
+
+**Gear Pickup** -- Always recorded via scanner (Volunteer Admin Scanner). No web UI override. All Typ-1 state changes happen on the scanner. Typ-2 pickups require an internet connection (to prevent double-counting via race conditions).
 
 ## Communication
 
-**Email Template** -- A customizable email template for a specific event. Organizers can personalize the subject and body of signup confirmations and pre-shift reminders. Templates support placeholder variables for volunteer and event details.
+**Email Template** -- A customizable email template configured per event. Falls back to system defaults if no custom template is set. Templates support placeholders like `{{vorname}}`, `{{nachname}}`, `{{portal_link}}`, `{{kontakt_email}}`.
 
-**Signup Confirmation** -- The email sent to a volunteer after their signup is verified. Contains event details, shift information, and a magic link to their ticket.
+**System Email Types:**
 
-**Pre-Shift Reminder** -- An automated email sent to volunteers before their shift (at 24 hours and 4 hours before start). Includes shift time, job name, and any job-specific instructions.
+| Type | Trigger |
+|---|---|
+| `signup_confirmation` | Signup completed |
+| `email_verification` | New user verifies email |
+| `volunteer_welcome` | After verification -- portal link |
+| `volunteer_added_by_organizer` | Organizer manually creates volunteer |
+| `pre_shift_reminder_24h` | 24h before shift |
+| `pre_shift_reminder_4h` | 4h before shift |
+| `event_updated` | Re-publish after maintenance |
+| `event_announcement` | Manual announcement by Organizer |
+| `staff_invitation` | Invitation as team member |
+| `volunteer_promoted` | Volunteer promoted to staff |
+| `added_to_org` | User added to organisation |
 
-**Announcement** -- A message sent by an Organizer to all volunteers signed up for an event. Volunteers can read announcements in their portal.
+**Announcement** -- A manual, free-form email sent by an Organizer to a filtered group of volunteers at project level. Recipients are selected via combinable filters (Event > Job > Shift). Can be sent immediately or scheduled. Announcements are email-only (no portal banner). Reusable Announcement Templates can be saved at organisation level.
 
-## Organization & Settings
+> Example: "Schicht Kuchenausgabe: Bitte keine Teller mitbringen" -- sent only to volunteers in that specific shift.
 
-**Public Token** -- A random, unguessable string used in the event's public URL (e.g., `/events/a1b2c3`). Prevents anyone from guessing event URLs by trying sequential numbers or common names.
+**Email Sender Configuration** -- SMTP can be configured at organisation level (default for all projects) and optionally overridden per project. Event-level config is limited to a notification email address for organizer-facing alerts (e.g. cancellation digests).
 
-**Volunteer Promotion** -- The process of elevating a volunteer to a staff role. Creates a user account for the volunteer, assigns them a role within the organization, and sends them login credentials.
+## Organisation & Settings
 
-**Activity Log** -- A record of significant actions within an organization (member invitations, role changes, event updates). Visible to Organizers in the settings area.
+**Public Token** -- A random, unguessable string used in URLs (`/p/{token}` for project websites, `/event/{token}` for direct event links). Prevents URL guessing.
 
-**Volunteer Portal** -- A self-service page where volunteers can view their upcoming shifts, read event announcements, see gear assignments, and cancel signups (if allowed). Accessed via a magic link -- no account needed.
+**Volunteer Promotion** -- Elevating a volunteer to a staff role. Promote to Volunteer Admin: assigned to a specific scanner. Promote to Organizer: a user account is created, invitation email sent.
+
+> Note: Entry Staff is **not** promoted via "Promote to Staff" -- they are assigned directly through the Entry Staff Scanner configuration.
+
+**Activity Log** -- An audit trail of actions within an organisation. Tracks invitations, role changes, member removals, brute-force lockouts, and more. Visible to Organizers.
+
+**Helfer-Portal (Volunteer Portal)** -- A self-service page where volunteers view their shifts, QR code, gear status, personal data, and attendance history. Accessed via magic link -- no account needed. Shows all events within the project context.
+
+**Clone** -- Duplicating a project or individual event. Creates a Draft copy with structure (jobs, shifts, gear definitions, custom fields, email templates, scanner configs) but without volunteers, signups, or announcements. Optional date offset shifts all dates forward.

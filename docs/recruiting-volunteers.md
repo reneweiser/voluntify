@@ -1,118 +1,133 @@
 # Recruiting Volunteers
 
-This guide covers how to publish your event, share the signup link, and what the volunteer experience looks like.
-
-![Volunteer journey from browsing the event to receiving a QR ticket](figures/volunteer-journey.svg)
+This guide covers publishing events, sharing the project website, and the complete volunteer experience from signup to portal access.
 
 ## Publish Your Event
 
-Before volunteers can sign up, your event must be published. See [Creating Events > Publish an Event](creating-events.md#publish-an-event) for steps.
+Before volunteers can sign up, your event must be published. Publishing is blocked until at least one shift exists -- this prevents publishing an empty event.
 
-Once published, a unique public URL is generated for your event (e.g., `https://your-domain/events/abc123`). This URL uses a random token -- it doesn't expose your event's internal ID.
+1. Go to the event's **Übersicht** page.
+2. Click **Veröffentlichen**. The event moves to **Published Open** status.
 
-## Share the Signup Link
+On the first publish of any event in a project, the **project website** is permanently activated at `/p/{token}`.
 
-1. Go to **Overview** in the event sidebar.
-2. Click **Copy Link** to copy the public event URL to your clipboard.
+> Why block publishing without shifts? An event without shifts cannot accept signups. Publishing it would only confuse volunteers who arrive at a page with nothing to sign up for.
 
-Share this link however you'd like -- email, social media, your organization's website, messaging apps, printed flyers, etc. Anyone with the link can view the event and sign up.
+## Share the Project Website
 
-## What Volunteers See
+The project website is the main entry point for volunteers. It lists all published events with their status:
 
-When a volunteer opens your event's public link, they see:
+- **Published Open** -- shown with a signup button and deadline
+- **Published Closed** -- shown with an "Anmeldung abgelaufen" label
+- **Draft / Archived** -- hidden
 
-1. **Event header** -- The event name, dates, location, and description. If you uploaded a title image, it appears as a hero banner.
-2. **Job listing** -- An accordion of volunteer jobs. Each job shows its name and description. Jobs with instructions also display a "View Instructions" link to a standalone cheat sheet page.
-3. **Available shifts** -- Within each job, shift cards show the time slot, capacity, and remaining spots (e.g., "3 of 5 spots filled").
-4. **Signup form** -- When a volunteer selects a shift, a form appears asking for:
-   - **Name** (required)
-   - **Email** (required)
-   - **Phone** (optional)
-5. **Gear selection** (if applicable) -- If the event has gear items, a gear form appears after the signup fields. Sized items show a size dropdown; non-sized items are listed as informational.
-6. **Custom registration fields** (if configured) -- If the organizer has added custom fields, an **Additional Information** section appears with the configured questions. Required fields are marked with an asterisk. Field types include text inputs, dropdowns, and checkboxes.
+Share the project URL (`/p/{token}`) via email, social media, your organisation's website, flyers, etc.
 
-The volunteer clicks **Sign Up** to register. If a shift is full, it shows a "Full" badge and the signup button is disabled.
+> Example: SKHC shares `voluntify.example.com/p/abc123` on their Instagram story. Volunteers see the "Hochschulball 2026" project page with cards for "Aufbautag" and "Hauptabend" -- both with signup buttons.
 
-No account or password is needed. Volunteers sign up with just their name and email.
+You can also share a direct event link (`/event/{token}`) to point volunteers to a specific event.
 
-## Email Verification (Double Opt-In)
+**Before first publish:** Logged-in Organizers see a **preview** of the project website (with a "Vorschau" banner). All other visitors get a 404.
 
-After signing up, volunteers receive a verification email to confirm their email address. This is a GDPR-compliant double opt-in process:
+> Why preview for Organizers? It lets you verify the website looks right before going live, without accidentally showing an incomplete page to the public.
 
-1. The volunteer signs up on the public page.
-2. They receive a verification email with a confirmation link.
-3. They click the link to verify their email.
-4. Once verified, their signup is confirmed and they receive their ticket.
+## Signup Flow
 
-## Volunteer Ticket and Magic Link
+When a volunteer clicks "Anmelden" on the project website, they enter a multi-step signup flow:
 
-After verification, the volunteer receives a confirmation email containing:
+### Schritt 1 -- E-Mail
 
-- Event details (name, date, location)
-- Their assigned shift information
-- A **magic link** to view their QR ticket
+The volunteer enters their email address.
 
-The magic link opens their ticket page, which shows:
+- **New volunteer:** Receives a verification email (6-digit code or link, valid 24 hours). No shifts are reserved during verification.
+- **Returning volunteer:** Receives a magic link that takes them directly to Schritt 2 for the requested event. A brief note shows their existing signups.
 
-- A large **QR code** -- This is their entrance ticket. It contains a signed JWT token that can be validated offline.
-- Their name and email.
-- Event details.
-- All shifts they're signed up for.
-- A **Manage Your Shifts** link that opens the volunteer portal (see below).
+> Why separate verification from signup? Verification confirms the email is real. The 20-minute reservation timer only starts after verification to avoid blocking shifts for unverified addresses.
 
-Volunteers should save this page or screenshot the QR code for easy access on event day. The magic link works without logging in -- no password needed.
+### E-Mail-Verifizierung (neue Volunteers)
 
-If a volunteer signs up for multiple shifts at the same event, they get one ticket covering all their shifts.
+After clicking the verification link/code:
+1. The volunteer is verified in the system.
+2. A **Willkommens-E-Mail** (`volunteer_welcome`) is sent with a magic link to the Helfer-Portal.
+3. Clicking the magic link in the signup flow opens Schritt 2 directly.
 
-## Volunteer Portal
+> Example: Lisa enters her email, receives "Bitte bestätige deine E-Mail", clicks the link, gets a "Du bist jetzt dabei" welcome email, and lands on the shift selection page.
 
-The volunteer portal gives volunteers a self-service view of their shifts and any announcements from organizers. Volunteers access it via the **Manage Your Shifts** link on their ticket page -- no login required.
+### Schritt 2 -- Persönliche Daten + Schichtauswahl
 
-The portal shows five sections:
+**Data first, then shifts.** A 20-minute countdown starts at the beginning of this step and is visible throughout.
 
-- **Upcoming Shifts** -- All future shifts the volunteer is signed up for, sorted by date. Each entry shows the event name, job, and shift time.
-- **Past Shifts** -- Completed shifts, sorted most recent first.
-- **Event Gear** -- Gear assigned to the volunteer, showing the item name, event name, size (if applicable), and pickup status (Picked Up / Not Picked Up).
-- **Registration Info** -- The volunteer's custom field responses, grouped by event. Shows answers to any custom registration fields they filled in during signup.
-- **Announcements** -- Messages sent by the organizer (e.g., parking changes, schedule updates). Only sent announcements appear here.
+1. **Persönliche Daten:** Vorname, Nachname (separate fields), E-Mail (pre-filled), optional Telefonnummer (if enabled in event settings).
+2. **Schichtauswahl:** Browse available shifts with capacity indicators. Select one or more shifts.
 
-If the link has expired, volunteers see a message asking them to request a new magic link from the organizer.
+The system checks for **overlapping shifts** in real-time:
+- Overlapping shifts across different jobs are blocked with a UX warning + server validation.
+- Adjacent shifts (12:00--14:00 and 14:00--16:00) are allowed.
+- Shifts without times skip the overlap check silently.
 
-## Cancelling a Signup
+> Why data before shifts? Knowing the volunteer's identity before they occupy capacity allows cleaner reservation handling. If the timer expires, the system knows who to notify.
 
-If the organizer has enabled cancellations for an event (see [Creating Events > Edit Event Details](creating-events.md#edit-event-details)), volunteers can cancel their own shift signups from the portal.
+### Schritt 3 -- Custom Fields + Gear
 
-1. Open the volunteer portal via the **Manage Your Shifts** link on the ticket page.
-2. Find the shift under **Upcoming Shifts**.
-3. Click **Cancel** next to the shift.
-4. Confirm the cancellation in the modal that appears.
+The countdown continues from Schritt 2.
 
-The spot is freed immediately and becomes available for other volunteers.
+1. **Projektfelder** -- Project-level custom fields (asked once per project, pre-filled on return).
+2. **Typ-1 Gear-Auswahl** -- e.g. T-shirt size selection.
+3. **Eventfelder** -- Event-specific custom fields (asked for each event separately).
 
-Cancellation is only available if:
-- The organizer set a **Cancellation Cutoff** on the event.
-- The shift starts more than the cutoff number of hours from now.
+> Example: The project has a "Diätanforderungen" field (asked once). The event has a "Parkplatz benötigt?" field (asked for each event). The volunteer sees both in this step.
 
-If cancellation is disabled or the cutoff has passed, the cancel button won't appear.
+### Schritt 4 -- Zusammenfassung
+
+Overview of all entered data. Final button: **Verbindlich anmelden**.
+
+After confirmation:
+- Signup is complete.
+- A `signup_confirmation` email is sent with event details, shift info, and a portal link.
+- The QR code (one per project, valid for all events) is accessible via the Helfer-Portal.
+
+### Rate Limiting
+
+| Action | Limit |
+|---|---|
+| E-Mail-Verifizierung / Magic Links | 3× pro Stunde (konfigurierbar) |
+| QR / Scanner Resend | 1× alle 5 Minuten (fest) |
+| 5 Fehlversuche | 30 Min. Sperrung + Activity Log Eintrag |
+
+## Helfer-Portal (Volunteer Portal)
+
+Access via magic link -- no login required. Shows all information for the volunteer's project membership.
+
+### Sections
+
+1. **Nächste Schicht** -- Banner with date, job, and time of the next upcoming shift.
+2. **Schichten** -- Grouped by event. Each shift shows job, time, and status. Cancellation button (if enabled).
+3. **Gear** -- Typ-1 status (from the organizer's configurable state list) and Typ-2 pickup counts.
+4. **Anmeldedaten** -- Vorname, Nachname, E-Mail, Telefon, and custom field responses.
+5. **QR-Code** -- The project-wide QR code. Resend button (1× per 5 minutes). Maintenance banner if any event is in Draft.
+6. **Anwesenheitsstatus** -- Per past shift: On Time / Late / No Show.
+
+**Expired magic link?** The portal shows a form to request a new magic link via email.
+
+**Incomplete registration?** If the Organizer created the volunteer manually and data is missing, a banner says "Bitte vervollständige deine Registrierung" with a link to the missing fields.
+
+### Shift Cancellation
+
+Available only if the Organizer has enabled it at project level:
+1. Find the shift under **Schichten**.
+2. Click **Absagen**.
+3. Confirm in the dialog.
+
+The spot is freed immediately. The Organizer receives a cancellation digest (every 6 hours) at the event's notification email.
+
+Cancellation is blocked if:
+- The Organizer set a deadline and it has passed (e.g. "not later than 24 hours before shift start").
+- Cancellation is disabled for the project.
 
 ## Tips for Recruiting
 
-- **Customize your emails**: Use the [Email Template Editor](creating-events.md#customize-email-templates) to add event-specific information to confirmation and reminder emails.
-- **Add job instructions**: Fill in the Instructions field for each job. Instructions are published as a cheat sheet page linked from the public signup page, and included in pre-shift reminder emails so volunteers know where to go and what to bring.
-- **Monitor signups**: Check the **Volunteers** page to see who has signed up and which shifts still need people.
-- **Share widely**: The public URL is safe to share publicly -- it doesn't expose any admin functionality.
-
-## Public Event API
-
-Voluntify provides a JSON API endpoint for external integrations, allowing you to embed event data on your website or build custom signup forms.
-
-**Endpoint**: `GET /api/v1/events/{publicToken}`
-
-The `publicToken` is the same token used in your public event URL. The endpoint is publicly accessible (no authentication required) and returns event details including jobs, shifts, and remaining capacity.
-
-**Rate limit**: 60 requests per minute per IP address. Responses are cached for 60 seconds.
-
-**Example use cases**:
-- Embed event details and shift availability on your organization's website.
-- Build a custom signup form that checks capacity before submitting.
-- Display upcoming volunteer opportunities in a third-party app or intranet.
+- **Use the project website** -- Share one URL for all events instead of individual links.
+- **Customize email templates** -- Add event-specific info to confirmations and reminders (see [Creating Events](creating-events.md)).
+- **Add job instructions** -- Published as cheat sheets linked from the signup page and included in reminder emails.
+- **Send announcements** -- Use the Announcements feature to send targeted emails to specific shifts or events (see [Creating Events > Send Announcements](creating-events.md#send-announcements)).
+- **Monitor signups** -- Check the project's volunteer list to see who signed up and which shifts need people.

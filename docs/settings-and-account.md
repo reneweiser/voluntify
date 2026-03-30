@@ -1,104 +1,121 @@
 # Settings and Account
 
-Access settings by clicking **Settings** in the user menu (sidebar). The settings pages let you manage your profile, security, and organization preferences.
+Access settings by clicking **Einstellungen** in the user menu (sidebar). Settings are split across organisation, project, and event levels.
 
 ## Profile
 
-**Path**: Settings > Profile
+**Path**: Einstellungen > Profil
 
-Update your name and email address. All team members can edit their own profile.
+Update your Vorname, Nachname, and email address. All Organizers can edit their own profile.
 
 ## Password
 
-**Path**: Settings > Password
+**Path**: Einstellungen > Passwort
 
-Change your password. You'll need to enter your current password and then your new password twice to confirm. A real-time requirements checklist updates as you type, showing which rules your new password satisfies (length, mixed case, numbers, symbols).
+Change your password. Enter your current password and your new password twice. A real-time checklist shows which rules are satisfied.
 
 ## Two-Factor Authentication
 
-**Path**: Settings > Two-Factor Authentication
-
-Add an extra layer of security to your account with time-based one-time passwords (TOTP).
+**Path**: Einstellungen > Zwei-Faktor-Authentifizierung
 
 ### Set Up 2FA
 
-1. Go to Settings > Two-Factor Authentication.
-2. You may be asked to confirm your password.
-3. Scan the QR code with an authenticator app (e.g., Google Authenticator, Authy, 1Password).
-4. Enter the code from your authenticator app to confirm setup.
+1. Go to Einstellungen > Zwei-Faktor-Authentifizierung.
+2. Confirm your password.
+3. Scan the QR code with an authenticator app (Google Authenticator, Authy, 1Password).
+4. Enter the code to confirm.
 
 ### Recovery Codes
 
-After enabling 2FA, you'll be shown recovery codes. **Save these somewhere safe** -- they're the only way to access your account if you lose your authenticator device.
-
-Each recovery code can only be used once. You can regenerate new codes from the 2FA settings page if needed.
+After enabling 2FA, save your recovery codes somewhere safe -- they're the only way in if you lose your authenticator device. Each code is single-use. Regenerate from the 2FA settings page.
 
 ### Disable 2FA
 
-To turn off two-factor authentication, go to Settings > Two-Factor Authentication and disable it. You may need to confirm your password.
+Go to Einstellungen > Zwei-Faktor-Authentifizierung and disable it. Password confirmation required.
 
 ## Email / SMTP Configuration
 
-**Path**: Settings > Email
-**Who can access**: Organizer only.
+### Organisation Level
 
-Configure email delivery settings for your organization. This controls how Voluntify sends emails to volunteers (signup confirmations, pre-shift reminders, ticket links).
+**Path**: Organisation > Einstellungen > E-Mail-Server
+**Who can access**: Org-Level Organizer only.
 
-## Appearance
+Configure the default outgoing mail server for all projects:
 
-**Path**: Settings > Appearance
+- **SMTP Host**
+- **SMTP Port**
+- **Verschlüsselung** (TLS / SSL)
+- **Benutzername**
+- **Passwort**
+- **Testmail senden** -- Sends a test email to verify the connection
 
-Customize the visual appearance of the application.
+> Example: SKHC configures their mail server once at org level. All projects ("Hochschulball 2026", "Sommerfest 2026") use this server by default.
 
-## Organization Switching
+### Project Level
 
-The organization switcher is located at the top of the sidebar. Click it to see all organizations you belong to, and select one to switch your active context. All pages (Dashboard, Events, Settings, etc.) reflect the currently selected organization. Your selection is persisted across sessions -- when you log back in, you'll return to the last organization you were viewing.
+**Path**: Projekt > Einstellungen > E-Mail
+**Who can access**: Project Organizer.
 
-To create a new organization directly from the switcher, click **Create new organization**. Enter a name and the slug will be auto-generated. Click **Create** to finish.
+- **Absendername** -- Display name in the "From" field
+- **Kontakt-E-Mail** -- Reply-to and `{{kontakt_email}}` placeholder
+- **Eigener SMTP-Server** (optional) -- Overrides the organisation default
 
-To leave an organization, see [Managing Your Members > Leave an Organization](managing-your-team.md#leave-an-organization).
+> Why project-level SMTP override? Different projects may need different sender addresses (e.g. "ball@skhc.de" vs "sommerfest@skhc.de").
+
+**SMTP Hierarchy:**
+1. Project SMTP (if configured) -- overrides org default
+2. Organisation SMTP -- default for all projects
+3. System mailer -- fallback; also used for organizer-facing alerts (e.g. cancellation digest)
+
+### Event Level
+
+**Path**: Event > Einstellungen > E-Mail
+
+- **Benachrichtigungs-E-Mail** -- Address for organizer-facing alerts (cancellation digests, system notifications for this event)
+- Must be set before shift cancellation can be enabled for the event
+
+## Organisation Switching
+
+The organisation switcher is at the top of the sidebar. Click to see all organisations you belong to and switch context. Your selection persists across sessions.
+
+To create a new organisation: click **Neue Organisation erstellen** in the switcher.
 
 ## Activity Log
 
-**Path**: Activity Log (in the sidebar)
+**Path**: Activity Log (sidebar)
 **Who can access**: Organizer only.
 
-View an audit trail of actions taken across your organization. The activity log tracks 20 event types across 8 categories, showing who did what and when.
+View an audit trail of actions across your organisation.
 
 ### Filters
 
-- **Event** -- Filter by a specific event.
-- **Category** -- Filter by activity category.
-- **Actor** -- Filter by the user who performed the action.
-- **Date range** -- Filter by time period.
+- **Event** -- Filter by event
+- **Kategorie** -- Filter by activity category
+- **Akteur** -- Filter by user
+- **Zeitraum** -- Filter by date range
 
 ### Categories
 
-| Category | What It Tracks |
+| Category | Tracks |
 |---|---|
-| **Event** | Event creation, updates, publishing, archiving, cloning |
-| **Job** | Job creation, updates, deletion |
-| **Shift** | Shift creation, updates, deletion |
-| **Volunteer** | Volunteer signups, promotions |
-| **Attendance** | Attendance status changes |
-| **Member** | Member invitations, role changes, removals, departures |
-| **Email** | Email template changes, SMTP configuration |
-| **System** | Organization-level changes |
+| **Event** | Creation, updates, publishing, archiving, cloning |
+| **Job** | Creation, updates, deletion |
+| **Shift** | Creation, updates, deletion |
+| **Volunteer** | Signups, promotions, manual creation |
+| **Attendance** | Status changes |
+| **Member** | Invitations, role changes, removals, departures |
+| **Email** | Template changes, SMTP configuration |
+| **Security** | Brute-force lockouts (from rate limiting) |
+| **System** | Organisation-level changes |
 
 ## Delete Account
 
-**Path**: Settings > Profile (bottom of the page)
+**Path**: Einstellungen > Profil (bottom of page)
 
-To permanently delete your account:
+1. Click **Account löschen**.
+2. Enter your password.
+3. Confirm.
 
-1. Go to Settings > Profile.
-2. Scroll to the **Delete account** section.
-3. Click **Delete account**.
-4. Enter your password to confirm.
-5. Click **Delete account** in the confirmation dialog.
+Your account and all associated data are permanently deleted. Organisations and their data are not deleted, but may become inaccessible if you were the sole Organizer.
 
-Your account and all associated data are permanently deleted and you are logged out immediately. Organizations you belonged to and their data (events, volunteers, etc.) are not deleted, but may become inaccessible if you were the sole Organizer.
-
-This action cannot be undone. If you are the only Organizer in an organization, [transfer the Organizer role](managing-your-team.md#change-a-members-role) to another member before deleting your account.
-
-The delete account option only appears for users with a verified email address.
+This action cannot be undone. Transfer the Organizer role to another member first if you're the only one.
