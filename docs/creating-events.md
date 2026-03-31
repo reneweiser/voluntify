@@ -24,6 +24,7 @@ The event is created in **Draft** status.
 1. Go to the event's **Einstellungen > Allgemein**.
 2. Update name, date, location, description, or title image.
 3. Additional settings:
+   - **Sichtbarkeit** -- Öffentlich (default) or Privat. Private events are not shown on the project website and can only be accessed via a secret direct link (`/event/{token}`). Toggle is changeable at any time, even after publishing.
    - **Anmeldefrist** -- Date/time after which signups automatically close (Published Open → Published Closed).
    - **Telefon-Pflichtfeld** -- Toggle to require phone number during signup.
    - **Attendance Grace Period (Minuten)** -- Minutes after shift start where a scan is still "On Time".
@@ -95,7 +96,11 @@ Draft --> Published Open <--> Published Closed --> Archived
 1. Go to **Übersicht**.
 2. Click **Veröffentlichen**.
 
-**Blocked if no shifts exist.** On first publish of any event in the project, the project website is activated.
+**Blocked if no shifts exist.** On first publish of a **public** event in the project, the project website is activated. Private events do not activate the project website.
+
+**Private events** are published the same way but remain invisible on the project website. Share the direct link (`/event/{token}`) with the intended participants.
+
+> Example: "Workshop Hauptorga" is a private event for core organisers. "Hauptabend" is public. Publishing the workshop does not activate the project website -- only publishing "Hauptabend" does.
 
 > Why block without shifts? An event without shifts has nothing for volunteers to sign up for. Publishing it would create confusion.
 

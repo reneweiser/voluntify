@@ -74,7 +74,11 @@ A volunteer's QR code is valid if they have at least one shift in the past or fu
 ### Tabs
 
 1. **QR-Scanner** -- Camera viewfinder
-2. **Gastliste** (optional) -- Browse all eligible volunteers
+2. **Gastliste** (optional) -- Browse all eligible volunteers AND guests from assigned guest lists. The list is split into two sections:
+   - **Volunteers** -- All volunteers with active shifts (as before)
+   - **Gäste** -- Grouped by guest group (e.g. "DJ Soundwave 2/3 eingecheckt"), with individual check-in status per entry
+
+Guests from guest lists are also scannable via QR code. See [Managing Volunteers > Gästelisten](managing-volunteers.md#gästelisten) for setup.
 
 ## Volunteer Admin Scanner
 
@@ -105,6 +109,15 @@ The Organizer configures which modes are active for each scanner:
 - No gear assigned → neutral message "Kein Gear zugewiesen" (no error/red -- this is not an error state)
 
 > Why a neutral message instead of an error? Not every volunteer has gear. A gear-only scanner should not alarm the operator when a volunteer simply has no gear items. Neutral grey, not red.
+
+### Guests in the Volunteer Admin Scanner
+
+Guests from guest lists also appear in the Volunteer Admin Scanner -- but only if they have gear assigned. The gear flow is the same as for volunteers, with one difference for Typ-1 items:
+
+- **Typ-1 with selection:** Normal state change (e.g. "Ausstehend" → "Abgeholt")
+- **Typ-1 without selection ("Auswahl ausstehend"):** The operator selects directly in the scanner via dropdown (e.g. asks the guest for their T-shirt size, then selects "L"). The selection is saved for statistics. This differs from volunteers, where "Auswahl ausstehend" blocks pickup until the volunteer selects via the portal.
+
+> Why can operators select for guests but not for volunteers? Guests have no portal for self-service. The scanner is the only touchpoint.
 
 ### Gear Pickup via Scanner
 

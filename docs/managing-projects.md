@@ -144,6 +144,45 @@ Read-only project overview for Organizers:
 - CSV export
 - Gear Tracker Mode in the Volunteer Admin Scanner
 
+## Guest Lists
+
+Guest lists manage non-volunteer guests (VIPs, artists, companions) who need entrance access and optionally gear, but don't go through the volunteer signup flow.
+
+### Create a Guest List
+
+1. Go to Projekt > **Gästelisten**.
+2. Click **Neue Gästeliste**.
+3. Configure:
+   - **Name** -- e.g. "Künstler Hauptabend"
+   - **Entry Staff Scanner** -- Assign to a scanner (required -- no scanner, no guest list)
+   - **Gear Items** -- Optional, select available items (Typ-1 and Typ-2)
+4. Add guest groups: Label (e.g. "DJ Soundwave") + number of entries.
+5. Per entry: Name (optional), Email (optional), Gear selection (optional).
+
+### Confirm and Send
+
+The guest list starts in **Entwurf** status -- no emails are sent.
+
+Click **Gästeliste bestätigen** to:
+- Generate one QR code per entry
+- Send grouped emails: if the same email appears for multiple entries, one email with all QR codes is sent
+- Entries without email: no email sent, QR code only in the system
+
+### After Confirmation
+
+- **Add guest:** New QR code, email sent immediately (if email provided)
+- **Remove guest:** QR code becomes invalid (scanner shows red)
+- **Edit guest:** QR code stays valid, data updated
+
+### Scanner Integration
+
+- **Entry Staff Scanner:** Guests appear in the Gastliste tab, searchable by name or group. QR codes are scannable.
+- **Volunteer Admin Scanner:** Guests appear only if they have gear. Typ-1 selection can be made directly in the scanner (guests have no portal).
+
+For the full specification, see [Use Case: Gästeliste erstellen](use-cases/uc-15-gaesteliste-erstellen.md).
+
+**Who can do this**: Organizer only.
+
 ## Clone a Project
 
 1. From the Dashboard, click the project tile's quick action menu.
