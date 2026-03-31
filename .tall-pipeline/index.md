@@ -1,19 +1,15 @@
 ---
 pipeline_status: in_progress
-current_stage: complete
-current_focus: "M7 Foundation complete — ready for M8"
-current_milestone: m7-foundation
+current_stage: implement
+current_focus: "M8 complete — ready for M9"
+current_milestone: m8-project-scoped
 entry_point: plan
 stages_to_run:
   - plan
   - implement
   - test
   - security-audit
-completed_stages:
-  - plan
-  - implement
-  - test
-  - security-audit
+completed_stages: []
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-03-31"
@@ -27,7 +23,7 @@ last_updated: "2026-03-31T10:00:00"
 | ID | Name | Features | Dependencies | Status |
 |---|---|---|---|---|
 | m7-foundation | Foundation | EventGroup->Project, volunteer name split, EventStatus 4-state, phone_required | none | complete |
-| m8-project-scoped | Project-Scoped Data | Volunteer project scope, gear remodel, ticket scope, custom fields, Private Events (#91) | m7 | not_started |
+| m8-project-scoped | Project-Scoped Data | Volunteer project scope, gear remodel, ticket scope, custom fields, Private Events (#91) | m7 | complete |
 | m9-roles | Roles & Team | project_user pivot, role hierarchy, scanner roles | m7 | not_started |
 | m10-signup | Signup Flow Rewrite | Multi-step wizard, shift reservations, manual enrollment | m8 | not_started |
 | m11-scanner | Scanner Rewrite | Project scanners, temp auth, dual scanner types, rename volunteer tab to "Volunteers" | m8, m9 | not_started |
