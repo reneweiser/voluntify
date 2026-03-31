@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\Shift;
+use App\Models\ShiftReservation;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
@@ -221,4 +222,32 @@ it('updates phone number for existing volunteer', function () {
     );
 
     expect(Volunteer::where('email', 'test@example.com')->first()->phone)->toBe('+15551234567');
+});
+
+it('passes sessionId through to SignUpVolunteerForShifts to release reservations', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'session@example.com']);
+
+    // Create a reservation that should be released after signup
+    $reservation = ShiftReservation::factory()->create([
+        'shift_id' => $this->shift->id,
+        'session_id' => 'signup-session',
+        'expires_at' => now()->addMinutes(10),
+    ]);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $outcome = $action->execute(
+        firstName: 'Session',
+        lastName: 'Test',
+        email: 'session@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+        sessionId: 'signup-session',
+    );
+
+    expect($outcome->type)->toBe(SignupOutcomeType::Completed)
+        ->and($outcome->batchResult->hasNewSignups())->toBeTrue();
+
+    // Reservation should have been released
+    expect(ShiftReservation::forSession('signup-session')->count())->toBe(0);
 });

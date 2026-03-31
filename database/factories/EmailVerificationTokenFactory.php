@@ -9,7 +9,7 @@ use App\ValueObjects\HashedToken;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EmailVerificationToken>
+ * @extends Factory<EmailVerificationToken>
  */
 class EmailVerificationTokenFactory extends Factory
 {
@@ -20,6 +20,7 @@ class EmailVerificationTokenFactory extends Factory
         return [
             'volunteer_id' => Volunteer::factory(),
             'event_id' => Event::factory(),
+            'project_id' => null,
             'shift_ids' => [1],
             'token_hash' => HashedToken::fromPlaintext(fake()->sha256())->hash,
             'expires_at' => now()->addHours(24),

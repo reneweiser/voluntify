@@ -7,6 +7,7 @@ use App\Models\MagicLinkToken;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\Shift;
+use App\Models\ShiftReservation;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
@@ -228,4 +229,32 @@ it('re-signup reactivates a cancelled row', function () {
     expect($result->hasNewSignups())->toBeTrue()
         ->and($result->newSignups)->toHaveCount(1)
         ->and($signup->fresh()->cancelled_at)->toBeNull();
+});
+
+it('releases session reservations before capacity check when sessionId provided', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+
+    // Create a reservation for this session on a shift with capacity 1
+    $narrowShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
+    ShiftReservation::factory()->create([
+        'shift_id' => $narrowShift->id,
+        'session_id' => 'wizard-session',
+        'expires_at' => now()->addMinutes(10),
+    ]);
+
+    // Without session release, the shift would appear full (1 reservation = capacity 1)
+    // With session release, the reservation is cleared and the signup succeeds
+    $result = $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$narrowShift->id],
+        sessionId: 'wizard-session',
+    );
+
+    expect($result->hasNewSignups())->toBeTrue()
+        ->and($result->newSignups)->toHaveCount(1)
+        ->and($result->skippedFull)->toBeEmpty();
+
+    // Reservation should be deleted
+    expect(ShiftReservation::forSession('wizard-session')->count())->toBe(0);
 });

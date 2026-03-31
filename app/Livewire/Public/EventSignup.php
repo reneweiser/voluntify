@@ -3,13 +3,18 @@
 namespace App\Livewire\Public;
 
 use App\Actions\ProcessVolunteerSignup;
+use App\Actions\ReserveShifts;
 use App\Enums\EventStatus;
+use App\Enums\WizardState;
 use App\Exceptions\DomainException;
 use App\Models\Event;
+use App\Models\ShiftReservation;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -17,7 +22,22 @@ use Livewire\Component;
 #[Title('Event Signup')]
 class EventSignup extends Component
 {
+    #[Locked]
     public Event $event;
+
+    public WizardState $state = WizardState::SelectingShifts;
+
+    /** @var array<int> */
+    public array $selectedShiftIds = [];
+
+    #[Locked]
+    public string $reservationExpiresAt = '';
+
+    /** @var array<int, string|null> */
+    public array $gearSelections = [];
+
+    /** @var array<int, mixed> */
+    public array $customFieldResponses = [];
 
     public string $volunteerFirstName = '';
 
@@ -26,19 +46,6 @@ class EventSignup extends Component
     public string $volunteerEmail = '';
 
     public string $volunteerPhone = '';
-
-    /** @var array<int> */
-    public array $selectedShiftIds = [];
-
-    /** @var array<int, string|null> */
-    public array $gearSelections = [];
-
-    /** @var array<int, mixed> */
-    public array $customFieldResponses = [];
-
-    public bool $signupComplete = false;
-
-    public bool $pendingVerification = false;
 
     public string $warningMessage = '';
 
@@ -68,11 +75,221 @@ class EventSignup extends Component
     public function jobs(): Collection
     {
         return $this->event->volunteerJobs()
-            ->with(['shifts' => fn ($q) => $q->withCount('activeSignups as signups_count')->orderBy('starts_at')])
+            ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('starts_at')])
             ->get();
     }
 
-    public function signup(): void
+    /**
+     * Whether step 2 (gear & custom fields) should be shown in the wizard.
+     */
+    #[Computed]
+    public function hasGearOrFields(): bool
+    {
+        return $this->gearItems->isNotEmpty() || $this->customRegistrationFields->isNotEmpty();
+    }
+
+    /**
+     * Step 1 -> Step 2 (or 3): Validate shift selection, reserve shifts, and advance.
+     */
+    public function reserveAndAdvance(): void
+    {
+        if (RateLimiter::tooManyAttempts('signup-reserve:'.request()->ip(), 15)) {
+            $this->addError('selectedShiftIds', __('Too many attempts. Please wait a moment before trying again.'));
+
+            return;
+        }
+        RateLimiter::hit('signup-reserve:'.request()->ip(), 60);
+
+        $this->validate([
+            'selectedShiftIds' => ['required', 'array', 'min:1'],
+            'selectedShiftIds.*' => [
+                'integer',
+                Rule::exists('shifts', 'id')->where(fn ($q) => $q->whereIn(
+                    'volunteer_job_id',
+                    $this->event->volunteerJobs()->select('id'),
+                )),
+            ],
+        ]);
+
+        $result = app(ReserveShifts::class)->execute(
+            shiftIds: array_map('intval', $this->selectedShiftIds),
+            sessionId: session()->getId(),
+            event: $this->event,
+        );
+
+        if (! $result->hasReservations()) {
+            $this->addError('selectedShiftIds', __('All selected shifts are full.'));
+            unset($this->jobs);
+
+            return;
+        }
+
+        $this->selectedShiftIds = $result->reservedShiftIds();
+        $this->reservationExpiresAt = $result->expiresAt->toISOString();
+
+        if (count($result->unavailable) > 0) {
+            $this->warningMessage = __(':count shift(s) were full and removed from your selection.', [
+                'count' => count($result->unavailable),
+            ]);
+        }
+
+        if ($this->hasGearOrFields) {
+            $this->state = WizardState::GearAndFields;
+        } else {
+            $this->state = WizardState::PersonalInfo;
+        }
+    }
+
+    /**
+     * Step 2 -> Step 3: Validate gear/custom fields and advance.
+     */
+    public function advanceToPersonalInfo(): void
+    {
+        if (! ShiftReservation::forSession(session()->getId())->active()->exists()) {
+            $this->handleReservationExpired();
+
+            return;
+        }
+
+        $this->validateGearAndCustomFields();
+        $this->state = WizardState::PersonalInfo;
+    }
+
+    /**
+     * Step 3 -> Step 4: Validate personal info and show confirmation.
+     */
+    public function advanceToConfirmation(): void
+    {
+        if (! ShiftReservation::forSession(session()->getId())->active()->exists()) {
+            $this->handleReservationExpired();
+
+            return;
+        }
+
+        $this->validatePersonalInfo();
+        $this->state = WizardState::Confirming;
+    }
+
+    /**
+     * Navigate backward through the wizard. Cannot go before step 1.
+     */
+    public function goBack(): void
+    {
+        $this->state = match ($this->state) {
+            WizardState::GearAndFields => WizardState::SelectingShifts,
+            WizardState::PersonalInfo => $this->hasGearOrFields ? WizardState::GearAndFields : WizardState::SelectingShifts,
+            WizardState::Confirming => WizardState::PersonalInfo,
+            default => $this->state,
+        };
+    }
+
+    /**
+     * Step 4: Final submit. Checks reservation DB existence (D13), then processes signup.
+     */
+    public function submitSignup(): void
+    {
+        if (RateLimiter::tooManyAttempts('signup-submit:'.request()->ip(), 5)) {
+            $this->addError('volunteerEmail', __('Too many signup attempts. Please wait a few minutes before trying again.'));
+
+            return;
+        }
+        RateLimiter::hit('signup-submit:'.request()->ip(), 300);
+
+        $this->validatePersonalInfo();
+
+        if ($this->hasGearOrFields) {
+            $this->validateGearAndCustomFields();
+        }
+
+        // D13: Verify reservations still exist in DB, not just timestamp comparison.
+        // The scheduler may have cleaned them up even if the Alpine timer hasn't fired.
+        if (! ShiftReservation::forSession(session()->getId())->active()->exists()) {
+            $this->handleReservationExpired();
+
+            return;
+        }
+
+        $action = app(ProcessVolunteerSignup::class);
+
+        try {
+            // Strip to only valid gear item IDs and custom field IDs for this event.
+            // Prevents storing attacker-injected keys from the client snapshot.
+            $gearSelections = $this->gearItems->isNotEmpty()
+                ? collect($this->gearSelections)
+                    ->filter()
+                    ->only($this->gearItems->pluck('id')->all())
+                    ->all()
+                : null;
+
+            $validFieldIds = $this->customRegistrationFields->pluck('id')->all();
+            $customFieldResponses = $this->customRegistrationFields->isNotEmpty()
+                ? collect($this->customFieldResponses)->only($validFieldIds)->all()
+                : null;
+
+            $outcome = $action->execute(
+                firstName: $this->volunteerFirstName,
+                lastName: $this->volunteerLastName,
+                email: $this->volunteerEmail,
+                event: $this->event,
+                shiftIds: array_map('intval', $this->selectedShiftIds),
+                phone: $this->volunteerPhone ?: null,
+                gearSelections: $gearSelections,
+                customFieldResponses: $customFieldResponses,
+                sessionId: session()->getId(),
+            );
+
+            if ($outcome->isPendingVerification()) {
+                $this->state = WizardState::PendingVerification;
+
+                return;
+            }
+
+            $result = $outcome->batchResult;
+
+            if ($result->hasNewSignups()) {
+                $this->state = WizardState::Complete;
+
+                $skippedCount = count($result->skippedFull) + count($result->skippedDuplicate);
+                if ($skippedCount > 0) {
+                    $this->warningMessage = __('Some shifts were skipped because they were full or you were already signed up.');
+                }
+            } elseif (count($result->skippedDuplicate) === count($this->selectedShiftIds)) {
+                $this->addError('selectedShiftIds', __('You are already signed up for all selected shifts.'));
+                $this->restartSignup();
+            } elseif (count($result->skippedFull) === count($this->selectedShiftIds)) {
+                $this->addError('selectedShiftIds', __('All selected shifts are full.'));
+                $this->restartSignup();
+            } else {
+                $this->addError('selectedShiftIds', __('Selected shifts are either full or already registered.'));
+                $this->restartSignup();
+            }
+        } catch (DomainException $e) {
+            $this->addError('selectedShiftIds', $e->getMessage());
+        }
+    }
+
+    /**
+     * Called by the Alpine reservation timer when the countdown reaches zero.
+     */
+    public function handleReservationExpired(): void
+    {
+        $this->state = WizardState::Expired;
+        $this->reservationExpiresAt = '';
+    }
+
+    /**
+     * Reset the wizard to step 1 for a fresh start.
+     */
+    public function restartSignup(): void
+    {
+        $this->state = WizardState::SelectingShifts;
+        $this->selectedShiftIds = [];
+        $this->reservationExpiresAt = '';
+        $this->warningMessage = '';
+        unset($this->jobs);
+    }
+
+    private function validateGearAndCustomFields(): void
     {
         $gearRules = [];
         foreach ($this->gearItems as $item) {
@@ -86,69 +303,16 @@ class EventSignup extends Component
             $customFieldRules['customFieldResponses.'.$field->id] = $field->type->validationRules($field->options ?? [], $field->required);
         }
 
-        $this->validate(array_merge([
+        $this->validate(array_merge($gearRules, $customFieldRules));
+    }
+
+    private function validatePersonalInfo(): void
+    {
+        $this->validate([
             'volunteerFirstName' => ['required', 'string', 'max:255'],
             'volunteerLastName' => ['required', 'string', 'max:255'],
             'volunteerEmail' => ['required', 'email', 'max:255'],
             'volunteerPhone' => [$this->event->phone_required ? 'required' : 'nullable', 'string', 'max:20'],
-            'selectedShiftIds' => ['required', 'array', 'min:1'],
-            'selectedShiftIds.*' => [
-                'integer',
-                Rule::exists('shifts', 'id')->where(fn ($q) => $q->whereIn(
-                    'volunteer_job_id',
-                    $this->event->volunteerJobs()->select('id'),
-                )),
-            ],
-        ], $gearRules, $customFieldRules));
-
-        $action = app(ProcessVolunteerSignup::class);
-
-        try {
-            $gearSelections = $this->gearItems->isNotEmpty()
-                ? collect($this->gearSelections)->filter()->all()
-                : null;
-
-            $customFieldResponses = $this->customRegistrationFields->isNotEmpty()
-                ? $this->customFieldResponses
-                : null;
-
-            $outcome = $action->execute(
-                firstName: $this->volunteerFirstName,
-                lastName: $this->volunteerLastName,
-                email: $this->volunteerEmail,
-                event: $this->event,
-                shiftIds: array_map('intval', $this->selectedShiftIds),
-                phone: $this->volunteerPhone ?: null,
-                gearSelections: $gearSelections,
-                customFieldResponses: $customFieldResponses,
-            );
-
-            if ($outcome->isPendingVerification()) {
-                $this->pendingVerification = true;
-
-                return;
-            }
-
-            $result = $outcome->batchResult;
-
-            if ($result->hasNewSignups()) {
-                $this->signupComplete = true;
-
-                $skippedCount = count($result->skippedFull) + count($result->skippedDuplicate);
-                if ($skippedCount > 0) {
-                    $this->warningMessage = __('Some shifts were skipped because they were full or you were already signed up.');
-                }
-            } elseif (count($result->skippedDuplicate) === count($this->selectedShiftIds)) {
-                $this->addError('selectedShiftIds', __('You are already signed up for all selected shifts.'));
-            } elseif (count($result->skippedFull) === count($this->selectedShiftIds)) {
-                $this->addError('selectedShiftIds', __('All selected shifts are full.'));
-                unset($this->jobs);
-            } else {
-                $this->addError('selectedShiftIds', __('Selected shifts are either full or already registered.'));
-                unset($this->jobs);
-            }
-        } catch (DomainException $e) {
-            $this->addError('selectedShiftIds', $e->getMessage());
-        }
+        ]);
     }
 }

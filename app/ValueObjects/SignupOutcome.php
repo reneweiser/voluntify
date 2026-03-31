@@ -4,15 +4,26 @@ namespace App\ValueObjects;
 
 use App\Enums\SignupOutcomeType;
 
+/**
+ * The top-level outcome of a volunteer signup attempt via the public form.
+ *
+ * Position in the signup pipeline:
+ *   ReserveShifts -> ReservationResult
+ *   ProcessVolunteerSignup -> SignupOutcome (this class)
+ *   SignUpVolunteerForShifts -> ShiftSignupResult
+ *
+ * Either the signup completed (wrapping a ShiftSignupResult) or the volunteer
+ * needs to verify their email first (pending verification).
+ */
 readonly class SignupOutcome
 {
     private function __construct(
         public SignupOutcomeType $type,
-        public ?SignupBatchResult $batchResult = null,
+        public ?ShiftSignupResult $batchResult = null,
         public ?string $pendingEmail = null,
     ) {}
 
-    public static function completed(SignupBatchResult $result): self
+    public static function completed(ShiftSignupResult $result): self
     {
         return new self(
             type: SignupOutcomeType::Completed,

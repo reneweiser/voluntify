@@ -2,12 +2,12 @@
 
 use App\Enums\SignupOutcomeType;
 use App\Models\Volunteer;
-use App\ValueObjects\SignupBatchResult;
+use App\ValueObjects\ShiftSignupResult;
 use App\ValueObjects\SignupOutcome;
 
 it('creates a completed outcome with batch result', function () {
     $volunteer = new Volunteer(['first_name' => 'Test', 'last_name' => 'User', 'email' => 'test@example.com']);
-    $batchResult = new SignupBatchResult(volunteer: $volunteer);
+    $batchResult = new ShiftSignupResult(volunteer: $volunteer);
 
     $outcome = SignupOutcome::completed($batchResult);
 

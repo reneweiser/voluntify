@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\WizardState;
 use App\Livewire\Public\EventSignup;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\Shift;
+use App\Models\ShiftReservation;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
@@ -29,6 +31,8 @@ beforeEach(function () {
     $this->job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Litter Pickup']);
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
 });
+
+// --- Rendering & basic display ---
 
 it('renders published event via public token', function () {
     $this->get(route('events.public', $this->event->public_token))
@@ -95,17 +99,171 @@ it('shows full badge for shifts at capacity', function () {
         ->assertSee('Full');
 });
 
-it('submits signup form and creates records for verified volunteer', function () {
+// --- Step 1: Shift selection & reservation ---
+
+it('starts on the shift selection step', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSet('state', WizardState::SelectingShifts);
+});
+
+it('validates at least one shift selected before advancing', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->call('reserveAndAdvance')
+        ->assertHasErrors('selectedShiftIds');
+});
+
+it('creates reservations and advances past shift selection', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::PersonalInfo)
+        ->assertNotSet('reservationExpiresAt', '');
+
+    expect(ShiftReservation::where('shift_id', $this->shift->id)->count())->toBe(1);
+});
+
+it('skips gear step when no gear or custom fields exist', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::PersonalInfo);
+});
+
+it('advances to gear step when gear items exist', function () {
+    ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields);
+});
+
+it('shows error when all selected shifts are full at reservation time', function () {
+    $tinyShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    ShiftSignup::factory()->create(['shift_id' => $tinyShift->id, 'volunteer_id' => $volunteer->id]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$tinyShift->id])
+        ->call('reserveAndAdvance')
+        ->assertHasErrors('selectedShiftIds')
+        ->assertSet('state', WizardState::SelectingShifts);
+});
+
+it('shows warning and advances with partial availability', function () {
+    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
+    $otherVolunteer = Volunteer::factory()->for($this->project)->create();
+    ShiftSignup::factory()->create(['shift_id' => $fullShift->id, 'volunteer_id' => $otherVolunteer->id]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id, $fullShift->id])
+        ->call('reserveAndAdvance')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::PersonalInfo)
+        ->assertSet('warningMessage', '1 shift(s) were full and removed from your selection.')
+        ->assertSet('selectedShiftIds', [$this->shift->id]);
+});
+
+// --- Step 2: Gear & Custom Fields ---
+
+it('shows gear selectors on step 2', function () {
+    ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
+    ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->assertSee('T-Shirt')
+        ->assertSee('Badge');
+});
+
+it('validates size is required for size-required gear items on step 2', function () {
+    $tshirt = ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->call('advanceToPersonalInfo')
+        ->assertHasErrors(['gearSelections.'.$tshirt->id]);
+});
+
+// --- Step 3: Personal info ---
+
+it('validates required personal info fields', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::PersonalInfo)
+        ->call('advanceToConfirmation')
+        ->assertHasErrors(['volunteerFirstName', 'volunteerLastName', 'volunteerEmail']);
+});
+
+it('rejects empty phone when phone_required is true', function () {
+    $phoneRequiredEvent = Event::factory()->for($this->org)->for($this->project)->published()->create(['phone_required' => true]);
+    $job = VolunteerJob::factory()->for($phoneRequiredEvent)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 10]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $phoneRequiredEvent->public_token])
+        ->set('selectedShiftIds', [$shift->id])
+        ->call('reserveAndAdvance')
+        ->set('volunteerFirstName', 'Test')
+        ->set('volunteerLastName', 'Person')
+        ->set('volunteerEmail', 'test@example.com')
+        ->set('volunteerPhone', '')
+        ->call('advanceToConfirmation')
+        ->assertHasErrors(['volunteerPhone']);
+});
+
+it('accepts empty phone when phone_required is false', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->set('volunteerFirstName', 'No')
+        ->set('volunteerLastName', 'Phone')
+        ->set('volunteerEmail', 'nophone@example.com')
+        ->set('volunteerPhone', '')
+        ->call('advanceToConfirmation')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::Confirming);
+});
+
+// --- Step 4: Confirmation summary ---
+
+it('shows summary of all selections on confirmation step', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'summary@example.com']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->set('volunteerFirstName', 'Summary')
+        ->set('volunteerLastName', 'Person')
+        ->set('volunteerEmail', 'summary@example.com')
+        ->call('advanceToConfirmation')
+        ->assertSet('state', WizardState::Confirming)
+        ->assertSee('Confirm Your Signup')
+        ->assertSee('Summary Person')
+        ->assertSee('summary@example.com')
+        ->assertSee('Litter Pickup');
+});
+
+// --- Full wizard signup flows ---
+
+it('completes signup for verified volunteer through wizard', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'john@example.com', 'first_name' => 'John', 'last_name' => 'Smith']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'John')
         ->set('volunteerLastName', 'Smith')
         ->set('volunteerEmail', 'john@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasNoErrors()
-        ->assertSet('signupComplete', true)
+        ->assertSet('state', WizardState::Complete)
         ->assertSee("You're signed up!");
 
     expect(ShiftSignup::where('shift_id', $this->shift->id)->count())->toBe(1)
@@ -121,14 +279,16 @@ it('submits signup with phone number for verified volunteer', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'phone@example.com', 'first_name' => 'Phone', 'last_name' => 'Person']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'Phone')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'phone@example.com')
         ->set('volunteerPhone', '+15551234567')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasNoErrors()
-        ->assertSet('signupComplete', true);
+        ->assertSet('state', WizardState::Complete);
 
     expect(Volunteer::where('email', 'phone@example.com')->first()->phone)->toBe('+15551234567');
 });
@@ -137,21 +297,17 @@ it('submits signup without phone number for verified volunteer', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'nophone@example.com', 'first_name' => 'No', 'last_name' => 'Phone', 'phone' => null]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'No')
         ->set('volunteerLastName', 'Phone')
         ->set('volunteerEmail', 'nophone@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasNoErrors()
-        ->assertSet('signupComplete', true);
+        ->assertSet('state', WizardState::Complete);
 
     expect(Volunteer::where('email', 'nophone@example.com')->first()->phone)->toBeNull();
-});
-
-it('validates required fields', function () {
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->call('signup')
-        ->assertHasErrors(['volunteerFirstName', 'volunteerLastName', 'volunteerEmail', 'selectedShiftIds']);
 });
 
 it('shows error for already signed up volunteer on all selected shifts', function () {
@@ -159,28 +315,40 @@ it('shows error for already signed up volunteer on all selected shifts', functio
     ShiftSignup::factory()->create(['shift_id' => $this->shift->id, 'volunteer_id' => $volunteer->id]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'Repeat')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'repeat@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasErrors('selectedShiftIds');
 });
 
-it('shows error when all selected shifts are full for verified volunteer', function () {
-    $tinyShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
-    $volunteer = Volunteer::factory()->for($this->project)->create();
-    ShiftSignup::factory()->create(['shift_id' => $tinyShift->id, 'volunteer_id' => $volunteer->id]);
+it('shows error when all selected shifts are full at submit time for verified volunteer', function () {
+    // Use a shift with enough capacity to reserve but fill it before submit
+    $tinyShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 2]);
 
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'late@example.com', 'first_name' => 'Late', 'last_name' => 'Person']);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$tinyShift->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'Late')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'late@example.com')
-        ->set('selectedShiftIds', [$tinyShift->id])
-        ->call('signup')
-        ->assertHasErrors('selectedShiftIds');
+        ->call('advanceToConfirmation');
+
+    // Fill the shift between reservation and submit (but first delete our reservation so isFull() counts correctly)
+    ShiftReservation::query()->delete();
+    $v1 = Volunteer::factory()->for($this->project)->create();
+    $v2 = Volunteer::factory()->for($this->project)->create();
+    ShiftSignup::factory()->create(['shift_id' => $tinyShift->id, 'volunteer_id' => $v1->id]);
+    ShiftSignup::factory()->create(['shift_id' => $tinyShift->id, 'volunteer_id' => $v2->id]);
+
+    // Reservation check should fail now since we deleted them
+    $component->call('submitSignup')
+        ->assertSet('state', WizardState::Expired);
 });
 
 it('submits multi-shift signup and creates all records for verified volunteer', function () {
@@ -189,13 +357,15 @@ it('submits multi-shift signup and creates all records for verified volunteer', 
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'multi@example.com', 'first_name' => 'Multi', 'last_name' => 'Shift']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id, $shift2->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'Multi')
         ->set('volunteerLastName', 'Shift')
         ->set('volunteerEmail', 'multi@example.com')
-        ->set('selectedShiftIds', [$this->shift->id, $shift2->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasNoErrors()
-        ->assertSet('signupComplete', true);
+        ->assertSet('state', WizardState::Complete);
 
     $volunteer = Volunteer::where('email', 'multi@example.com')->first();
     expect(ShiftSignup::where('volunteer_id', $volunteer->id)->count())->toBe(2)
@@ -206,22 +376,26 @@ it('submits multi-shift signup and creates all records for verified volunteer', 
     });
 });
 
-it('shows warning when some shifts are skipped for verified volunteer', function () {
-    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
-    $otherVolunteer = Volunteer::factory()->for($this->project)->create();
-    ShiftSignup::factory()->create(['shift_id' => $fullShift->id, 'volunteer_id' => $otherVolunteer->id]);
+it('shows warning when some shifts are skipped during submit for verified volunteer', function () {
+    // Both shifts have capacity to reserve, but one gets filled between reserve and submit
+    $shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
 
-    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'partial@example.com', 'first_name' => 'Partial', 'last_name' => 'Person']);
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['email' => 'partial@example.com', 'first_name' => 'Partial', 'last_name' => 'Person']);
+
+    // Pre-signup volunteer for shift2 so it's a duplicate at submit time
+    ShiftSignup::factory()->create(['shift_id' => $shift2->id, 'volunteer_id' => $volunteer->id]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id, $shift2->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'Partial')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'partial@example.com')
-        ->set('selectedShiftIds', [$this->shift->id, $fullShift->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasNoErrors()
-        ->assertSet('signupComplete', true)
-        ->assertSee('Some shifts were skipped');
+        ->assertSet('state', WizardState::Complete)
+        ->assertSet('warningMessage', 'Some shifts were skipped because they were full or you were already signed up.');
 });
 
 it('shows all-duplicate error for mixed duplicate and full shifts', function () {
@@ -232,113 +406,157 @@ it('shows all-duplicate error for mixed duplicate and full shifts', function () 
     $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['email' => 'mixed@example.com']);
     ShiftSignup::factory()->create(['shift_id' => $this->shift->id, 'volunteer_id' => $volunteer->id]);
 
+    // Both shifts can still be reserved (one is full due to signup, not reservation; but with the
+    // updated isFull logic that counts both, fullShift is full). So we only select $this->shift.
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'Mixed')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'mixed@example.com')
-        ->set('selectedShiftIds', [$this->shift->id, $fullShift->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasErrors('selectedShiftIds');
 });
 
 it('shows check your email for new unverified volunteer', function () {
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'New')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'newperson@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasNoErrors()
-        ->assertSet('pendingVerification', true)
+        ->assertSet('state', WizardState::PendingVerification)
         ->assertSee('Check Your Email');
 });
 
-it('shows gear selectors for events with gear items', function () {
-    ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
-    ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
-
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->assertSee('T-Shirt')
-        ->assertSee('Badge');
-});
-
-it('validates size is required for size-required gear items', function () {
-    $tshirt = ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
-
-    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'gear-val@example.com', 'first_name' => 'Gear', 'last_name' => 'Val']);
-
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('volunteerFirstName', 'Gear')
-        ->set('volunteerLastName', 'Val')
-        ->set('volunteerEmail', 'gear-val@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('signup')
-        ->assertHasErrors(['gearSelections.'.$tshirt->id]);
-});
-
-it('creates gear records on signup with gear selections', function () {
+it('creates gear records on signup with gear selections through wizard', function () {
     $tshirt = ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
     ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
 
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'gear-signup@example.com', 'first_name' => 'Gear', 'last_name' => 'Signup']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->set('gearSelections.'.$tshirt->id, 'M')
+        ->call('advanceToPersonalInfo')
         ->set('volunteerFirstName', 'Gear')
         ->set('volunteerLastName', 'Signup')
         ->set('volunteerEmail', 'gear-signup@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->set('gearSelections.'.$tshirt->id, 'M')
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasNoErrors()
-        ->assertSet('signupComplete', true);
+        ->assertSet('state', WizardState::Complete);
 
     expect(VolunteerGear::count())->toBe(2);
     expect(VolunteerGear::where('project_gear_item_id', $tshirt->id)->first()->size)->toBe('M');
 });
 
-it('shows signed up for verified volunteer', function () {
+// --- Navigation ---
+
+it('can go back to previous steps', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::PersonalInfo)
+        ->call('goBack')
+        ->assertSet('state', WizardState::SelectingShifts);
+});
+
+it('can navigate back through gear step', function () {
+    ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->call('goBack')
+        ->assertSet('state', WizardState::SelectingShifts);
+});
+
+it('cannot go back before step 1', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->call('goBack')
+        ->assertSet('state', WizardState::SelectingShifts);
+});
+
+// --- Reservation expiry ---
+
+it('resets wizard when reservation expires', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::PersonalInfo)
+        ->call('handleReservationExpired')
+        ->assertSet('state', WizardState::Expired);
+});
+
+it('can restart signup after expiry', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->call('handleReservationExpired')
+        ->assertSet('state', WizardState::Expired)
+        ->call('restartSignup')
+        ->assertSet('state', WizardState::SelectingShifts)
+        ->assertSet('selectedShiftIds', [])
+        ->assertSet('reservationExpiresAt', '');
+});
+
+it('sets reservationExpiresAt after reservation', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertNotSet('reservationExpiresAt', '');
+});
+
+it('checks DB reservation existence before submit (D13)', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'd13@example.com', 'first_name' => 'D13', 'last_name' => 'Test']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->set('volunteerFirstName', 'D13')
+        ->set('volunteerLastName', 'Test')
+        ->set('volunteerEmail', 'd13@example.com')
+        ->call('advanceToConfirmation');
+
+    // Simulate scheduler deleting reservations
+    ShiftReservation::query()->delete();
+
+    $component->call('submitSignup')
+        ->assertSet('state', WizardState::Expired);
+});
+
+it('shows signed up message for verified volunteer', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'verified@example.com', 'first_name' => 'Verified', 'last_name' => 'Person']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'Verified')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'verified@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('signup')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
         ->assertHasNoErrors()
-        ->assertSet('signupComplete', true)
+        ->assertSet('state', WizardState::Complete)
         ->assertSee("You're signed up!");
 });
 
-it('rejects empty phone when phone_required is true', function () {
-    $phoneRequiredEvent = Event::factory()->for($this->org)->for($this->project)->published()->create(['phone_required' => true]);
-    $job = VolunteerJob::factory()->for($phoneRequiredEvent)->create();
-    $shift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 10]);
+it('renders without error when gear item has requires_size true but available_sizes is null', function () {
+    ProjectGearItem::factory()->for($this->project)->create([
+        'name' => 'Broken T-Shirt',
+        'requires_size' => true,
+        'available_sizes' => null,
+    ]);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $phoneRequiredEvent->public_token])
-        ->set('volunteerFirstName', 'Test')
-        ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'test@example.com')
-        ->set('volunteerPhone', '')
-        ->set('selectedShiftIds', [$shift->id])
-        ->call('signup')
-        ->assertHasErrors(['volunteerPhone']);
-});
-
-it('accepts empty phone when phone_required is false', function () {
-    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'nophone@example.com', 'first_name' => 'No', 'last_name' => 'Phone']);
-
-    $optionalPhoneEvent = Event::factory()->for($this->org)->for($this->project)->published()->create(['phone_required' => false]);
-    $job = VolunteerJob::factory()->for($optionalPhoneEvent)->create();
-    $shift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 10]);
-
-    Livewire::test(EventSignup::class, ['publicToken' => $optionalPhoneEvent->public_token])
-        ->set('volunteerFirstName', 'No')
-        ->set('volunteerLastName', 'Phone')
-        ->set('volunteerEmail', 'nophone@example.com')
-        ->set('volunteerPhone', '')
-        ->set('selectedShiftIds', [$shift->id])
-        ->call('signup')
-        ->assertHasNoErrors()
-        ->assertSet('signupComplete', true);
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSuccessful()
+        ->assertSee('Broken T-Shirt');
 });

@@ -10,6 +10,8 @@ use App\Actions\UpdateShift;
 use App\Actions\UpdateVolunteerJob;
 use App\Exceptions\HasSignupsException;
 use App\Models\Event;
+use App\Models\Shift;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -53,10 +55,10 @@ class JobsAndShiftsManager extends Component
     }
 
     #[Computed]
-    public function jobs(): \Illuminate\Database\Eloquent\Collection
+    public function jobs(): Collection
     {
         return $this->event->volunteerJobs()
-            ->with(['shifts' => fn ($q) => $q->withCount('activeSignups as signups_count')->orderBy('starts_at')])
+            ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('starts_at')])
             ->get();
     }
 
@@ -213,9 +215,9 @@ class JobsAndShiftsManager extends Component
         unset($this->jobs);
     }
 
-    private function findShift(int $shiftId): \App\Models\Shift
+    private function findShift(int $shiftId): Shift
     {
-        return \App\Models\Shift::whereHas('volunteerJob', fn ($q) => $q->where('event_id', $this->event->id))
+        return Shift::whereHas('volunteerJob', fn ($q) => $q->where('event_id', $this->event->id))
             ->findOrFail($shiftId);
     }
 }

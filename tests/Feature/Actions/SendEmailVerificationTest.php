@@ -63,3 +63,12 @@ it('includes verification URL in the notification', function () {
         return str_contains($notification->verificationUrl, 'verify-email/');
     });
 });
+
+it('stores project_id on the verification token from event', function () {
+    $action = app(SendEmailVerification::class);
+    $action->execute($this->volunteer, $this->event, [1]);
+
+    $token = EmailVerificationToken::first();
+    expect($token->project_id)->toBe($this->event->project_id)
+        ->and($token->project_id)->not->toBeNull();
+});
