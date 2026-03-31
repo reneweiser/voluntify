@@ -125,14 +125,31 @@ Draft ──→ Published Open ⇄ Published Closed ──→ Archived
   └──── (Wartung: zurück zu Draft) ────────────┘
 ```
 
+### Event-Sichtbarkeit
+
+Events haben eine Sichtbarkeitseigenschaft:
+
+| Typ | Projektwebsite | Zugang |
+|---|---|---|
+| **Öffentlich** (Standard) | Sichtbar | Jeder mit Projektwebsite-Link |
+| **Privat** | Nicht sichtbar | Nur über geheimen Direktlink (`/event/{token}`) |
+
+**Privat** bedeutet: Das Event erscheint nie auf der Projektwebsite — weder als Published Open noch als Published Closed. Volunteers können sich ausschließlich über den geheimen Direktlink anmelden, den der Organizer gezielt teilt (per E-Mail, Messenger etc.).
+
+> Beispiel 1: „Workshop Hauptorga" — die Kernorganisatoren sind selbst Volunteers (wegen Gear, QR-Tickets), aber das Event soll nicht öffentlich sichtbar sein, da es nur für eingeladene Personen ist.
+>
+> Beispiel 2: „Grafikteam" — Designer arbeiten wochenlang vor dem Event, haben keine klassische Schicht, sollen aber im System erfasst werden (Gear, Anwesenheit). Privates Event mit flexiblen Schichtzeiten (z.B. „nach Bedarf").
+
+Der Organizer setzt die Sichtbarkeit in den **Event-Einstellungen** (Toggle: Öffentlich / Privat). Der Wechsel ist jederzeit möglich — auch nach Veröffentlichung.
+
 ### Statusbeschreibungen
 
-| Status | Projektwebsite | Anmeldung | Organizer-Ansicht |
-|---|---|---|---|
-| **Draft** | Verborgen | Nicht möglich | Sichtbar mit Draft-Badge |
-| **Published Open** | Sichtbar mit CTA | Möglich | Aktiv |
-| **Published Closed** | Sichtbar mit „Abgelaufen" | Nicht möglich | Geschlossen |
-| **Archived** | Entfernt | Nicht möglich | Archiviert |
+| Status | Projektwebsite (öffentlich) | Projektwebsite (privat) | Anmeldung | Organizer-Ansicht |
+|---|---|---|---|---|
+| **Draft** | Verborgen | Verborgen | Nicht möglich | Sichtbar mit Draft-Badge |
+| **Published Open** | Sichtbar mit CTA | **Nicht sichtbar** (nur Direktlink) | Möglich | Aktiv |
+| **Published Closed** | Sichtbar mit „Abgelaufen" | **Nicht sichtbar** | Nicht möglich | Geschlossen |
+| **Archived** | Entfernt | Entfernt | Nicht möglich | Archiviert |
 
 ### Organizer-Controls
 
@@ -143,6 +160,7 @@ Draft ──→ Published Open ⇄ Published Closed ──→ Archived
 - **Re-Publish**: Draft → Published Open (sendet Update-E-Mail an alle aktiven Angemeldeten, #84)
 - **Archivieren**: Published Closed → Archived (endgültig, vorher Archivierungs-Pflicht)
 - **Geplantes Veröffentlichen**: Zeitgesteuerte Aktivierung
+- **Sichtbarkeit ändern**: Öffentlich ⇄ Privat (jederzeit)
 
 ### Re-Publish-Benachrichtigung (#84)
 
@@ -865,4 +883,115 @@ Dieselbe Standard-E-Mail wie bei einer Änderung durch den Volunteer selbst — 
 
 ---
 
-*Dokument basiert auf GitHub Issues #45–#86 (Stand: 2026-03-30)*
+## 18. Gästelisten (#90)
+
+Organizer können Gästelisten für nicht-registrierte Personen (VIPs, Künstler, Ehrengäste, Begleitpersonen) verwalten. Gäste durchlaufen keinen Signup-Flow, erhalten aber QR-Codes und können Gear erhalten.
+
+### Use Case
+
+Künstler erhalten als Teil ihrer Bezahlung Einlass für sich und Begleitpersonen. Organizer legt fest: „DJ Soundwave — 3 Gäste". Jeder Gast erhält einen eigenen QR-Code. Am Einlass wird per Entry Staff Scanner gescannt. Gear wird über den Volunteer Admin Scanner ausgegeben.
+
+### 18.1 Datenmodell
+
+```
+GuestList (Projekt-Level)
+├── project_id
+├── scanner_id          (FK → Entry Staff Scanner, Pflicht)
+├── name                ("Künstler Hauptabend")
+├── status              (draft / confirmed)
+├── gear_items          (welche Gear Items verfügbar)
+
+GuestGroup
+├── guest_list_id
+├── label               ("DJ Soundwave")
+├── guest_count         (3)
+
+GuestEntry
+├── guest_group_id
+├── number              (1, 2, 3)
+├── name                (nullable)
+├── email               (nullable)
+├── qr_token            (null bis Bestätigung)
+├── checked_in_at       (nullable)
+
+GuestEntryGear
+├── guest_entry_id
+├── project_gear_item_id    (Typ-1 ODER Typ-2)
+├── quantity                 (Typ-2: Kontingent, Typ-1: immer 1)
+├── picked_up_count          (Typ-2: 0...quantity)
+├── selection                (Typ-1: nullable — "M", "L", etc.)
+├── status                   (Typ-1: aus konfigurierbarer Zustandsliste)
+```
+
+### 18.2 Lifecycle
+
+**Entwurf:** Organizer erstellt Gästeliste, ordnet Entry Staff Scanner zu, legt Gruppen und Einträge an. Keine E-Mails.
+
+**Bestätigung:** Organizer klickt „Gästeliste bestätigen":
+- QR-Codes generiert (ein Code pro Eintrag)
+- E-Mails gruppiert versendet: gleiche E-Mail bei mehreren Einträgen → eine Mail mit allen QR-Codes
+- Einträge ohne E-Mail: kein Versand, QR-Code nur im System
+
+**Nachträgliche Änderungen (nach Bestätigung):**
+- Gast hinzufügen → neuer QR-Code → E-Mail sofort (wenn E-Mail vorhanden)
+- Gast entfernen → QR-Code ungültig → Scanner zeigt Rot
+- Gast bearbeiten → QR-Code bleibt gültig, Daten aktualisiert
+
+### 18.3 Beispiel
+
+| Gruppe | # | Name | E-Mail | Gear |
+|---|---|---|---|---|
+| DJ Soundwave | 1 | DJ Soundwave | dj@example.com | 3 Getränkemarken, T-Shirt (–) |
+| DJ Soundwave | 2 | – | dj@example.com | 2 Getränkemarken |
+| DJ Soundwave | 3 | – | – | 2 Getränkemarken |
+| Moderatorin Meier | 1 | Anna Meier | anna@example.com | 3 Getränkemarken, T-Shirt (L) |
+
+E-Mail-Versand bei Bestätigung:
+- dj@example.com → 1 Mail mit 2 QR-Codes (#1 + #2)
+- anna@example.com → 1 Mail mit 1 QR-Code (#1)
+- Eintrag DJ #3 (keine E-Mail) → kein Versand
+
+### 18.4 Scanner-Integration
+
+**Entry Staff Scanner:**
+- QR-Scan: 🟢 „Gast — DJ Soundwave 1/3" / 🟡 „Bereits eingecheckt" / 🔴 „Ungültig"
+- Gastliste-Tab: Volunteers (oben) + Gäste gruppiert (unten) mit Check-in-Status
+- Manuelle Suche: findet Gäste nach Name oder Gruppe
+- „Nächsten scannen"-Button wie bei Volunteers
+
+**Volunteer Admin Scanner:**
+- Gäste erscheinen nur wenn sie Gear haben
+- Typ-2: normaler Flow („2/3 abgeholt" → Tap → +1)
+- Typ-1 mit Auswahl: normaler Zustandswechsel
+- Typ-1 ohne Auswahl: Operator wählt direkt im Scanner (Dropdown) nach mündlicher Abfrage → Auswahl + Zustand gespeichert → Statistik korrekt
+
+> Unterschied zu Volunteers: Bei Volunteers blockiert „Auswahl ausstehend" die Ausgabe (Portal-Auswahl nötig). Bei Gästen kann der Operator die Auswahl direkt im Scanner treffen — Gäste haben kein Portal.
+
+| Feature | Entry Staff Scanner | Volunteer Admin Scanner |
+|---|---|---|
+| Gast QR scannen | ✓ | — |
+| Gastliste durchsuchen | ✓ | — |
+| Check-in (Einlass) | ✓ | — |
+| Gear Typ-1 ausgeben | — | ✓ (mit Größen-Abfrage) |
+| Gear Typ-2 ausgeben | — | ✓ |
+
+### 18.5 Tracking
+
+**Gästeliste Übersicht (Projekt > Gästelisten):**
+- DJ Soundwave: 2/3 eingecheckt
+- Moderatorin Meier: 0/2 eingecheckt
+- Gesamt: 2/5 eingecheckt
+
+**Gear-Tracking:**
+- Getränkemarken: 4/12 abgeholt
+- T-Shirt: 1/2 ausgegeben (1× „Auswahl ausstehend")
+
+### 18.6 Begründungen
+
+- **An Entry Staff Scanner gebunden:** Scanner-Offline-Daten müssen die Gäste enthalten. Verschiedene Eingänge können verschiedene Listen haben (VIP-Eingang vs. Haupteingang). Kein Scanner = kein Feature.
+- **E-Mails erst bei Bestätigung:** Organizer baut Liste in Ruhe auf. Kein versehentlicher Versand.
+- **Typ-1 direkt im Scanner (nur Gäste):** Gäste haben kein Portal. Mündliche Abfrage + Scanner-Eingabe ist der pragmatischste Weg. Statistik bleibt korrekt.
+
+---
+
+*Dokument basiert auf GitHub Issues #45–#90 (Stand: 2026-03-31)*

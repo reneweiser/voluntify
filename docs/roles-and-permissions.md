@@ -91,6 +91,7 @@ A volunteer without any active shifts is a **valid state** (not an error) -- the
 | Scanner konfigurieren | Yes | Yes | -- | -- |
 | Volunteer manuell anlegen | Yes | Yes | -- | -- |
 | Announcements senden | Yes | Yes | -- | -- |
+| Gästelisten verwalten | Yes | Yes | -- | -- |
 | Dashboard | Yes | Yes | -- | -- |
 
 ### Scanner Level

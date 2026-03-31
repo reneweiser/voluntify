@@ -180,3 +180,21 @@ After each result, a **manual "Nächsten scannen" button** must be tapped to pro
 **Helfer-Portal (Volunteer Portal)** -- A self-service page where volunteers view their shifts, QR code, gear status, personal data, and attendance history. Accessed via magic link -- no account needed. Shows all events within the project context.
 
 **Clone** -- Duplicating a project or individual event. Creates a Draft copy with structure (jobs, shifts, gear definitions, custom fields, email templates, scanner configs) but without volunteers, signups, or announcements. Optional date offset shifts all dates forward.
+
+**Private Event** -- An event that is not visible on the project website. Volunteers can only access it via a secret direct link (`/event/{token}`) shared by the Organizer. All other behaviour (signup flow, QR codes, gear, scanner) is identical to public events. Private events do not trigger project website activation on first publish.
+
+> Example: "Workshop Hauptorga" is a private event for core organisers who are themselves volunteers (need gear and QR tickets). "Grafikteam" is a private event for designers who work weeks before the festival and need to be in the system.
+
+## Guest Lists
+
+**Guest List (Gästeliste)** -- A project-level list of non-volunteer guests (VIPs, artists, companions) who need entrance access and optionally gear. Each guest list is bound to a specific Entry Staff Scanner. No scanner configured = no guest list feature.
+
+**Guest Group** -- A named group within a guest list (e.g. "DJ Soundwave") with a defined number of entries. Groups are used for tracking ("DJ Soundwave: 2/3 eingecheckt").
+
+**Guest Entry** -- A single person within a guest group. Has an optional name, optional email, and an individual QR code (generated on guest list confirmation). If email is provided, the QR code is sent automatically.
+
+> Example: "DJ Soundwave" is a guest group with 3 entries: entry #1 is the artist (name + email), entries #2 and #3 are unnamed companions (one with shared email, one without).
+
+**Guest List Confirmation** -- The act of finalising a guest list. Generates QR codes for all entries and sends grouped emails (same email for multiple entries → one email with all QR codes). Before confirmation, the list is in draft status and no emails are sent.
+
+**Guest Gear** -- Gear assigned to guest entries. Supports both Typ-1 and Typ-2. Key difference to volunteer gear: for Typ-1 items without a selection ("Auswahl ausstehend"), the scanner operator can select directly in the scanner (guests have no portal for self-service). This keeps statistics accurate.
