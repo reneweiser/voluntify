@@ -26,6 +26,14 @@ it('cannot archive a draft event', function () {
         ->toThrow(DomainException::class, 'Cannot archive a draft event.');
 });
 
+it('archives a published closed event', function () {
+    $event = Event::factory()->for($this->org)->publishedClosed()->create();
+
+    $archived = $this->action->execute($event);
+
+    expect($archived->status)->toBe(EventStatus::Archived);
+});
+
 it('cannot archive an already archived event', function () {
     $event = Event::factory()->for($this->org)->archived()->create();
 

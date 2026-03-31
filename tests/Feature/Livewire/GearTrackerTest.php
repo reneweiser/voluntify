@@ -5,6 +5,8 @@ use App\Livewire\Events\GearTracker;
 use App\Models\Event;
 use App\Models\EventGearItem;
 use App\Models\Organization;
+use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use Livewire\Livewire;
@@ -51,7 +53,7 @@ it('creates gear on-demand when marking pickup for volunteer without record', fu
 });
 
 it('denies entrance staff access to gear tracker', function () {
-    $entranceStaff = \App\Models\User::factory()->create();
+    $entranceStaff = User::factory()->create();
     $this->org->users()->attach($entranceStaff, ['role' => StaffRole::EntranceStaff]);
 
     Livewire::actingAs($entranceStaff)
@@ -61,14 +63,14 @@ it('denies entrance staff access to gear tracker', function () {
 
 it('renders volunteers with gear status', function () {
     $item = EventGearItem::factory()->for($this->event)->create(['name' => 'Lanyard']);
-    $volunteer = Volunteer::factory()->verified()->create(['name' => 'Jane Doe']);
+    $volunteer = Volunteer::factory()->verified()->create(['first_name' => 'Jane', 'last_name' => 'Doe']);
     VolunteerGear::factory()->create([
         'event_gear_item_id' => $item->id,
         'volunteer_id' => $volunteer->id,
     ]);
 
     // Need to make volunteer associated with this event via a ticket
-    \App\Models\Ticket::factory()->create([
+    Ticket::factory()->create([
         'volunteer_id' => $volunteer->id,
         'event_id' => $this->event->id,
     ]);

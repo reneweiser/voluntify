@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Database\Factories\VolunteerFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,11 +14,12 @@ use Illuminate\Notifications\Notifiable;
 
 class Volunteer extends Model
 {
-    /** @use HasFactory<\Database\Factories\VolunteerFactory> */
+    /** @use HasFactory<VolunteerFactory> */
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
         'phone',
         'email_verified_at',
@@ -28,6 +31,13 @@ class Volunteer extends Model
         return [
             'email_verified_at' => 'datetime',
         ];
+    }
+
+    protected function fullName(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->first_name.' '.$this->last_name,
+        );
     }
 
     public function isEmailVerified(): bool
@@ -99,7 +109,8 @@ class Volunteer extends Model
 
         if ($useLike) {
             $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'LIKE', '%'.$search.'%')
+                $q->where('first_name', 'LIKE', '%'.$search.'%')
+                    ->orWhere('last_name', 'LIKE', '%'.$search.'%')
                     ->orWhere('email', 'LIKE', '%'.$search.'%');
             });
 
@@ -110,7 +121,7 @@ class Volunteer extends Model
         $booleanTerm = '+'.implode('* +', explode(' ', trim($term))).'*';
 
         $query->whereRaw(
-            'MATCH(name, email) AGAINST(? IN BOOLEAN MODE)',
+            'MATCH(first_name, last_name, email) AGAINST(? IN BOOLEAN MODE)',
             [$booleanTerm],
         );
     }

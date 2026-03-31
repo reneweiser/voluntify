@@ -25,7 +25,7 @@ class VolunteerExportController extends Controller
 
         $filename = str($event->name)->slug().'-volunteers.csv';
 
-        $headers = ['Name', 'Email', 'Phone', 'Shifts', 'Arrived', 'Attendance', 'Gear'];
+        $headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Shifts', 'Arrived', 'Attendance', 'Gear'];
         foreach ($customFields as $field) {
             $headers[] = $field->label.($field->trashed() ? ' (archived)' : '');
         }

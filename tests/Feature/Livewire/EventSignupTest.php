@@ -46,7 +46,8 @@ it('validates required custom fields on signup', function () {
     $field = CustomRegistrationField::factory()->required()->for($this->event)->create(['label' => 'Required Field']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('volunteerName', 'Test Person')
+        ->set('volunteerFirstName', 'Test')
+        ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'test@example.com')
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('signup')
@@ -57,7 +58,8 @@ it('completes signup flow with custom field responses through email verification
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('volunteerName', 'Test Person')
+        ->set('volunteerFirstName', 'Test')
+        ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'newvolunteer@example.com')
         ->set('selectedShiftIds', [$this->shift->id])
         ->set('customFieldResponses.'.$field->id, 'Vegan')
@@ -73,7 +75,8 @@ it('completes signup with custom fields for verified volunteer', function () {
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('volunteerName', 'Verified Person')
+        ->set('volunteerFirstName', 'Verified')
+        ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'verified@example.com')
         ->set('selectedShiftIds', [$this->shift->id])
         ->set('customFieldResponses.'.$field->id, 'Vegan')

@@ -1,11 +1,18 @@
 <?php
 
 use App\Actions\CloneEvent;
+use App\Enums\EmailTemplateType;
 use App\Enums\EventStatus;
+use App\Models\CustomFieldResponse;
+use App\Models\CustomRegistrationField;
+use App\Models\EmailTemplate;
 use App\Models\Event;
+use App\Models\EventGearItem;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\Volunteer;
+use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 
 beforeEach(function () {
@@ -71,8 +78,8 @@ it('does not copy title image path', function () {
 });
 
 it('clones gear items but not volunteer gear records', function () {
-    $gearItem = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    \App\Models\VolunteerGear::factory()->create(['event_gear_item_id' => $gearItem->id]);
+    $gearItem = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    VolunteerGear::factory()->create(['event_gear_item_id' => $gearItem->id]);
 
     $action = new CloneEvent;
     $cloned = $action->execute($this->event);
@@ -85,18 +92,18 @@ it('clones gear items but not volunteer gear records', function () {
         ->and($cloned->gearItems->first()->available_sizes)->toBe(['XS', 'S', 'M', 'L', 'XL', 'XXL']);
 
     // Volunteer gear should NOT be cloned
-    expect(\App\Models\VolunteerGear::where('event_gear_item_id', $cloned->gearItems->first()->id)->count())->toBe(0);
+    expect(VolunteerGear::where('event_gear_item_id', $cloned->gearItems->first()->id)->count())->toBe(0);
 });
 
 it('clones custom registration fields but not responses', function () {
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create([
+    $field = CustomRegistrationField::factory()->for($this->event)->create([
         'label' => 'Emergency Contact',
         'type' => 'text',
         'required' => true,
         'sort_order' => 1,
     ]);
-    $volunteer = \App\Models\Volunteer::factory()->create();
-    \App\Models\CustomFieldResponse::factory()->create([
+    $volunteer = Volunteer::factory()->create();
+    CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $volunteer->id,
         'value' => 'Mom: 555-1234',
@@ -112,12 +119,12 @@ it('clones custom registration fields but not responses', function () {
         ->and($cloned->customRegistrationFields->first()->required)->toBeTrue();
 
     // Responses should NOT be cloned
-    expect(\App\Models\CustomFieldResponse::where('custom_registration_field_id', $cloned->customRegistrationFields->first()->id)->count())->toBe(0);
+    expect(CustomFieldResponse::where('custom_registration_field_id', $cloned->customRegistrationFields->first()->id)->count())->toBe(0);
 });
 
 it('does not clone soft-deleted custom fields', function () {
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Active']);
-    $deletedField = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Deleted']);
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Active']);
+    $deletedField = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Deleted']);
     $deletedField->delete();
 
     $action = new CloneEvent;
@@ -138,12 +145,12 @@ it('handles event with no jobs', function () {
 });
 
 it('clones email templates', function () {
-    \App\Models\EmailTemplate::factory()->for($this->event)->create([
-        'type' => \App\Enums\EmailTemplateType::SignupConfirmation,
+    EmailTemplate::factory()->for($this->event)->create([
+        'type' => EmailTemplateType::SignupConfirmation,
         'subject' => 'Welcome!',
     ]);
-    \App\Models\EmailTemplate::factory()->for($this->event)->create([
-        'type' => \App\Enums\EmailTemplateType::PreShiftReminder24h,
+    EmailTemplate::factory()->for($this->event)->create([
+        'type' => EmailTemplateType::PreShiftReminder24h,
         'subject' => 'Reminder',
     ]);
 
@@ -157,12 +164,9 @@ it('clones email templates', function () {
         ->and($cloned->emailTemplates->pluck('event_id')->unique()->all())->toBe([$cloned->id]);
 });
 
-it('does not copy event_group_id', function () {
-    $group = \App\Models\EventGroup::factory()->for($this->org)->create();
-    $this->event->update(['event_group_id' => $group->id]);
-
+it('keeps same project_id from source event', function () {
     $action = new CloneEvent;
     $cloned = $action->execute($this->event);
 
-    expect($cloned->event_group_id)->toBeNull();
+    expect($cloned->project_id)->toBe($this->event->project_id);
 });

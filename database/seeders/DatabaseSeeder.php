@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Enums\EventStatus;
 use App\Enums\StaffRole;
 use App\Models\Event;
-use App\Models\EventGroup;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\User;
@@ -30,8 +30,14 @@ class DatabaseSeeder extends Seeder
 
         $org->users()->attach($user, ['role' => StaffRole::Organizer]);
 
+        // Project containing events
+        $project = Project::factory()->for($org)->create([
+            'name' => 'Spring Festival Weekend',
+            'description' => 'A multi-event weekend festival with community activities.',
+        ]);
+
         // Published event 1 — upcoming community fair
-        $event1 = Event::factory()->for($org)->published()->create([
+        $event1 = Event::factory()->for($org)->for($project)->published()->create([
             'name' => 'Spring Community Fair',
             'slug' => 'spring-community-fair',
             'starts_at' => now()->addWeeks(2),
@@ -41,7 +47,7 @@ class DatabaseSeeder extends Seeder
         $this->seedEventData($event1);
 
         // Published event 2 — charity run
-        $event2 = Event::factory()->for($org)->published()->create([
+        $event2 = Event::factory()->for($org)->for($project)->published()->create([
             'name' => 'Annual Charity Run',
             'slug' => 'annual-charity-run',
             'starts_at' => now()->addMonth(),
@@ -50,16 +56,8 @@ class DatabaseSeeder extends Seeder
 
         $this->seedEventData($event2);
 
-        // Event group with both published events
-        $group = EventGroup::factory()->for($org)->create([
-            'name' => 'Spring Festival Weekend',
-            'description' => 'A multi-event weekend festival with community activities.',
-        ]);
-        $event1->update(['event_group_id' => $group->id]);
-        $event2->update(['event_group_id' => $group->id]);
-
         // Draft event
-        Event::factory()->for($org)->create([
+        Event::factory()->for($org)->for($project)->create([
             'name' => 'Summer Gala (Draft)',
             'slug' => 'summer-gala',
             'status' => EventStatus::Draft,

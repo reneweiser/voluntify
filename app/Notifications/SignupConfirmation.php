@@ -53,7 +53,7 @@ class SignupConfirmation extends Notification implements ShouldQueue
             EmailTemplateType::SignupConfirmation,
             $this->event,
             [
-                'volunteer_name' => $notifiable->name,
+                'volunteer_name' => $notifiable->full_name,
                 'event_name' => $this->event->name,
                 'shifts_summary' => $shiftsSummary,
                 'job_name' => $firstJob->name,
@@ -65,7 +65,7 @@ class SignupConfirmation extends Notification implements ShouldQueue
 
         $mail = (new MailMessage)
             ->subject($rendered['subject'])
-            ->greeting("Hello {$notifiable->name}!");
+            ->greeting("Hello {$notifiable->full_name}!");
 
         foreach (explode("\n", $rendered['body']) as $line) {
             $trimmed = trim($line);

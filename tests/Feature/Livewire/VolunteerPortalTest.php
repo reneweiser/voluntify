@@ -3,13 +3,17 @@
 use App\Actions\VerifyMagicLink;
 use App\Exceptions\InvalidMagicLinkException;
 use App\Livewire\Public\VolunteerPortal;
+use App\Models\CustomFieldResponse;
+use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventAnnouncement;
+use App\Models\EventGearItem;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
+use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 use Livewire\Livewire;
 
@@ -27,7 +31,7 @@ beforeEach(function () {
         'starts_at' => now()->subDays(1),
         'ends_at' => now()->subDays(1)->addHours(2),
     ]);
-    $this->volunteer = Volunteer::factory()->create(['name' => 'Test Volunteer']);
+    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Test', 'last_name' => 'Volunteer']);
     Ticket::factory()->create([
         'volunteer_id' => $this->volunteer->id,
         'event_id' => $this->event->id,
@@ -227,15 +231,15 @@ it('shows empty states when no upcoming shifts and no announcements', function (
 });
 
 it('displays assigned gear with size and pickup status', function () {
-    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    $badge = \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $badge = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
 
-    \App\Models\VolunteerGear::factory()->create([
+    VolunteerGear::factory()->create([
         'event_gear_item_id' => $tshirt->id,
         'volunteer_id' => $this->volunteer->id,
         'size' => 'L',
     ]);
-    \App\Models\VolunteerGear::factory()->create([
+    VolunteerGear::factory()->create([
         'event_gear_item_id' => $badge->id,
         'volunteer_id' => $this->volunteer->id,
     ]);
@@ -252,8 +256,8 @@ it('displays assigned gear with size and pickup status', function () {
 });
 
 it('shows custom field responses grouped by event', function () {
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Dietary Needs']);
-    \App\Models\CustomFieldResponse::factory()->create([
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Dietary Needs']);
+    CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $this->volunteer->id,
         'value' => 'Vegan',

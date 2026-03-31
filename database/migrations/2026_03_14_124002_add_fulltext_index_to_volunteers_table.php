@@ -14,7 +14,7 @@ return new class extends Migration
         }
 
         Schema::table('volunteers', function (Blueprint $table) {
-            $table->fullText(['name', 'email']);
+            $table->fullText(['first_name', 'last_name', 'email']);
         });
     }
 
@@ -25,7 +25,7 @@ return new class extends Migration
         }
 
         Schema::table('volunteers', function (Blueprint $table) {
-            $table->dropFullText(['name', 'email']);
+            $table->dropFullText(['first_name', 'last_name', 'email']);
         });
     }
 };

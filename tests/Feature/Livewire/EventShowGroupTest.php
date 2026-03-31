@@ -3,8 +3,8 @@
 use App\Enums\StaffRole;
 use App\Livewire\Events\EventShow;
 use App\Models\Event;
-use App\Models\EventGroup;
 use App\Models\Organization;
+use App\Models\Project;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Livewire;
 
@@ -14,42 +14,35 @@ beforeEach(function () {
     app()->instance(Organization::class, $this->org);
 });
 
-it('shows group badge when event belongs to a group', function () {
-    $group = EventGroup::factory()->for($this->org)->create(['name' => 'Festival Group']);
-    $this->event->update(['event_group_id' => $group->id]);
+it('shows project badge when event belongs to a project', function () {
+    $project = Project::factory()->for($this->org)->create(['name' => 'Festival Project']);
+    $this->event->project_id = $project->id;
+    $this->event->save();
 
     Livewire::actingAs($this->organizer)
         ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->assertSee('Festival Group');
+        ->assertSee('Festival Project');
 });
 
-it('does not show group badge when event is ungrouped', function () {
-    Livewire::actingAs($this->organizer)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->assertDontSee('Festival Group');
-});
-
-it('rejects assigning event to a group from another organization', function () {
+it('rejects assigning event to a project from another organization', function () {
     $otherOrg = Organization::factory()->create();
-    $foreignGroup = EventGroup::factory()->for($otherOrg)->create();
+    $foreignProject = Project::factory()->for($otherOrg)->create();
 
     expect(fn () => Livewire::actingAs($this->organizer)
         ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->set('selectedGroupId', (string) $foreignGroup->id)
-        ->call('updateGroup')
+        ->set('selectedProjectId', (string) $foreignProject->id)
+        ->call('updateProject')
     )->toThrow(ModelNotFoundException::class);
-
-    expect($this->event->fresh()->event_group_id)->toBeNull();
 });
 
-it('allows assigning event to a group via dropdown', function () {
-    $group = EventGroup::factory()->for($this->org)->create(['name' => 'Assign Group']);
+it('allows assigning event to a project via dropdown', function () {
+    $project = Project::factory()->for($this->org)->create(['name' => 'Assign Project']);
 
     Livewire::actingAs($this->organizer)
         ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->set('selectedGroupId', (string) $group->id)
-        ->call('updateGroup')
+        ->set('selectedProjectId', (string) $project->id)
+        ->call('updateProject')
         ->assertHasNoErrors();
 
-    expect($this->event->fresh()->event_group_id)->toBe($group->id);
+    expect($this->event->fresh()->project_id)->toBe($project->id);
 });

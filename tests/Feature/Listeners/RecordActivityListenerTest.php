@@ -8,21 +8,20 @@ use App\Events\Activity\ArrivalScanned;
 use App\Events\Activity\AttendanceRecorded;
 use App\Events\Activity\EmailTemplateUpdated;
 use App\Events\Activity\EventArchived;
-use App\Events\Activity\EventAssignedToGroup;
+use App\Events\Activity\EventAssignedToProject;
 use App\Events\Activity\EventCloned;
 use App\Events\Activity\EventCreated;
-use App\Events\Activity\EventGroupCreated;
-use App\Events\Activity\EventGroupDeleted;
-use App\Events\Activity\EventGroupUpdated;
 use App\Events\Activity\EventImageDeleted;
 use App\Events\Activity\EventPublished;
-use App\Events\Activity\EventRemovedFromGroup;
 use App\Events\Activity\EventUpdated;
 use App\Events\Activity\JobCreated;
 use App\Events\Activity\JobDeleted;
 use App\Events\Activity\JobUpdated;
 use App\Events\Activity\MemberInvited;
 use App\Events\Activity\MemberLeft;
+use App\Events\Activity\ProjectCreated;
+use App\Events\Activity\ProjectDeleted;
+use App\Events\Activity\ProjectUpdated;
 use App\Events\Activity\ShiftCreated;
 use App\Events\Activity\ShiftDeleted;
 use App\Events\Activity\ShiftUpdated;
@@ -34,8 +33,8 @@ use App\Models\ActivityLog;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\EventArrival;
-use App\Models\EventGroup;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -349,12 +348,12 @@ it('logs EmailTemplateUpdated', function () {
         ->and($log->properties['template_type'])->toBe('signup_confirmation');
 });
 
-// --- Batch D: Event Group actions ---
+// --- Batch D: Project actions ---
 
-it('logs EventGroupCreated', function () {
-    $group = EventGroup::factory()->create(['organization_id' => $this->organization->id]);
+it('logs ProjectCreated', function () {
+    $project = Project::factory()->create(['organization_id' => $this->organization->id]);
 
-    $this->listener->handleEventGroupCreated(new EventGroupCreated($group, $this->user));
+    $this->listener->handleProjectCreated(new ProjectCreated($project, $this->user));
 
     $log = ActivityLog::first();
 
@@ -363,87 +362,66 @@ it('logs EventGroupCreated', function () {
         ->and($log->event_id)->toBeNull()
         ->and($log->causer_type)->toBe(User::class)
         ->and($log->causer_id)->toBe($this->user->id)
-        ->and($log->subject_type)->toBe(EventGroup::class)
-        ->and($log->subject_id)->toBe($group->id)
+        ->and($log->subject_type)->toBe(Project::class)
+        ->and($log->subject_id)->toBe($project->id)
         ->and($log->action)->toBe('created')
-        ->and($log->category)->toBe(ActivityCategory::EventGroup)
-        ->and($log->description)->toContain($group->name)
-        ->and($log->properties['name'])->toBe($group->name);
+        ->and($log->category)->toBe(ActivityCategory::Project)
+        ->and($log->description)->toContain($project->name)
+        ->and($log->properties['name'])->toBe($project->name);
 });
 
-it('logs EventGroupUpdated with changed fields', function () {
-    $group = EventGroup::factory()->create(['organization_id' => $this->organization->id]);
+it('logs ProjectUpdated with changed fields', function () {
+    $project = Project::factory()->create(['organization_id' => $this->organization->id]);
     $changed = ['name' => ['Old Name', 'New Name']];
 
-    $this->listener->handleEventGroupUpdated(new EventGroupUpdated($group, $this->user, $changed));
+    $this->listener->handleProjectUpdated(new ProjectUpdated($project, $this->user, $changed));
 
     $log = ActivityLog::first();
 
     expect($log->action)->toBe('updated')
-        ->and($log->category)->toBe(ActivityCategory::EventGroup)
-        ->and($log->subject_type)->toBe(EventGroup::class)
-        ->and($log->subject_id)->toBe($group->id)
+        ->and($log->category)->toBe(ActivityCategory::Project)
+        ->and($log->subject_type)->toBe(Project::class)
+        ->and($log->subject_id)->toBe($project->id)
         ->and($log->event_id)->toBeNull()
         ->and($log->properties['changed'])->toBe($changed);
 });
 
-it('logs EventGroupDeleted with snapshot data', function () {
-    $ungroupedEvents = ['Summer Fest', 'Winter Gala'];
+it('logs ProjectDeleted with snapshot data', function () {
+    $orphanedEvents = ['Summer Fest', 'Winter Gala'];
 
-    $this->listener->handleEventGroupDeleted(new EventGroupDeleted(
-        'My Group',
+    $this->listener->handleProjectDeleted(new ProjectDeleted(
+        'My Project',
         $this->organization->id,
-        $ungroupedEvents,
+        $orphanedEvents,
         $this->user,
     ));
 
     $log = ActivityLog::first();
 
     expect($log->action)->toBe('deleted')
-        ->and($log->category)->toBe(ActivityCategory::EventGroup)
+        ->and($log->category)->toBe(ActivityCategory::Project)
         ->and($log->organization_id)->toBe($this->organization->id)
         ->and($log->subject_type)->toBe(Organization::class)
         ->and($log->subject_id)->toBe($this->organization->id)
         ->and($log->event_id)->toBeNull()
-        ->and($log->description)->toContain('My Group')
-        ->and($log->properties['name'])->toBe('My Group')
-        ->and($log->properties['ungrouped_events'])->toBe($ungroupedEvents);
+        ->and($log->description)->toContain('My Project')
+        ->and($log->properties['name'])->toBe('My Project')
+        ->and($log->properties['orphaned_events'])->toBe($orphanedEvents);
 });
 
-it('logs EventAssignedToGroup with event id', function () {
-    $group = EventGroup::factory()->create(['organization_id' => $this->organization->id]);
+it('logs EventAssignedToProject with event id', function () {
+    $project = Project::factory()->create(['organization_id' => $this->organization->id]);
 
-    $this->listener->handleEventAssignedToGroup(new EventAssignedToGroup($group, $this->event, $this->user));
+    $this->listener->handleEventAssignedToProject(new EventAssignedToProject($project, $this->event, $this->user));
 
     $log = ActivityLog::first();
 
     expect($log->action)->toBe('assigned')
-        ->and($log->category)->toBe(ActivityCategory::EventGroup)
+        ->and($log->category)->toBe(ActivityCategory::Project)
         ->and($log->event_id)->toBe($this->event->id)
-        ->and($log->subject_type)->toBe(EventGroup::class)
-        ->and($log->subject_id)->toBe($group->id)
+        ->and($log->subject_type)->toBe(Project::class)
+        ->and($log->subject_id)->toBe($project->id)
         ->and($log->description)->toContain($this->event->name)
-        ->and($log->description)->toContain($group->name)
+        ->and($log->description)->toContain($project->name)
         ->and($log->properties['event_name'])->toBe($this->event->name);
-});
-
-it('logs EventRemovedFromGroup', function () {
-    $this->listener->handleEventRemovedFromGroup(new EventRemovedFromGroup(
-        'My Group',
-        $this->organization->id,
-        $this->event,
-        $this->user,
-    ));
-
-    $log = ActivityLog::first();
-
-    expect($log->action)->toBe('removed')
-        ->and($log->category)->toBe(ActivityCategory::EventGroup)
-        ->and($log->event_id)->toBe($this->event->id)
-        ->and($log->organization_id)->toBe($this->organization->id)
-        ->and($log->subject_type)->toBe(Event::class)
-        ->and($log->subject_id)->toBe($this->event->id)
-        ->and($log->description)->toContain($this->event->name)
-        ->and($log->description)->toContain('My Group')
-        ->and($log->properties['group_name'])->toBe('My Group');
 });

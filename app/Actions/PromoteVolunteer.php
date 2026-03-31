@@ -37,7 +37,7 @@ class PromoteVolunteer
                 $isNewUser = true;
 
                 $user = User::create([
-                    'name' => $volunteer->name,
+                    'name' => $volunteer->full_name,
                     'email' => $volunteer->email,
                     'password' => $temporaryPassword,
                     'must_change_password' => true,

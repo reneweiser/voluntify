@@ -6,7 +6,7 @@ use App\ValueObjects\SignupBatchResult;
 use App\ValueObjects\SignupOutcome;
 
 it('creates a completed outcome with batch result', function () {
-    $volunteer = new Volunteer(['name' => 'Test', 'email' => 'test@example.com']);
+    $volunteer = new Volunteer(['first_name' => 'Test', 'last_name' => 'User', 'email' => 'test@example.com']);
     $batchResult = new SignupBatchResult(volunteer: $volunteer);
 
     $outcome = SignupOutcome::completed($batchResult);

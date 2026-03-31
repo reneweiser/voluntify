@@ -3,14 +3,18 @@
 use App\Actions\ExportVolunteersCsv;
 use App\Enums\AttendanceStatus;
 use App\Models\AttendanceRecord;
+use App\Models\CustomFieldResponse;
+use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventArrival;
+use App\Models\EventGearItem;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 
 beforeEach(function () {
@@ -20,7 +24,7 @@ beforeEach(function () {
 });
 
 it('returns correct data for volunteers', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Alice Smith', 'email' => 'alice@test.com', 'phone' => '+1234567890']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Smith', 'email' => 'alice@test.com', 'phone' => '+1234567890']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
 
     $job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Sound']);
@@ -44,16 +48,17 @@ it('returns correct data for volunteers', function () {
     $rows = $action->execute($this->event)->toArray();
 
     expect($rows)->toHaveCount(1)
-        ->and($rows[0]['name'])->toBe('Alice Smith')
+        ->and($rows[0]['first_name'])->toBe('Alice')
+        ->and($rows[0]['last_name'])->toBe('Smith')
         ->and($rows[0]['email'])->toBe('alice@test.com')
-        ->and($rows[0]['phone'])->toBe('+1234567890')
+        ->and($rows[0]['phone'])->toBe("'+1234567890")
         ->and($rows[0]['arrived'])->toBe('Yes')
         ->and($rows[0]['attendance'])->toBe('1/1');
 });
 
 it('respects search filter', function () {
-    $vol1 = Volunteer::factory()->create(['name' => 'Alice Match']);
-    $vol2 = Volunteer::factory()->create(['name' => 'Bob Nope']);
+    $vol1 = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Match']);
+    $vol2 = Volunteer::factory()->create(['first_name' => 'Bob', 'last_name' => 'Nope']);
     Ticket::factory()->create(['volunteer_id' => $vol1->id, 'event_id' => $this->event->id]);
     Ticket::factory()->create(['volunteer_id' => $vol2->id, 'event_id' => $this->event->id]);
 
@@ -61,22 +66,22 @@ it('respects search filter', function () {
     $rows = $action->execute($this->event, 'Alice')->toArray();
 
     expect($rows)->toHaveCount(1)
-        ->and($rows[0]['name'])->toBe('Alice Match');
+        ->and($rows[0]['first_name'])->toBe('Alice');
 });
 
 it('includes gear column with item names and sizes', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Gear Volunteer']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Gear', 'last_name' => 'Volunteer']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
 
-    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    $badge = \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $badge = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
 
-    \App\Models\VolunteerGear::factory()->create([
+    VolunteerGear::factory()->create([
         'event_gear_item_id' => $tshirt->id,
         'volunteer_id' => $volunteer->id,
         'size' => 'L',
     ]);
-    \App\Models\VolunteerGear::factory()->create([
+    VolunteerGear::factory()->create([
         'event_gear_item_id' => $badge->id,
         'volunteer_id' => $volunteer->id,
     ]);
@@ -90,11 +95,11 @@ it('includes gear column with item names and sizes', function () {
 });
 
 it('includes custom field columns in export', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Alice']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Test']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
 
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
-    \App\Models\CustomFieldResponse::factory()->create([
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
+    CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $volunteer->id,
         'value' => 'Vegan',
@@ -109,11 +114,11 @@ it('includes custom field columns in export', function () {
 });
 
 it('shows Yes/No for checkbox fields', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Bob']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Bob', 'last_name' => 'Test']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
 
-    $field = \App\Models\CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release']);
-    \App\Models\CustomFieldResponse::factory()->create([
+    $field = CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release']);
+    CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $volunteer->id,
         'value' => '1',
@@ -127,11 +132,11 @@ it('shows Yes/No for checkbox fields', function () {
 });
 
 it('marks archived field columns with suffix', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Carol']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Carol', 'last_name' => 'Test']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
 
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Old Field']);
-    \App\Models\CustomFieldResponse::factory()->create([
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Old Field']);
+    CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $volunteer->id,
         'value' => 'some value',
@@ -146,10 +151,10 @@ it('marks archived field columns with suffix', function () {
 });
 
 it('handles volunteers without custom field responses', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Dan']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Dan', 'last_name' => 'Test']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
 
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Notes']);
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Notes']);
 
     $fields = $this->event->customRegistrationFields()->withTrashed()->get();
     $action = new ExportVolunteersCsv;

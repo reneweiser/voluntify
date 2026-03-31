@@ -4,6 +4,8 @@ use App\Enums\AttendanceStatus;
 use App\Enums\StaffRole;
 use App\Livewire\Events\VolunteerDetail;
 use App\Models\AttendanceRecord;
+use App\Models\CustomFieldResponse;
+use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Organization;
@@ -20,7 +22,7 @@ beforeEach(function () {
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization();
     app()->instance(Organization::class, $this->org);
     $this->event = Event::factory()->for($this->org)->published()->create();
-    $this->volunteer = Volunteer::factory()->create(['name' => 'Jane Doe', 'email' => 'jane@example.com', 'phone' => '+1234567890']);
+    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane@example.com', 'phone' => '+1234567890']);
     Ticket::factory()->create(['volunteer_id' => $this->volunteer->id, 'event_id' => $this->event->id]);
 });
 
@@ -124,8 +126,8 @@ it('hides promote button when already promoted', function () {
 });
 
 it('shows custom field responses on volunteer detail', function () {
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Dietary Needs']);
-    \App\Models\CustomFieldResponse::factory()->create([
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Dietary Needs']);
+    CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $this->volunteer->id,
         'value' => 'Vegan',
@@ -138,8 +140,8 @@ it('shows custom field responses on volunteer detail', function () {
 });
 
 it('shows checkbox response as Yes/No on volunteer detail', function () {
-    $field = \App\Models\CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release']);
-    \App\Models\CustomFieldResponse::factory()->create([
+    $field = CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release']);
+    CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $this->volunteer->id,
         'value' => '1',
@@ -152,8 +154,8 @@ it('shows checkbox response as Yes/No on volunteer detail', function () {
 });
 
 it('shows archived field with suffix on volunteer detail', function () {
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Old Field']);
-    \App\Models\CustomFieldResponse::factory()->create([
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Old Field']);
+    CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $this->volunteer->id,
         'value' => 'something',

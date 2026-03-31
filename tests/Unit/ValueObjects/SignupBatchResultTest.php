@@ -6,7 +6,7 @@ use App\Models\Volunteer;
 use App\ValueObjects\SignupBatchResult;
 
 it('reports has new signups when signups exist', function () {
-    $volunteer = new Volunteer(['name' => 'Test', 'email' => 'test@test.com']);
+    $volunteer = new Volunteer(['first_name' => 'Test', 'last_name' => 'User', 'email' => 'test@test.com']);
     $signup = new ShiftSignup;
 
     $result = new SignupBatchResult(
@@ -18,7 +18,7 @@ it('reports has new signups when signups exist', function () {
 });
 
 it('reports no new signups when empty', function () {
-    $volunteer = new Volunteer(['name' => 'Test', 'email' => 'test@test.com']);
+    $volunteer = new Volunteer(['first_name' => 'Test', 'last_name' => 'User', 'email' => 'test@test.com']);
 
     $result = new SignupBatchResult(
         volunteer: $volunteer,
@@ -28,7 +28,7 @@ it('reports no new signups when empty', function () {
 });
 
 it('stores skipped shifts', function () {
-    $volunteer = new Volunteer(['name' => 'Test', 'email' => 'test@test.com']);
+    $volunteer = new Volunteer(['first_name' => 'Test', 'last_name' => 'User', 'email' => 'test@test.com']);
     $fullShift = new Shift;
     $dupShift = new Shift;
 

@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center gap-3 mb-4">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate aria-label="{{ __('Back to events') }}" />
         <flux:heading size="xl">{{ $event->name }}</flux:heading>
     </div>
 
@@ -47,7 +47,7 @@
                     <flux:table.rows>
                         @foreach ($this->signups as $signup)
                             <flux:table.row :key="'signup-'.$signup->id">
-                                <flux:table.cell>{{ $signup->volunteer->name }}</flux:table.cell>
+                                <flux:table.cell>{{ $signup->volunteer->full_name }}</flux:table.cell>
                                 <flux:table.cell>{{ $signup->volunteer->email }}</flux:table.cell>
                                 <flux:table.cell>
                                     @if ($signup->volunteer->eventArrivals->isNotEmpty())

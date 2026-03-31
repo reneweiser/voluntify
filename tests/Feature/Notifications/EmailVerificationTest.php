@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Volunteer;
 use App\Notifications\EmailVerification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
@@ -13,7 +14,7 @@ beforeEach(function () {
     $this->event = Event::factory()->for($this->org)->create([
         'name' => 'Summer Fest',
     ]);
-    $this->volunteer = Volunteer::factory()->create(['name' => 'Jane Doe']);
+    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Jane', 'last_name' => 'Doe']);
     $this->verificationUrl = 'https://example.com/verify-email/test-token';
 });
 
@@ -58,7 +59,7 @@ it('uses default template when no custom template exists', function () {
 
 it('is queued', function () {
     expect(new EmailVerification($this->event, $this->verificationUrl))
-        ->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
+        ->toBeInstanceOf(ShouldQueue::class);
 });
 
 it('includes verification action URL', function () {

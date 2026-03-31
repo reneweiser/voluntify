@@ -13,7 +13,7 @@ it('runs both reminder windows and outputs counts', function () {
     Notification::fake();
 
     $org = Organization::factory()->create();
-    $event = Event::factory()->for($org)->create(['status' => EventStatus::Published]);
+    $event = Event::factory()->for($org)->create(['status' => EventStatus::PublishedOpen]);
     $job = VolunteerJob::factory()->for($event)->create();
 
     // Shift starting in 20 hours (24h window)

@@ -183,9 +183,15 @@
                 <flux:heading size="lg">{{ __('Your Information') }}</flux:heading>
 
                 <flux:field>
-                    <flux:label>{{ __('Name') }}</flux:label>
-                    <flux:input wire:model="volunteerName" placeholder="{{ __('Your full name') }}" />
-                    <flux:error name="volunteerName" />
+                    <flux:label>{{ __('First Name') }}</flux:label>
+                    <flux:input wire:model="volunteerFirstName" placeholder="{{ __('Your first name') }}" />
+                    <flux:error name="volunteerFirstName" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Last Name') }}</flux:label>
+                    <flux:input wire:model="volunteerLastName" placeholder="{{ __('Your last name') }}" />
+                    <flux:error name="volunteerLastName" />
                 </flux:field>
 
                 <flux:field>
@@ -195,7 +201,7 @@
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>{{ __('Phone') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
+                    <flux:label>{{ __('Phone') }} @unless($event->phone_required)<span class="text-zinc-400 font-normal">({{ __('optional') }})</span>@endunless</flux:label>
                     <flux:input type="tel" wire:model="volunteerPhone" placeholder="{{ __('+1 555 123 4567') }}" />
                     <flux:error name="volunteerPhone" />
                 </flux:field>

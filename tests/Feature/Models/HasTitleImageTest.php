@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\Event;
-use App\Models\EventGroup;
 use App\Models\Organization;
+use App\Models\Project;
 use Illuminate\Support\Facades\Storage;
 
 it('returns storage URL when title_image_path is set on Event', function () {
@@ -23,20 +23,20 @@ it('returns null when title_image_path is null on Event', function () {
     expect($event->titleImageUrl())->toBeNull();
 });
 
-it('returns storage URL for EventGroup when title_image_path is set', function () {
+it('returns storage URL for Project when title_image_path is set', function () {
     Storage::fake('public');
 
-    $group = EventGroup::factory()->create([
-        'title_image_path' => 'event-groups/1/banner.jpg',
+    $project = Project::factory()->create([
+        'title_image_path' => 'projects/1/banner.jpg',
     ]);
 
-    expect($group->titleImageUrl())->toBe(Storage::disk('public')->url('event-groups/1/banner.jpg'));
+    expect($project->titleImageUrl())->toBe(Storage::disk('public')->url('projects/1/banner.jpg'));
 });
 
-it('returns null for EventGroup when title_image_path is null', function () {
-    $group = EventGroup::factory()->create([
+it('returns null for Project when title_image_path is null', function () {
+    $project = Project::factory()->create([
         'title_image_path' => null,
     ]);
 
-    expect($group->titleImageUrl())->toBeNull();
+    expect($project->titleImageUrl())->toBeNull();
 });

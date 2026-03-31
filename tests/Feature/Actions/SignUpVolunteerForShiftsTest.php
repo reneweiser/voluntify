@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\SignUpVolunteerForShifts;
+use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\MagicLinkToken;
 use App\Models\Organization;
@@ -10,6 +11,7 @@ use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use App\Notifications\SignupConfirmation;
+use Illuminate\Notifications\Action;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
@@ -25,7 +27,7 @@ beforeEach(function () {
 });
 
 it('signs up for multiple shifts in one call', function () {
-    $volunteer = Volunteer::factory()->create(['email' => 'jane@example.com', 'name' => 'Jane Doe']);
+    $volunteer = Volunteer::factory()->create(['email' => 'jane@example.com', 'first_name' => 'Jane', 'last_name' => 'Doe']);
 
     $result = $this->action->execute(
         volunteer: $volunteer,
@@ -95,7 +97,7 @@ it('notification content includes all shift details', function () {
 
     Notification::assertSentTo($result->volunteer, SignupConfirmation::class, function ($notification) use ($result) {
         $mail = $notification->toMail($result->volunteer);
-        $body = implode("\n", array_map(fn ($line) => $line instanceof \Illuminate\Notifications\Action ? $line->text : $line, $mail->introLines));
+        $body = implode("\n", array_map(fn ($line) => $line instanceof Action ? $line->text : $line, $mail->introLines));
 
         return str_contains($body, $this->job->name);
     });
@@ -184,7 +186,7 @@ it('throws DomainException when a shift does not belong to the event', function 
         volunteer: $volunteer,
         event: $this->event,
         shiftIds: [$this->shift1->id, $otherShift->id],
-    ))->toThrow(\App\Exceptions\DomainException::class, 'One or more shifts do not belong to this event.');
+    ))->toThrow(DomainException::class, 'One or more shifts do not belong to this event.');
 });
 
 it('cancelled signups do not count toward capacity', function () {

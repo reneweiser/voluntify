@@ -44,7 +44,7 @@
     {{-- Top bar --}}
     <header class="flex items-center justify-between border-b border-zinc-700 bg-zinc-800 px-4 py-3">
         <div class="flex items-center gap-3">
-            <flux:button variant="ghost" href="{{ route('scanner.scan', $this->eventId) }}" wire:navigate size="sm" icon="arrow-left" class="text-zinc-300 hover:text-white" />
+            <flux:button variant="ghost" href="{{ route('scanner.scan', $this->eventId) }}" wire:navigate size="sm" icon="arrow-left" class="text-zinc-300 hover:text-white" aria-label="{{ __('Back to scanner') }}" />
             <flux:heading size="lg" class="text-white">Manual Lookup</flux:heading>
         </div>
         <span x-text="isOnline ? 'Online' : 'Offline'" :class="isOnline ? 'text-sm text-emerald-400' : 'text-sm text-amber-400'"></span>
@@ -71,7 +71,7 @@
                     <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
                         <div class="flex items-start justify-between">
                             <div>
-                                <p class="font-semibold text-white">{{ $volunteer->name }}</p>
+                                <p class="font-semibold text-white">{{ $volunteer->full_name }}</p>
                                 <p class="text-sm text-zinc-400">{{ $volunteer->email }}</p>
 
                                 @foreach ($volunteer->shiftSignups as $signup)
@@ -135,7 +135,7 @@
                     <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
                         <div class="flex items-start justify-between">
                             <div>
-                                <p class="font-semibold text-white" x-text="vol.name"></p>
+                                <p class="font-semibold text-white" x-text="vol.full_name"></p>
                                 <p class="text-sm text-zinc-400" x-text="vol.email"></p>
                                 <template x-for="signup in vol.shift_signups" :key="signup.id">
                                     <p class="mt-1 text-sm text-zinc-300" x-text="signup.shift.volunteer_job.name"></p>

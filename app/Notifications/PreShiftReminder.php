@@ -45,7 +45,7 @@ class PreShiftReminder extends Notification implements ShouldQueue
             $this->templateType,
             $this->event,
             [
-                'volunteer_name' => $notifiable->name,
+                'volunteer_name' => $notifiable->full_name,
                 'event_name' => $this->event->name,
                 'job_name' => $job->name,
                 'shift_date' => $this->shift->starts_at->format('M d, Y'),
@@ -57,7 +57,7 @@ class PreShiftReminder extends Notification implements ShouldQueue
 
         $mail = (new MailMessage)
             ->subject($rendered['subject'])
-            ->greeting("Hello {$notifiable->name}!");
+            ->greeting("Hello {$notifiable->full_name}!");
 
         foreach (explode("\n", $rendered['body']) as $line) {
             $trimmed = trim($line);

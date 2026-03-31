@@ -16,7 +16,7 @@ class PublishEvent
             throw new DomainException('Cannot publish an archived event.');
         }
 
-        if ($event->status === EventStatus::Published) {
+        if ($event->status->isPublished()) {
             throw new DomainException('Event is already published.');
         }
 
@@ -28,7 +28,7 @@ class PublishEvent
             throw new EventNotReadyException('Event must have at least one job with shifts before publishing.');
         }
 
-        $event->update(['status' => EventStatus::Published]);
+        $event->update(['status' => EventStatus::PublishedOpen]);
 
         if (auth()->user()) {
             EventPublished::dispatch($event->refresh(), auth()->user());

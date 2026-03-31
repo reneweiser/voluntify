@@ -19,7 +19,6 @@ class CloneEvent
                 'slug',
                 'public_token',
                 'title_image_path',
-                'event_group_id',
                 'created_at',
                 'updated_at',
             ]);

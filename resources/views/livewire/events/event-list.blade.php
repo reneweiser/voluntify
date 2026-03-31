@@ -10,15 +10,18 @@
     </div>
 
     {{-- Tab bar --}}
-    <div class="flex gap-2 mb-6 border-b border-zinc-200 dark:border-zinc-700">
-        <span class="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-600 dark:border-emerald-400">
-            {{ __('Events') }}
-        </span>
-        <a href="{{ route('event-groups.index') }}" wire:navigate
-           class="px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 border-b-2 border-transparent">
-            {{ __('Event Groups') }}
-        </a>
-    </div>
+    <nav aria-label="{{ __('Event views') }}">
+        <div class="flex gap-2 mb-6 border-b border-zinc-200 dark:border-zinc-700">
+            <a href="{{ route('events.index') }}" wire:navigate aria-current="page"
+               class="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-600 dark:border-emerald-400">
+                {{ __('Events') }}
+            </a>
+            <a href="{{ route('projects.index') }}" wire:navigate
+               class="px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 border-b-2 border-transparent">
+                {{ __('Projects') }}
+            </a>
+        </div>
+    </nav>
 
     {{-- Status filter buttons --}}
     <div class="flex flex-wrap gap-2 mb-6">
@@ -35,7 +38,7 @@
                 :variant="$statusFilter === $status->value ? 'primary' : 'subtle'"
                 wire:click="setStatusFilter('{{ $status->value }}')"
             >
-                {{ __(ucfirst($status->value)) }}
+                {{ $status->label() }}
             </flux:button>
         @endforeach
     </div>
@@ -62,7 +65,8 @@
                 <a href="{{ route('events.show', $event) }}" wire:navigate wire:key="event-{{ $event->id }}"
                    class="block rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 transition-all duration-200 hover:shadow-md
                        {{ match($event->status) {
-                           \App\Enums\EventStatus::Published => 'card-accent-emerald',
+                           \App\Enums\EventStatus::PublishedOpen => 'card-accent-emerald',
+                           \App\Enums\EventStatus::PublishedClosed => 'card-accent-amber',
                            \App\Enums\EventStatus::Draft => 'card-accent-amber',
                            \App\Enums\EventStatus::Archived => 'border-l-4 border-l-zinc-400',
                        } }}">
@@ -92,11 +96,12 @@
                                 {{ $event->volunteers_count }} {{ __('volunteers') }}
                             </flux:text>
                             <flux:badge size="sm" :color="match($event->status) {
-                                \App\Enums\EventStatus::Published => 'emerald',
+                                \App\Enums\EventStatus::PublishedOpen => 'emerald',
+                                \App\Enums\EventStatus::PublishedClosed => 'yellow',
                                 \App\Enums\EventStatus::Draft => 'amber',
                                 \App\Enums\EventStatus::Archived => 'zinc',
                             }">
-                                {{ __(ucfirst($event->status->value)) }}
+                                {{ $event->status->label() }}
                             </flux:badge>
                         </div>
                     </div>

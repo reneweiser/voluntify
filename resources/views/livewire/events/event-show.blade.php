@@ -1,14 +1,15 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div class="flex items-center gap-3">
-            <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate />
+            <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate aria-label="{{ __('Back to events') }}" />
             <flux:heading size="xl">{{ $event->name }}</flux:heading>
             <flux:badge size="sm" :color="match($event->status) {
-                \App\Enums\EventStatus::Published => 'emerald',
+                \App\Enums\EventStatus::PublishedOpen => 'emerald',
+                \App\Enums\EventStatus::PublishedClosed => 'yellow',
                 \App\Enums\EventStatus::Draft => 'amber',
                 \App\Enums\EventStatus::Archived => 'zinc',
             }">
-                {{ __(ucfirst($event->status->value)) }}
+                {{ $event->status->label() }}
             </flux:badge>
         </div>
 
@@ -21,8 +22,15 @@
                     <flux:button variant="primary" wire:click="publishEvent" wire:confirm="{{ __('Publish this event? It will become publicly accessible.') }}">
                         {{ __('Publish') }}
                     </flux:button>
-                @elseif ($event->status === \App\Enums\EventStatus::Published)
-                    <flux:button variant="subtle" wire:click="archiveEvent" wire:confirm="{{ __('Archive this event? Volunteers will no longer be able to sign up.') }}">
+                @elseif ($event->status === \App\Enums\EventStatus::PublishedOpen)
+                    <flux:button variant="subtle" wire:click="closeRegistration" wire:confirm="{{ __('Close registration? Volunteers will no longer be able to sign up, but the event page remains visible.') }}">
+                        {{ __('Close Registration') }}
+                    </flux:button>
+                    <flux:button variant="subtle" wire:click="archiveEvent" wire:confirm="{{ __('Archive this event? It will be removed from public view.') }}">
+                        {{ __('Archive') }}
+                    </flux:button>
+                @elseif ($event->status === \App\Enums\EventStatus::PublishedClosed)
+                    <flux:button variant="subtle" wire:click="archiveEvent" wire:confirm="{{ __('Archive this event? It will be removed from public view.') }}">
                         {{ __('Archive') }}
                     </flux:button>
                 @endif
@@ -35,12 +43,12 @@
         <flux:callout variant="danger" class="mb-4">{{ $message }}</flux:callout>
     @enderror
 
-    {{-- Group badge --}}
-    @if ($event->eventGroup)
+    {{-- Project badge --}}
+    @if ($event->project)
         <div class="mb-4">
-            <a href="{{ route('event-groups.show', $event->eventGroup) }}" wire:navigate class="inline-flex items-center gap-1.5">
+            <a href="{{ route('projects.show', $event->project) }}" wire:navigate class="inline-flex items-center gap-1.5">
                 <flux:badge size="sm" color="sky" icon="folder">
-                    {{ $event->eventGroup->name }}
+                    {{ $event->project->name }}
                 </flux:badge>
             </a>
         </div>
@@ -156,13 +164,13 @@
                         <flux:error name="attendanceGraceMinutes" />
                     </flux:field>
 
-                    @if ($this->availableGroups->isNotEmpty())
+                    @if ($this->availableProjects->isNotEmpty())
                         <flux:field>
-                            <flux:label>{{ __('Event Group') }}</flux:label>
-                            <flux:select wire:model="selectedGroupId" wire:change="updateGroup" placeholder="{{ __('None') }}">
+                            <flux:label>{{ __('Project') }}</flux:label>
+                            <flux:select wire:model="selectedProjectId" wire:change="updateProject" placeholder="{{ __('None') }}">
                                 <flux:select.option value="">{{ __('None') }}</flux:select.option>
-                                @foreach ($this->availableGroups as $group)
-                                    <flux:select.option :value="$group->id">{{ $group->name }}</flux:select.option>
+                                @foreach ($this->availableProjects as $project)
+                                    <flux:select.option :value="$project->id">{{ $project->name }}</flux:select.option>
                                 @endforeach
                             </flux:select>
                         </flux:field>

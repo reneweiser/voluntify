@@ -7,6 +7,7 @@ use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Facades\Notification;
@@ -19,7 +20,7 @@ beforeEach(function () {
 });
 
 it('denies access for non-organizers', function () {
-    $volunteerAdmin = \App\Models\User::factory()->create();
+    $volunteerAdmin = User::factory()->create();
     $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($volunteerAdmin)
@@ -35,7 +36,7 @@ it('renders for organizers', function () {
 });
 
 it('searches volunteers by name', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Alice Tester']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Tester']);
     Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
@@ -47,7 +48,7 @@ it('searches volunteers by name', function () {
 it('enrolls a volunteer into selected shifts', function () {
     Notification::fake();
 
-    $volunteer = Volunteer::factory()->create(['name' => 'Bob Enroll']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Bob', 'last_name' => 'Enroll']);
     Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     $job = VolunteerJob::factory()->for($this->event)->create();
