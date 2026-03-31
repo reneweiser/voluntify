@@ -15,12 +15,6 @@ use App\Models\VolunteerJob;
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->volunteerAdmin = User::factory()->create();
-    $this->org->users()->attach($this->volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
-
-    $this->entranceStaff = User::factory()->create();
-    $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
-
     $this->project = Project::factory()->for($this->org)->create();
     $this->event = Event::factory()->for($this->org)->for($this->project)->create();
     $this->volunteer = Volunteer::factory()->for($this->project)->create();
@@ -54,8 +48,11 @@ it('syncs attendance records for organizer', function () {
         ->and($record->status)->toBe(AttendanceStatus::OnTime);
 });
 
-it('syncs attendance records for volunteer admin', function () {
-    $this->actingAs($this->volunteerAdmin)
+it('syncs attendance records for project organizer', function () {
+    $projectOrganizer = User::factory()->create();
+    $this->project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
+
+    $this->actingAs($projectOrganizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.attendance-sync', $this->event->id), [
             'attendance' => [
@@ -72,8 +69,11 @@ it('syncs attendance records for volunteer admin', function () {
     expect($record->status)->toBe(AttendanceStatus::Late);
 });
 
-it('returns 403 for entrance staff', function () {
-    $this->actingAs($this->entranceStaff)
+it('denies non-member access', function () {
+    $outsider = User::factory()->create();
+
+    // Non-member cannot resolve the org, so the event is not found
+    $this->actingAs($outsider)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.attendance-sync', $this->event->id), [
             'attendance' => [
@@ -84,7 +84,7 @@ it('returns 403 for entrance staff', function () {
                 ],
             ],
         ])
-        ->assertForbidden();
+        ->assertNotFound();
 });
 
 it('validates input', function () {

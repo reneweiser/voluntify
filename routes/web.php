@@ -19,6 +19,7 @@ use App\Livewire\Events\ProjectList;
 use App\Livewire\Events\ProjectShow;
 use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
+use App\Livewire\Projects\ProjectMembers;
 use App\Livewire\Public\EmailVerificationPage;
 use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\JobCheatSheet;
@@ -67,6 +68,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('events', EventList::class)->name('events.index');
     Route::livewire('projects', ProjectList::class)->name('projects.index');
     Route::livewire('projects/{projectId}', ProjectShow::class)->name('projects.show');
+    Route::livewire('projects/{projectId}/members', ProjectMembers::class)->name('projects.members');
     Route::livewire('events/{eventId}', EventShow::class)->name('events.show');
     Route::livewire('events/{eventId}/jobs', JobsAndShiftsManager::class)->name('events.jobs');
     Route::livewire('events/{eventId}/emails', EmailTemplateEditor::class)->name('events.emails');

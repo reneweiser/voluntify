@@ -19,11 +19,12 @@ it('renders for organizer', function () {
         ->assertOk();
 });
 
-it('renders for volunteer admin — view only', function () {
-    ['user' => $volunteerAdmin] = createUserWithOrganization(StaffRole::VolunteerAdmin);
-    $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
+it('renders for project organizer — view only', function () {
+    $projectOrganizer = User::factory()->create();
+    $project = Project::factory()->for($this->org)->create();
+    $project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
 
-    Livewire::actingAs($volunteerAdmin)
+    Livewire::actingAs($projectOrganizer)
         ->test(ProjectList::class)
         ->assertOk()
         ->assertDontSee('Create Project');
@@ -66,11 +67,12 @@ it('validates name is required on create', function () {
         ->assertHasErrors(['projectName' => 'required']);
 });
 
-it('denies volunteer admin from creating projects', function () {
-    ['user' => $volunteerAdmin] = createUserWithOrganization(StaffRole::VolunteerAdmin);
-    $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
+it('denies project organizer from creating projects', function () {
+    $projectOrganizer = User::factory()->create();
+    $project = Project::factory()->for($this->org)->create();
+    $project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
 
-    Livewire::actingAs($volunteerAdmin)
+    Livewire::actingAs($projectOrganizer)
         ->test(ProjectList::class)
         ->set('projectName', 'Unauthorized Project')
         ->call('createProject')

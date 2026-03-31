@@ -6,7 +6,6 @@ use App\Actions\RecordArrival;
 use App\Actions\RecordAttendance;
 use App\Enums\ArrivalMethod;
 use App\Enums\AttendanceStatus;
-use App\Enums\StaffRole;
 use App\Http\Requests\SyncArrivalsRequest;
 use App\Http\Requests\SyncAttendanceRequest;
 use App\Models\AttendanceRecord;
@@ -34,13 +33,9 @@ class ScannerApiController extends Controller
         }
 
         $user = auth()->user();
-        $role = $user->cachedRoleFor($organization);
-        $userRole = match ($role) {
-            StaffRole::Organizer => 'organizer',
-            StaffRole::EntranceStaff => 'entrance_staff',
-            StaffRole::VolunteerAdmin => 'volunteer_admin',
-            default => null,
-        };
+        $event->loadMissing('project.organization');
+        $role = $user->projectRoleFor($event->project);
+        $userRole = $role?->value;
 
         $volunteers = Volunteer::forEvent($event->id)
             ->with([

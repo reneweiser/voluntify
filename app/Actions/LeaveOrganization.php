@@ -7,6 +7,7 @@ use App\Events\Activity\MemberLeft;
 use App\Exceptions\DomainException;
 use App\Models\Organization;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class LeaveOrganization
 {
@@ -31,6 +32,15 @@ class LeaveOrganization
         MemberLeft::dispatch($organization, $user);
 
         $organization->users()->detach($user->id);
+
+        // Remove project_user rows for projects in this organization
+        $projectIds = $organization->projects()->pluck('id');
+        if ($projectIds->isNotEmpty()) {
+            DB::table('project_user')
+                ->where('user_id', $user->id)
+                ->whereIn('project_id', $projectIds)
+                ->delete();
+        }
 
         if ($user->current_organization_id === $organization->id) {
             $user->update(['current_organization_id' => $user->personal_organization_id]);

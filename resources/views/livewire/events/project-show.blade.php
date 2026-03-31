@@ -5,11 +5,19 @@
             <flux:heading size="xl">{{ $project->name }}</flux:heading>
         </div>
 
-        @if ($this->canManage)
-            <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteProject" wire:confirm="{{ __('Delete this project? Events will remain but be unlinked from this project.') }}">
-                {{ __('Delete Project') }}
-            </flux:button>
-        @endif
+        <div class="flex items-center gap-2">
+            @if ($this->canManageMembers)
+                <flux:button variant="subtle" size="sm" icon="users" :href="route('projects.members', $project)" wire:navigate>
+                    {{ __('Members') }}
+                </flux:button>
+            @endif
+
+            @if ($this->canManage)
+                <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteProject" wire:confirm="{{ __('Delete this project? Events will remain but be unlinked from this project.') }}">
+                    {{ __('Delete Project') }}
+                </flux:button>
+            @endif
+        </div>
     </div>
 
     {{-- Public link --}}

@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\StaffRole;
 use App\Models\Organization;
 use App\Models\User;
 
@@ -13,18 +12,24 @@ class OrganizationPolicy
         return true;
     }
 
+    /**
+     * Org Organizer or any user with a project assignment in this org can view.
+     */
     public function view(User $user, Organization $organization): bool
     {
-        return $user->cachedRoleFor($organization) !== null;
+        return $user->hasAccessToOrganization($organization);
     }
 
     public function update(User $user, Organization $organization): bool
     {
-        return $user->cachedRoleFor($organization) === StaffRole::Organizer;
+        return $user->isOrgOrganizerFor($organization);
     }
 
+    /**
+     * Only org-level Organizers can manage organization members.
+     */
     public function manageMembers(User $user, Organization $organization): bool
     {
-        return $user->cachedRoleFor($organization) === StaffRole::Organizer;
+        return $user->isOrgOrganizerFor($organization);
     }
 }

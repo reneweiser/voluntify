@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Scanner;
 
-use App\Enums\StaffRole;
 use App\Models\Event;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -19,17 +19,9 @@ class QrScanner extends Component
     public function mount(int $eventId): void
     {
         $organization = currentOrganization();
-
-        $hasAccess = $organization->users()
-            ->where('user_id', auth()->id())
-            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::EntranceStaff, StaffRole::VolunteerAdmin])
-            ->exists();
-
-        if (! $hasAccess) {
-            abort(403);
-        }
-
-        $this->event = $organization->events()->findOrFail($eventId);
+        $this->event = $organization->events()->with('project.organization')->findOrFail($eventId);
         $this->eventId = $eventId;
+
+        Gate::authorize('scan', $this->event);
     }
 }

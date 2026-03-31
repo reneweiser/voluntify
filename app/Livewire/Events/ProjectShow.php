@@ -50,6 +50,12 @@ class ProjectShow extends Component
     }
 
     #[Computed]
+    public function canManageMembers(): bool
+    {
+        return Gate::allows('manageMembers', $this->project);
+    }
+
+    #[Computed]
     public function memberEvents(): Collection
     {
         return $this->project->events()->orderBy('starts_at')->get();

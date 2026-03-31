@@ -44,6 +44,7 @@ class EventList extends Component
     public function events(): Collection
     {
         $query = $this->organization->events()
+            ->with('project.organization')
             ->withVolunteerCount()
             ->latest('starts_at');
 
@@ -51,7 +52,14 @@ class EventList extends Component
             $query->where('status', $this->statusFilter);
         }
 
-        return $query->get();
+        $events = $query->get();
+
+        // Preload project roles to avoid N+1 in policy checks
+        $user = auth()->user();
+        $projectIds = $events->pluck('project_id')->unique()->values()->all();
+        $user->preloadProjectRoles($projectIds);
+
+        return $events;
     }
 
     #[Computed]

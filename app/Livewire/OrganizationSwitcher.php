@@ -27,7 +27,10 @@ class OrganizationSwitcher extends Component
     #[Computed]
     public function organizations(): Collection
     {
-        return auth()->user()->organizations()->orderBy('name')->get();
+        $user = auth()->user();
+        $orgIds = $user->accessibleOrganizationIds();
+
+        return Organization::whereIn('id', $orgIds)->orderBy('name')->get();
     }
 
     #[Computed]

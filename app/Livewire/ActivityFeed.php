@@ -3,7 +3,6 @@
 namespace App\Livewire;
 
 use App\Enums\ActivityCategory;
-use App\Enums\StaffRole;
 use App\Models\ActivityLog;
 use App\Models\User;
 use Carbon\Carbon;
@@ -31,13 +30,7 @@ class ActivityFeed extends Component
 
     public function mount(): void
     {
-        $org = currentOrganization();
-        $isOrganizer = $org->users()
-            ->where('user_id', auth()->id())
-            ->wherePivot('role', StaffRole::Organizer)
-            ->exists();
-
-        if (! $isOrganizer) {
+        if (! auth()->user()->hasAccessToOrganization(currentOrganization())) {
             abort(403);
         }
     }

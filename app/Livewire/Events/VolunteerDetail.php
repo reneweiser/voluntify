@@ -12,19 +12,20 @@ use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Volunteer Detail')]
 class VolunteerDetail extends Component
 {
+    #[Locked]
     public Event $event;
 
+    #[Locked]
     public Volunteer $volunteer;
 
     public bool $showPromoteModal = false;
-
-    public string $promoteRole = 'volunteer_admin';
 
     public function mount(int $eventId, int $volunteerId): void
     {
@@ -84,16 +85,12 @@ class VolunteerDetail extends Component
     {
         Gate::authorize('update', $this->event);
 
-        $this->validate([
-            'promoteRole' => ['required', 'string', 'in:organizer,volunteer_admin,entrance_staff'],
-        ]);
-
         try {
             $action = app(PromoteVolunteer::class);
             $action->execute(
                 volunteer: $this->volunteer,
                 organization: $this->event->organization,
-                role: StaffRole::from($this->promoteRole),
+                role: StaffRole::Organizer,
                 promotedBy: auth()->user(),
             );
 
@@ -102,7 +99,7 @@ class VolunteerDetail extends Component
             unset($this->canPromote, $this->isAlreadyPromoted);
             $this->dispatch('volunteer-promoted');
         } catch (DomainException $e) {
-            $this->addError('promoteRole', $e->getMessage());
+            $this->addError('promote', $e->getMessage());
         }
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Scanner;
 
-use App\Enums\StaffRole;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
@@ -14,14 +13,7 @@ class ScannerEventSelect extends Component
 {
     public function mount(): void
     {
-        $organization = currentOrganization();
-
-        $hasAccess = $organization->users()
-            ->where('user_id', auth()->id())
-            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::EntranceStaff, StaffRole::VolunteerAdmin])
-            ->exists();
-
-        if (! $hasAccess) {
+        if (! auth()->user()->hasAccessToOrganization(currentOrganization())) {
             abort(403);
         }
     }
@@ -30,11 +22,31 @@ class ScannerEventSelect extends Component
     #[Computed]
     public function events(): Collection
     {
-        return currentOrganization()->events()
+        $user = auth()->user();
+        $org = currentOrganization();
+
+        $query = $org->events()
             ->published()
+            ->with('project.organization')
             ->orderBy('starts_at')
             ->withVolunteerCount()
-            ->withCount('eventArrivals')
-            ->get();
+            ->withCount('eventArrivals');
+
+        if (! $user->isOrgOrganizerFor($org)) {
+            $projectIds = $user->projects()
+                ->where('projects.organization_id', $org->id)
+                ->pluck('projects.id');
+
+            $query->whereIn('project_id', $projectIds);
+        }
+
+        $events = $query->get();
+
+        // Preload project roles to avoid N+1 in policy checks
+        $user = auth()->user();
+        $projectIds = $events->pluck('project_id')->unique()->values()->all();
+        $user->preloadProjectRoles($projectIds);
+
+        return $events;
     }
 }

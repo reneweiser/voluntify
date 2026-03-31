@@ -32,11 +32,11 @@ it('renders for organizer', function () {
         ->assertSeeLivewire(VolunteerList::class);
 });
 
-it('renders for volunteer admin', function () {
-    $admin = User::factory()->create();
-    $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
+it('renders for project organizer', function () {
+    $projectOrganizer = User::factory()->create();
+    $this->project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
 
-    $this->actingAs($admin)
+    $this->actingAs($projectOrganizer)
         ->get(route('events.volunteers', $this->event))
         ->assertOk();
 });

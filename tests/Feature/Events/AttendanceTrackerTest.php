@@ -32,20 +32,19 @@ it('renders for organizer', function () {
         ->assertSeeLivewire(AttendanceTracker::class);
 });
 
-it('renders for volunteer admin', function () {
-    $volunteerAdmin = User::factory()->create();
-    $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
+it('renders for project organizer', function () {
+    $projectOrganizer = User::factory()->create();
+    $this->project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
 
-    $this->actingAs($volunteerAdmin)
+    $this->actingAs($projectOrganizer)
         ->get(route('events.attendance', $this->event))
         ->assertOk();
 });
 
-it('denies entrance staff', function () {
-    $entranceStaff = User::factory()->create();
-    $this->org->users()->attach($entranceStaff, ['role' => StaffRole::EntranceStaff]);
+it('denies non-member', function () {
+    $outsider = User::factory()->create();
 
-    $this->actingAs($entranceStaff)
+    $this->actingAs($outsider)
         ->get(route('events.attendance', $this->event))
         ->assertForbidden();
 });

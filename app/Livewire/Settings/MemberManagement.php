@@ -7,6 +7,7 @@ use App\Enums\StaffRole;
 use App\Exceptions\MemberAlreadyExistsException;
 use App\Models\Organization;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -21,10 +22,6 @@ class MemberManagement extends Component
 
     public string $inviteEmail = '';
 
-    public string $inviteRole = 'volunteer_admin';
-
-    public array $memberRoles = [];
-
     public bool $showRemoveModal = false;
 
     public ?int $removeMemberId = null;
@@ -36,18 +33,6 @@ class MemberManagement extends Component
         Gate::authorize('manageMembers', $this->organization());
     }
 
-    public function rendering(): void
-    {
-        $this->memberRoles = $this->members()->mapWithKeys(
-            fn ($member) => [$member->id => $member->pivot->role->value]
-        )->toArray();
-    }
-
-    public function updatedMemberRoles(string $value, string $key): void
-    {
-        $this->updateRole((int) $key, $value);
-    }
-
     #[Computed]
     public function organization(): Organization
     {
@@ -55,28 +40,9 @@ class MemberManagement extends Component
     }
 
     #[Computed]
-    public function members(): \Illuminate\Database\Eloquent\Collection
+    public function members(): Collection
     {
         return $this->organization()->users()->orderBy('name')->get();
-    }
-
-    public function updateRole(int $userId, string $role): void
-    {
-        Gate::authorize('manageMembers', $this->organization());
-
-        if ($userId === Auth::id()) {
-            $this->addError('role', 'You cannot change your own role.');
-
-            return;
-        }
-
-        $staffRole = StaffRole::from($role);
-
-        $this->organization()->users()->updateExistingPivot($userId, [
-            'role' => $staffRole,
-        ]);
-
-        unset($this->members);
     }
 
     public function confirmRemoveMember(int $userId): void
@@ -137,7 +103,6 @@ class MemberManagement extends Component
         $this->validate([
             'inviteName' => ['required', 'string', 'max:255'],
             'inviteEmail' => ['required', 'email', 'max:255'],
-            'inviteRole' => ['required', 'string', 'in:organizer,volunteer_admin,entrance_staff'],
         ]);
 
         try {
@@ -145,7 +110,7 @@ class MemberManagement extends Component
                 $this->organization(),
                 $this->inviteName,
                 $this->inviteEmail,
-                StaffRole::from($this->inviteRole),
+                StaffRole::Organizer,
             );
         } catch (MemberAlreadyExistsException) {
             $this->addError('inviteEmail', 'This user is already a member.');
@@ -153,8 +118,7 @@ class MemberManagement extends Component
             return;
         }
 
-        $this->reset('inviteName', 'inviteEmail', 'inviteRole');
-        $this->inviteRole = 'volunteer_admin';
+        $this->reset('inviteName', 'inviteEmail');
 
         unset($this->members);
 

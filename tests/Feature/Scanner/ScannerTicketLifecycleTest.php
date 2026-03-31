@@ -10,9 +10,6 @@ use App\Services\TokenVerifier;
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = \App\Models\User::factory()->create();
-    $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
-
     $this->event = Event::factory()->for($this->org)->create();
     $this->volunteer = Volunteer::factory()->create();
 });
@@ -27,8 +24,8 @@ it('full round-trip: generate EdDSA ticket → scanner data → verify → sync 
     $header = json_decode(base64_decode(strtr($parts[0], '-_', '+/')), true);
     expect($header['alg'])->toBe('EdDSA');
 
-    // 2. GET scanner data — capture public keys
-    $response = $this->actingAs($this->entranceStaff)
+    // 2. GET scanner data — capture public keys (use org Organizer)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
 
@@ -45,7 +42,7 @@ it('full round-trip: generate EdDSA ticket → scanner data → verify → sync 
     expect($decoded->volunteer_id)->toBe($this->volunteer->id);
 
     // 4. POST sync — arrival recorded
-    $syncResponse = $this->actingAs($this->entranceStaff)
+    $syncResponse = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [

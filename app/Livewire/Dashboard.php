@@ -28,7 +28,7 @@ class Dashboard extends Component
     #[Computed]
     public function userRole(): ?string
     {
-        return auth()->user()->cachedRoleFor($this->organization)?->value;
+        return auth()->user()->orgRoleFor($this->organization)?->value;
     }
 
     #[Computed]
@@ -72,13 +72,21 @@ class Dashboard extends Component
     #[Computed]
     public function upcomingEvents(): Collection
     {
-        return $this->organization->events()
+        $events = $this->organization->events()
             ->published()
+            ->with('project.organization')
             ->where('starts_at', '>=', now())
             ->withVolunteerCount()
             ->orderBy('starts_at')
             ->limit(5)
             ->get();
+
+        // Preload project roles to avoid N+1 in policy checks
+        $user = auth()->user();
+        $projectIds = $events->pluck('project_id')->unique()->values()->all();
+        $user->preloadProjectRoles($projectIds);
+
+        return $events;
     }
 
     #[Computed]
@@ -136,13 +144,21 @@ class Dashboard extends Component
     #[Computed]
     public function recentPastEvents(): Collection
     {
-        return $this->organization->events()
+        $events = $this->organization->events()
             ->published()
+            ->with('project.organization')
             ->where('ends_at', '<', now())
             ->withVolunteerCount()
             ->withCount('eventArrivals')
             ->orderByDesc('ends_at')
             ->limit(5)
             ->get();
+
+        // Preload project roles to avoid N+1 in policy checks
+        $user = auth()->user();
+        $projectIds = $events->pluck('project_id')->unique()->values()->all();
+        $user->preloadProjectRoles($projectIds);
+
+        return $events;
     }
 }

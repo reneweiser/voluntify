@@ -1,11 +1,11 @@
 <?php
 
-use App\Enums\StaffRole;
 use App\Livewire\Events\JobsAndShiftsManager;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Livewire\Livewire;
@@ -153,17 +153,12 @@ it('shows full badge when shift is at capacity', function () {
         ->assertSee('Full');
 });
 
-it('shows read-only view for volunteer admin', function () {
-    $admin = \App\Models\User::factory()->create();
-    $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
+it('denies non-member access', function () {
+    $outsider = User::factory()->create();
 
-    $job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Visible Job']);
-
-    Livewire::actingAs($admin)
-        ->test(JobsAndShiftsManager::class, ['eventId' => $this->event->id])
-        ->assertSee('Visible Job')
-        ->assertDontSee('Add Job')
-        ->assertDontSee('Add Shift');
+    $this->actingAs($outsider)
+        ->get(route('events.jobs', $this->event))
+        ->assertForbidden();
 });
 
 it('returns 404 for events from other organizations', function () {
