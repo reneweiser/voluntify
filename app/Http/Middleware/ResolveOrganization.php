@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Organization;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class ResolveOrganization
@@ -19,14 +20,38 @@ class ResolveOrganization
 
         $preferredId = session('current_organization_id') ?? $user->current_organization_id;
 
+        // Short-circuit (D12): if we have a preferred org ID, verify access
+        // via org membership OR project membership in a single check.
         if ($preferredId) {
-            $organization = $user->organizations()
+            $hasAccess = $user->organizations()
                 ->where('organization_id', $preferredId)
-                ->first();
+                ->exists()
+                || DB::table('project_user')
+                    ->join('projects', 'project_user.project_id', '=', 'projects.id')
+                    ->where('project_user.user_id', $user->id)
+                    ->where('projects.organization_id', $preferredId)
+                    ->exists();
+
+            if ($hasAccess) {
+                $organization = Organization::find($preferredId);
+            }
         }
 
+        // Fall through: first login or preferred org no longer accessible
         if (! isset($organization) || ! $organization) {
             $organization = $user->organizations()->first();
+
+            if (! $organization) {
+                // Check if user has access via project membership
+                $projectOrgId = DB::table('project_user')
+                    ->join('projects', 'project_user.project_id', '=', 'projects.id')
+                    ->where('project_user.user_id', $user->id)
+                    ->value('projects.organization_id');
+
+                if ($projectOrgId) {
+                    $organization = Organization::find($projectOrgId);
+                }
+            }
         }
 
         if (! $organization) {

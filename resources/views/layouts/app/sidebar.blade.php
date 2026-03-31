@@ -19,21 +19,14 @@
                         {{ __('Events') }}
                     </flux:sidebar.item>
                     @php
-                        $isOrganizer = currentOrganization()->users()
-                            ->where('user_id', auth()->id())
-                            ->wherePivot('role', \App\Enums\StaffRole::Organizer)
-                            ->exists();
-                        $canScan = $isOrganizer || currentOrganization()->users()
-                            ->where('user_id', auth()->id())
-                            ->wherePivotIn('role', [\App\Enums\StaffRole::EntranceStaff, \App\Enums\StaffRole::VolunteerAdmin])
-                            ->exists();
+                        $hasAccess = auth()->user()->hasAccessToOrganization(currentOrganization());
                     @endphp
-                    @if ($canScan)
+                    @if ($hasAccess)
                         <flux:sidebar.item icon="qr-code" :href="route('scanner.index')" :current="request()->routeIs('scanner.*')" wire:navigate>
                             {{ __('Scanner') }}
                         </flux:sidebar.item>
                     @endif
-                    @if ($isOrganizer)
+                    @if ($hasAccess)
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log')" :current="request()->routeIs('activity-log')" wire:navigate>
                             {{ __('Activity Log') }}
                         </flux:sidebar.item>

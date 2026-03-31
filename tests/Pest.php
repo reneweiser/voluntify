@@ -1,5 +1,12 @@
 <?php
 
+use App\Enums\StaffRole;
+use App\Models\Organization;
+use App\Models\Project;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -11,8 +18,8 @@
 |
 */
 
-pest()->extend(Tests\TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -44,14 +51,29 @@ expect()->extend('toBeOne', function () {
 /**
  * Create a user attached to an organization with the given role.
  *
- * @return array{user: \App\Models\User, organization: \App\Models\Organization}
+ * @return array{user: User, organization: Organization}
  */
-function createUserWithOrganization(\App\Enums\StaffRole $role = \App\Enums\StaffRole::Organizer): array
+function createUserWithOrganization(StaffRole $role = StaffRole::Organizer): array
 {
-    $user = \App\Models\User::factory()->create();
-    $organization = \App\Models\Organization::factory()->create();
+    $user = User::factory()->create();
+    $organization = Organization::factory()->create();
 
     $organization->users()->attach($user, ['role' => $role]);
 
     return ['user' => $user, 'organization' => $organization];
+}
+
+/**
+ * Create a user with project-level Organizer access (no org_user row).
+ *
+ * @return array{user: User, organization: Organization, project: Project}
+ */
+function createUserWithProjectOrganization(?Organization $organization = null): array
+{
+    $user = User::factory()->create();
+    $organization ??= Organization::factory()->create();
+    $project = Project::factory()->for($organization)->create();
+    $project->users()->attach($user, ['role' => StaffRole::Organizer]);
+
+    return ['user' => $user, 'organization' => $organization, 'project' => $project];
 }

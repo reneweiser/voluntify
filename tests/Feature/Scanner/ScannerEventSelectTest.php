@@ -3,16 +3,15 @@
 use App\Enums\StaffRole;
 use App\Livewire\Scanner\ScannerEventSelect;
 use App\Models\Event;
+use App\Models\Organization;
+use App\Models\Project;
+use App\Models\User;
 use Livewire\Livewire;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = \App\Models\User::factory()->create();
-    $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
-
-    $this->volunteerAdmin = \App\Models\User::factory()->create();
-    $this->org->users()->attach($this->volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
+    $this->project = Project::factory()->for($this->org)->create();
 });
 
 it('renders for organizer', function () {
@@ -23,19 +22,24 @@ it('renders for organizer', function () {
         ->assertSeeLivewire(ScannerEventSelect::class);
 });
 
-it('renders for entrance staff', function () {
-    $this->actingAs($this->entranceStaff)
+it('renders for project organizer', function () {
+    $projectOrganizer = User::factory()->create();
+    $this->project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
+
+    $this->actingAs($projectOrganizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('scanner.index'))
         ->assertOk()
         ->assertSeeLivewire(ScannerEventSelect::class);
 });
 
-it('renders for volunteer admin', function () {
-    $this->actingAs($this->volunteerAdmin)
+it('denies non-member', function () {
+    $outsider = User::factory()->create();
+
+    $this->actingAs($outsider)
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('scanner.index'))
-        ->assertOk();
+        ->assertForbidden();
 });
 
 it('redirects unauthenticated users', function () {
@@ -44,9 +48,9 @@ it('redirects unauthenticated users', function () {
 });
 
 it('lists published org events', function () {
-    $event = Event::factory()->for($this->org)->published()->create();
+    $event = Event::factory()->for($this->org)->for($this->project)->published()->create();
 
-    app()->instance(\App\Models\Organization::class, $this->org);
+    app()->instance(Organization::class, $this->org);
 
     Livewire::actingAs($this->organizer)
         ->test(ScannerEventSelect::class)
@@ -55,9 +59,9 @@ it('lists published org events', function () {
 });
 
 it('hides draft events', function () {
-    $draft = Event::factory()->for($this->org)->create(['name' => 'Draft Event', 'status' => 'draft']);
+    $draft = Event::factory()->for($this->org)->for($this->project)->create(['name' => 'Draft Event', 'status' => 'draft']);
 
-    app()->instance(\App\Models\Organization::class, $this->org);
+    app()->instance(Organization::class, $this->org);
 
     Livewire::actingAs($this->organizer)
         ->test(ScannerEventSelect::class)
@@ -65,10 +69,10 @@ it('hides draft events', function () {
 });
 
 it('hides events from other orgs', function () {
-    $otherOrg = \App\Models\Organization::factory()->create();
+    $otherOrg = Organization::factory()->create();
     Event::factory()->for($otherOrg)->published()->create(['name' => 'Other Org Event']);
 
-    app()->instance(\App\Models\Organization::class, $this->org);
+    app()->instance(Organization::class, $this->org);
 
     Livewire::actingAs($this->organizer)
         ->test(ScannerEventSelect::class)
@@ -76,7 +80,7 @@ it('hides events from other orgs', function () {
 });
 
 it('shows empty state when no published events', function () {
-    app()->instance(\App\Models\Organization::class, $this->org);
+    app()->instance(Organization::class, $this->org);
 
     Livewire::actingAs($this->organizer)
         ->test(ScannerEventSelect::class)
@@ -89,4 +93,20 @@ it('uses app layout with sidebar', function () {
         ->get(route('scanner.index'))
         ->assertOk()
         ->assertDontSee('data-scanner-layout', false);
+});
+
+it('scopes events to assigned projects for project organizer', function () {
+    $event = Event::factory()->for($this->org)->for($this->project)->published()->create(['name' => 'My Project Event']);
+    $otherProject = Project::factory()->for($this->org)->create();
+    Event::factory()->for($this->org)->for($otherProject)->published()->create(['name' => 'Other Project Event']);
+
+    $projectOrganizer = User::factory()->create();
+    $this->project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
+
+    app()->instance(Organization::class, $this->org);
+
+    Livewire::actingAs($projectOrganizer)
+        ->test(ScannerEventSelect::class)
+        ->assertSee('My Project Event')
+        ->assertDontSee('Other Project Event');
 });

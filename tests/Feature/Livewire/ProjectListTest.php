@@ -19,11 +19,12 @@ it('renders for organizer', function () {
         ->assertOk();
 });
 
-it('renders for volunteer admin — view only', function () {
-    ['user' => $volunteerAdmin] = createUserWithOrganization(StaffRole::VolunteerAdmin);
-    $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
+it('renders for project organizer — view only', function () {
+    $projectOrganizer = User::factory()->create();
+    $project = Project::factory()->for($this->org)->create();
+    $project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
 
-    Livewire::actingAs($volunteerAdmin)
+    Livewire::actingAs($projectOrganizer)
         ->test(ProjectList::class)
         ->assertOk()
         ->assertDontSee('Create Project');
@@ -66,13 +67,27 @@ it('validates name is required on create', function () {
         ->assertHasErrors(['projectName' => 'required']);
 });
 
-it('denies volunteer admin from creating projects', function () {
-    ['user' => $volunteerAdmin] = createUserWithOrganization(StaffRole::VolunteerAdmin);
-    $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
+it('denies project organizer from creating projects', function () {
+    $projectOrganizer = User::factory()->create();
+    $project = Project::factory()->for($this->org)->create();
+    $project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
 
-    Livewire::actingAs($volunteerAdmin)
+    Livewire::actingAs($projectOrganizer)
         ->test(ProjectList::class)
         ->set('projectName', 'Unauthorized Project')
         ->call('createProject')
         ->assertForbidden();
+});
+
+it('project organizer only sees assigned projects', function () {
+    $project1 = Project::factory()->for($this->org)->create(['name' => 'Assigned Project']);
+    $project2 = Project::factory()->for($this->org)->create(['name' => 'Other Project']);
+
+    $projectUser = User::factory()->create();
+    $project1->users()->attach($projectUser, ['role' => StaffRole::Organizer]);
+
+    Livewire::actingAs($projectUser)
+        ->test(ProjectList::class)
+        ->assertSee('Assigned Project')
+        ->assertDontSee('Other Project');
 });

@@ -114,20 +114,14 @@
         @endif
 
         {{-- Promote modal --}}
-        <flux:modal wire:model="showPromoteModal">
+        <flux:modal wire:model="showPromoteModal" focusable>
             <flux:heading>{{ __('Promote to Staff') }}</flux:heading>
             <flux:text class="mt-2">{{ __('Promote :name to a staff member. They will receive login credentials via email.', ['name' => $volunteer->full_name]) }}</flux:text>
 
             <div class="mt-4">
-                <flux:field>
-                    <flux:label>{{ __('Role') }}</flux:label>
-                    <flux:select wire:model="promoteRole">
-                        <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>
-                        <flux:select.option value="entrance_staff">{{ __('Entrance Staff') }}</flux:select.option>
-                        <flux:select.option value="organizer">{{ __('Organizer') }}</flux:select.option>
-                    </flux:select>
-                    <flux:error name="promoteRole" />
-                </flux:field>
+                <flux:text size="sm" class="font-medium">{{ __('Role') }}</flux:text>
+                <flux:badge size="sm" class="mt-1">{{ __('Organizer') }}</flux:badge>
+                <flux:error name="promote" />
             </div>
 
             <div class="mt-6 flex gap-2">

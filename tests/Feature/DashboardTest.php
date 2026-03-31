@@ -6,8 +6,10 @@ use App\Livewire\Dashboard;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Livewire\Livewire;
@@ -123,7 +125,7 @@ test('excludes past and archived events from upcoming list', function () {
         ->assertDontSee('Archived Fest');
 });
 
-test('create event button visible for organizer only', function () {
+test('create event button visible for org organizer only', function () {
     ['user' => $organizer, 'organization' => $org] = createUserWithOrganization();
     app()->instance(Organization::class, $org);
 
@@ -131,9 +133,10 @@ test('create event button visible for organizer only', function () {
         ->test(Dashboard::class)
         ->assertSee('Create Event');
 
-    ['user' => $admin] = createUserWithOrganization(StaffRole::VolunteerAdmin);
+    ['user' => $projectOrganizer, 'organization' => $org2] = createUserWithProjectOrganization();
+    app()->instance(Organization::class, $org2);
 
-    Livewire::actingAs($admin)
+    Livewire::actingAs($projectOrganizer)
         ->test(Dashboard::class)
         ->assertDontSee('Create Event');
 });
@@ -235,4 +238,32 @@ test('recent past events only includes past events', function () {
         ->test(Dashboard::class)
         ->assertSee('Past Gala')
         ->assertSee('Recent Past Events');
+});
+
+test('project organizer only sees events from assigned project', function () {
+    $org = Organization::factory()->create();
+    $project1 = Project::factory()->for($org)->create();
+    $project2 = Project::factory()->for($org)->create();
+
+    $user = User::factory()->create();
+    $project1->users()->attach($user, ['role' => StaffRole::Organizer]);
+    $user->update(['current_organization_id' => $org->id]);
+
+    app()->instance(Organization::class, $org);
+
+    Event::factory()->for($org)->for($project1)->published()->create([
+        'name' => 'My Project Event',
+        'starts_at' => now()->addWeek(),
+        'ends_at' => now()->addWeek()->addHours(4),
+    ]);
+    Event::factory()->for($org)->for($project2)->published()->create([
+        'name' => 'Other Project Event',
+        'starts_at' => now()->addWeek(),
+        'ends_at' => now()->addWeek()->addHours(4),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('My Project Event')
+        ->assertDontSee('Other Project Event');
 });

@@ -5,7 +5,6 @@ namespace App\Livewire\Scanner;
 use App\Actions\RecordArrival;
 use App\Actions\RecordAttendance;
 use App\Enums\ArrivalMethod;
-use App\Enums\StaffRole;
 use App\Models\Event;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -30,18 +29,10 @@ class ManualLookup extends Component
     public function mount(int $eventId): void
     {
         $organization = currentOrganization();
-
-        $hasAccess = $organization->users()
-            ->where('user_id', auth()->id())
-            ->wherePivotIn('role', [StaffRole::Organizer, StaffRole::EntranceStaff, StaffRole::VolunteerAdmin])
-            ->exists();
-
-        if (! $hasAccess) {
-            abort(403);
-        }
-
-        $this->event = $organization->events()->findOrFail($eventId);
+        $this->event = $organization->events()->with('project.organization')->findOrFail($eventId);
         $this->eventId = $eventId;
+
+        Gate::authorize('scan', $this->event);
     }
 
     /** @return Collection<int, Volunteer> */
@@ -66,6 +57,8 @@ class ManualLookup extends Component
 
     public function confirmArrival(int $volunteerId): void
     {
+        Gate::authorize('scan', $this->event);
+
         $ticket = Ticket::where('volunteer_id', $volunteerId)
             ->where('project_id', $this->event->project_id)
             ->firstOrFail();

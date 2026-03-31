@@ -19,12 +19,6 @@ use Livewire\Livewire;
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = User::factory()->create();
-    $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
-
-    $this->volunteerAdmin = User::factory()->create();
-    $this->org->users()->attach($this->volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
-
     $this->project = Project::factory()->for($this->org)->create();
     $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
 
@@ -41,8 +35,11 @@ it('renders for organizer', function () {
         ->assertSeeLivewire(ManualLookup::class);
 });
 
-it('renders for volunteer admin', function () {
-    $this->actingAs($this->volunteerAdmin)
+it('renders for project organizer', function () {
+    $projectOrganizer = User::factory()->create();
+    $this->project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
+
+    $this->actingAs($projectOrganizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('scanner.lookup', $this->event))
         ->assertOk();

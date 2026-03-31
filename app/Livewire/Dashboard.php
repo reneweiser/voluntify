@@ -10,6 +10,7 @@ use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -25,16 +26,35 @@ class Dashboard extends Component
         return currentOrganization();
     }
 
+    /**
+     * Return an events query scoped to the user's accessible projects.
+     */
+    private function scopedEvents(): HasMany
+    {
+        $user = auth()->user();
+        $query = $this->organization->events();
+
+        if (! $user->isOrgOrganizerFor($this->organization)) {
+            $projectIds = $user->projects()
+                ->where('projects.organization_id', $this->organization->id)
+                ->pluck('projects.id');
+
+            $query->whereIn('project_id', $projectIds);
+        }
+
+        return $query;
+    }
+
     #[Computed]
     public function userRole(): ?string
     {
-        return auth()->user()->cachedRoleFor($this->organization)?->value;
+        return auth()->user()->orgRoleFor($this->organization)?->value;
     }
 
     #[Computed]
     public function upcomingEventsCount(): int
     {
-        return $this->organization->events()
+        return $this->scopedEvents()
             ->published()
             ->where('starts_at', '>=', now())
             ->count();
@@ -45,7 +65,7 @@ class Dashboard extends Component
     {
         return Volunteer::whereHas(
             'shiftSignups',
-            fn ($q) => $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->whereIn('event_id', $this->organization->events()->select('id')))
+            fn ($q) => $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->whereIn('event_id', $this->scopedEvents()->select('id')))
         )->count();
     }
 
@@ -54,7 +74,7 @@ class Dashboard extends Component
     {
         return Shift::whereHas('volunteerJob', fn ($q) => $q->whereIn(
             'event_id',
-            $this->organization->events()
+            $this->scopedEvents()
                 ->published()
                 ->where('starts_at', '>=', now())
                 ->select('id')
@@ -72,13 +92,21 @@ class Dashboard extends Component
     #[Computed]
     public function upcomingEvents(): Collection
     {
-        return $this->organization->events()
+        $events = $this->scopedEvents()
             ->published()
+            ->with('project.organization')
             ->where('starts_at', '>=', now())
             ->withVolunteerCount()
             ->orderBy('starts_at')
             ->limit(5)
             ->get();
+
+        // Preload project roles to avoid N+1 in policy checks
+        $user = auth()->user();
+        $projectIds = $events->pluck('project_id')->unique()->values()->all();
+        $user->preloadProjectRoles($projectIds);
+
+        return $events;
     }
 
     #[Computed]
@@ -106,7 +134,7 @@ class Dashboard extends Component
     #[Computed]
     public function attendanceSummary(): array
     {
-        $eventIds = $this->organization->events()->select('id');
+        $eventIds = $this->scopedEvents()->select('id');
 
         $totalSignups = ShiftSignup::whereHas(
             'shift.volunteerJob',
@@ -136,13 +164,21 @@ class Dashboard extends Component
     #[Computed]
     public function recentPastEvents(): Collection
     {
-        return $this->organization->events()
+        $events = $this->scopedEvents()
             ->published()
+            ->with('project.organization')
             ->where('ends_at', '<', now())
             ->withVolunteerCount()
             ->withCount('eventArrivals')
             ->orderByDesc('ends_at')
             ->limit(5)
             ->get();
+
+        // Preload project roles to avoid N+1 in policy checks
+        $user = auth()->user();
+        $projectIds = $events->pluck('project_id')->unique()->values()->all();
+        $user->preloadProjectRoles($projectIds);
+
+        return $events;
     }
 }

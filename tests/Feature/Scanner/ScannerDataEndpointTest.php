@@ -21,21 +21,21 @@ use Firebase\JWT\JWT;
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = User::factory()->create();
-    $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
-
+    $this->projectOrganizer = User::factory()->create();
     $this->project = Project::factory()->for($this->org)->create();
+    $this->project->users()->attach($this->projectOrganizer, ['role' => StaffRole::Organizer]);
+
     $this->event = Event::factory()->for($this->org)->for($this->project)->create();
 });
 
-it('returns volunteers and shifts for entrance staff', function () {
+it('returns volunteers and shifts for project organizer', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Alice', 'last_name' => 'Test']);
     $ticket = Ticket::factory()->for($volunteer)->for($this->project, 'project')->create();
     $job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Gate Watch']);
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
 
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->projectOrganizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
 
@@ -51,7 +51,7 @@ it('returns volunteers and shifts for entrance staff', function () {
 });
 
 it('returns Ed25519 public keys', function () {
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
 
@@ -70,7 +70,7 @@ it('returns Ed25519 public keys', function () {
 });
 
 it('returned keys cannot sign a valid JWT', function () {
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
 
@@ -100,11 +100,11 @@ it('includes existing arrivals', function () {
         'ticket_id' => $ticket->id,
         'volunteer_id' => $volunteer->id,
         'event_id' => $this->event->id,
-        'scanned_by' => $this->entranceStaff->id,
+        'scanned_by' => $this->organizer->id,
         'method' => ArrivalMethod::QrScan,
     ]);
 
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
 
@@ -125,7 +125,7 @@ it('includes attendance_record in shift_signups', function () {
         'recorded_by' => $this->organizer->id,
     ]);
 
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
 
@@ -144,7 +144,7 @@ it('returns null attendance_record when none exists', function () {
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
 
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
 
@@ -167,16 +167,13 @@ it('returns user_role and grace minutes in data response', function () {
         ->and($response->json('attendance_records'))->toBeArray();
 });
 
-it('allows volunteer admin access for attendance tracking', function () {
-    $volunteerAdmin = User::factory()->create();
-    $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
-
-    $response = $this->actingAs($volunteerAdmin)
+it('allows project organizer access for scanner data', function () {
+    $response = $this->actingAs($this->projectOrganizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $this->event->id));
 
     $response->assertOk();
-    expect($response->json('user_role'))->toBe('volunteer_admin');
+    expect($response->json('user_role'))->toBe('organizer');
 });
 
 it('redirects unauthenticated user', function () {
@@ -188,8 +185,18 @@ it('returns 404 for event in wrong org', function () {
     $otherOrg = Organization::factory()->create();
     $otherEvent = Event::factory()->for($otherOrg)->create();
 
-    $this->actingAs($this->entranceStaff)
+    $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->getJson(route('scanner.data', $otherEvent->id))
+        ->assertNotFound();
+});
+
+it('denies non-member access', function () {
+    $outsider = User::factory()->create();
+
+    // Non-member cannot resolve the org, so the event is not found
+    $this->actingAs($outsider)
+        ->withSession(['current_organization_id' => $this->org->id])
+        ->getJson(route('scanner.data', $this->event->id))
         ->assertNotFound();
 });

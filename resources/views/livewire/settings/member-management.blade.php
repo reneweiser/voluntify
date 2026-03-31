@@ -1,7 +1,7 @@
 <section class="w-full">
     @include('partials.settings-heading')
 
-    <x-settings.layout :heading="__('Members')" :subheading="__('Manage your organization\'s members and roles')">
+    <x-settings.layout :heading="__('Members')" :subheading="__('Manage your organization\'s members')">
         {{-- Invite member --}}
         <div class="mb-8">
             <flux:heading size="sm">{{ __('Invite new member') }}</flux:heading>
@@ -9,11 +9,6 @@
             <form wire:submit="inviteMember" class="mt-4 space-y-4">
                 <flux:input wire:model="inviteName" :label="__('Name')" required />
                 <flux:input wire:model="inviteEmail" :label="__('Email')" type="email" required />
-                <flux:select wire:model="inviteRole" :label="__('Role')">
-                    <flux:select.option value="organizer">{{ __('Organizer') }}</flux:select.option>
-                    <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>
-                    <flux:select.option value="entrance_staff">{{ __('Entrance Staff') }}</flux:select.option>
-                </flux:select>
 
                 <flux:button variant="primary" type="submit">{{ __('Send invitation') }}</flux:button>
 
@@ -41,23 +36,15 @@
                         </div>
 
                         <div class="flex items-center gap-2 shrink-0">
-                            @if ($member->id === auth()->id())
-                                <flux:badge size="sm">{{ __($member->pivot->role->value) }}</flux:badge>
-                            @else
-                                <flux:select
-                                    size="sm"
-                                    wire:model.live="memberRoles.{{ $member->id }}"
-                                >
-                                    <flux:select.option value="organizer">{{ __('Organizer') }}</flux:select.option>
-                                    <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>
-                                    <flux:select.option value="entrance_staff">{{ __('Entrance Staff') }}</flux:select.option>
-                                </flux:select>
+                            <flux:badge size="sm">{{ __('Organizer') }}</flux:badge>
 
+                            @if ($member->id !== auth()->id())
                                 <flux:button
                                     variant="danger"
                                     size="sm"
                                     icon="trash"
                                     wire:click="confirmRemoveMember({{ $member->id }})"
+                                    aria-label="{{ __('Remove :name', ['name' => $member->name]) }}"
                                 />
                             @endif
                         </div>

@@ -5,6 +5,7 @@ use App\Enums\StaffRole;
 use App\Livewire\Events\EventList;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\User;
@@ -88,11 +89,12 @@ it('shows create button for organizers', function () {
         ->assertSee('Create Event');
 });
 
-it('hides create button for volunteer admins', function () {
-    $admin = User::factory()->create();
-    $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
+it('hides create button for project organizers', function () {
+    $projectUser = User::factory()->create();
+    $project = Project::factory()->for($this->org)->create();
+    $project->users()->attach($projectUser, ['role' => StaffRole::Organizer]);
 
-    Livewire::actingAs($admin)
+    Livewire::actingAs($projectUser)
         ->test(EventList::class)
         ->assertDontSee('Create Event');
 });
@@ -140,4 +142,20 @@ it('makes event rows clickable links to detail page', function () {
     Livewire::actingAs($this->user)
         ->test(EventList::class)
         ->assertSeeHtml(route('events.show', $event));
+});
+
+it('project organizer only sees events from assigned project', function () {
+    $project1 = Project::factory()->for($this->org)->create();
+    $project2 = Project::factory()->for($this->org)->create();
+
+    Event::factory()->for($this->org)->for($project1)->published()->create(['name' => 'Assigned Event']);
+    Event::factory()->for($this->org)->for($project2)->published()->create(['name' => 'Other Event']);
+
+    $projectUser = User::factory()->create();
+    $project1->users()->attach($projectUser, ['role' => StaffRole::Organizer]);
+
+    Livewire::actingAs($projectUser)
+        ->test(EventList::class)
+        ->assertSee('Assigned Event')
+        ->assertDontSee('Other Event');
 });

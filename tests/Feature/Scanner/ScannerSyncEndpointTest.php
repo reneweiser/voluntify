@@ -12,9 +12,6 @@ use App\Models\Volunteer;
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = User::factory()->create();
-    $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
-
     $this->project = Project::factory()->for($this->org)->create();
     $this->event = Event::factory()->for($this->org)->for($this->project)->create();
     $this->volunteer = Volunteer::factory()->for($this->project)->create();
@@ -22,7 +19,7 @@ beforeEach(function () {
 });
 
 it('syncs a single arrival', function () {
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [
@@ -49,7 +46,7 @@ it('syncs batch of arrivals', function () {
     $volunteer2 = Volunteer::factory()->for($this->project)->create();
     $ticket2 = Ticket::factory()->for($volunteer2)->for($this->project, 'project')->create();
 
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [
@@ -72,7 +69,7 @@ it('syncs batch of arrivals', function () {
 
 it('handles duplicate arrivals gracefully', function () {
     // First sync
-    $this->actingAs($this->entranceStaff)
+    $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [
@@ -85,7 +82,7 @@ it('handles duplicate arrivals gracefully', function () {
         ]);
 
     // Second sync with same ticket
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [
@@ -105,7 +102,7 @@ it('handles duplicate arrivals gracefully', function () {
 });
 
 it('returns updated arrivals after sync', function () {
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [
@@ -122,7 +119,7 @@ it('returns updated arrivals after sync', function () {
 });
 
 it('validates input', function () {
-    $this->actingAs($this->entranceStaff)
+    $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [
@@ -141,7 +138,7 @@ it('rejects syncing a ticket from a different project', function () {
     $otherVolunteer = Volunteer::factory()->for($otherProject)->create();
     $otherTicket = Ticket::factory()->for($otherVolunteer)->for($otherProject, 'project')->create();
 
-    $response = $this->actingAs($this->entranceStaff)
+    $response = $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [
@@ -157,11 +154,11 @@ it('rejects syncing a ticket from a different project', function () {
     expect(EventArrival::count())->toBe(0);
 });
 
-it('returns 403 for unauthorized user', function () {
-    $volunteerAdmin = User::factory()->create();
-    $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
+it('denies non-member access', function () {
+    $outsider = User::factory()->create();
 
-    $this->actingAs($volunteerAdmin)
+    // Non-member cannot resolve the org, so the event is not found
+    $this->actingAs($outsider)
         ->withSession(['current_organization_id' => $this->org->id])
         ->postJson(route('scanner.sync', $this->event->id), [
             'arrivals' => [
@@ -172,5 +169,5 @@ it('returns 403 for unauthorized user', function () {
                 ],
             ],
         ])
-        ->assertForbidden();
+        ->assertNotFound();
 });

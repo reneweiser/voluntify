@@ -3,18 +3,16 @@
 use App\Enums\StaffRole;
 use App\Livewire\Scanner\QrScanner;
 use App\Models\Event;
+use App\Models\Organization;
+use App\Models\Project;
+use App\Models\User;
 use Livewire\Livewire;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = \App\Models\User::factory()->create();
-    $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
-
-    $this->volunteerAdmin = \App\Models\User::factory()->create();
-    $this->org->users()->attach($this->volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
-
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
 });
 
 it('renders for organizer', function () {
@@ -25,19 +23,25 @@ it('renders for organizer', function () {
         ->assertSeeLivewire(QrScanner::class);
 });
 
-it('renders for volunteer admin', function () {
-    $this->actingAs($this->volunteerAdmin)
-        ->withSession(['current_organization_id' => $this->org->id])
-        ->get(route('scanner.scan', $this->event))
-        ->assertOk();
-});
+it('renders for project organizer', function () {
+    $projectOrganizer = User::factory()->create();
+    $this->project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
 
-it('renders for entrance staff', function () {
-    $this->actingAs($this->entranceStaff)
+    $this->actingAs($projectOrganizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('scanner.scan', $this->event))
         ->assertOk()
         ->assertSeeLivewire(QrScanner::class);
+});
+
+it('denies non-member', function () {
+    $outsider = User::factory()->create();
+
+    // Non-member cannot resolve the org, so the event is not found
+    $this->actingAs($outsider)
+        ->withSession(['current_organization_id' => $this->org->id])
+        ->get(route('scanner.scan', $this->event))
+        ->assertNotFound();
 });
 
 it('redirects unauthenticated users', function () {
@@ -46,7 +50,7 @@ it('redirects unauthenticated users', function () {
 });
 
 it('shows event name', function () {
-    app()->instance(\App\Models\Organization::class, $this->org);
+    app()->instance(Organization::class, $this->org);
 
     Livewire::actingAs($this->organizer)
         ->test(QrScanner::class, ['eventId' => $this->event->id])
@@ -54,7 +58,7 @@ it('shows event name', function () {
 });
 
 it('returns 404 for event from other org', function () {
-    $otherOrg = \App\Models\Organization::factory()->create();
+    $otherOrg = Organization::factory()->create();
     $otherEvent = Event::factory()->for($otherOrg)->published()->create();
 
     $this->actingAs($this->organizer)
@@ -81,7 +85,7 @@ it('has viewfinder container', function () {
 });
 
 it('has manual lookup link', function () {
-    app()->instance(\App\Models\Organization::class, $this->org);
+    app()->instance(Organization::class, $this->org);
 
     Livewire::actingAs($this->organizer)
         ->test(QrScanner::class, ['eventId' => $this->event->id])
@@ -89,7 +93,7 @@ it('has manual lookup link', function () {
 });
 
 it('has exit button linking to scanner index', function () {
-    app()->instance(\App\Models\Organization::class, $this->org);
+    app()->instance(Organization::class, $this->org);
 
     Livewire::actingAs($this->organizer)
         ->test(QrScanner::class, ['eventId' => $this->event->id])

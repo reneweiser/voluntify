@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\AttendanceStatus;
-use App\Enums\StaffRole;
 use App\Livewire\Events\VolunteerDetail;
 use App\Models\AttendanceRecord;
 use App\Models\CustomFieldResponse;
@@ -108,13 +107,11 @@ it('shows promote button for organizer when not promoted', function () {
         ->assertSee('Promote to Staff');
 });
 
-it('denies promotion for volunteer admin', function () {
-    $admin = User::factory()->create();
-    $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
+it('denies promotion for non-organizer', function () {
+    $outsider = User::factory()->create();
 
-    Livewire::actingAs($admin)
-        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
-        ->call('promoteVolunteer')
+    $this->actingAs($outsider)
+        ->get(route('events.volunteers.show', [$this->event, $this->volunteer]))
         ->assertForbidden();
 });
 
@@ -182,7 +179,6 @@ it('promotes volunteer and creates user', function () {
     Livewire::actingAs($this->user)
         ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
         ->set('showPromoteModal', true)
-        ->set('promoteRole', 'entrance_staff')
         ->call('promoteVolunteer')
         ->assertHasNoErrors()
         ->assertDispatched('volunteer-promoted');
