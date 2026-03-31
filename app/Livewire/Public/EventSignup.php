@@ -89,6 +89,49 @@ class EventSignup extends Component
     }
 
     /**
+     * Returns the IDs of selected shifts that overlap with at least one other
+     * selected shift. Uses the same half-open interval rule as the backend:
+     * A.start < B.end && A.end > B.start.
+     *
+     * Shifts with null times are excluded — organizers should set explicit
+     * times on all shifts if overlap prevention is desired.
+     *
+     * @return array<int>
+     */
+    #[Computed]
+    public function overlappingShiftIds(): array
+    {
+        if (count($this->selectedShiftIds) < 2) {
+            return [];
+        }
+
+        $intIds = array_map('intval', $this->selectedShiftIds);
+
+        $selected = $this->jobs
+            ->flatMap(fn ($job) => $job->shifts)
+            ->filter(fn ($shift) => in_array((int) $shift->id, $intIds, true)
+                && $shift->starts_at !== null
+                && $shift->ends_at !== null)
+            ->values();
+
+        $conflicting = [];
+
+        for ($i = 0; $i < $selected->count(); $i++) {
+            for ($j = $i + 1; $j < $selected->count(); $j++) {
+                $a = $selected[$i];
+                $b = $selected[$j];
+
+                if ($a->starts_at < $b->ends_at && $a->ends_at > $b->starts_at) {
+                    $conflicting[] = $a->id;
+                    $conflicting[] = $b->id;
+                }
+            }
+        }
+
+        return array_values(array_unique($conflicting));
+    }
+
+    /**
      * Step 1 -> Step 2 (or 3): Validate shift selection, reserve shifts, and advance.
      */
     public function reserveAndAdvance(): void
@@ -111,6 +154,10 @@ class EventSignup extends Component
             ],
         ]);
 
+        if (count($this->overlappingShiftIds) > 0) {
+            return;
+        }
+
         $result = app(ReserveShifts::class)->execute(
             shiftIds: array_map('intval', $this->selectedShiftIds),
             sessionId: session()->getId(),
@@ -125,6 +172,7 @@ class EventSignup extends Component
         }
 
         $this->selectedShiftIds = $result->reservedShiftIds();
+        unset($this->overlappingShiftIds);
         $this->reservationExpiresAt = $result->expiresAt->toISOString();
 
         if (count($result->unavailable) > 0) {
@@ -249,10 +297,15 @@ class EventSignup extends Component
             if ($result->hasNewSignups()) {
                 $this->state = WizardState::Complete;
 
-                $skippedCount = count($result->skippedFull) + count($result->skippedDuplicate);
+                $skippedCount = count($result->skippedFull)
+                    + count($result->skippedDuplicate)
+                    + count($result->skippedOverlap);
                 if ($skippedCount > 0) {
-                    $this->warningMessage = __('Some shifts were skipped because they were full or you were already signed up.');
+                    $this->warningMessage = __('Some shifts were skipped because they were full, you were already signed up, or they conflicted with another shift.');
                 }
+            } elseif (! $result->hasNewSignups() && count($result->skippedOverlap) > 0) {
+                $this->addError('selectedShiftIds', __('All selected shifts conflict with existing signups.'));
+                $this->restartSignup();
             } elseif (count($result->skippedDuplicate) === count($this->selectedShiftIds)) {
                 $this->addError('selectedShiftIds', __('You are already signed up for all selected shifts.'));
                 $this->restartSignup();
@@ -260,7 +313,7 @@ class EventSignup extends Component
                 $this->addError('selectedShiftIds', __('All selected shifts are full.'));
                 $this->restartSignup();
             } else {
-                $this->addError('selectedShiftIds', __('Selected shifts are either full or already registered.'));
+                $this->addError('selectedShiftIds', __('Selected shifts are either full, already registered, or conflict with existing signups.'));
                 $this->restartSignup();
             }
         } catch (DomainException $e) {
@@ -286,7 +339,7 @@ class EventSignup extends Component
         $this->selectedShiftIds = [];
         $this->reservationExpiresAt = '';
         $this->warningMessage = '';
-        unset($this->jobs);
+        unset($this->jobs, $this->overlappingShiftIds);
     }
 
     private function validateGearAndCustomFields(): void

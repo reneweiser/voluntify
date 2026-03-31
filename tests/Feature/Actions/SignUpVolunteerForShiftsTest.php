@@ -13,6 +13,7 @@ use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use App\Notifications\SignupConfirmation;
+use Carbon\Carbon;
 use Illuminate\Notifications\Action;
 use Illuminate\Support\Facades\Notification;
 
@@ -257,4 +258,128 @@ it('releases session reservations before capacity check when sessionId provided'
 
     // Reservation should be deleted
     expect(ShiftReservation::forSession('wizard-session')->count())->toBe(0);
+});
+
+// --- Overlap detection tests ---
+
+it('skips a shift that overlaps an existing signup', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 5,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 5,
+    ]);
+
+    ShiftSignup::factory()->create(['shift_id' => $shiftA->id, 'volunteer_id' => $volunteer->id]);
+
+    $result = $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$shiftB->id],
+    );
+
+    expect($result->hasNewSignups())->toBeFalse()
+        ->and($result->skippedOverlap)->toHaveCount(1)
+        ->and($result->skippedOverlap[0]->id)->toBe($shiftB->id);
+});
+
+it('skips an intra-batch shift that overlaps a previously accepted shift', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 5,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 5,
+    ]);
+    $shiftC = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 14:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 16:00:00'),
+        'capacity' => 5,
+    ]);
+
+    $result = $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$shiftA->id, $shiftB->id, $shiftC->id],
+    );
+
+    expect($result->newSignups)->toHaveCount(2)
+        ->and($result->skippedOverlap)->toHaveCount(1)
+        ->and($result->skippedOverlap[0]->id)->toBe($shiftB->id);
+
+    $bookedIds = collect($result->newSignups)->map(fn ($s) => $s->shift_id)->all();
+    expect($bookedIds)->toContain($shiftA->id)
+        ->and($bookedIds)->toContain($shiftC->id);
+});
+
+it('allows adjacent non-overlapping shifts', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 5,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 14:00:00'),
+        'capacity' => 5,
+    ]);
+
+    $result = $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$shiftA->id, $shiftB->id],
+    );
+
+    expect($result->newSignups)->toHaveCount(2)
+        ->and($result->skippedOverlap)->toBeEmpty();
+});
+
+it('skips a reactivated shift that now overlaps a newer signup', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 5,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 5,
+    ]);
+
+    // Volunteer has a cancelled signup for A and an active signup for B
+    ShiftSignup::factory()->create([
+        'shift_id' => $shiftA->id,
+        'volunteer_id' => $volunteer->id,
+        'cancelled_at' => now(),
+    ]);
+    ShiftSignup::factory()->create([
+        'shift_id' => $shiftB->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    // Attempting to re-activate A should be blocked because B now overlaps it
+    $result = $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$shiftA->id],
+    );
+
+    expect($result->hasNewSignups())->toBeFalse()
+        ->and($result->skippedOverlap)->toHaveCount(1)
+        ->and($result->skippedOverlap[0]->id)->toBe($shiftA->id);
 });

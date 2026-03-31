@@ -14,6 +14,7 @@ use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 use App\Notifications\SignupConfirmation;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -163,6 +164,52 @@ it('shows warning and advances with partial availability', function () {
         ->assertSet('state', WizardState::PersonalInfo)
         ->assertSet('warningMessage', '1 shift(s) were full and removed from your selection.')
         ->assertSet('selectedShiftIds', [$this->shift->id]);
+});
+
+it('blocks reserveAndAdvance when selected shifts overlap in time', function () {
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 10,
+    ]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$shiftA->id, $shiftB->id])
+        ->assertSee(__('Conflict'))
+        ->assertSee(__('Some selected shifts overlap in time'))
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::SelectingShifts);
+
+    expect(ShiftReservation::count())->toBe(0);
+});
+
+it('allows reserveAndAdvance after deselecting one conflicting shift', function () {
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 10,
+    ]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$shiftA->id, $shiftB->id])
+        ->assertSee(__('Conflict'))
+        ->set('selectedShiftIds', [$shiftA->id])
+        ->assertDontSee(__('Conflict'))
+        ->call('reserveAndAdvance')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::PersonalInfo);
+
+    expect(ShiftReservation::where('shift_id', $shiftA->id)->count())->toBe(1);
 });
 
 // --- Step 2: Gear & Custom Fields ---
@@ -395,7 +442,7 @@ it('shows warning when some shifts are skipped during submit for verified volunt
         ->call('submitSignup')
         ->assertHasNoErrors()
         ->assertSet('state', WizardState::Complete)
-        ->assertSet('warningMessage', 'Some shifts were skipped because they were full or you were already signed up.');
+        ->assertSet('warningMessage', 'Some shifts were skipped because they were full, you were already signed up, or they conflicted with another shift.');
 });
 
 it('shows all-duplicate error for mixed duplicate and full shifts', function () {

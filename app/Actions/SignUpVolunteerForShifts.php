@@ -54,10 +54,27 @@ class SignUpVolunteerForShifts
             $newSignups = [];
             $skippedFull = [];
             $skippedDuplicate = [];
+            $skippedOverlap = [];
+
+            // Load volunteer's existing confirmed shift times for this event.
+            // Scoped to current event only — cross-event overlap is intentionally not checked.
+            // lockForUpdate() serialises reads of the volunteer's existing signups, preventing
+            // a concurrent transaction from bypassing the overlap check by reading a stale snapshot.
+            $committedShifts = collect(
+                ShiftSignup::where('volunteer_id', $volunteer->id)
+                    ->whereNull('cancelled_at')
+                    ->whereHas('shift.volunteerJob', fn ($q) => $q->where('event_id', $event->id))
+                    ->lockForUpdate()
+                    ->with('shift:id,starts_at,ends_at')
+                    ->get()
+                    ->pluck('shift')
+                    ->filter()
+            );
 
             foreach ($sortedShiftIds as $shiftId) {
                 $shift = Shift::lockForUpdate()->findOrFail($shiftId);
 
+                // Duplicate check (active signups only).
                 $existingSignup = ShiftSignup::where('volunteer_id', $volunteer->id)
                     ->where('shift_id', $shift->id)
                     ->first();
@@ -68,12 +85,33 @@ class SignUpVolunteerForShifts
                     continue;
                 }
 
+                // Overlap check — positioned before the reactivation branch so cancelled signups
+                // cannot be re-activated into a time slot that now conflicts with a newer signup.
+                // Null guard on incoming shift: open-ended roles (null times) skip the check.
+                // Null guard on committed shifts: open-ended committed shifts never block anything.
+                if ($shift->starts_at !== null && $shift->ends_at !== null) {
+                    $hasOverlap = $committedShifts->contains(
+                        fn ($committed) => $committed->starts_at !== null
+                            && $committed->ends_at !== null
+                            && $shift->starts_at < $committed->ends_at
+                            && $shift->ends_at > $committed->starts_at
+                    );
+
+                    if ($hasOverlap) {
+                        $skippedOverlap[] = $shift;
+
+                        continue;
+                    }
+                }
+
+                // Capacity check.
                 if ($shift->isFull()) {
                     $skippedFull[] = $shift;
 
                     continue;
                 }
 
+                // Create or reactivate signup.
                 if ($existingSignup && $existingSignup->isCancelled()) {
                     $existingSignup->cancelled_at = null;
                     $existingSignup->signed_up_at = now();
@@ -86,6 +124,10 @@ class SignUpVolunteerForShifts
                         'signed_up_at' => now(),
                     ]);
                 }
+                // Push AFTER both creation branches, outside the if/else block.
+                // All failure paths above use `continue`, so this line only executes on success.
+                // Grows intra-batch awareness: subsequent shifts are checked against this one.
+                $committedShifts->push($shift);
             }
 
             $this->generateTicket->execute($volunteer, $event);
@@ -100,6 +142,7 @@ class SignUpVolunteerForShifts
                 'newSignups' => $newSignups,
                 'skippedFull' => $skippedFull,
                 'skippedDuplicate' => $skippedDuplicate,
+                'skippedOverlap' => $skippedOverlap,
                 'plainToken' => $plainToken,
             ];
         });
@@ -109,6 +152,7 @@ class SignUpVolunteerForShifts
             newSignups: $result['newSignups'],
             skippedFull: $result['skippedFull'],
             skippedDuplicate: $result['skippedDuplicate'],
+            skippedOverlap: $result['skippedOverlap'],
         );
 
         if ($sendNotification && $batchResult->hasNewSignups()) {

@@ -192,17 +192,20 @@
                                 @php
                                     $spotsLeft = $shift->spotsRemaining();
                                     $isFull = $spotsLeft === 0;
+                                    $isSelected = in_array($shift->id, $selectedShiftIds);
+                                    $isConflicting = in_array($shift->id, $this->overlappingShiftIds);
                                     $shiftTimeLabel = $job->name.' — '.$shift->starts_at->format('M d, g:i A').' to '.$shift->ends_at->format('g:i A');
                                 @endphp
                                 <label
                                     class="flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all duration-200
                                         {{ $isFull ? 'border-zinc-200 dark:border-zinc-700 opacity-50 cursor-not-allowed' : 'border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10' }}
-                                        {{ in_array($shift->id, $selectedShiftIds) ? 'border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm' : '' }}"
+                                        {{ $isSelected && $isConflicting ? 'border-amber-500 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20 shadow-sm' : '' }}
+                                        {{ $isSelected && ! $isConflicting ? 'border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm' : '' }}"
                                     wire:key="shift-{{ $shift->id }}"
                                 >
                                     <div class="flex items-center gap-3">
                                         <input type="checkbox" value="{{ $shift->id }}"
-                                            wire:model="selectedShiftIds"
+                                            wire:model.live="selectedShiftIds"
                                             @disabled($isFull)
                                             @if ($isFull) aria-label="{{ $shiftTimeLabel }} — {{ __('Full, no spots available') }}" @endif
                                             class="accent-emerald-600"
@@ -218,6 +221,8 @@
                                     </div>
                                     @if ($isFull)
                                         <flux:badge size="sm" color="red">{{ __('Full') }}</flux:badge>
+                                    @elseif ($isConflicting && $isSelected)
+                                        <flux:badge size="sm" color="yellow">{{ __('Conflict') }}</flux:badge>
                                     @else
                                         <flux:badge size="sm" color="emerald">{{ __('Open') }}</flux:badge>
                                     @endif
@@ -227,6 +232,12 @@
                     </div>
                 @endforeach
             </div>
+
+            @if (count($this->overlappingShiftIds) > 0)
+                <flux:callout variant="warning" class="mb-4">
+                    {{ __('Some selected shifts overlap in time. Deselect the highlighted shifts before continuing.') }}
+                </flux:callout>
+            @endif
 
             <flux:button wire:click="reserveAndAdvance" variant="primary" class="w-full">
                 {{ __('Continue') }}
