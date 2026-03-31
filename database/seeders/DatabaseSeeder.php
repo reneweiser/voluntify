@@ -62,6 +62,27 @@ class DatabaseSeeder extends Seeder
             'slug' => 'summer-gala',
             'status' => EventStatus::Draft,
         ]);
+
+        // Second project for testing project-scoped access
+        $project2 = Project::factory()->for($org)->create([
+            'name' => 'Charity Auction Night',
+            'description' => 'An exclusive charity auction event.',
+        ]);
+
+        Event::factory()->for($org)->for($project2)->published()->create([
+            'name' => 'Art & Wine Auction',
+            'slug' => 'art-wine-auction',
+            'starts_at' => now()->addWeeks(3),
+            'ends_at' => now()->addWeeks(3)->addHours(5),
+        ]);
+
+        // Project-only Organizer — assigned to project2 only
+        $projectOrganizer = User::factory()->create([
+            'name' => 'Project Organizer',
+            'email' => 'project@example.com',
+        ]);
+        $project2->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
+        $projectOrganizer->update(['current_organization_id' => $org->id]);
     }
 
     private function seedEventData(Event $event): void
