@@ -8,21 +8,20 @@ use App\Events\Activity\ArrivalScanned;
 use App\Events\Activity\AttendanceRecorded;
 use App\Events\Activity\EmailTemplateUpdated;
 use App\Events\Activity\EventArchived;
-use App\Events\Activity\EventAssignedToGroup;
+use App\Events\Activity\EventAssignedToProject;
 use App\Events\Activity\EventCloned;
 use App\Events\Activity\EventCreated;
-use App\Events\Activity\EventGroupCreated;
-use App\Events\Activity\EventGroupDeleted;
-use App\Events\Activity\EventGroupUpdated;
 use App\Events\Activity\EventImageDeleted;
 use App\Events\Activity\EventPublished;
-use App\Events\Activity\EventRemovedFromGroup;
 use App\Events\Activity\EventUpdated;
 use App\Events\Activity\JobCreated;
 use App\Events\Activity\JobDeleted;
 use App\Events\Activity\JobUpdated;
 use App\Events\Activity\MemberInvited;
 use App\Events\Activity\MemberLeft;
+use App\Events\Activity\ProjectCreated;
+use App\Events\Activity\ProjectDeleted;
+use App\Events\Activity\ProjectUpdated;
 use App\Events\Activity\ShiftCreated;
 use App\Events\Activity\ShiftDeleted;
 use App\Events\Activity\ShiftUpdated;
@@ -34,8 +33,8 @@ use App\Models\ActivityLog;
 use App\Models\Event;
 use App\Models\EventAnnouncement;
 use App\Models\EventArrival;
-use App\Models\EventGroup;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerPromotion;
@@ -279,9 +278,9 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'subject_id' => $e->volunteer->id,
             'action' => 'signed_up',
             'category' => ActivityCategory::Volunteer,
-            'description' => "{$e->volunteer->name} signed up for {$e->shiftCount} shift(s) at {$e->event->name}",
+            'description' => "{$e->volunteer->full_name} signed up for {$e->shiftCount} shift(s) at {$e->event->name}",
             'properties' => [
-                'volunteer_name' => $e->volunteer->name,
+                'volunteer_name' => $e->volunteer->full_name,
                 'shift_count' => $e->shiftCount,
             ],
         ]);
@@ -298,7 +297,7 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'subject_id' => $e->volunteer->id,
             'action' => 'verified',
             'category' => ActivityCategory::Volunteer,
-            'description' => "{$e->volunteer->name} verified their email for {$e->event->name}",
+            'description' => "{$e->volunteer->full_name} verified their email for {$e->event->name}",
         ]);
     }
 
@@ -313,9 +312,9 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'subject_id' => $e->arrival->id,
             'action' => 'scanned',
             'category' => ActivityCategory::Attendance,
-            'description' => "Scanned arrival for {$e->arrival->volunteer->name} at {$e->arrival->event->name}",
+            'description' => "Scanned arrival for {$e->arrival->volunteer->full_name} at {$e->arrival->event->name}",
             'properties' => [
-                'volunteer_name' => $e->arrival->volunteer->name,
+                'volunteer_name' => $e->arrival->volunteer->full_name,
                 'method' => $e->arrival->method->value,
                 'flagged' => $e->arrival->flagged,
             ],
@@ -337,10 +336,10 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'subject_id' => $e->record->id,
             'action' => 'recorded',
             'category' => ActivityCategory::Attendance,
-            'description' => "Recorded {$e->record->status->value} for {$e->signup->volunteer->name}",
+            'description' => "Recorded {$e->record->status->value} for {$e->signup->volunteer->full_name}",
             'properties' => [
                 'status' => $e->record->status->value,
-                'volunteer_name' => $e->signup->volunteer->name,
+                'volunteer_name' => $e->signup->volunteer->full_name,
             ],
         ]);
     }
@@ -390,9 +389,9 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'subject_id' => $e->promotion->id,
             'action' => 'promoted',
             'category' => ActivityCategory::Member,
-            'description' => "Promoted volunteer {$e->promotion->volunteer->name} to {$e->promotion->role->value}",
+            'description' => "Promoted volunteer {$e->promotion->volunteer->full_name} to {$e->promotion->role->value}",
             'properties' => [
-                'volunteer_name' => $e->promotion->volunteer->name,
+                'volunteer_name' => $e->promotion->volunteer->full_name,
                 'role' => $e->promotion->role->value,
             ],
         ]);
@@ -431,9 +430,9 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'subject_id' => $e->volunteer->id,
             'action' => 'cancelled',
             'category' => ActivityCategory::Volunteer,
-            'description' => "{$e->volunteer->name} cancelled signup for {$e->signup->shift->volunteerJob->name}",
+            'description' => "{$e->volunteer->full_name} cancelled signup for {$e->signup->shift->volunteerJob->name}",
             'properties' => [
-                'volunteer_name' => $e->volunteer->name,
+                'volunteer_name' => $e->volunteer->full_name,
                 'job_name' => $e->signup->shift->volunteerJob->name,
                 'shift_starts_at' => $e->signup->shift->starts_at->toISOString(),
             ],
@@ -458,41 +457,41 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
         ]);
     }
 
-    public function handleEventGroupCreated(EventGroupCreated $e): void
+    public function handleProjectCreated(ProjectCreated $e): void
     {
         ActivityLog::create([
-            'organization_id' => $e->eventGroup->organization_id,
+            'organization_id' => $e->project->organization_id,
             'causer_type' => User::class,
             'causer_id' => $e->causer->id,
-            'subject_type' => EventGroup::class,
-            'subject_id' => $e->eventGroup->id,
+            'subject_type' => Project::class,
+            'subject_id' => $e->project->id,
             'action' => 'created',
-            'category' => ActivityCategory::EventGroup,
-            'description' => "Created event group {$e->eventGroup->name}",
+            'category' => ActivityCategory::Project,
+            'description' => "Created project {$e->project->name}",
             'properties' => [
-                'name' => $e->eventGroup->name,
+                'name' => $e->project->name,
             ],
         ]);
     }
 
-    public function handleEventGroupUpdated(EventGroupUpdated $e): void
+    public function handleProjectUpdated(ProjectUpdated $e): void
     {
         ActivityLog::create([
-            'organization_id' => $e->eventGroup->organization_id,
+            'organization_id' => $e->project->organization_id,
             'causer_type' => User::class,
             'causer_id' => $e->causer->id,
-            'subject_type' => EventGroup::class,
-            'subject_id' => $e->eventGroup->id,
+            'subject_type' => Project::class,
+            'subject_id' => $e->project->id,
             'action' => 'updated',
-            'category' => ActivityCategory::EventGroup,
-            'description' => "Updated event group {$e->eventGroup->name}",
+            'category' => ActivityCategory::Project,
+            'description' => "Updated project {$e->project->name}",
             'properties' => [
                 'changed' => $e->changed,
             ],
         ]);
     }
 
-    public function handleEventGroupDeleted(EventGroupDeleted $e): void
+    public function handleProjectDeleted(ProjectDeleted $e): void
     {
         ActivityLog::create([
             'organization_id' => $e->organizationId,
@@ -501,47 +500,29 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'subject_type' => Organization::class,
             'subject_id' => $e->organizationId,
             'action' => 'deleted',
-            'category' => ActivityCategory::EventGroup,
-            'description' => "Deleted event group {$e->groupName}",
+            'category' => ActivityCategory::Project,
+            'description' => "Deleted project {$e->projectName}",
             'properties' => [
-                'name' => $e->groupName,
-                'ungrouped_events' => $e->ungroupedEventNames,
+                'name' => $e->projectName,
+                'orphaned_events' => $e->orphanedEventNames,
             ],
         ]);
     }
 
-    public function handleEventAssignedToGroup(EventAssignedToGroup $e): void
+    public function handleEventAssignedToProject(EventAssignedToProject $e): void
     {
         ActivityLog::create([
-            'organization_id' => $e->eventGroup->organization_id,
+            'organization_id' => $e->project->organization_id,
             'event_id' => $e->event->id,
             'causer_type' => User::class,
             'causer_id' => $e->causer->id,
-            'subject_type' => EventGroup::class,
-            'subject_id' => $e->eventGroup->id,
+            'subject_type' => Project::class,
+            'subject_id' => $e->project->id,
             'action' => 'assigned',
-            'category' => ActivityCategory::EventGroup,
-            'description' => "Assigned event {$e->event->name} to group {$e->eventGroup->name}",
+            'category' => ActivityCategory::Project,
+            'description' => "Assigned event {$e->event->name} to project {$e->project->name}",
             'properties' => [
                 'event_name' => $e->event->name,
-            ],
-        ]);
-    }
-
-    public function handleEventRemovedFromGroup(EventRemovedFromGroup $e): void
-    {
-        ActivityLog::create([
-            'organization_id' => $e->organizationId,
-            'event_id' => $e->event->id,
-            'causer_type' => User::class,
-            'causer_id' => $e->causer->id,
-            'subject_type' => Event::class,
-            'subject_id' => $e->event->id,
-            'action' => 'removed',
-            'category' => ActivityCategory::EventGroup,
-            'description' => "Removed event {$e->event->name} from group {$e->groupName}",
-            'properties' => [
-                'group_name' => $e->groupName,
             ],
         ]);
     }

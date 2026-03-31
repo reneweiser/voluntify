@@ -17,7 +17,7 @@ beforeEach(function () {
     $this->event = Event::factory()->for($this->org)->published()->create([
         'name' => 'Summer Festival',
     ]);
-    $this->volunteer = Volunteer::factory()->create(['name' => 'Alice Smith']);
+    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Smith']);
     $this->ticket = Ticket::factory()->for($this->volunteer)->for($this->event)->create();
 
     $this->plainToken = 'valid-magic-token-123';

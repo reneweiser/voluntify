@@ -2,13 +2,17 @@
 
 use App\Actions\ProcessVolunteerSignup;
 use App\Enums\SignupOutcomeType;
+use App\Models\CustomFieldResponse;
+use App\Models\CustomRegistrationField;
 use App\Models\EmailVerificationToken;
 use App\Models\Event;
+use App\Models\EventGearItem;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
+use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 use App\Notifications\EmailVerification;
 use App\Notifications\SignupConfirmation;
@@ -27,7 +31,8 @@ it('sends verification email for unverified new volunteer', function () {
     $action = app(ProcessVolunteerSignup::class);
 
     $outcome = $action->execute(
-        name: 'New Person',
+        firstName: 'New',
+        lastName: 'Person',
         email: 'new@example.com',
         event: $this->event,
         shiftIds: [$this->shift->id],
@@ -57,12 +62,13 @@ it('sends verification email for unverified new volunteer', function () {
 });
 
 it('completes signup immediately for verified returning volunteer', function () {
-    Volunteer::factory()->verified()->create(['email' => 'verified@example.com', 'name' => 'Verified Person']);
+    Volunteer::factory()->verified()->create(['email' => 'verified@example.com', 'first_name' => 'Verified', 'last_name' => 'Person']);
 
     $action = app(ProcessVolunteerSignup::class);
 
     $outcome = $action->execute(
-        name: 'Verified Person',
+        firstName: 'Verified',
+        lastName: 'Person',
         email: 'verified@example.com',
         event: $this->event,
         shiftIds: [$this->shift->id],
@@ -97,7 +103,8 @@ it('skips verification for returning verified volunteer on new event', function 
     $action = app(ProcessVolunteerSignup::class);
 
     $outcome = $action->execute(
-        name: $volunteer->name,
+        firstName: $volunteer->first_name,
+        lastName: $volunteer->last_name,
         email: $volunteer->email,
         event: $newEvent,
         shiftIds: [$newShift->id],
@@ -112,13 +119,14 @@ it('skips verification for returning verified volunteer on new event', function 
 it('creates gear records for verified volunteer with gear selections', function () {
     Volunteer::factory()->verified()->create(['email' => 'gear@example.com']);
 
-    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    $badge = \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $badge = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
 
     $action = app(ProcessVolunteerSignup::class);
 
     $outcome = $action->execute(
-        name: 'Gear Person',
+        firstName: 'Gear',
+        lastName: 'Person',
         email: 'gear@example.com',
         event: $this->event,
         shiftIds: [$this->shift->id],
@@ -126,20 +134,21 @@ it('creates gear records for verified volunteer with gear selections', function 
         gearSelections: [$tshirt->id => 'M'],
     );
 
-    expect($outcome->type)->toBe(\App\Enums\SignupOutcomeType::Completed);
-    expect(\App\Models\VolunteerGear::count())->toBe(2);
+    expect($outcome->type)->toBe(SignupOutcomeType::Completed);
+    expect(VolunteerGear::count())->toBe(2);
 
-    $tshirtGear = \App\Models\VolunteerGear::where('event_gear_item_id', $tshirt->id)->first();
+    $tshirtGear = VolunteerGear::where('event_gear_item_id', $tshirt->id)->first();
     expect($tshirtGear->size)->toBe('M');
 });
 
 it('stores gear selections on verification token for unverified volunteer', function () {
-    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
 
     $action = app(ProcessVolunteerSignup::class);
 
     $action->execute(
-        name: 'Unverified Gear',
+        firstName: 'Unverified',
+        lastName: 'Gear',
         email: 'unverified-gear@example.com',
         event: $this->event,
         shiftIds: [$this->shift->id],
@@ -149,36 +158,38 @@ it('stores gear selections on verification token for unverified volunteer', func
 
     $token = EmailVerificationToken::first();
     expect($token->gear_selections)->toBe([$tshirt->id => 'L']);
-    expect(\App\Models\VolunteerGear::count())->toBe(0);
+    expect(VolunteerGear::count())->toBe(0);
 });
 
 it('records custom field responses for verified volunteer', function () {
     Volunteer::factory()->verified()->create(['email' => 'custom@example.com']);
 
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     $action = app(ProcessVolunteerSignup::class);
 
     $outcome = $action->execute(
-        name: 'Custom Person',
+        firstName: 'Custom',
+        lastName: 'Person',
         email: 'custom@example.com',
         event: $this->event,
         shiftIds: [$this->shift->id],
         customFieldResponses: [$field->id => 'Vegan'],
     );
 
-    expect($outcome->type)->toBe(\App\Enums\SignupOutcomeType::Completed);
-    expect(\App\Models\CustomFieldResponse::count())->toBe(1);
-    expect(\App\Models\CustomFieldResponse::first()->value)->toBe('Vegan');
+    expect($outcome->type)->toBe(SignupOutcomeType::Completed);
+    expect(CustomFieldResponse::count())->toBe(1);
+    expect(CustomFieldResponse::first()->value)->toBe('Vegan');
 });
 
 it('stores custom_field_responses on token for unverified volunteer', function () {
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     $action = app(ProcessVolunteerSignup::class);
 
     $action->execute(
-        name: 'Unverified Custom',
+        firstName: 'Unverified',
+        lastName: 'Custom',
         email: 'unverified-custom@example.com',
         event: $this->event,
         shiftIds: [$this->shift->id],
@@ -187,7 +198,7 @@ it('stores custom_field_responses on token for unverified volunteer', function (
 
     $token = EmailVerificationToken::first();
     expect($token->custom_field_responses)->toBe([$field->id => 'Vegan']);
-    expect(\App\Models\CustomFieldResponse::count())->toBe(0);
+    expect(CustomFieldResponse::count())->toBe(0);
 });
 
 it('updates phone number for existing volunteer', function () {
@@ -199,7 +210,8 @@ it('updates phone number for existing volunteer', function () {
     $action = app(ProcessVolunteerSignup::class);
 
     $action->execute(
-        name: 'Test',
+        firstName: 'Test',
+        lastName: 'User',
         email: 'test@example.com',
         event: $this->event,
         shiftIds: [$this->shift->id],

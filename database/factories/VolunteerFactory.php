@@ -6,7 +6,7 @@ use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Volunteer>
+ * @extends Factory<Volunteer>
  */
 class VolunteerFactory extends Factory
 {
@@ -15,7 +15,8 @@ class VolunteerFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+            'first_name' => fake()->firstName(),
+            'last_name' => fake()->lastName(),
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->optional()->e164PhoneNumber(),
             'email_verified_at' => null,
@@ -33,7 +34,7 @@ class VolunteerFactory extends Factory
     public function promoted(): static
     {
         return $this->has(
-            \Database\Factories\VolunteerPromotionFactory::new(),
+            VolunteerPromotionFactory::new(),
             'promotion'
         );
     }

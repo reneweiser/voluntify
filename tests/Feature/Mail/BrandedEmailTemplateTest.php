@@ -13,7 +13,7 @@ beforeEach(function () {
     $this->event = Event::factory()->for($this->org)->create(['name' => 'Summer Fest']);
     $this->job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Gate Security']);
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
-    $this->volunteer = Volunteer::factory()->create(['name' => 'Jane Doe']);
+    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Jane', 'last_name' => 'Doe']);
 });
 
 function renderNotificationHtml(object $volunteer, SignupConfirmation $notification): string

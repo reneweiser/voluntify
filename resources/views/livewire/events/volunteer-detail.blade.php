@@ -1,7 +1,7 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center gap-3 mb-4">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('events.volunteers', $event)" wire:navigate />
-        <flux:heading size="xl">{{ $volunteer->name }}</flux:heading>
+        <flux:button variant="ghost" icon="arrow-left" :href="route('events.volunteers', $event)" wire:navigate aria-label="{{ __('Back to volunteers') }}" />
+        <flux:heading size="xl">{{ $volunteer->full_name }}</flux:heading>
     </div>
 
     <x-events.layout :event="$event">
@@ -23,7 +23,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">{{ __('Name') }}</flux:text>
-                    <flux:text>{{ $volunteer->name }}</flux:text>
+                    <flux:text>{{ $volunteer->full_name }}</flux:text>
                 </div>
                 <div>
                     <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">{{ __('Email') }}</flux:text>
@@ -116,7 +116,7 @@
         {{-- Promote modal --}}
         <flux:modal wire:model="showPromoteModal">
             <flux:heading>{{ __('Promote to Staff') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Promote :name to a staff member. They will receive login credentials via email.', ['name' => $volunteer->name]) }}</flux:text>
+            <flux:text class="mt-2">{{ __('Promote :name to a staff member. They will receive login credentials via email.', ['name' => $volunteer->full_name]) }}</flux:text>
 
             <div class="mt-4">
                 <flux:field>

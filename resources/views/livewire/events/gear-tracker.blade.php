@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center gap-3 mb-4">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate aria-label="{{ __('Back to events') }}" />
         <flux:heading size="xl">{{ $event->name }}</flux:heading>
     </div>
 
@@ -44,7 +44,7 @@
                         @foreach ($this->volunteers as $volunteer)
                             <flux:table.row :key="'vol-'.$volunteer->id">
                                 <flux:table.cell>
-                                    <div class="font-medium">{{ $volunteer->name }}</div>
+                                    <div class="font-medium">{{ $volunteer->full_name }}</div>
                                     <div class="text-xs text-zinc-500">{{ $volunteer->email }}</div>
                                 </flux:table.cell>
                                 @foreach ($this->gearItems as $gearItem)

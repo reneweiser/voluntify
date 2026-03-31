@@ -31,7 +31,7 @@ class CompleteEmailVerification
 
         $event = $token->event;
 
-        if ($event->status !== EventStatus::Published) {
+        if ($event->status !== EventStatus::PublishedOpen) {
             throw new DomainException('This event is no longer accepting signups.');
         }
 

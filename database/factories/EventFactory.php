@@ -5,11 +5,12 @@ namespace Database\Factories;
 use App\Enums\EventStatus;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Event>
+ * @extends Factory<Event>
  */
 class EventFactory extends Factory
 {
@@ -33,10 +34,34 @@ class EventFactory extends Factory
         ];
     }
 
+    public function configure(): static
+    {
+        return $this->afterMaking(function (Event $event) {
+            if (! $event->project_id) {
+                $org = $event->organization_id
+                    ? Organization::find($event->organization_id)
+                    : Organization::factory()->create();
+
+                if (! $event->organization_id) {
+                    $event->organization_id = $org->id;
+                }
+
+                $event->project_id = Project::factory()->for($org)->create()->id;
+            }
+        });
+    }
+
     public function published(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => EventStatus::Published,
+            'status' => EventStatus::PublishedOpen,
+        ]);
+    }
+
+    public function publishedClosed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => EventStatus::PublishedClosed,
         ]);
     }
 

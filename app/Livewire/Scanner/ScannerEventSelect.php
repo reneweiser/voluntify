@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Scanner;
 
-use App\Enums\EventStatus;
 use App\Enums\StaffRole;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Collection;
@@ -32,7 +31,7 @@ class ScannerEventSelect extends Component
     public function events(): Collection
     {
         return currentOrganization()->events()
-            ->where('status', EventStatus::Published)
+            ->published()
             ->orderBy('starts_at')
             ->withCount(['volunteers', 'eventArrivals'])
             ->get();

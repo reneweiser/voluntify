@@ -31,7 +31,7 @@ class EventAnnouncementNotification extends Notification
     {
         $mail = (new MailMessage)
             ->subject($this->announcementSubject)
-            ->greeting("Hello {$notifiable->name}!")
+            ->greeting("Hello {$notifiable->full_name}!")
             ->line("Update from **{$this->event->name}**:")
             ->line($this->announcementBody);
 

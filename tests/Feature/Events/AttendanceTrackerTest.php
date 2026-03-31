@@ -9,8 +9,10 @@ use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -29,7 +31,7 @@ it('renders for organizer', function () {
 });
 
 it('renders for volunteer admin', function () {
-    $volunteerAdmin = \App\Models\User::factory()->create();
+    $volunteerAdmin = User::factory()->create();
     $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
 
     $this->actingAs($volunteerAdmin)
@@ -38,7 +40,7 @@ it('renders for volunteer admin', function () {
 });
 
 it('denies entrance staff', function () {
-    $entranceStaff = \App\Models\User::factory()->create();
+    $entranceStaff = User::factory()->create();
     $this->org->users()->attach($entranceStaff, ['role' => StaffRole::EntranceStaff]);
 
     $this->actingAs($entranceStaff)
@@ -53,7 +55,7 @@ it('lists shifts grouped by job', function () {
 });
 
 it('shows signups when shift is selected', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Alice Smith']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Smith']);
     ShiftSignup::factory()->create([
         'volunteer_id' => $volunteer->id,
         'shift_id' => $this->shift->id,
@@ -119,16 +121,16 @@ it('prevents marking attendance on a different event shift', function () {
         ->test(AttendanceTracker::class, ['eventId' => $this->event->id])
         ->set('selectedShiftId', $this->shift->id)
         ->call('markStatus', $signup->id, 'on_time');
-})->throws(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+})->throws(ModelNotFoundException::class);
 
 it('excludes cancelled signups from attendance view', function () {
-    $active = Volunteer::factory()->create(['name' => 'Active Volunteer']);
+    $active = Volunteer::factory()->create(['first_name' => 'Active', 'last_name' => 'Volunteer']);
     ShiftSignup::factory()->create([
         'volunteer_id' => $active->id,
         'shift_id' => $this->shift->id,
     ]);
 
-    $cancelled = Volunteer::factory()->create(['name' => 'Cancelled Volunteer']);
+    $cancelled = Volunteer::factory()->create(['first_name' => 'Cancelled', 'last_name' => 'Volunteer']);
     ShiftSignup::factory()->create([
         'volunteer_id' => $cancelled->id,
         'shift_id' => $this->shift->id,

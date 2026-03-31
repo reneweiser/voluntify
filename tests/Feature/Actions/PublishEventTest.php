@@ -21,7 +21,7 @@ it('publishes a draft event with jobs and shifts', function () {
 
     $published = $this->action->execute($event);
 
-    expect($published->status)->toBe(EventStatus::Published);
+    expect($published->status)->toBe(EventStatus::PublishedOpen);
 });
 
 it('cannot publish an archived event', function () {
@@ -33,6 +33,13 @@ it('cannot publish an archived event', function () {
 
 it('cannot publish an already published event', function () {
     $event = Event::factory()->for($this->org)->published()->create();
+
+    expect(fn () => $this->action->execute($event))
+        ->toThrow(DomainException::class, 'Event is already published.');
+});
+
+it('cannot publish a PublishedClosed event', function () {
+    $event = Event::factory()->for($this->org)->publishedClosed()->create();
 
     expect(fn () => $this->action->execute($event))
         ->toThrow(DomainException::class, 'Event is already published.');

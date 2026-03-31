@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\HasTitleImage;
 use App\Enums\EventStatus;
 use App\ValueObjects\PublicToken;
+use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,14 +16,13 @@ use Illuminate\Support\Str;
 
 class Event extends Model
 {
-    /** @use HasFactory<\Database\Factories\EventFactory> */
+    /** @use HasFactory<EventFactory> */
     use HasFactory;
 
     use HasTitleImage;
 
     protected $fillable = [
         'organization_id',
-        'event_group_id',
         'name',
         'slug',
         'description',
@@ -33,6 +33,7 @@ class Event extends Model
         'title_image_path',
         'cancellation_cutoff_hours',
         'attendance_grace_minutes',
+        'phone_required',
     ];
 
     protected function casts(): array
@@ -43,6 +44,7 @@ class Event extends Model
             'status' => EventStatus::class,
             'cancellation_cutoff_hours' => 'integer',
             'attendance_grace_minutes' => 'integer',
+            'phone_required' => 'boolean',
         ];
     }
 
@@ -100,9 +102,9 @@ class Event extends Model
         return $this->hasMany(CustomRegistrationField::class)->orderBy('sort_order');
     }
 
-    public function eventGroup(): BelongsTo
+    public function project(): BelongsTo
     {
-        return $this->belongsTo(EventGroup::class);
+        return $this->belongsTo(Project::class);
     }
 
     public function isCancellationAllowed(): bool
@@ -126,7 +128,7 @@ class Event extends Model
 
     public function scopePublished(Builder $query): void
     {
-        $query->where('status', EventStatus::Published);
+        $query->whereIn('status', [EventStatus::PublishedOpen, EventStatus::PublishedClosed]);
     }
 
     public function scopePublishedByToken(Builder $query, string $publicToken): void

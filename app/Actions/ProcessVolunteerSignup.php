@@ -22,7 +22,8 @@ class ProcessVolunteerSignup
      * @param  array<int, mixed>|null  $customFieldResponses
      */
     public function execute(
-        string $name,
+        string $firstName,
+        string $lastName,
         string $email,
         Event $event,
         array $shiftIds,
@@ -32,7 +33,7 @@ class ProcessVolunteerSignup
     ): SignupOutcome {
         $volunteer = Volunteer::firstOrCreate(
             ['email' => $email],
-            ['name' => $name, 'phone' => $phone],
+            ['first_name' => $firstName, 'last_name' => $lastName, 'phone' => $phone],
         );
 
         if ($phone !== null && $volunteer->phone !== $phone) {

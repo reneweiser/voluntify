@@ -36,14 +36,14 @@ class EmailVerification extends Notification implements ShouldQueue
             EmailTemplateType::EmailVerification,
             $this->event,
             [
-                'volunteer_name' => $notifiable->name,
+                'volunteer_name' => $notifiable->full_name,
                 'event_name' => $this->event->name,
             ],
         );
 
         $mail = (new MailMessage)
             ->subject($rendered['subject'])
-            ->greeting("Hello {$notifiable->name}!");
+            ->greeting("Hello {$notifiable->full_name}!");
 
         foreach (explode("\n", $rendered['body']) as $line) {
             $trimmed = trim($line);

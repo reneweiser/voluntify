@@ -9,7 +9,7 @@
         {{-- Identity banner --}}
         <div class="mb-8">
             <flux:heading size="xl">{{ __('Your Portal') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Welcome back, :name', ['name' => $volunteer->name]) }}</flux:text>
+            <flux:text class="mt-1">{{ __('Welcome back, :name', ['name' => $volunteer->full_name]) }}</flux:text>
         </div>
 
         {{-- Success banner --}}

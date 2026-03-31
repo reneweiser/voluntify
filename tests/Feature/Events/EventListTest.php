@@ -6,6 +6,7 @@ use App\Livewire\Events\EventList;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use Livewire\Livewire;
 
@@ -46,7 +47,7 @@ it('filters events by status', function () {
         ->test(EventList::class)
         ->assertSee('Published Event')
         ->assertSee('Draft Event')
-        ->call('setStatusFilter', 'published')
+        ->call('setStatusFilter', 'published_open')
         ->assertSee('Published Event')
         ->assertDontSee('Draft Event');
 });
@@ -59,7 +60,7 @@ it('shows empty state when no events', function () {
 
 it('shows empty state when user has no organization', function () {
     app()->forgetInstance(Organization::class);
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
 
     Livewire::actingAs($user)
         ->test(EventList::class)
@@ -73,9 +74,9 @@ it('toggles filter off when clicking same status', function () {
 
     Livewire::actingAs($this->user)
         ->test(EventList::class)
-        ->call('setStatusFilter', 'published')
+        ->call('setStatusFilter', 'published_open')
         ->assertDontSee('Draft Event')
-        ->call('setStatusFilter', 'published')
+        ->call('setStatusFilter', 'published_open')
         ->assertSee('Draft Event');
 });
 
@@ -86,7 +87,7 @@ it('shows create button for organizers', function () {
 });
 
 it('hides create button for volunteer admins', function () {
-    $admin = \App\Models\User::factory()->create();
+    $admin = User::factory()->create();
     $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($admin)

@@ -2,7 +2,7 @@
     {{-- Top bar --}}
     <header class="flex items-center justify-between border-b border-zinc-700 bg-zinc-800 px-4 py-3">
         <div class="flex items-center gap-3">
-            <flux:button variant="ghost" href="{{ route('scanner.index') }}" wire:navigate size="sm" icon="arrow-left" class="text-zinc-300 hover:text-white" />
+            <flux:button variant="ghost" href="{{ route('scanner.index') }}" wire:navigate size="sm" icon="arrow-left" class="text-zinc-300 hover:text-white" aria-label="{{ __('Back to scanner') }}" />
             <flux:heading size="lg" class="text-white">Scanner</flux:heading>
         </div>
         <flux:button variant="ghost" href="{{ route('scanner.lookup', $this->eventId) }}" wire:navigate size="sm" class="text-zinc-300 hover:text-white">

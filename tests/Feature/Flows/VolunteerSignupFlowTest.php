@@ -11,6 +11,7 @@ use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -25,7 +26,8 @@ beforeEach(function () {
 it('completes full signup flow: signup → verify → ticket', function () {
     // Step 1: Volunteer signs up (unverified email)
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('volunteerName', 'Alice Flow')
+        ->set('volunteerFirstName', 'Alice')
+        ->set('volunteerLastName', 'Flow')
         ->set('volunteerEmail', 'alice@flow.test')
         ->set('volunteerPhone', '+1111111111')
         ->set('selectedShiftIds', [$this->shift->id])
@@ -45,7 +47,7 @@ it('completes full signup flow: signup → verify → ticket', function () {
 
     // Step 2: Email verification
     // Replace token hash with one we control
-    $plainToken = \Illuminate\Support\Str::random(64);
+    $plainToken = Str::random(64);
     $token->update(['token_hash' => hash('sha256', $plainToken)]);
 
     Livewire::test(EmailVerificationPage::class, ['token' => $plainToken])
@@ -69,12 +71,14 @@ it('completes full signup flow: signup → verify → ticket', function () {
 it('completes signup immediately for verified volunteer', function () {
     // Pre-create a verified volunteer
     $volunteer = Volunteer::factory()->verified()->create([
-        'name' => 'Bob Verified',
+        'first_name' => 'Bob',
+        'last_name' => 'Verified',
         'email' => 'bob@verified.test',
     ]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('volunteerName', 'Bob Verified')
+        ->set('volunteerFirstName', 'Bob')
+        ->set('volunteerLastName', 'Verified')
         ->set('volunteerEmail', 'bob@verified.test')
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('signup')

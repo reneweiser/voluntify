@@ -8,6 +8,7 @@ use App\Models\Shift;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use App\Notifications\SignupConfirmation;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
@@ -18,7 +19,7 @@ beforeEach(function () {
     ]);
     $this->job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Gate Security']);
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
-    $this->volunteer = Volunteer::factory()->create(['name' => 'Jane Doe']);
+    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Jane', 'last_name' => 'Doe']);
 });
 
 it('sends email with event details', function () {
@@ -65,7 +66,7 @@ it('uses default template when no custom template exists', function () {
 
 it('is queued', function () {
     expect(new SignupConfirmation($this->event, [$this->shift->id], 'token'))
-        ->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
+        ->toBeInstanceOf(ShouldQueue::class);
 });
 
 it('includes View Your Ticket action URL', function () {

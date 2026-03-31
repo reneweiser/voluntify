@@ -63,7 +63,7 @@ class ScannerApiController extends Controller
             'user_role' => $userRole,
             'volunteers' => $volunteers->map(fn ($v) => [
                 'id' => $v->id,
-                'name' => $v->name,
+                'name' => $v->full_name,
                 'email' => $v->email,
                 'ticket' => $v->tickets->first(),
                 'shift_signups' => $v->shiftSignups->map(fn ($signup) => [

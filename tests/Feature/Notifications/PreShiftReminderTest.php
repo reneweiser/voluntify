@@ -8,6 +8,7 @@ use App\Models\Shift;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use App\Notifications\PreShiftReminder;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
@@ -17,7 +18,7 @@ beforeEach(function () {
     ]);
     $this->job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Stage Crew']);
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
-    $this->volunteer = Volunteer::factory()->create(['name' => 'Alice']);
+    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Test']);
 });
 
 it('renders 24h reminder with default template', function () {
@@ -50,7 +51,7 @@ it('uses custom template when set', function () {
     $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
     $mail = $notification->toMail($this->volunteer);
 
-    expect($mail->subject)->toBe('Hey Alice, Summer Fest is tomorrow!')
+    expect($mail->subject)->toBe('Hey Alice Test, Summer Fest is tomorrow!')
         ->and(implode(' ', $mail->introLines))->toContain('Custom reminder for Stage Crew');
 });
 
@@ -67,7 +68,7 @@ it('omits location when event has none', function () {
 
 it('is queued', function () {
     expect(new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h))
-        ->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
+        ->toBeInstanceOf(ShouldQueue::class);
 });
 
 it('includes cheat sheet link when job has instructions', function () {

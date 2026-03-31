@@ -15,7 +15,7 @@
         {{-- Volunteer info --}}
         <div class="mb-6">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">Volunteer</flux:text>
-            <flux:heading size="lg">{{ $volunteer->name }}</flux:heading>
+            <flux:heading size="lg">{{ $volunteer->full_name }}</flux:heading>
         </div>
 
         {{-- QR Code --}}

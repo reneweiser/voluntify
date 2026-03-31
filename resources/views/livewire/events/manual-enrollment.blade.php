@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="mb-4 flex items-center gap-3">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('events.show', $event)" wire:navigate />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('events.show', $event)" wire:navigate aria-label="{{ __('Back to event') }}" />
         <flux:heading size="xl">{{ __('Manual Enrollment') }}</flux:heading>
     </div>
 
@@ -27,7 +27,7 @@
                                         : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600' }}"
                             >
                                 <div>
-                                    <flux:text class="font-medium">{{ $volunteer->name }}</flux:text>
+                                    <flux:text class="font-medium">{{ $volunteer->full_name }}</flux:text>
                                     <flux:text size="sm" class="text-zinc-500">{{ $volunteer->email }}</flux:text>
                                 </div>
                                 @if ($selectedVolunteerId === $volunteer->id)

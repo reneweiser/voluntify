@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Notification;
 beforeEach(function () {
     Notification::fake();
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->create(['status' => EventStatus::Published]);
+    $this->event = Event::factory()->for($this->org)->create(['status' => EventStatus::PublishedOpen]);
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->action = new SendPreShiftReminders;
 });

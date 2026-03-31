@@ -6,6 +6,7 @@ use App\Livewire\Events\EventShow;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
+use App\Models\User;
 use App\Models\VolunteerJob;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +39,7 @@ it('shows edit button for organizer on non-archived events', function () {
 });
 
 it('hides edit button for volunteer admin', function () {
-    $admin = \App\Models\User::factory()->create();
+    $admin = User::factory()->create();
     $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($admin)
@@ -71,7 +72,7 @@ it('allows organizer to publish a draft event', function () {
         ->assertHasNoErrors()
         ->assertDispatched('event-published');
 
-    expect($this->event->fresh()->status)->toBe(EventStatus::Published);
+    expect($this->event->fresh()->status)->toBe(EventStatus::PublishedOpen);
 });
 
 it('shows error when publishing event with no jobs', function () {
@@ -82,7 +83,7 @@ it('shows error when publishing event with no jobs', function () {
 });
 
 it('allows organizer to archive a published event', function () {
-    $this->event->update(['status' => EventStatus::Published]);
+    $this->event->update(['status' => EventStatus::PublishedOpen]);
 
     Livewire::actingAs($this->user)
         ->test(EventShow::class, ['eventId' => $this->event->id])
@@ -94,7 +95,7 @@ it('allows organizer to archive a published event', function () {
 });
 
 it('shows share link for published events', function () {
-    $this->event->update(['status' => EventStatus::Published]);
+    $this->event->update(['status' => EventStatus::PublishedOpen]);
 
     Livewire::actingAs($this->user)
         ->test(EventShow::class, ['eventId' => $this->event->id])
@@ -202,7 +203,7 @@ it('shows clone button for organizer', function () {
 });
 
 it('hides clone button for volunteer admin', function () {
-    $admin = \App\Models\User::factory()->create();
+    $admin = User::factory()->create();
     $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($admin)

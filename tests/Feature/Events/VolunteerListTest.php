@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Livewire\Livewire;
@@ -28,7 +29,7 @@ it('renders for organizer', function () {
 });
 
 it('renders for volunteer admin', function () {
-    $admin = \App\Models\User::factory()->create();
+    $admin = User::factory()->create();
     $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
 
     $this->actingAs($admin)
@@ -51,7 +52,7 @@ it('returns 404 for event from different org', function () {
 });
 
 it('lists volunteers for the event', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Alice Wonderland']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Wonderland']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
 
     Livewire::actingAs($this->user)
@@ -61,7 +62,7 @@ it('lists volunteers for the event', function () {
 
 it('does not show volunteers from other events', function () {
     $otherEvent = Event::factory()->for($this->org)->create();
-    $volunteer = Volunteer::factory()->create(['name' => 'Bob Other']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Bob', 'last_name' => 'Other']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $otherEvent->id]);
 
     Livewire::actingAs($this->user)
@@ -70,8 +71,8 @@ it('does not show volunteers from other events', function () {
 });
 
 it('filters by name', function () {
-    $vol1 = Volunteer::factory()->create(['name' => 'Alice Match']);
-    $vol2 = Volunteer::factory()->create(['name' => 'Bob Nope']);
+    $vol1 = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Match']);
+    $vol2 = Volunteer::factory()->create(['first_name' => 'Bob', 'last_name' => 'Nope']);
     Ticket::factory()->create(['volunteer_id' => $vol1->id, 'event_id' => $this->event->id]);
     Ticket::factory()->create(['volunteer_id' => $vol2->id, 'event_id' => $this->event->id]);
 
@@ -83,7 +84,7 @@ it('filters by name', function () {
 });
 
 it('filters by email', function () {
-    $vol = Volunteer::factory()->create(['name' => 'Charlie', 'email' => 'charlie@special.com']);
+    $vol = Volunteer::factory()->create(['first_name' => 'Charlie', 'last_name' => 'Test', 'email' => 'charlie@special.com']);
     Ticket::factory()->create(['volunteer_id' => $vol->id, 'event_id' => $this->event->id]);
 
     Livewire::actingAs($this->user)
@@ -99,7 +100,7 @@ it('shows empty state when no volunteers', function () {
 });
 
 it('shows filtered empty state', function () {
-    $vol = Volunteer::factory()->create(['name' => 'Alice']);
+    $vol = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Test']);
     Ticket::factory()->create(['volunteer_id' => $vol->id, 'event_id' => $this->event->id]);
 
     Livewire::actingAs($this->user)
@@ -109,7 +110,7 @@ it('shows filtered empty state', function () {
 });
 
 it('shows arrival badge', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Arrived Alice']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Arrived', 'last_name' => 'Alice']);
     $ticket = Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
     EventArrival::factory()->create([
         'volunteer_id' => $volunteer->id,
@@ -130,7 +131,7 @@ it('shows export csv button', function () {
 });
 
 it('export route returns csv', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Export Test']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Export', 'last_name' => 'Test']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
 
     $response = $this->actingAs($this->user)
@@ -138,12 +139,12 @@ it('export route returns csv', function () {
         ->assertOk()
         ->assertHeader('content-type', 'text/csv; charset=UTF-8');
 
-    expect($response->streamedContent())->toContain('Export Test')
-        ->toContain('Name,Email,Phone,Shifts,Arrived,Attendance');
+    expect($response->streamedContent())->toContain('Export')
+        ->toContain('"First Name","Last Name",Email,Phone,Shifts,Arrived,Attendance');
 });
 
 it('shows attendance badge', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Attended Bob']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Attended', 'last_name' => 'Bob']);
     Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
     $job = VolunteerJob::factory()->for($this->event)->create();
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();

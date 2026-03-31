@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SmtpEncryption;
+use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -11,7 +12,7 @@ use Illuminate\Support\Str;
 
 class Organization extends Model
 {
-    /** @use HasFactory<\Database\Factories\OrganizationFactory> */
+    /** @use HasFactory<OrganizationFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -66,9 +67,9 @@ class Organization extends Model
         return $this->hasMany(Event::class);
     }
 
-    public function eventGroups(): HasMany
+    public function projects(): HasMany
     {
-        return $this->hasMany(EventGroup::class);
+        return $this->hasMany(Project::class);
     }
 
     public function activityLogs(): HasMany

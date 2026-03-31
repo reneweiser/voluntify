@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center gap-3 mb-4">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate aria-label="{{ __('Back to events') }}" />
         <flux:heading size="xl">{{ $event->name }}</flux:heading>
     </div>
 

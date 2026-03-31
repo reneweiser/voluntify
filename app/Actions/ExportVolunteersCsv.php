@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
@@ -10,7 +11,7 @@ use Illuminate\Support\LazyCollection;
 class ExportVolunteersCsv
 {
     /**
-     * @param  Collection<int, \App\Models\CustomRegistrationField>|null  $customFields
+     * @param  Collection<int, CustomRegistrationField>|null  $customFields
      * @return LazyCollection<int, array<string, string>>
      */
     public function execute(Event $event, ?string $search = null, ?Collection $customFields = null): LazyCollection
@@ -31,11 +32,13 @@ class ExportVolunteersCsv
         }
 
         return $query
-            ->orderBy('name')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
             ->cursor()
             ->map(function (Volunteer $volunteer) use ($customFields) {
                 $row = [
-                    'name' => $volunteer->name,
+                    'first_name' => $volunteer->first_name,
+                    'last_name' => $volunteer->last_name,
                     'email' => $volunteer->email,
                     'phone' => $volunteer->phone ?? '',
                     'shifts' => $volunteer->shiftSignups
@@ -60,8 +63,17 @@ class ExportVolunteersCsv
                     }
                 }
 
-                return $row;
+                return array_map([$this, 'sanitizeCsvValue'], $row);
             });
+    }
+
+    private function sanitizeCsvValue(string $value): string
+    {
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 
     private function attendanceStatus(Volunteer $volunteer): string

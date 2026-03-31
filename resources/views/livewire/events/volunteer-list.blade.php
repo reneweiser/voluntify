@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center gap-3 mb-4">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('events.index')" wire:navigate aria-label="{{ __('Back to events') }}" />
         <flux:heading size="xl">{{ $event->name }}</flux:heading>
     </div>
 
@@ -45,7 +45,7 @@
                         <flux:table.row :key="'volunteer-'.$volunteer->id">
                             <flux:table.cell>
                                 <a href="{{ route('events.volunteers.show', [$event, $volunteer]) }}" wire:navigate class="font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
-                                    {{ $volunteer->name }}
+                                    {{ $volunteer->full_name }}
                                 </a>
                             </flux:table.cell>
                             <flux:table.cell>{{ $volunteer->email }}</flux:table.cell>

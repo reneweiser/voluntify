@@ -3,16 +3,16 @@
 namespace App\Livewire\Events;
 
 use App\Actions\ArchiveEvent;
-use App\Actions\AssignEventsToGroup;
+use App\Actions\AssignEventsToProject;
 use App\Actions\CloneEvent;
+use App\Actions\CloseRegistration;
 use App\Actions\DeleteEventImage;
 use App\Actions\PublishEvent;
-use App\Actions\RemoveEventFromGroup;
 use App\Actions\UpdateEvent;
-use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Shift;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -45,7 +45,7 @@ class EventShow extends Component
 
     public bool $editing = false;
 
-    public string $selectedGroupId = '';
+    public string $selectedProjectId = '';
 
     public function mount(int $eventId): void
     {
@@ -86,7 +86,7 @@ class EventShow extends Component
     #[Computed]
     public function publicUrl(): ?string
     {
-        if ($this->event->status !== EventStatus::Published) {
+        if (! $this->event->status->isPublished()) {
             return null;
         }
 
@@ -94,22 +94,19 @@ class EventShow extends Component
     }
 
     #[Computed]
-    public function availableGroups(): \Illuminate\Database\Eloquent\Collection
+    public function availableProjects(): Collection
     {
-        return currentOrganization()->eventGroups()->orderBy('name')->get();
+        return currentOrganization()->projects()->orderBy('name')->get();
     }
 
-    public function updateGroup(): void
+    public function updateProject(): void
     {
         Gate::authorize('update', $this->event);
 
-        if ($this->selectedGroupId === '') {
-            $action = app(RemoveEventFromGroup::class);
-            $action->execute($this->event);
-        } else {
-            $group = currentOrganization()->eventGroups()->findOrFail((int) $this->selectedGroupId);
-            $action = app(AssignEventsToGroup::class);
-            $action->execute($group, [$this->event->id]);
+        if ($this->selectedProjectId !== '') {
+            $project = currentOrganization()->projects()->findOrFail((int) $this->selectedProjectId);
+            $action = app(AssignEventsToProject::class);
+            $action->execute($project, [$this->event->id]);
         }
 
         $this->event->refresh();
@@ -187,6 +184,19 @@ class EventShow extends Component
         }
     }
 
+    public function closeRegistration(): void
+    {
+        Gate::authorize('update', $this->event);
+
+        try {
+            $action = app(CloseRegistration::class);
+            $this->event = $action->execute($this->event);
+            $this->dispatch('event-registration-closed');
+        } catch (DomainException $e) {
+            $this->addError('status', $e->getMessage());
+        }
+    }
+
     public function archiveEvent(): void
     {
         Gate::authorize('archive', $this->event);
@@ -219,6 +229,6 @@ class EventShow extends Component
         $this->endsAt = $this->event->ends_at->format('Y-m-d\TH:i');
         $this->cancellationCutoffHours = $this->event->cancellation_cutoff_hours ?? '';
         $this->attendanceGraceMinutes = $this->event->attendance_grace_minutes ?? '';
-        $this->selectedGroupId = $this->event->event_group_id ? (string) $this->event->event_group_id : '';
+        $this->selectedProjectId = $this->event->project_id ? (string) $this->event->project_id : '';
     }
 }

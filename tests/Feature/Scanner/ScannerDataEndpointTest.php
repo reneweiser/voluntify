@@ -1,28 +1,33 @@
 <?php
 
 use App\Enums\ArrivalMethod;
+use App\Enums\AttendanceStatus;
 use App\Enums\StaffRole;
+use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\EventArrival;
+use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use App\Services\JwtKeyService;
+use App\Services\TokenVerifier;
 use Firebase\JWT\JWT;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = \App\Models\User::factory()->create();
+    $this->entranceStaff = User::factory()->create();
     $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
 
     $this->event = Event::factory()->for($this->org)->create();
 });
 
 it('returns volunteers and shifts for entrance staff', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Alice']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Test']);
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
     $job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Gate Watch']);
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
@@ -37,7 +42,7 @@ it('returns volunteers and shifts for entrance staff', function () {
     $data = $response->json();
     expect($data['event']['id'])->toBe($this->event->id)
         ->and($data['volunteers'])->toHaveCount(1)
-        ->and($data['volunteers'][0]['name'])->toBe('Alice')
+        ->and($data['volunteers'][0]['name'])->toBe('Alice Test')
         ->and($data['volunteers'][0]['ticket']['jwt_token'])->toBeString()
         ->and($data['volunteers'][0]['shift_signups'])->toHaveCount(1)
         ->and($data['volunteers'][0]['shift_signups'][0]['shift']['volunteer_job']['name'])->toBe('Gate Watch');
@@ -77,10 +82,10 @@ it('returned keys cannot sign a valid JWT', function () {
             'EdDSA',
         );
         // If encode somehow succeeds, the token should not verify
-        $verifier = app(\App\Services\TokenVerifier::class);
+        $verifier = app(TokenVerifier::class);
         $verifier->verify($forgedJwt, $this->event->id);
         $this->fail('Expected InvalidTicketException');
-    } catch (\Exception) {
+    } catch (Exception) {
         // Expected: either encode fails or verify fails
         expect(true)->toBeTrue();
     }
@@ -112,9 +117,9 @@ it('includes attendance_record in shift_signups', function () {
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     $signup = ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
 
-    \App\Models\AttendanceRecord::factory()->create([
+    AttendanceRecord::factory()->create([
         'shift_signup_id' => $signup->id,
-        'status' => \App\Enums\AttendanceStatus::OnTime,
+        'status' => AttendanceStatus::OnTime,
         'recorded_by' => $this->organizer->id,
     ]);
 
@@ -161,7 +166,7 @@ it('returns user_role and grace minutes in data response', function () {
 });
 
 it('allows volunteer admin access for attendance tracking', function () {
-    $volunteerAdmin = \App\Models\User::factory()->create();
+    $volunteerAdmin = User::factory()->create();
     $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
 
     $response = $this->actingAs($volunteerAdmin)
@@ -178,7 +183,7 @@ it('redirects unauthenticated user', function () {
 });
 
 it('returns 404 for event in wrong org', function () {
-    $otherOrg = \App\Models\Organization::factory()->create();
+    $otherOrg = Organization::factory()->create();
     $otherEvent = Event::factory()->for($otherOrg)->create();
 
     $this->actingAs($this->entranceStaff)

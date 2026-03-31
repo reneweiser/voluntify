@@ -5,25 +5,28 @@ use App\Enums\StaffRole;
 use App\Livewire\Scanner\ManualLookup;
 use App\Models\Event;
 use App\Models\EventArrival;
+use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Livewire;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = \App\Models\User::factory()->create();
+    $this->entranceStaff = User::factory()->create();
     $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
 
-    $this->volunteerAdmin = \App\Models\User::factory()->create();
+    $this->volunteerAdmin = User::factory()->create();
     $this->org->users()->attach($this->volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
 
     $this->event = Event::factory()->for($this->org)->published()->create();
 
-    app()->instance(\App\Models\Organization::class, $this->org);
+    app()->instance(Organization::class, $this->org);
 });
 
 // Phase D: Basics
@@ -58,7 +61,7 @@ it('shows empty search state', function () {
 // Phase E: Server Search
 
 it('finds volunteers by name', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Alice Johnson']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Johnson']);
     Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
@@ -68,7 +71,7 @@ it('finds volunteers by name', function () {
 });
 
 it('scopes search to selected event', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Bob Smith']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Bob', 'last_name' => 'Smith']);
     $otherEvent = Event::factory()->for($this->org)->published()->create();
     Ticket::factory()->for($volunteer)->for($otherEvent)->create();
 
@@ -86,7 +89,7 @@ it('shows no results state', function () {
 });
 
 it('shows job and shift info', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Carol Davis']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Carol', 'last_name' => 'Davis']);
     Ticket::factory()->for($volunteer)->for($this->event)->create();
     $job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Gate Watch']);
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
@@ -100,7 +103,7 @@ it('shows job and shift info', function () {
 });
 
 it('shows already arrived for checked-in volunteer', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Dave Wilson']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Dave', 'last_name' => 'Wilson']);
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
     EventArrival::factory()->create([
         'ticket_id' => $ticket->id,
@@ -120,7 +123,7 @@ it('shows already arrived for checked-in volunteer', function () {
 // Phase F: Confirm Arrival
 
 it('records arrival on confirm', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Eve Brown']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Eve', 'last_name' => 'Brown']);
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
@@ -135,7 +138,7 @@ it('records arrival on confirm', function () {
 });
 
 it('sets method to manual_lookup', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Frank Green']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Frank', 'last_name' => 'Green']);
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
@@ -149,7 +152,7 @@ it('sets method to manual_lookup', function () {
 });
 
 it('flags duplicate arrival', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Grace Lee']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Grace', 'last_name' => 'Lee']);
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
     EventArrival::factory()->create([
         'ticket_id' => $ticket->id,
@@ -171,7 +174,7 @@ it('flags duplicate arrival', function () {
 });
 
 it('dispatches arrival-confirmed event on success', function () {
-    $volunteer = Volunteer::factory()->create(['name' => 'Hank Miller']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Hank', 'last_name' => 'Miller']);
     $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
 
     Livewire::actingAs($this->organizer)
@@ -182,10 +185,10 @@ it('dispatches arrival-confirmed event on success', function () {
 
 it('cannot confirm volunteer from wrong event', function () {
     $otherEvent = Event::factory()->for($this->org)->published()->create();
-    $volunteer = Volunteer::factory()->create(['name' => 'Jack White']);
+    $volunteer = Volunteer::factory()->create(['first_name' => 'Jack', 'last_name' => 'White']);
     Ticket::factory()->for($volunteer)->for($otherEvent)->create();
 
-    $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+    $this->expectException(ModelNotFoundException::class);
 
     Livewire::actingAs($this->organizer)
         ->test(ManualLookup::class, ['eventId' => $this->event->id])

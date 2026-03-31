@@ -3,6 +3,7 @@
 namespace App\Livewire\Public;
 
 use App\Actions\ProcessVolunteerSignup;
+use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,7 +19,9 @@ class EventSignup extends Component
 {
     public Event $event;
 
-    public string $volunteerName = '';
+    public string $volunteerFirstName = '';
+
+    public string $volunteerLastName = '';
 
     public string $volunteerEmail = '';
 
@@ -41,7 +44,9 @@ class EventSignup extends Component
 
     public function mount(string $publicToken): void
     {
-        $this->event = Event::publishedByToken($publicToken)->firstOrFail();
+        $this->event = Event::where('public_token', $publicToken)
+            ->where('status', EventStatus::PublishedOpen)
+            ->firstOrFail();
     }
 
     #[Computed]
@@ -79,9 +84,10 @@ class EventSignup extends Component
         }
 
         $this->validate(array_merge([
-            'volunteerName' => ['required', 'string', 'max:255'],
+            'volunteerFirstName' => ['required', 'string', 'max:255'],
+            'volunteerLastName' => ['required', 'string', 'max:255'],
             'volunteerEmail' => ['required', 'email', 'max:255'],
-            'volunteerPhone' => ['nullable', 'string', 'max:20'],
+            'volunteerPhone' => [$this->event->phone_required ? 'required' : 'nullable', 'string', 'max:20'],
             'selectedShiftIds' => ['required', 'array', 'min:1'],
             'selectedShiftIds.*' => [
                 'integer',
@@ -104,7 +110,8 @@ class EventSignup extends Component
                 : null;
 
             $outcome = $action->execute(
-                name: $this->volunteerName,
+                firstName: $this->volunteerFirstName,
+                lastName: $this->volunteerLastName,
                 email: $this->volunteerEmail,
                 event: $this->event,
                 shiftIds: array_map('intval', $this->selectedShiftIds),

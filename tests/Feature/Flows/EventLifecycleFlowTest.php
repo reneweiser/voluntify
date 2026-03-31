@@ -42,7 +42,7 @@ it('completes event lifecycle: create → add jobs → publish → public access
     $publishAction = new PublishEvent;
     $event = $publishAction->execute($event);
 
-    expect($event->status)->toBe(EventStatus::Published);
+    expect($event->status)->toBe(EventStatus::PublishedOpen);
 
     // Step 4: Public access works
     $this->get(route('events.public', $event->public_token))
