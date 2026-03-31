@@ -1,5 +1,14 @@
 # Domain Landscape: Volunteer Management for Events
 
+> **REVISION NOTE (2026-03-30):** The **Key Roles** and **Core Workflows** sections below describe the Phase 1 architecture. In Phase 2:
+>
+> - **Volunteer Admin + Entry Staff** no longer have permanent user accounts — they use temporary scanner links (#56, #58)
+> - **Events** now belong to **Projects** (mandatory top-level entity) instead of directly to organisations (#52)
+> - **Volunteer Signup** is a multi-step flow with email verification, 20-min reservation, and project-scoped QR codes (#69)
+> - **Entrance Scanning** uses two distinct scanner types: Entry Staff Scanner and Volunteer Admin Scanner (#56, #58, #75)
+>
+> The **Industry Overview**, **market analysis**, and **friction points** remain valid. See `docs/roles-and-permissions.md` and `docs/getting-started.md` for the current role model and workflows.
+
 **Date**: 2026-02-28
 **Domain**: Volunteer management software for small/mid-sized event-running organizations
 

@@ -1,83 +1,163 @@
 # Managing Volunteers
 
-This guide covers viewing volunteer data, exporting lists, and using the dashboard.
+This guide covers viewing, creating, and managing volunteers at project level, including manual creation, organizer actions, and the dashboard.
 
-**Who can access**: Organizer and Volunteer Admin.
+**Who can access**: Organizer only. Volunteer Admins can view volunteers through the scanner but not through the admin interface.
 
-## View Volunteers for an Event
+## View Volunteers for a Project
 
-1. Go to the event's **Volunteers** page.
-2. You'll see a table of all signed-up volunteers showing:
-   - Name
-   - Email
-   - Job
-   - Shift
-   - Signup date
-   - Arrival status (scanned / not scanned)
-   - Attendance status (On Time / Late / No Show / unmarked)
+Volunteers belong to the **project** -- not to individual events. The project-level volunteer list shows all volunteers across all events.
+
+1. Go to the project's **Volunteers** page.
+2. You'll see a table showing:
+   - Vorname, Nachname
+   - E-Mail
+   - Schichten (count per event)
+   - Signup-Datum
+   - Status-Badge (aktive Schichten / "Keine Schicht")
 
 ### Search and Filter
 
-- **Search**: Type in the search bar to filter by volunteer name or email.
-- **Filter by job**: Use the job dropdown to show only volunteers for a specific job.
-- **Filter by shift**: Use the shift dropdown to narrow further to a specific shift.
+- **Search**: Type in the search bar to filter by name or email.
+- **Filter by event**: Show only volunteers signed up for a specific event.
+- **Filter by job**: Narrow to a specific job within an event.
+- **Filter by shift**: Narrow further to a specific shift.
 
 Click a volunteer row to view their full details.
 
 ## View Volunteer Details
 
-The volunteer detail page shows everything about a specific volunteer for this event:
+The volunteer detail page shows everything about a volunteer within this project:
 
-- **Name and email**
-- **Shift assignments** -- All shifts they're signed up for, with job names and times.
-- **Arrival status** -- Whether they've been scanned in at the event entrance and when.
-- **Attendance records** -- Their per-shift attendance status (On Time / Late / No Show).
-- **Custom field responses** -- Answers to any custom registration fields the volunteer filled in during signup. Archived (removed) fields are shown with an "(archived)" label.
+- **Persönliche Daten** -- Vorname, Nachname, E-Mail, Telefon
+- **Schichten** -- All shift assignments across events, with job names, times, and status
+- **Anwesenheit** -- Per-shift: On Time / Late / No Show
+- **Gear** -- Typ-1 status (from configurable state list) and Typ-2 pickup count
+- **Custom Fields** -- Project-level and event-level field responses. Fields without answers show "Keine Angabe". Archived fields show with an "(archiviert)" label.
+
+## Create a Volunteer Manually
+
+Organizers can create volunteers directly -- without the public signup flow. This is useful for volunteers recruited in person, by phone, or through other channels.
+
+1. Go to the project's **Volunteers** page.
+2. Click **Volunteer hinzufügen**.
+3. Fill in the form:
+   - **E-Mail** (required) -- the only mandatory field
+   - **Vorname** (optional)
+   - **Nachname** (optional)
+   - **Telefon** (optional)
+   - **Schichten** (optional) -- select shifts across events
+   - **Custom Fields** (optional) -- enter known answers
+   - **Gear-Auswahl** (optional) -- e.g. T-shirt size
+4. Click **Speichern**.
+
+After saving:
+- The volunteer receives a `volunteer_added_by_organizer` email with a magic link to the Helfer-Portal.
+- The email says: "Du wurdest als Helfer eingetragen. Vervollständige deine Angaben über deinen Portal-Link."
+
+> Example: The Organizer meets someone at a club event who wants to volunteer. They create a record with just the email. The volunteer receives a portal link and fills in their name, selects shifts, and chooses their T-shirt size at their convenience.
+
+### Handling Incomplete Data
+
+When the Organizer doesn't fill in everything:
+
+| Missing Data | Where It Shows | What Happens |
+|---|---|---|
+| Typ-1 Gear selection | Scanner | Shows **"Auswahl ausstehend"** -- gear pickup blocked until volunteer selects via portal |
+| Custom Fields | Organizer UI | Shows **"Keine Angabe"** |
+| Vorname / Nachname | Portal | Banner: "Bitte vervollständige deine Registrierung" |
+
+> Why "Auswahl ausstehend" and not "Größe ausstehend"? Typ-1 gear isn't always about sizes -- it could be colors, variants, or preferences. The label must be generic.
+
+## Organizer Actions on Existing Volunteers
+
+### Assign or Change Shifts
+
+1. Open the volunteer's detail page.
+2. Click **Schichten bearbeiten**.
+3. Add or remove shifts across events in the project.
+4. Save.
+
+The volunteer receives the same confirmation email as if they had changed it themselves.
+
+### Cancel a Volunteer's Signup
+
+**Single shift:**
+1. Open the volunteer's detail page.
+2. Click the remove icon next to the shift.
+3. Confirm.
+
+**Full cancellation (all shifts):**
+1. Open the volunteer's detail page.
+2. Click **Anmeldung stornieren**.
+3. Confirm.
+
+The volunteer record remains in the project (badge: "Keine Schicht"). The volunteer receives a cancellation email.
+
+> Why keep the record? The volunteer might want to sign up again later. Deleting would lose their custom field responses and gear status.
+
+### Edit Personal Data
+
+1. Open the volunteer's detail page.
+2. Click **Stammdaten bearbeiten**.
+3. Update Vorname, Nachname, E-Mail, or Telefon.
+4. Save.
+
+The volunteer receives the same update email as if they had changed it themselves -- no separate "Organizer hat geändert" template.
+
+> Why no separate template? Keeping one set of change-notification templates (regardless of who triggered the change) simplifies the email system and avoids confusing volunteers with different email formats for the same information.
 
 ## Promote a Volunteer to Staff
 
-If a volunteer has proven reliable and you'd like to give them a staff role in your organization, you can promote them directly from their detail page.
+From the volunteer detail page, you can promote a volunteer to a staff role.
 
-1. Go to the event's **Volunteers** page and click the volunteer's row.
-2. Click **Promote to Staff**.
-3. Select a role:
-   - **Volunteer Admin** -- Can view volunteers and mark shift attendance.
-   - **Entrance Staff** -- Can use the QR scanner and manual lookup.
-   - **Organizer** -- Full administrative access.
-4. Click **Promote**.
+1. Click **Zum Staff befördern**.
+2. Select a role:
+   - **Volunteer Admin** -- Select which scanner to assign them to. Scanner link will be sent automatically before the time window.
+   - **Organizer** -- Account is created (if needed), invitation email sent, access to the project/organisation.
+3. Confirm.
 
-What happens next depends on whether the volunteer's email already belongs to a Voluntify user:
-
-- **New user**: A user account is created with a temporary password. The volunteer receives a notification email with their login credentials and must set a new password on first login.
-- **Existing user**: The user is added to your organization with the selected role directly. No notification email is sent -- the organization will appear in their organization switcher on next login.
-
-Once promoted, the volunteer's detail page shows a **Staff Member** badge instead of the promote button.
-
-For onboarding tips for new staff members, see [Managing Your Members > Onboarding Checklists](managing-your-team.md#onboarding-checklist-entrance-staff).
+> Note: **Entry Staff** is not available via "Promote to Staff" -- Entry Staff are assigned directly through the Entry Staff Scanner configuration.
 
 **Who can do this**: Organizer only.
 
 ## Export CSV
 
-To export the volunteer list as a CSV file:
+To export the volunteer list:
 
-1. Go to the event's **Volunteers** page.
-2. Click the **Export** button.
-3. A CSV file downloads with the volunteer data.
+1. Go to the project's **Volunteers** page.
+2. Click **Export**.
+3. A CSV downloads with: Vorname, Nachname, E-Mail, Telefon, shifts per event, gear assignments with selections, and custom field responses.
 
-The export includes volunteer names, emails, job assignments, shift times, status information, a gear column listing assigned gear items with sizes (e.g., "T-Shirt (M); Badge"), and columns for each custom registration field. Checkbox fields export as "Yes" or "No". Archived (removed) fields include an "(archived)" suffix in the column header.
-
-Note: Cancelled signups are excluded from volunteer counts, the volunteer list, and attendance views. Only active signups are shown.
+Archived fields include an "(archiviert)" suffix in the column header. Cancelled signups are excluded.
 
 ## Dashboard Overview
 
-The **Dashboard** (accessible from the sidebar) provides an at-a-glance overview:
+The **Dashboard** provides a project-focused overview for Organizers.
 
-- **Summary cards** -- Upcoming events count, total volunteers across events, shifts needing attention.
-- **Upcoming events list** -- Events sorted by date (nearest first), showing key metrics per event.
-- **Quick actions** -- Organizers see a "Create Event" button for fast access.
+**Upper area:**
+- Next upcoming event
+- **Neues Projekt** button
+- Global volunteer search (across all projects)
 
-The dashboard adapts to your role:
-- **Organizers** see all organization data and the "Create Event" button.
-- **Volunteer Admins** see events they're assigned to.
-- **Entrance Staff** see events they're assigned to.
+**Project tiles** -- Each project shows:
+
+| Info | Details |
+|---|---|
+| Status-Badge | Draft / Open / Closed / Archived (per event) |
+| Volunteers | Count of active signups |
+| Schichten | Shifts with open capacity |
+| No-Show-Rate | % not appeared |
+| Anwesenheit | On Time / Late / No Show breakdown |
+| Gear ausstehend | Configurable favourite items (Organizer selects per project) |
+
+> Why configurable gear favourites? Not all gear items are equally important to track at a glance. The Organizer picks which ones appear on the dashboard tile -- e.g. T-shirts but not drink tokens.
+
+**Quick Actions per tile:**
+- Neues Event anlegen
+- Anmelde-Link kopieren
+- Event duplizieren
+- Scanner öffnen
+- Ankündigung senden
+
+**Filters:** By time period, by project.

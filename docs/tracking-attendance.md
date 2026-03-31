@@ -1,62 +1,73 @@
 # Tracking Attendance
 
-Attendance tracking records whether volunteers showed up to their assigned shifts and whether they were on time. This is separate from entrance scanning -- arrival confirms they're at the event, attendance confirms they reported to their shift.
+Attendance tracking records whether volunteers showed up to their assigned shifts and whether they were on time. This is separate from entrance scanning -- arrival confirms they're at the venue, attendance confirms they reported to their shift.
 
-![Comparison of event arrival vs shift attendance tracking](figures/arrival-vs-attendance.svg)
-
-**Who can mark attendance**: Organizer and Volunteer Admin.
+**Who can mark attendance**: Organizer and Volunteer Admin (via scanner).
 
 ## Mark Attendance for a Shift
 
-1. Go to **Attendance** in the event sidebar.
-2. Select a shift from the shift selector. Shifts are grouped by job.
-3. You'll see a roster of all volunteers signed up for that shift.
-4. For each volunteer, click one of the status buttons:
-   - **On Time** -- The volunteer arrived at their shift on time.
-   - **Late** -- The volunteer arrived but after the shift started.
-   - **No Show** -- The volunteer didn't show up to their shift.
+### Via Volunteer Admin Scanner
 
-You can change a volunteer's status at any time by clicking a different button. This is useful if you marked someone as "No Show" but they arrive late.
+The primary way to mark attendance on-site:
 
-## Understanding the Attendance View
+1. Scan the volunteer's QR code (or use manual search).
+2. The scanner shows the volunteer's shifts with status.
+3. Tap the attendance button for each shift.
+4. Status is set based on current time and the event's grace period.
 
-The attendance view shows two distinct pieces of information for each volunteer:
+> Example: Shift starts at 10:00, grace period is 15 minutes. Scan at 10:12 → On Time. Scan at 10:16 → Late.
+
+### Via Admin Interface (Organizer only)
+
+1. Go to the event's **Volunteers** page.
+2. Select a shift.
+3. You'll see a roster of all volunteers for that shift.
+4. For each volunteer, set status:
+   - **On Time** -- Arrived at the shift on time
+   - **Late** -- Arrived but after the shift started
+   - **No Show** -- Did not show up
+
+You can change a status at any time -- useful if someone marked as "No Show" arrives late.
+
+## Understanding Attendance vs. Arrival
 
 | Column | Meaning |
 |---|---|
-| **Arrival** | Whether the volunteer has been scanned in at the event entrance (from QR scanner or manual lookup). This is informational only. |
-| **Attendance** | The shift-level status you set: On Time, Late, or No Show. |
+| **Ankunft** | Whether the volunteer was scanned at the venue entrance (Entry Staff Scanner). Informational only. |
+| **Anwesenheit** | The shift-level status: On Time, Late, or No Show. Set by Volunteer Admin. |
 
-A **conflict indicator** highlights cases where a volunteer arrived at the event (has an arrival record) but was marked No Show for their shift. This may mean they arrived at the event but didn't report to their station.
+A **conflict indicator** highlights cases where a volunteer arrived at the venue (has an arrival record) but was marked No Show for their shift -- they came to the event but didn't report to their station.
 
 ### Status Summary
 
-At the top of the roster, a summary shows the count of:
-- On Time
-- Late
-- No Show
-- Unmarked (no status set yet)
-
-This helps you quickly see how many volunteers still need to be accounted for.
-
-## Attendance via QR Scanner
-
-In addition to the Attendance tab, Organizers and Volunteer Admins can mark attendance directly from the QR scanner and Manual Lookup pages. Each scan result shows the volunteer's shifts with a **Mark** button for recording attendance on the spot.
-
-This is useful during busy events when you want to handle arrival and attendance in a single step. See [Recording Shift Attendance from the Scanner](checking-in-volunteers.md#recording-shift-attendance-from-the-scanner) for details.
+At the top of the roster:
+- On Time count
+- Late count
+- No Show count
+- Unmarked (no status yet)
 
 ## Attendance Grace Period
 
-The attendance grace period is an optional per-event setting that defines how many minutes after a shift starts a scan is still considered **On Time**. Scans after the grace window are marked **Late**.
+An optional per-event setting: how many minutes after shift start a scan is still **On Time**.
 
-For example, if a shift starts at 10:00 AM and the grace period is 15 minutes, a volunteer scanned at 10:12 AM is marked On Time. A volunteer scanned at 10:16 AM is marked Late.
+- **With grace period:** Scan within the window = On Time. After = Late.
+- **Without grace period:** Any scan after shift start = Late.
 
-If no grace period is set, any scan after the shift start time is marked Late.
+Configure in Event > Einstellungen > Anwesenheit > **Attendance Grace Period (Minuten)**.
 
-Configure this in **Edit Event Details** under **Attendance Grace Period (minutes)**. See [Edit Event Details](creating-events.md#edit-event-details).
+> Example: Grace period of 15 minutes for a shift starting at 10:00. Volunteer scanned at 10:12 → On Time. Volunteer scanned at 10:16 → Late.
 
 ## Automatic No-Show Detection
 
-Voluntify automatically marks volunteers as **No Show** if their shift ended more than 2 hours ago and no attendance was recorded. This runs hourly in the background, so you don't need to manually go through every shift to flag no-shows.
+Volunteers are automatically marked **No Show** if:
+- Their shift ended more than 2 hours ago
+- No attendance record exists
 
-You can still override an automatic No Show by changing the volunteer's status on the Attendance tab or from the scanner -- for example, if they did show up but weren't scanned.
+This runs hourly in the background. You can override an automatic No Show by changing the status manually.
+
+## Shifts Without Times
+
+For shifts configured without start/end times (e.g. custom display text "nach Bedarf"):
+- Automatic On Time / Late classification is not possible
+- Attendance must be marked manually
+- Grace period does not apply

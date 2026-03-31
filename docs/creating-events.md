@@ -1,220 +1,200 @@
 # Creating Events
 
-This guide covers creating and configuring events, including jobs, shifts, email templates, and event lifecycle actions.
+This guide covers creating and configuring events within a project, including jobs, shifts, email templates, announcements, and the event lifecycle.
+
+Events always belong to a **project**. Create the project first (see [Managing Projects](managing-projects.md)), then add events.
 
 ## Create a New Event
 
-1. Click **Events** in the sidebar.
-2. Click **Create Event**.
-3. Fill in the required fields:
-   - **Name** -- The event name (e.g., "Spring Community Cleanup").
-   - **Starts At** -- When the event begins.
-   - **Ends At** -- When the event ends (must be after the start date).
-4. Optionally fill in:
-   - **Location** -- Where the event takes place.
-   - **Description** -- Details about the event shown on the public signup page.
-5. Click **Create**.
+1. Open your project.
+2. Click **Neues Event**.
+3. Fill in:
+   - **Name** -- e.g. "Hauptabend" or "Aufbautag"
+   - **Datum** -- When the event takes place
+   - **Ort** (optional) -- Location
+   - **Beschreibung** (optional) -- Details shown on the project website
+4. Click **Erstellen**.
 
-The event is created in **Draft** status. You'll be taken to the event detail page where you can add jobs and shifts.
+The event is created in **Draft** status.
 
 **Who can do this**: Organizer only.
 
 ## Edit Event Details
 
-1. Go to **Overview** in the event sidebar.
-2. Click **Edit**.
-3. Update the name, dates, location, or description.
-4. Optionally upload a **title image** (JPG, PNG, or WebP, max 2 MB). This appears as a hero image on the public signup page.
-5. Optionally assign the event to an **Event Group** using the dropdown. See [Organizing Event Groups](managing-event-groups.md) for details.
-6. Optionally set a **Cancellation Cutoff (hours)** -- This allows volunteers to cancel their own signups up to the specified number of hours before a shift starts. Leave empty to disable volunteer self-cancellation.
-7. Optionally set an **Attendance Grace Period (minutes)** -- Defines how many minutes after a shift starts a scan is still considered "On Time." Scans after the grace window are marked "Late." Leave empty for no grace period (any scan after shift start is Late). See [Attendance Grace Period](tracking-attendance.md#attendance-grace-period) for details.
-8. Click **Save**.
-
-To remove a title image, click **Delete Image** while editing.
+1. Go to the event's **Einstellungen > Allgemein**.
+2. Update name, date, location, description, or title image.
+3. Additional settings:
+   - **Anmeldefrist** -- Date/time after which signups automatically close (Published Open → Published Closed).
+   - **Telefon-Pflichtfeld** -- Toggle to require phone number during signup.
+   - **Attendance Grace Period (Minuten)** -- Minutes after shift start where a scan is still "On Time".
+4. Click **Speichern**.
 
 **Who can do this**: Organizer only.
 
 ## Define Volunteer Jobs
 
-Jobs describe the roles volunteers will fill at your event.
+Jobs describe the roles volunteers fill at your event.
 
-1. Go to **Jobs & Shifts** in the event sidebar.
-2. Click **Add Job**.
+1. Go to **Jobs & Schichten**.
+2. Click **Job hinzufügen**.
 3. Enter:
-   - **Name** -- The job title (e.g., "Registration Desk").
-   - **Description** -- What the job involves. Shown on the public signup page.
-   - **Instructions** -- Detailed info for volunteers (e.g., where to report, what to bring). Instructions are published as a standalone cheat sheet page linked from the public signup page and included in pre-shift reminder emails.
-4. Save the job.
+   - **Name** -- e.g. "Einlass", "Bar", "Bühne"
+   - **Beschreibung** -- What the job involves (shown on signup page)
+   - **Anweisungen** -- Detailed info for volunteers (published as cheat sheet, linked from signup page, included in reminder emails)
+4. Save.
 
-To edit or delete a job, use the controls on the job section. Deleting a job with existing signups will ask for confirmation.
-
-**Who can do this**: Organizer only. Volunteer Admins can view jobs but not edit them.
+**Who can do this**: Organizer only.
 
 ## Create Shifts
 
-Shifts are time slots within a job that volunteers sign up for.
+Shifts are time slots within a job. **Date is always required; start and end times are optional.**
 
-1. Within a job on the **Jobs & Shifts** page, click **Add Shift**.
+1. Within a job on **Jobs & Schichten**, click **Schicht hinzufügen**.
 2. Set:
-   - **Start Time** -- When the shift begins.
-   - **End Time** -- When the shift ends.
-   - **Capacity** -- Maximum number of volunteers for this shift.
-3. Save the shift.
+   - **Datum** (required) -- The day of the shift
+   - **Startzeit** (optional) -- Toggle to set or omit
+   - **Endzeit** (optional) -- Toggle to set or omit
+   - **Custom Display Text** (optional) -- Overrides the time display
+   - **Kapazität** -- Maximum volunteers
+3. Save.
 
-The capacity display shows "X / Y signed up" so you can see how full each shift is. When a shift is full, it shows a "Full" badge on the public signup page and volunteers can't sign up for it.
+### Time Display Examples
 
-To edit or delete a shift, use the inline controls. Deleting a shift with signups will ask for confirmation.
+| Configuration | Display |
+|---|---|
+| Date + Start + End | "Aufbau · 10:00--14:00 Uhr" |
+| Date + Start only | "Aufbau · ab 10:00 Uhr" |
+| Date + Custom Text | "Aufbau · nach Bedarf" |
+| Start + Custom End | "Aufbau · 10:00 Uhr -- bis Veranstaltungsende" |
+
+> Why optional times? Some jobs don't have fixed hours. Setup crews may work "as needed", cleanup crews "until everything is done". Custom display text handles these cases without forcing organizers to invent fake times.
+
+A confirmation dialog appears when saving a shift without start or end time, to prevent accidental omission.
+
+### Effects of Missing Times
+
+| Feature | Behavior |
+|---|---|
+| Reminder emails | With start time: 24h and 4h reminder. Without: reminder at 03:00 on shift day |
+| Scanner shift list | Shifts without time sorted first ("always on top") |
+| Overlap check | With times: normal check. Without times: silently skipped |
+| Volunteer portal | Shows configured time or custom text |
+
+**Who can do this**: Organizer only.
+
+## Event Lifecycle
+
+Events move through four stages:
+
+```text
+Draft --> Published Open <--> Published Closed --> Archived
+```
+
+### Publish (Draft → Published Open)
+
+1. Go to **Übersicht**.
+2. Click **Veröffentlichen**.
+
+**Blocked if no shifts exist.** On first publish of any event in the project, the project website is activated.
+
+> Why block without shifts? An event without shifts has nothing for volunteers to sign up for. Publishing it would create confusion.
+
+### Close Signups (Published Open → Published Closed)
+
+Happens automatically when the **Anmeldefrist** passes, or manually:
+1. Go to **Übersicht**.
+2. Click **Anmeldung schließen**.
+
+The event remains visible on the project website with an "Anmeldung abgelaufen" label.
+
+### Maintenance Mode (Published → Draft)
+
+Take an event back to Draft for changes. No notification is sent to volunteers during maintenance.
+
+### Re-Publish (Draft → Published Open)
+
+When re-publishing after maintenance:
+- The Organizer can add an optional free-text note (e.g. "Schichtzeiten wurden angepasst").
+- All volunteers with active signups receive an `event_updated` email with the note and a portal link.
+
+### Archive (Published Closed → Archived)
+
+1. Go to **Übersicht**.
+2. Click **Archivieren**.
+
+Archived events are read-only and removed from the project website. Published events must be closed first before archiving.
+
+### Scheduled Publishing
+
+Events can be scheduled to publish at a specific date/time.
 
 **Who can do this**: Organizer only.
 
 ## Customize Email Templates
 
-Voluntify sends automated emails to volunteers. You can customize these per event.
+Email templates are configured **per event**. If no custom template is set, system defaults are used.
 
-1. Go to **Emails** in the event sidebar.
-2. Select the template type:
-   - **Signup Confirmation** -- Sent when a volunteer signs up.
-   - **Pre-Shift Reminder (24h)** -- Sent 24 hours before a shift.
-   - **Pre-Shift Reminder (4h)** -- Sent 4 hours before a shift.
-3. Edit the **Subject** and **Body** fields.
-4. Use placeholders to insert dynamic content:
-   - `{{volunteer_name}}` -- The volunteer's name
-   - `{{event_name}}` -- The event name
-   - `{{job_name}}` -- The volunteer job name
-   - `{{shift_date}}` -- The shift date
-   - `{{shift_time}}` -- The shift start time
-   - `{{event_location}}` -- The event location
-   - `{{cheat_sheet_url}}` -- Link to the job's cheat sheet page (pre-shift reminders only)
-5. Click **Save**.
+1. Go to event **Einstellungen > E-Mail-Vorlagen**.
+2. Select the template type.
+3. Edit Subject and Body.
+4. Use placeholders:
+   - `{{vorname}}` -- Volunteer's first name
+   - `{{nachname}}` -- Volunteer's last name
+   - `{{event_name}}` -- Event name
+   - `{{job_name}}` -- Job name
+   - `{{shift_date}}` -- Shift date
+   - `{{shift_time}}` -- Shift time or custom display text
+   - `{{event_location}}` -- Location
+   - `{{portal_link}}` -- Magic link to Helfer-Portal
+   - `{{kontakt_email}}` -- Project contact email
+   - `{{gear_zusammenfassung}}` -- Gear assignments summary
+   - `{{organizer_note}}` -- Organizer's free-text note (re-publish only)
+5. Click **Speichern**.
 
-Use **Preview** to see how the email will look with sample data. To revert to the default template, click **Reset to Default**.
-
-A badge shows whether you're using a **Customized** or **Default** template.
+> Note: The old `{{volunteer_name}}` placeholder has been replaced by `{{vorname}}` and `{{nachname}}` (separate first/last name fields).
 
 **Who can do this**: Organizer only.
 
 ## Send Announcements
 
-Announcements let you send messages to all volunteers signed up for an event. Use them to communicate changes like updated parking instructions, schedule adjustments, or last-minute reminders.
+Announcements are manual, free-form emails sent to filtered volunteer groups. This is a **project-level** feature.
 
-1. Go to **Announcements** in the event sidebar.
-2. Write the announcement **Subject** and **Body**.
-3. The recipient count shows how many volunteers will receive the message.
-4. Click **Send**.
+1. Go to Projekt > **Announcements** (or use the dashboard quick action).
+2. **Empfänger filtern:** Select Event → Job → Shift (all optional, combinable).
+3. **Inhalt:** Write Subject + Body as free text, or select a saved Announcement Template.
+4. **Zeitpunkt:** Send immediately or schedule for a specific date/time.
+5. Click **Senden** (or **Planen**).
 
-Sent announcements are also visible to volunteers in their [Volunteer Portal](recruiting-volunteers.md#volunteer-portal).
+The recipient count is shown before sending. Announcements are email-only -- they do not appear in the volunteer portal.
 
-The **Announcements** page shows a history of all sent announcements with their subject, send date, and recipient count.
+> Example: "Schicht Kuchenausgabe: Bitte keine Teller mitbringen" -- filtered to only that specific shift. Or "Sonnenschutz mitbringen" -- sent to all volunteers of an event.
 
-**Who can do this**: Organizer only.
-
-## Set Up Event Gear
-
-If your event involves handing out gear to volunteers (e.g., t-shirts, badges, lanyards), you can define gear items and optionally require size selection during signup.
-
-1. Go to **Gear** in the event sidebar.
-2. Click **Add Item**.
-3. Enter a **Name** for the gear item (e.g., "Volunteer T-Shirt").
-4. If the item comes in sizes, toggle **Requires Size** and enter the available sizes as comma-separated values (e.g., "S, M, L, XL").
-5. Repeat for each gear item.
-
-When gear items are configured, volunteers see a gear selection form during signup. Sized items show a size dropdown; non-sized items are assigned automatically.
-
-To remove a gear item, click the delete icon next to it. This deletes all volunteer gear assignments for that item.
-
-**Who can do this**: Organizer only. Gear pickup tracking is available to Organizer and Volunteer Admin (see [Track Gear Pickup](#track-gear-pickup) below).
-
-## Set Up Custom Registration Fields
-
-If you need to collect additional information from volunteers during signup -- like dietary restrictions, t-shirt sizes, or emergency contacts -- you can add custom registration fields to your event.
-
-1. Go to **Custom Fields** in the event sidebar.
-2. Click **Add Field**.
-3. Configure the field:
-   - **Label** -- The question or field name (e.g., "Do you have any dietary restrictions?").
-   - **Type** -- Choose from:
-     - **Text** -- A single-line text input. Toggle **Multiline** for longer answers.
-     - **Select** -- A dropdown with predefined choices. Enter choices as comma-separated values (e.g., "Vegetarian, Vegan, Gluten-Free, None").
-     - **Checkbox** -- A simple yes/no toggle.
-   - **Required** -- Toggle on if volunteers must fill in this field to complete their signup.
-4. Repeat for each field you need.
-
-**Quick templates**: Click a template button to instantly add a commonly used field -- **Emergency Contact**, **Dietary Restrictions**, **T-Shirt Size**, **First Aid Certificate**, **Previous Experience**, or **Photo Release**. You can customize the field after adding it.
-
-**Removing fields**: Click the delete icon next to a field to remove it. Existing responses from volunteers who already signed up are preserved -- the field simply no longer appears on the signup form for new signups.
-
-**Adding required fields to events with existing signups**: If you add a required field to an event that already has volunteers signed up, a confirmation dialog warns you that existing volunteers won't have filled in this field.
-
-**Who can do this**: Organizer only.
-
-## Track Gear Pickup
-
-On event day, use the Gear Pickup page to record which volunteers have collected their gear.
-
-1. Go to **Gear Pickup** in the event sidebar.
-2. Search for a volunteer by name using the search bar.
-3. The page shows each volunteer with their assigned gear items and sizes.
-4. Click a gear item to toggle its pickup status between **Picked Up** and **Not Picked Up**.
-
-If a volunteer was not assigned a gear item during signup (e.g., the item was added after they signed up), you can assign and mark it as picked up in one step directly from this page.
-
-**Who can do this**: Organizer and Volunteer Admin.
-
-## Publish an Event
-
-Publishing makes your event visible to volunteers and enables signups.
-
-1. Go to **Overview** in the event sidebar.
-2. Click **Publish**.
-
-Before publishing, make sure:
-- The event has at least one job with at least one shift.
-- Event dates and details are correct.
-
-Once published:
-- A **public event URL** becomes available. Copy it with the **Copy Link** button.
-- Volunteers can access the public signup page and register for shifts.
-- The event status badge changes to **Published**.
+**Announcement Templates** (Organisation > Einstellungen > Announcement Templates) let you save and reuse common messages across projects and years.
 
 **Who can do this**: Organizer only.
 
 ## Clone an Event
 
-Cloning creates a copy of an event with all its jobs, shifts, gear items, custom registration fields, and email templates, but no volunteer signups, gear assignments, or custom field responses.
+Cloning creates a Draft copy of an event with all structure but no volunteer data.
 
-1. Go to **Overview** in the event sidebar.
-2. Click **Clone Event**.
-3. You'll be redirected to the new cloned event in Draft status.
-4. Update the name, dates, and any other details as needed.
+1. Go to **Übersicht**.
+2. Click **Event duplizieren**.
 
-This is useful for recurring events where the job structure stays the same.
+**Cloned:** Jobs, shifts, email templates, gear references, custom field references.
+**Not cloned:** Volunteers, signups, announcements, attendance records.
 
-**Who can do this**: Organizer only.
-
-## Enroll Volunteers Manually
-
-If you need to add a volunteer to additional shifts after they've already signed up -- for example, reassigning them or filling a gap -- you can enroll them manually without going through the public signup page.
-
-1. Go to **Enroll** in the event sidebar.
-2. Search for an existing event volunteer by name or email.
-3. Select the shifts you want to enroll them in. Shifts are grouped by job and show capacity and remaining spots.
-4. Toggle **Send notification email** on or off depending on whether the volunteer should be notified.
-5. Click **Enroll**.
-
-After enrollment, a result summary shows how many shifts were enrolled, how many were skipped because they're full, and how many were skipped because the volunteer was already signed up.
+Optional **date offset** shifts all dates forward (e.g. +365 days for yearly events).
 
 **Who can do this**: Organizer only.
 
 ## Archive an Event
 
-Archiving marks an event as completed. Archived events are read-only.
-
-1. Go to **Overview** in the event sidebar.
-2. Click **Archive**.
+See [Event Lifecycle > Archive](#archive-published-closed--archived) above.
 
 Archived events:
-- No longer accept new signups.
-- Are still visible in the events list (filter by "Archived").
-- Cannot be edited.
+- No longer accept signups.
+- Are removed from the project website.
+- Remain visible in the event list (filter by "Archiviert").
+- Are read-only.
 
 **Who can do this**: Organizer only.

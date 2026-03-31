@@ -1,21 +1,21 @@
 # Voluntify Documentation
 
-Voluntify is a volunteer management platform for organizations running events. It handles volunteer recruiting, QR ticket distribution, entrance scanning, and shift attendance tracking.
+Voluntify is a volunteer management platform for organisations running events. It handles project-based volunteer management, multi-step signup flows, QR ticket distribution, entrance scanning, gear tracking, and shift attendance.
 
 ## Getting Started
 
-- [Getting Started](getting-started.md) -- Set up your first event in 15 minutes
+- [Getting Started](getting-started.md) -- Set up your first project and event in 15 minutes
 
 ## Guides
 
-- [Creating Events](creating-events.md) -- Create events, define jobs and shifts, customize emails
-- [Organizing Event Groups](managing-event-groups.md) -- Group related events under a shared public page
-- [Recruiting Volunteers](recruiting-volunteers.md) -- Publish your event, share signup links, verify volunteers
-- [Checking In Volunteers](checking-in-volunteers.md) -- QR scanner, manual lookup, offline mode
+- [Managing Projects](managing-projects.md) -- Create projects, configure gear, custom fields, and the project website
+- [Creating Events](creating-events.md) -- Create events, define jobs and shifts, customize emails, send announcements
+- [Recruiting Volunteers](recruiting-volunteers.md) -- Publish events, share the project website, signup flow, volunteer portal
+- [Checking In Volunteers](checking-in-volunteers.md) -- Entry Staff Scanner, Volunteer Admin Scanner, gear pickup, offline mode
 - [Tracking Attendance](tracking-attendance.md) -- Mark shift-level attendance
-- [Managing Volunteers](managing-volunteers.md) -- View volunteer data, export CSV, dashboard metrics
-- [Managing Your Members](managing-your-team.md) -- Invite staff, assign roles, onboarding checklists
-- [Settings and Account](settings-and-account.md) -- Profile, password, 2FA, email, appearance
+- [Managing Volunteers](managing-volunteers.md) -- View volunteers, manual creation, organizer actions, dashboard
+- [Managing Your Team](managing-your-team.md) -- Invite organizers, assign scanner staff, onboarding checklists
+- [Settings and Account](settings-and-account.md) -- Profile, password, 2FA, SMTP, activity log
 
 ## Reference
 

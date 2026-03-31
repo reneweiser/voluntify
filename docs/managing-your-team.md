@@ -1,80 +1,122 @@
-# Managing Your Members
+# Managing Your Team
 
-This guide covers inviting staff members, assigning roles, and onboarding new members.
+This guide covers inviting Organizers, assigning scanner-based staff, and managing members at organisation and project level.
 
-**Who can manage members**: Organizer only.
+## Who Has Permanent Accounts?
 
-## Invite a New Member
+Only **Organizers** have permanent accounts with email + password login. Volunteer Admins and Entry Staff are assigned through scanner configurations and access the system via temporary links.
 
-1. Click **Settings** in the user menu (sidebar).
-2. Go to the **Members** page.
-3. In the invite form, enter:
-   - **Name** -- The member's full name.
-   - **Email** -- Their email address.
-   - **Role** -- Choose from Organizer, Volunteer Admin, or Entrance Staff.
-4. Click **Send invitation**.
+| Role | Account | Assigned Via |
+|---|---|---|
+| Organizer | Permanent | Invitation per email |
+| Volunteer Admin | None | Scanner config (temporary link) |
+| Entry Staff | None | Scanner config (temporary link) |
 
-If the email address doesn't belong to an existing Voluntify user, a new account is automatically created with a temporary password. The new member receives an invitation email and will be prompted to set a new password on first login.
+> Why this distinction? Organizers manage the system long-term and need persistent access. Volunteer Admins and Entry Staff typically work a single event -- a temporary link eliminates onboarding friction and automatically expires.
 
-If the email belongs to an existing user (e.g., they're already in another organization), they are added to your organization directly and receive an "Added to Organization" notification instead.
+## Invite an Organizer
 
-## Role Summary
+### At Organisation Level
 
-| Role | Purpose |
-|---|---|
-| **Organizer** | Full admin access. Can create events, manage members, configure settings. |
-| **Volunteer Admin** | Manages shift attendance. Can view events and mark attendance. |
-| **Entrance Staff** | Scans tickets at the entrance. Can use the QR scanner and manual lookup. |
+1. Go to Organisation > **Mitglieder**.
+2. Enter name and email.
+3. Click **Einladen**.
 
-For a full breakdown of what each role can do, see [Roles and Permissions](roles-and-permissions.md).
+Org-Level Organizers have automatic access to all projects and events.
 
-Volunteers can also be promoted to staff members directly from the volunteer detail page. See [Managing Volunteers > Promote a Volunteer to Staff](managing-volunteers.md#promote-a-volunteer-to-staff).
+### At Project Level
+
+1. Go to Projekt > **Mitglieder**.
+2. Enter name and email.
+3. Click **Einladen**.
+
+Project-Level Organizers have access to all events within that project only.
+
+### What Happens After Invitation
+
+- **New user:** Account created with temporary password. Invitation email sent.
+- **Existing user:** Added to the organisation/project directly. Notification email sent.
+
+**Who can do this**: Organizer only (Org-Level for org invitations, Project-Level or higher for project invitations).
+
+## Assign Volunteer Admins
+
+Volunteer Admins are assigned through the **Volunteer Admin Scanner** configuration:
+
+1. Go to Projekt > **Scanner**.
+2. Create or edit a Volunteer Admin Scanner.
+3. Add email addresses under **Zugewiesene Personen**.
+4. Save.
+
+Each assigned person receives a scanner link 30 minutes before the time window. No account creation needed.
+
+> Example: You want three trusted volunteers to manage check-in during "Hauptabend" from 18:00 to 02:00. Add their emails to a Volunteer Admin Scanner with that time window. They receive links at 17:30.
+
+You can also promote an existing volunteer to Volunteer Admin from their detail page -- this assigns them to a specific scanner.
+
+## Assign Entry Staff
+
+Entry Staff are assigned through the **Entry Staff Scanner** configuration:
+
+1. Go to Projekt > **Scanner**.
+2. Create or edit an Entry Staff Scanner.
+3. Add email addresses under **Zugewiesene Personen**.
+4. Save.
+
+> Note: Entry Staff are **not** assigned via "Promote to Staff" -- only through scanner configuration.
 
 ## Change a Member's Role
 
-1. Go to **Settings > Members**.
-2. Find the member in the list.
-3. Change their role using the role dropdown. The change takes effect immediately -- no save button needed.
+For Organizers (the only role with persistent accounts):
+
+1. Go to Organisation > **Mitglieder** or Projekt > **Mitglieder**.
+2. Find the member.
+3. Change their role using the dropdown.
+
+For Volunteer Admins and Entry Staff: edit the scanner configuration to add/remove assignees.
 
 ## Remove a Member
 
-1. Go to **Settings > Members**.
-2. Find the member in the list.
-3. Click the delete icon.
-4. In the confirmation modal, type the member's email address to confirm, then click **Remove member**.
+### Remove an Organizer
 
-Removing a member revokes their access to all events in the organization.
+1. Go to Organisation/Projekt > **Mitglieder**.
+2. Click the remove icon next to the member.
+3. Confirm with their email address.
 
-## Leave an Organization
+### Remove Scanner Staff
 
-Any member can leave an organization they belong to, with two restrictions:
+Edit the scanner configuration and remove their email from the assignee list.
 
-- You cannot leave your **personal organization** (the one created automatically with your account).
-- You cannot leave if you are the **sole Organizer** -- transfer the Organizer role to another member first.
+## Leave an Organisation
 
-To leave:
+Any Organizer can leave an organisation they belong to:
 
-1. Go to **Settings > Members**.
-2. Click **Leave organization**.
-3. Confirm in the dialog.
+1. Go to Organisation > **Mitglieder**.
+2. Click **Organisation verlassen**.
+3. Confirm.
 
-Leaving removes your access to all events and settings in that organization. If this was your currently active organization, you'll be switched to another organization automatically.
+Restrictions:
+- You cannot leave your **personal organisation**.
+- You cannot leave if you are the **sole Organizer** -- transfer the role first.
 
-## Onboarding Checklist: Entrance Staff
+Leaving removes access to all projects and events. You're switched to another organisation automatically.
 
-Share these steps with new Entrance Staff members:
+## Onboarding Checklist: Entry Staff
 
-1. **Accept the invitation** -- Check email for the invitation, log in with the temporary password, and set a new password.
-2. **Install the PWA** -- Open the Scanner page in a mobile browser and install it to the home screen (see [Checking In Volunteers](checking-in-volunteers.md#install-as-a-pwa-recommended)).
-3. **Test the scanner** -- Open the Scanner, select an event, and verify the camera works.
-4. **Download offline data** -- Open the scanner while online before the event to cache volunteer data.
-5. **Learn the result colors** -- Green = new arrival (confirm), Yellow = already scanned, Red = invalid (try manual lookup).
+Share these steps with new Entry Staff:
+
+1. **Check your email** -- Look for the scanner link (sent 30 minutes before the time window).
+2. **Open the link** -- Enter the one-time authentication code.
+3. **Install as PWA** (recommended) -- Mobile browser > "Install app" / "Add to Home Screen" for fullscreen experience.
+4. **Test the scanner** -- Point the camera at any QR code to verify it works.
+5. **Learn the colors** -- Green = access granted, Yellow = already scanned, Red = no access. Tap "Nächsten scannen" after each result.
 
 ## Onboarding Checklist: Volunteer Admins
 
 Share these steps with new Volunteer Admins:
 
-1. **Accept the invitation** -- Check email for the invitation, log in with the temporary password, and set a new password.
-2. **Explore the dashboard** -- Click Dashboard in the sidebar to see upcoming events and metrics.
-3. **Review assigned events** -- Click Events in the sidebar to see events you have access to.
-4. **Learn attendance tracking** -- Go to **Attendance** in the event sidebar and familiarize yourself with the shift selector and status buttons (see [Tracking Attendance](tracking-attendance.md)).
+1. **Check your email** -- Look for the scanner link (sent 30 minutes before the time window).
+2. **Open the link** -- Enter the one-time authentication code.
+3. **Familiarize with the modes** -- Check-in, Gear Pickup, or both (configured by the Organizer).
+4. **Check the Schichtliste tab** -- Browse volunteers per shift, use "Jump to current time".
+5. **Practice gear pickup** -- Tap the current state, select the new state from the list.

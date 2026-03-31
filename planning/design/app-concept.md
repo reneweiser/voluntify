@@ -1,5 +1,14 @@
 # App Concept: Volunteer Management for Events
 
+> **REVISION NOTE (2026-03-30):** This document describes the **Phase 1** product concept. The architecture has been significantly reworked in Phase 2 (GitHub Issues #45–#88). Key changes:
+>
+> - **Domain model** has evolved: Projects (mandatory), project-scoped volunteers/gear/custom fields, scanner-based staff (no accounts), 4-stage event lifecycle. See `planning/specs/project.md` for the current domain model.
+> - **Ubiquitous language** has been updated in `docs/ubiquitous-language.md`.
+> - **User stories** for Phase 2 features are captured in GitHub Issues.
+> - **Personas** remain valid — the target audience hasn't changed.
+>
+> The feature descriptions, pain point traceability, and personas below remain accurate as historical context for Phase 1.
+
 **Date**: 2026-02-28
 **Domain**: Volunteer management software for small/mid-sized event-running organizations
 

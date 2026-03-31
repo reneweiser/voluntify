@@ -1,8 +1,24 @@
 # App Design Spec: Voluntify
 
+> **REVISION NOTE (2026-03-30):** This document describes the **Phase 1** architecture (Milestones 1–6). The application has since undergone a major architectural rework (Phase 2, GitHub Issues #45–#88). Key changes that supersede this document:
+>
+> - **Projects** replace Event Groups as the mandatory top-level entity (#52)
+> - **Volunteer Admin + Entry Staff** no longer have permanent accounts — they use temporary scanner links (#56, #58)
+> - **Event lifecycle** is now 4 stages: Draft / Published Open / Published Closed / Archived (#45)
+> - **QR codes** are per project membership, not per event (#51)
+> - **Signup flow** is multi-step with 20-min reservation timer (#69)
+> - **Gear** is at project level with configurable Typ-1 states (#53)
+> - **Two scanner types:** Entry Staff Scanner (entrance) and Volunteer Admin Scanner (check-in + gear) (#56, #58, #75)
+> - **No auto-dismiss** on scanner results — manual "Nächsten scannen" button (#71)
+>
+> For the current architecture, see:
+> - `docs/review_voluntify-gesamtuebersicht.md` — comprehensive overview
+> - `planning/specs/project.md` — updated project spec
+> - `docs/` — updated user-facing documentation
+
 **Date**: 2026-02-28
 **Domain**: Volunteer management software for small/mid-sized event-running organizations
-**Version**: 1.0
+**Version**: 1.0 (Phase 1 — see revision note above)
 
 ## Information Architecture
 

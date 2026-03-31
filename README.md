@@ -2,21 +2,28 @@
 
 # Voluntify
 
-Volunteer management for event-running organizations. Volunteers sign up without creating an account, receive QR-coded event tickets via magic links, and get validated at the entrance — even offline.
+Project-based volunteer management for event-running organisations. Volunteers sign up without creating an account, receive a project-wide QR code via magic links, and get validated at the entrance — even offline.
 
 ## Why Voluntify?
 
-Small and mid-sized nonprofits, festivals, and community organizations struggle with volunteer coordination. Existing tools like VolunteerHub are expensive and force volunteers through cumbersome account creation. Voluntify combines the entire volunteer lifecycle — recruiting, ticketing, and entrance validation — in one affordable tool with zero friction for volunteers.
+Small and mid-sized nonprofits, festivals, and community organisations struggle with volunteer coordination. Existing tools like VolunteerHub are expensive and force volunteers through cumbersome account creation. Voluntify combines the entire volunteer lifecycle — recruiting, project-wide ticketing, entrance validation, gear tracking, and shift attendance — in one affordable tool with zero friction for volunteers.
 
 ## Features
 
-- **Passwordless volunteer signup** — Public event pages where volunteers browse jobs/shifts and sign up with just their name and email
-- **QR ticket generation** — JWT-based tickets delivered via magic links, no account required
-- **Offline QR scanning** — PWA scanner with Service Worker and IndexedDB that works without internet
-- **Manual lookup** — Search and validate volunteers when QR scanning isn't possible
-- **Role-based access** — Organizer, Volunteer Admin, and Entrance Staff roles per organization
-- **Event management** — Full CRUD for events, volunteer jobs, and shifts
-- **Customizable emails** — Organization-branded ticket and notification templates
+- **Project-based organisation** — Group related events under a project. Volunteers, gear, custom fields, and scanner configs are shared across all events in a project
+- **Passwordless volunteer signup** — Multi-step signup flow: email verification → personal data → shift selection → custom fields + gear → confirmation. No account needed
+- **Project-wide QR code** — One QR code per project membership, valid for all events. JWT-based, delivered via magic link
+- **Two scanner types** — Entry Staff Scanner (entrance control, green/yellow/red results) and Volunteer Admin Scanner (check-in, attendance, gear pickup)
+- **Offline scanning** — PWA scanners with encrypted IndexedDB that work without internet. Auto-sync when back online
+- **Gear tracking** — Typ 1 (size selection with configurable states) and Typ 2 (quantity tracking). All state changes via scanner only
+- **4-stage event lifecycle** — Draft → Published Open ⇄ Published Closed → Archived
+- **Scanner-based staff** — Volunteer Admins and Entry Staff operate via temporary scanner links (no permanent accounts). Only Organizers have persistent logins
+- **Announcements** — Organizers send targeted emails to filtered volunteer groups (by event, job, or shift)
+- **Manual volunteer creation** — Organizers can add volunteers directly, with only an email required
+- **Configurable hint texts** — Custom messages for signup flow, volunteer portal, and scanner screens
+- **Project website** — Public landing page (`/p/{token}`) listing all published events with signup CTAs
+- **Customisable emails** — 11 system email types with per-event template overrides and German defaults
+- **Shift flexibility** — Times are optional; custom display text for non-standard schedules
 
 ## Tech Stack
 
@@ -118,7 +125,7 @@ app/
 ├── Livewire/         # Livewire components (pages & UI)
 ├── Models/           # Eloquent models
 ├── Policies/         # Authorization policies
-├── Services/         # Domain services (JWT, QR, etc.)
+├── Services/         # Domain services (JWT, QR, mailer etc.)
 └── Http/Controllers/ # API controllers (scanner sync)
 
 resources/
@@ -126,6 +133,7 @@ resources/
 ├── js/scanner/       # TypeScript modules for PWA scanner
 └── css/              # Tailwind CSS
 
+docs/                 # User-facing documentation
 planning/
 ├── design/           # Domain research & app design spec
 └── specs/            # Implementation specs & status tracking
