@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
-current_stage: implement
-current_focus: "M8 complete — ready for M9"
-current_milestone: m8-project-scoped
+current_stage: complete
+current_focus: "M9 complete — ready for retrospective"
+current_milestone: m9-roles
 entry_point: plan
 stages_to_run:
   - plan
@@ -13,7 +13,7 @@ completed_stages: []
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-03-31"
-last_updated: "2026-03-31T10:00:00"
+last_updated: "2026-03-31T14:00:00"
 ---
 
 # TALL Pipeline — Index
@@ -24,7 +24,7 @@ last_updated: "2026-03-31T10:00:00"
 |---|---|---|---|---|
 | m7-foundation | Foundation | EventGroup->Project, volunteer name split, EventStatus 4-state, phone_required | none | complete |
 | m8-project-scoped | Project-Scoped Data | Volunteer project scope, gear remodel, ticket scope, custom fields, Private Events (#91) | m7 | complete |
-| m9-roles | Roles & Team | project_user pivot, role hierarchy, scanner roles | m7 | not_started |
+| m9-roles | Roles & Team | project_user pivot, role hierarchy, scanner roles | m7 | complete |
 | m10-signup | Signup Flow Rewrite | Multi-step wizard, shift reservations, manual enrollment | m8 | not_started |
 | m11-scanner | Scanner Rewrite | Project scanners, temp auth, dual scanner types, rename volunteer tab to "Volunteers" | m8, m9 | not_started |
 | m12-guest-lists | Guest Lists (#90) | Guest list CRUD, QR generation, grouped emails, scanner integration | m8, m11 | not_started |
@@ -35,6 +35,7 @@ last_updated: "2026-03-31T10:00:00"
 | File | Stage | Milestone | Purpose | Status |
 |---|---|---|---|---|
 | `.tall-plan.md` | plan | global | Full architecture plan (schema, components, actions, tests) | complete |
+| `.tall-pipeline/m9-roles.md` | plan | m9-roles | Detailed M9 implementation plan (migrations, models, policies, components, tests) | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)
