@@ -5,10 +5,11 @@ namespace App\Actions;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Shift;
+use App\Models\ShiftReservation;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
 use App\Notifications\SignupConfirmation;
-use App\ValueObjects\SignupBatchResult;
+use App\ValueObjects\ShiftSignupResult;
 use Illuminate\Support\Facades\DB;
 
 class SignUpVolunteerForShifts
@@ -26,7 +27,8 @@ class SignUpVolunteerForShifts
         Event $event,
         array $shiftIds,
         bool $sendNotification = true,
-    ): SignupBatchResult {
+        ?string $sessionId = null,
+    ): ShiftSignupResult {
         $eventJobIds = $event->volunteerJobs()->pluck('id');
         $validShiftIds = Shift::whereIn('volunteer_job_id', $eventJobIds)
             ->whereIn('id', $shiftIds)
@@ -40,7 +42,14 @@ class SignUpVolunteerForShifts
         $sortedShiftIds = $shiftIds;
         sort($sortedShiftIds);
 
-        $result = DB::transaction(function () use ($volunteer, $event, $sortedShiftIds) {
+        $result = DB::transaction(function () use ($volunteer, $event, $sortedShiftIds, $sessionId) {
+            // Release this session's reservations BEFORE checking capacity.
+            // This is safe within the transaction: releasing the reservation frees capacity,
+            // and the signup immediately claims it. No other transaction can grab the spot
+            // between release and claim because the shift row is locked below.
+            if ($sessionId !== null) {
+                ShiftReservation::forSession($sessionId)->delete();
+            }
 
             $newSignups = [];
             $skippedFull = [];
@@ -95,7 +104,7 @@ class SignUpVolunteerForShifts
             ];
         });
 
-        $batchResult = new SignupBatchResult(
+        $batchResult = new ShiftSignupResult(
             volunteer: $result['volunteer'],
             newSignups: $result['newSignups'],
             skippedFull: $result['skippedFull'],

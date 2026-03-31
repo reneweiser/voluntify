@@ -24,6 +24,7 @@ class SendEmailVerification
         EmailVerificationToken::create([
             'volunteer_id' => $volunteer->id,
             'event_id' => $event->id,
+            'project_id' => $event->project_id,
             'shift_ids' => $shiftIds,
             'gear_selections' => $gearSelections,
             'custom_field_responses' => $customFieldResponses,

@@ -6,38 +6,82 @@
 
     <x-events.layout :event="$event">
         <div class="space-y-6">
-            {{-- Search for volunteer --}}
+            {{-- Select or Create Volunteer --}}
             <flux:card>
-                <flux:heading size="lg" class="mb-4">{{ __('Select Volunteer') }}</flux:heading>
+                <div class="mb-4 flex items-center justify-between">
+                    <flux:heading size="lg">{{ __('Select Volunteer') }}</flux:heading>
+                    <flux:button
+                        variant="ghost"
+                        size="sm"
+                        wire:click="toggleCreateMode"
+                        icon="{{ $createNewMode ? 'magnifying-glass' : 'plus' }}"
+                    >
+                        {{ $createNewMode ? __('Search Existing') : __('Create New') }}
+                    </flux:button>
+                </div>
 
-                <flux:input
-                    wire:model.live.debounce.300ms="search"
-                    placeholder="{{ __('Search by name or email...') }}"
-                    icon="magnifying-glass"
-                />
+                @if ($createNewMode)
+                    {{-- Create new volunteer form --}}
+                    <div class="space-y-4">
+                        <flux:field>
+                            <flux:label>{{ __('First Name') }}</flux:label>
+                            <flux:input wire:model="newFirstName" placeholder="{{ __('First name') }}" />
+                            <flux:error name="newFirstName" />
+                        </flux:field>
 
-                @if (strlen($search) >= 2)
-                    <div class="mt-3 space-y-2">
-                        @forelse ($this->volunteers as $volunteer)
-                            <div
-                                wire:click="selectVolunteer({{ $volunteer->id }})"
-                                class="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition
-                                    {{ $selectedVolunteerId === $volunteer->id
-                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                                        : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600' }}"
-                            >
-                                <div>
-                                    <flux:text class="font-medium">{{ $volunteer->full_name }}</flux:text>
-                                    <flux:text size="sm" class="text-zinc-500">{{ $volunteer->email }}</flux:text>
-                                </div>
-                                @if ($selectedVolunteerId === $volunteer->id)
-                                    <flux:icon name="check-circle" class="size-5 text-emerald-500" />
-                                @endif
-                            </div>
-                        @empty
-                            <flux:text size="sm" class="py-2 text-center text-zinc-500">{{ __('No volunteers found') }}</flux:text>
-                        @endforelse
+                        <flux:field>
+                            <flux:label>{{ __('Last Name') }}</flux:label>
+                            <flux:input wire:model="newLastName" placeholder="{{ __('Last name') }}" />
+                            <flux:error name="newLastName" />
+                        </flux:field>
+
+                        <flux:field>
+                            <flux:label>{{ __('Email') }}</flux:label>
+                            <flux:input type="email" wire:model="newEmail" placeholder="{{ __('Email address') }}" />
+                            <flux:error name="newEmail" />
+                        </flux:field>
+
+                        <flux:field>
+                            <flux:label>{{ __('Phone') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
+                            <flux:input type="tel" wire:model="newPhone" placeholder="{{ __('+1 555 123 4567') }}" />
+                            <flux:error name="newPhone" />
+                        </flux:field>
+
+                        <flux:button variant="primary" wire:click="createAndSelect">
+                            {{ __('Create & Select') }}
+                        </flux:button>
                     </div>
+                @else
+                    {{-- Search existing volunteers --}}
+                    <flux:input
+                        wire:model.live.debounce.300ms="search"
+                        placeholder="{{ __('Search by name or email...') }}"
+                        icon="magnifying-glass"
+                    />
+
+                    @if (strlen($search) >= 2)
+                        <div class="mt-3 space-y-2">
+                            @forelse ($this->volunteers as $volunteer)
+                                <div
+                                    wire:click="selectVolunteer({{ $volunteer->id }})"
+                                    class="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition
+                                        {{ $selectedVolunteerId === $volunteer->id
+                                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                                            : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600' }}"
+                                >
+                                    <div>
+                                        <flux:text class="font-medium">{{ $volunteer->full_name }}</flux:text>
+                                        <flux:text size="sm" class="text-zinc-500">{{ $volunteer->email }}</flux:text>
+                                    </div>
+                                    @if ($selectedVolunteerId === $volunteer->id)
+                                        <flux:icon name="check-circle" class="size-5 text-emerald-500" />
+                                    @endif
+                                </div>
+                            @empty
+                                <flux:text size="sm" class="py-2 text-center text-zinc-500">{{ __('No volunteers found') }}</flux:text>
+                            @endforelse
+                        </div>
+                    @endif
                 @endif
             </flux:card>
 

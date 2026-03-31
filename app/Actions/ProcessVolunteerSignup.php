@@ -30,6 +30,7 @@ class ProcessVolunteerSignup
         ?string $phone = null,
         ?array $gearSelections = null,
         ?array $customFieldResponses = null,
+        ?string $sessionId = null,
     ): SignupOutcome {
         $volunteer = Volunteer::firstOrCreate(
             ['email' => $email, 'project_id' => $event->project_id],
@@ -45,6 +46,7 @@ class ProcessVolunteerSignup
                 volunteer: $volunteer,
                 event: $event,
                 shiftIds: $shiftIds,
+                sessionId: $sessionId,
             );
 
             if ($gearSelections !== null) {

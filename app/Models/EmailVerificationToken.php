@@ -2,18 +2,20 @@
 
 namespace App\Models;
 
+use Database\Factories\EmailVerificationTokenFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmailVerificationToken extends Model
 {
-    /** @use HasFactory<\Database\Factories\EmailVerificationTokenFactory> */
+    /** @use HasFactory<EmailVerificationTokenFactory> */
     use HasFactory;
 
     protected $fillable = [
         'volunteer_id',
         'event_id',
+        'project_id',
         'shift_ids',
         'gear_selections',
         'custom_field_responses',
@@ -39,5 +41,10 @@ class EmailVerificationToken extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 }

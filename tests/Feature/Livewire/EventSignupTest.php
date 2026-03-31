@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\WizardState;
 use App\Livewire\Public\EventSignup;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
@@ -23,12 +24,15 @@ beforeEach(function () {
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
 });
 
-it('renders custom fields on signup form', function () {
+it('renders custom fields on step 2 of the wizard', function () {
     CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Emergency Contact', 'sort_order' => 1]);
     CustomRegistrationField::factory()->select(['Vegan', 'None'])->for($this->event)->create(['label' => 'Diet', 'sort_order' => 2]);
     CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release', 'sort_order' => 3]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
         ->assertSee('Emergency Contact')
         ->assertSee('Diet')
         ->assertSee('Photo Release')
@@ -44,15 +48,14 @@ it('does not render deleted custom fields', function () {
         ->assertDontSee('Additional Information');
 });
 
-it('validates required custom fields on signup', function () {
+it('validates required custom fields on step 2', function () {
     $field = CustomRegistrationField::factory()->required()->for($this->event)->create(['label' => 'Required Field']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('volunteerFirstName', 'Test')
-        ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'test@example.com')
         ->set('selectedShiftIds', [$this->shift->id])
-        ->call('signup')
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->call('advanceToPersonalInfo')
         ->assertHasErrors(['customFieldResponses.'.$field->id]);
 });
 
@@ -60,13 +63,17 @@ it('completes signup flow with custom field responses through email verification
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->set('customFieldResponses.'.$field->id, 'Vegan')
+        ->call('advanceToPersonalInfo')
         ->set('volunteerFirstName', 'Test')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'newvolunteer@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->set('customFieldResponses.'.$field->id, 'Vegan')
-        ->call('signup')
-        ->assertSet('pendingVerification', true);
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
+        ->assertSet('state', WizardState::PendingVerification);
 
     $token = EmailVerificationToken::first();
     expect($token->custom_field_responses)->toBe([$field->id => 'Vegan']);
@@ -77,13 +84,17 @@ it('completes signup with custom fields for verified volunteer', function () {
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->set('customFieldResponses.'.$field->id, 'Vegan')
+        ->call('advanceToPersonalInfo')
         ->set('volunteerFirstName', 'Verified')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'verified@example.com')
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->set('customFieldResponses.'.$field->id, 'Vegan')
-        ->call('signup')
-        ->assertSet('signupComplete', true);
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
+        ->assertSet('state', WizardState::Complete);
 
     expect(CustomFieldResponse::count())->toBe(1)
         ->and(CustomFieldResponse::first()->value)->toBe('Vegan');

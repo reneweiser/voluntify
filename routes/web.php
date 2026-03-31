@@ -51,7 +51,7 @@ if (app()->environment('local')) {
 
 // Public routes (no auth required)
 Route::livewire('p/{publicToken}', ProjectWebsite::class)->name('projects.public');
-Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public');
+Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public')->middleware('throttle:60,1');
 Route::livewire('events/{publicToken}/jobs/{jobId}/cheat-sheet', JobCheatSheet::class)->name('events.jobs.cheat-sheet');
 Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunteer.ticket');
 Route::livewire('my-portal/{magicToken}', VolunteerPortal::class)->name('volunteer.portal');

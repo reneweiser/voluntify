@@ -9,7 +9,7 @@ use App\Exceptions\DomainException;
 use App\Exceptions\ExpiredVerificationException;
 use App\Models\EmailVerificationToken;
 use App\ValueObjects\HashedToken;
-use App\ValueObjects\SignupBatchResult;
+use App\ValueObjects\ShiftSignupResult;
 
 class CompleteEmailVerification
 {
@@ -19,7 +19,7 @@ class CompleteEmailVerification
         private RecordCustomFieldResponses $recordCustomFields,
     ) {}
 
-    public function execute(string $plainToken): SignupBatchResult
+    public function execute(string $plainToken): ShiftSignupResult
     {
         $hashed = HashedToken::fromPlaintext($plainToken);
 
