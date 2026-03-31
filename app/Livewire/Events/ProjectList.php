@@ -34,10 +34,21 @@ class ProjectList extends Component
     #[Computed]
     public function projects(): Collection
     {
-        return $this->organization->projects()
+        $user = auth()->user();
+
+        $query = $this->organization->projects()
             ->withCount('events')
-            ->latest()
-            ->get();
+            ->latest();
+
+        if (! $user->isOrgOrganizerFor($this->organization)) {
+            $assignedProjectIds = $user->projects()
+                ->where('projects.organization_id', $this->organization->id)
+                ->pluck('projects.id');
+
+            $query->whereIn('id', $assignedProjectIds);
+        }
+
+        return $query->get();
     }
 
     #[Computed]

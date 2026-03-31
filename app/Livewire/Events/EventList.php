@@ -43,10 +43,20 @@ class EventList extends Component
     #[Computed]
     public function events(): Collection
     {
+        $user = auth()->user();
+
         $query = $this->organization->events()
             ->with('project.organization')
             ->withVolunteerCount()
             ->latest('starts_at');
+
+        if (! $user->isOrgOrganizerFor($this->organization)) {
+            $projectIds = $user->projects()
+                ->where('projects.organization_id', $this->organization->id)
+                ->pluck('projects.id');
+
+            $query->whereIn('project_id', $projectIds);
+        }
 
         if ($this->statusFilter) {
             $query->where('status', $this->statusFilter);
@@ -55,7 +65,6 @@ class EventList extends Component
         $events = $query->get();
 
         // Preload project roles to avoid N+1 in policy checks
-        $user = auth()->user();
         $projectIds = $events->pluck('project_id')->unique()->values()->all();
         $user->preloadProjectRoles($projectIds);
 

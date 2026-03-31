@@ -78,3 +78,16 @@ it('denies project organizer from creating projects', function () {
         ->call('createProject')
         ->assertForbidden();
 });
+
+it('project organizer only sees assigned projects', function () {
+    $project1 = Project::factory()->for($this->org)->create(['name' => 'Assigned Project']);
+    $project2 = Project::factory()->for($this->org)->create(['name' => 'Other Project']);
+
+    $projectUser = User::factory()->create();
+    $project1->users()->attach($projectUser, ['role' => StaffRole::Organizer]);
+
+    Livewire::actingAs($projectUser)
+        ->test(ProjectList::class)
+        ->assertSee('Assigned Project')
+        ->assertDontSee('Other Project');
+});
