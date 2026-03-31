@@ -3,20 +3,22 @@
 use App\Actions\AssignGearToVolunteer;
 use App\Exceptions\DomainException;
 use App\Models\Event;
-use App\Models\EventGearItem;
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create();
-    $this->volunteer = Volunteer::factory()->verified()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->verified()->create();
 });
 
 it('creates volunteer gear records for all gear items on an event', function () {
-    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    $badge = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+    $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
+    $badge = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
 
     $action = new AssignGearToVolunteer;
 
@@ -24,17 +26,17 @@ it('creates volunteer gear records for all gear items on an event', function () 
 
     expect(VolunteerGear::count())->toBe(2);
 
-    $tshirtGear = VolunteerGear::where('event_gear_item_id', $tshirt->id)->first();
+    $tshirtGear = VolunteerGear::where('project_gear_item_id', $tshirt->id)->first();
     expect($tshirtGear->volunteer_id)->toBe($this->volunteer->id)
         ->and($tshirtGear->size)->toBe('L');
 
-    $badgeGear = VolunteerGear::where('event_gear_item_id', $badge->id)->first();
+    $badgeGear = VolunteerGear::where('project_gear_item_id', $badge->id)->first();
     expect($badgeGear->volunteer_id)->toBe($this->volunteer->id)
         ->and($badgeGear->size)->toBeNull();
 });
 
 it('throws exception for invalid size', function () {
-    $tshirt = EventGearItem::factory()->sized(['S', 'M', 'L'])->for($this->event)->create(['name' => 'T-Shirt']);
+    $tshirt = ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
 
     $action = new AssignGearToVolunteer;
 
@@ -42,7 +44,7 @@ it('throws exception for invalid size', function () {
 })->throws(DomainException::class, 'Invalid size');
 
 it('throws exception when size-required item has no size provided', function () {
-    $tshirt = EventGearItem::factory()->sized(['S', 'M', 'L'])->for($this->event)->create(['name' => 'T-Shirt']);
+    $tshirt = ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
 
     $action = new AssignGearToVolunteer;
 
@@ -50,7 +52,7 @@ it('throws exception when size-required item has no size provided', function () 
 })->throws(DomainException::class, 'Size is required');
 
 it('throws domain exception when sized item has null available_sizes', function () {
-    $tshirt = EventGearItem::factory()->for($this->event)->create([
+    $tshirt = ProjectGearItem::factory()->for($this->project)->create([
         'name' => 'T-Shirt',
         'requires_size' => true,
         'available_sizes' => null,
@@ -62,8 +64,8 @@ it('throws domain exception when sized item has null available_sizes', function 
 })->throws(DomainException::class, 'Invalid size');
 
 it('does not create duplicates on re-assignment', function () {
-    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    $badge = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+    $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
+    $badge = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
 
     $action = new AssignGearToVolunteer;
 

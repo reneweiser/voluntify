@@ -6,8 +6,9 @@ use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\EmailVerificationToken;
 use App\Models\Event;
-use App\Models\EventGearItem;
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -22,7 +23,8 @@ beforeEach(function () {
     Notification::fake();
 
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
 });
@@ -62,7 +64,7 @@ it('sends verification email for unverified new volunteer', function () {
 });
 
 it('completes signup immediately for verified returning volunteer', function () {
-    Volunteer::factory()->verified()->create(['email' => 'verified@example.com', 'first_name' => 'Verified', 'last_name' => 'Person']);
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'verified@example.com', 'first_name' => 'Verified', 'last_name' => 'Person']);
 
     $action = app(ProcessVolunteerSignup::class);
 
@@ -94,9 +96,9 @@ it('completes signup immediately for verified returning volunteer', function () 
 });
 
 it('skips verification for returning verified volunteer on new event', function () {
-    $volunteer = Volunteer::factory()->verified()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create();
 
-    $newEvent = Event::factory()->for($this->org)->published()->create();
+    $newEvent = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $newJob = VolunteerJob::factory()->for($newEvent)->create();
     $newShift = Shift::factory()->for($newJob, 'volunteerJob')->create(['capacity' => 10]);
 
@@ -117,10 +119,10 @@ it('skips verification for returning verified volunteer on new event', function 
 });
 
 it('creates gear records for verified volunteer with gear selections', function () {
-    Volunteer::factory()->verified()->create(['email' => 'gear@example.com']);
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'gear@example.com']);
 
-    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    $badge = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+    $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
+    $badge = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
 
     $action = app(ProcessVolunteerSignup::class);
 
@@ -137,12 +139,12 @@ it('creates gear records for verified volunteer with gear selections', function 
     expect($outcome->type)->toBe(SignupOutcomeType::Completed);
     expect(VolunteerGear::count())->toBe(2);
 
-    $tshirtGear = VolunteerGear::where('event_gear_item_id', $tshirt->id)->first();
+    $tshirtGear = VolunteerGear::where('project_gear_item_id', $tshirt->id)->first();
     expect($tshirtGear->size)->toBe('M');
 });
 
 it('stores gear selections on verification token for unverified volunteer', function () {
-    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
+    $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
 
     $action = app(ProcessVolunteerSignup::class);
 
@@ -162,7 +164,7 @@ it('stores gear selections on verification token for unverified volunteer', func
 });
 
 it('records custom field responses for verified volunteer', function () {
-    Volunteer::factory()->verified()->create(['email' => 'custom@example.com']);
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'custom@example.com']);
 
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
@@ -202,7 +204,7 @@ it('stores custom_field_responses on token for unverified volunteer', function (
 });
 
 it('updates phone number for existing volunteer', function () {
-    Volunteer::factory()->verified()->create([
+    Volunteer::factory()->for($this->project)->verified()->create([
         'email' => 'test@example.com',
         'phone' => null,
     ]);

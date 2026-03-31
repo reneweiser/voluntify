@@ -7,6 +7,8 @@ use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Livewire\Livewire;
@@ -76,7 +78,7 @@ it('allows organizer to remove a field via soft delete', function () {
 });
 
 it('denies volunteer admin access', function () {
-    $admin = \App\Models\User::factory()->create();
+    $admin = User::factory()->create();
     $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($admin)
@@ -107,7 +109,7 @@ it('shows confirmation when adding required field to event with signups', functi
     $job = VolunteerJob::factory()->for($this->event)->create();
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     $volunteer = Volunteer::factory()->create();
-    \App\Models\Ticket::factory()->create(['event_id' => $this->event->id, 'volunteer_id' => $volunteer->id]);
+    Ticket::factory()->for($volunteer)->for($this->event->project, 'project')->create();
     ShiftSignup::factory()->create(['shift_id' => $shift->id, 'volunteer_id' => $volunteer->id]);
 
     Livewire::actingAs($this->user)
@@ -125,7 +127,7 @@ it('creates field and closes warning when confirming required field with signups
     $job = VolunteerJob::factory()->for($this->event)->create();
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     $volunteer = Volunteer::factory()->create();
-    \App\Models\Ticket::factory()->create(['event_id' => $this->event->id, 'volunteer_id' => $volunteer->id]);
+    Ticket::factory()->for($volunteer)->for($this->event->project, 'project')->create();
     ShiftSignup::factory()->create(['shift_id' => $shift->id, 'volunteer_id' => $volunteer->id]);
 
     Livewire::actingAs($this->user)
@@ -145,7 +147,7 @@ it('skips warning for non-required field even when event has signups', function 
     $job = VolunteerJob::factory()->for($this->event)->create();
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     $volunteer = Volunteer::factory()->create();
-    \App\Models\Ticket::factory()->create(['event_id' => $this->event->id, 'volunteer_id' => $volunteer->id]);
+    Ticket::factory()->for($volunteer)->for($this->event->project, 'project')->create();
     ShiftSignup::factory()->create(['shift_id' => $shift->id, 'volunteer_id' => $volunteer->id]);
 
     Livewire::actingAs($this->user)

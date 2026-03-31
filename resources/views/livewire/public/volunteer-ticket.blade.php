@@ -9,7 +9,7 @@
         {{-- Event header --}}
         <div class="mb-8">
             <flux:heading size="xl">Your Ticket</flux:heading>
-            <flux:text class="mt-1">{{ $ticket->event->name }}</flux:text>
+            <flux:text class="mt-1">{{ $this->shiftSignups->first()?->shift?->volunteerJob?->event?->name ?? $ticket->project->name }}</flux:text>
         </div>
 
         {{-- Volunteer info --}}

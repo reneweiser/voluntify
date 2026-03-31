@@ -4,9 +4,9 @@ use App\Actions\SendEventAnnouncement;
 use App\Models\Event;
 use App\Models\EventAnnouncement;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
-use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Notification;
 beforeEach(function () {
     Notification::fake();
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
     $this->sender = User::factory()->create();
@@ -41,12 +42,10 @@ it('sets sent_at to current time', function () {
 });
 
 it('sends notification to all active event volunteers', function () {
-    $volunteer1 = Volunteer::factory()->create(['email_verified_at' => now()]);
-    Ticket::factory()->create(['volunteer_id' => $volunteer1->id, 'event_id' => $this->event->id]);
+    $volunteer1 = Volunteer::factory()->for($this->project)->create(['email_verified_at' => now()]);
     ShiftSignup::factory()->create(['volunteer_id' => $volunteer1->id, 'shift_id' => $this->shift->id]);
 
-    $volunteer2 = Volunteer::factory()->create(['email_verified_at' => now()]);
-    Ticket::factory()->create(['volunteer_id' => $volunteer2->id, 'event_id' => $this->event->id]);
+    $volunteer2 = Volunteer::factory()->for($this->project)->create(['email_verified_at' => now()]);
     ShiftSignup::factory()->create(['volunteer_id' => $volunteer2->id, 'shift_id' => $this->shift->id]);
 
     $this->action->execute($this->event, 'Subject', 'Body', $this->sender);
@@ -56,12 +55,10 @@ it('sends notification to all active event volunteers', function () {
 });
 
 it('does not send to volunteers with only cancelled signups', function () {
-    $active = Volunteer::factory()->create(['email_verified_at' => now()]);
-    Ticket::factory()->create(['volunteer_id' => $active->id, 'event_id' => $this->event->id]);
+    $active = Volunteer::factory()->for($this->project)->create(['email_verified_at' => now()]);
     ShiftSignup::factory()->create(['volunteer_id' => $active->id, 'shift_id' => $this->shift->id]);
 
-    $cancelled = Volunteer::factory()->create(['email_verified_at' => now()]);
-    Ticket::factory()->create(['volunteer_id' => $cancelled->id, 'event_id' => $this->event->id]);
+    $cancelled = Volunteer::factory()->for($this->project)->create(['email_verified_at' => now()]);
     ShiftSignup::factory()->create([
         'volunteer_id' => $cancelled->id,
         'shift_id' => $this->shift->id,
@@ -75,8 +72,7 @@ it('does not send to volunteers with only cancelled signups', function () {
 });
 
 it('notification contains freeform subject and body', function () {
-    $volunteer = Volunteer::factory()->create(['email_verified_at' => now()]);
-    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email_verified_at' => now()]);
     ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $this->shift->id]);
 
     $this->action->execute($this->event, 'Custom Subject', 'Custom body content', $this->sender);

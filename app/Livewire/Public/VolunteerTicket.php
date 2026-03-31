@@ -7,6 +7,7 @@ use App\Exceptions\InvalidMagicLinkException;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -39,7 +40,9 @@ class VolunteerTicket extends Component
             throw new NotFoundHttpException;
         }
 
-        $this->ticket = Ticket::where('volunteer_id', $this->volunteer->id)->first();
+        $this->ticket = Ticket::where('volunteer_id', $this->volunteer->id)
+            ->where('project_id', $this->volunteer->project_id)
+            ->first();
 
         if (! $this->ticket) {
             throw new NotFoundHttpException;
@@ -53,11 +56,11 @@ class VolunteerTicket extends Component
         }
 
         return $this->volunteer->shiftSignups()
-            ->with('shift.volunteerJob')
+            ->with('shift.volunteerJob.event')
             ->get();
     }
 
-    public function render(): \Illuminate\View\View
+    public function render(): View
     {
         return view('livewire.public.volunteer-ticket');
     }

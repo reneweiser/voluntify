@@ -7,6 +7,7 @@ use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -23,12 +24,13 @@ beforeEach(function () {
     $this->entranceStaff = User::factory()->create();
     $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
 
-    $this->event = Event::factory()->for($this->org)->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->create();
 });
 
 it('returns volunteers and shifts for entrance staff', function () {
-    $volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Test']);
-    $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Alice', 'last_name' => 'Test']);
+    $ticket = Ticket::factory()->for($volunteer)->for($this->project, 'project')->create();
     $job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Gate Watch']);
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
@@ -56,7 +58,7 @@ it('returns Ed25519 public keys', function () {
     $response->assertOk();
 
     $jwtKeyService = app(JwtKeyService::class);
-    $expectedKeys = $jwtKeyService->publicKeys($this->event->id);
+    $expectedKeys = $jwtKeyService->publicKeys($this->project->id);
     $data = $response->json();
 
     expect($data['keys']['current'])->toBe($expectedKeys['current'])
@@ -77,13 +79,13 @@ it('returned keys cannot sign a valid JWT', function () {
     // Attempt to forge a ticket using the returned public key
     try {
         $forgedJwt = JWT::encode(
-            ['volunteer_id' => 999, 'event_id' => $this->event->id, 'iat' => time()],
+            ['volunteer_id' => 999, 'project_id' => $this->project->id, 'iat' => time()],
             $keys['current'],
             'EdDSA',
         );
         // If encode somehow succeeds, the token should not verify
         $verifier = app(TokenVerifier::class);
-        $verifier->verify($forgedJwt, $this->event->id);
+        $verifier->verify($forgedJwt, $this->project->id);
         $this->fail('Expected InvalidTicketException');
     } catch (Exception) {
         // Expected: either encode fails or verify fails
@@ -92,8 +94,8 @@ it('returned keys cannot sign a valid JWT', function () {
 });
 
 it('includes existing arrivals', function () {
-    $volunteer = Volunteer::factory()->create();
-    $ticket = Ticket::factory()->for($volunteer)->for($this->event)->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $ticket = Ticket::factory()->for($volunteer)->for($this->project, 'project')->create();
     EventArrival::factory()->create([
         'ticket_id' => $ticket->id,
         'volunteer_id' => $volunteer->id,
@@ -111,8 +113,8 @@ it('includes existing arrivals', function () {
 });
 
 it('includes attendance_record in shift_signups', function () {
-    $volunteer = Volunteer::factory()->create();
-    Ticket::factory()->for($volunteer)->for($this->event)->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    Ticket::factory()->for($volunteer)->for($this->project, 'project')->create();
     $job = VolunteerJob::factory()->for($this->event)->create();
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     $signup = ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
@@ -136,8 +138,8 @@ it('includes attendance_record in shift_signups', function () {
 });
 
 it('returns null attendance_record when none exists', function () {
-    $volunteer = Volunteer::factory()->create();
-    Ticket::factory()->for($volunteer)->for($this->event)->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    Ticket::factory()->for($volunteer)->for($this->project, 'project')->create();
     $job = VolunteerJob::factory()->for($this->event)->create();
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
     ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);

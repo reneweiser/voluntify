@@ -89,7 +89,10 @@ class DatabaseSeeder extends Seeder
                 ->create(['capacity' => 10]);
 
             foreach ($shifts as $shift) {
-                $volunteers = Volunteer::factory()->count(3)->create();
+                $volunteers = Volunteer::factory()
+                    ->count(3)
+                    ->for($event->project)
+                    ->create();
                 foreach ($volunteers as $volunteer) {
                     ShiftSignup::factory()
                         ->for($volunteer)

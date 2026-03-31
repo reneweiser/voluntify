@@ -3,21 +3,20 @@
 use App\Enums\ArrivalMethod;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 
 beforeEach(function () {
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization();
     app()->instance(Organization::class, $this->org);
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
 });
 
 it('accepts valid arrivals payload', function () {
-    $volunteer = Volunteer::factory()->create();
-    $ticket = Ticket::factory()->create([
-        'volunteer_id' => $volunteer->id,
-        'event_id' => $this->event->id,
-    ]);
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $ticket = Ticket::factory()->for($volunteer)->for($this->project, 'project')->create();
 
     $this->actingAs($this->user)
         ->postJson(route('scanner.sync', $this->event), [
@@ -54,11 +53,8 @@ it('rejects missing ticket_id', function () {
 });
 
 it('rejects invalid method', function () {
-    $volunteer = Volunteer::factory()->create();
-    $ticket = Ticket::factory()->create([
-        'volunteer_id' => $volunteer->id,
-        'event_id' => $this->event->id,
-    ]);
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $ticket = Ticket::factory()->for($volunteer)->for($this->project, 'project')->create();
 
     $this->actingAs($this->user)
         ->postJson(route('scanner.sync', $this->event), [

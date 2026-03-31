@@ -3,13 +3,15 @@
 use App\Enums\StaffRole;
 use App\Livewire\Events\EventGearSetup;
 use App\Models\Event;
-use App\Models\EventGearItem;
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
 use Livewire\Livewire;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
-    $this->event = Event::factory()->for($this->org)->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->create();
     app()->instance(Organization::class, $this->org);
 });
 
@@ -22,13 +24,13 @@ it('allows organizer to add a gear item', function () {
         ->call('addItem')
         ->assertHasNoErrors();
 
-    expect(EventGearItem::count())->toBe(1);
+    expect(ProjectGearItem::count())->toBe(1);
 
-    $item = EventGearItem::first();
+    $item = ProjectGearItem::first();
     expect($item->name)->toBe('T-Shirt')
         ->and($item->requires_size)->toBeTrue()
         ->and($item->available_sizes)->toBe(['S', 'M', 'L', 'XL'])
-        ->and($item->event_id)->toBe($this->event->id);
+        ->and($item->project_id)->toBe($this->project->id);
 });
 
 it('allows organizer to add non-sized gear item', function () {
@@ -38,7 +40,7 @@ it('allows organizer to add non-sized gear item', function () {
         ->call('addItem')
         ->assertHasNoErrors();
 
-    $item = EventGearItem::first();
+    $item = ProjectGearItem::first();
     expect($item->requires_size)->toBeFalse()
         ->and($item->available_sizes)->toBeNull();
 });
@@ -52,14 +54,14 @@ it('validates gear item name is required', function () {
 });
 
 it('allows organizer to remove a gear item', function () {
-    $item = EventGearItem::factory()->for($this->event)->create();
+    $item = ProjectGearItem::factory()->for($this->project)->create();
 
     Livewire::actingAs($this->organizer)
         ->test(EventGearSetup::class, ['eventId' => $this->event->id])
         ->call('removeItem', $item->id)
         ->assertHasNoErrors();
 
-    expect(EventGearItem::count())->toBe(0);
+    expect(ProjectGearItem::count())->toBe(0);
 });
 
 it('denies volunteer admin access to gear setup', function () {
@@ -72,7 +74,7 @@ it('denies volunteer admin access to gear setup', function () {
 });
 
 it('renders existing gear items', function () {
-    EventGearItem::factory()->for($this->event)->create(['name' => 'Vest']);
+    ProjectGearItem::factory()->for($this->project)->create(['name' => 'Vest']);
 
     Livewire::actingAs($this->organizer)
         ->test(EventGearSetup::class, ['eventId' => $this->event->id])
@@ -88,7 +90,7 @@ it('rejects adding sized item when sizes field is empty', function () {
         ->call('addItem')
         ->assertHasErrors(['newItemSizes']);
 
-    expect(EventGearItem::count())->toBe(0);
+    expect(ProjectGearItem::count())->toBe(0);
 });
 
 it('rejects adding sized item when sizes field is only commas', function () {
@@ -100,7 +102,7 @@ it('rejects adding sized item when sizes field is only commas', function () {
         ->call('addItem')
         ->assertHasErrors(['newItemSizes']);
 
-    expect(EventGearItem::count())->toBe(0);
+    expect(ProjectGearItem::count())->toBe(0);
 });
 
 it('rejects adding sized item when sizes field is only whitespace', function () {
@@ -112,7 +114,7 @@ it('rejects adding sized item when sizes field is only whitespace', function () 
         ->call('addItem')
         ->assertHasErrors(['newItemSizes']);
 
-    expect(EventGearItem::count())->toBe(0);
+    expect(ProjectGearItem::count())->toBe(0);
 });
 
 it('rejects adding sized item when sizes field is commas and whitespace', function () {
@@ -124,7 +126,7 @@ it('rejects adding sized item when sizes field is commas and whitespace', functi
         ->call('addItem')
         ->assertHasErrors(['newItemSizes']);
 
-    expect(EventGearItem::count())->toBe(0);
+    expect(ProjectGearItem::count())->toBe(0);
 });
 
 it('accepts valid comma-separated sizes', function () {
@@ -136,7 +138,7 @@ it('accepts valid comma-separated sizes', function () {
         ->call('addItem')
         ->assertHasNoErrors();
 
-    $item = EventGearItem::first();
+    $item = ProjectGearItem::first();
     expect($item->available_sizes)->toBe(['S', 'M', 'L', 'XL']);
 });
 
@@ -149,5 +151,5 @@ it('accepts non-sized item without sizes field', function () {
         ->call('addItem')
         ->assertHasNoErrors();
 
-    expect(EventGearItem::count())->toBe(1);
+    expect(ProjectGearItem::count())->toBe(1);
 });

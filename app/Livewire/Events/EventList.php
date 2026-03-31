@@ -5,6 +5,7 @@ namespace App\Livewire\Events;
 use App\Actions\CreateEvent;
 use App\Models\Event;
 use App\Models\Organization;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -40,10 +41,10 @@ class EventList extends Component
     }
 
     #[Computed]
-    public function events(): \Illuminate\Database\Eloquent\Collection
+    public function events(): Collection
     {
         $query = $this->organization->events()
-            ->withCount('volunteers')
+            ->withVolunteerCount()
             ->latest('starts_at');
 
         if ($this->statusFilter) {

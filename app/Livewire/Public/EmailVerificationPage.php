@@ -35,10 +35,15 @@ class EmailVerificationPage extends Component
             $this->newSignupCount = count($result->newSignups);
             $this->skippedFullCount = count($result->skippedFull);
 
-            $ticket = $result->volunteer->tickets()->with('event')->latest()->first();
-            if ($ticket) {
-                $this->eventName = $ticket->event->name;
-                $this->eventPublicToken = $ticket->event->public_token;
+            $latestSignup = $result->volunteer->shiftSignups()
+                ->with('shift.volunteerJob.event')
+                ->latest()
+                ->first();
+
+            if ($latestSignup?->shift?->volunteerJob?->event) {
+                $event = $latestSignup->shift->volunteerJob->event;
+                $this->eventName = $event->name;
+                $this->eventPublicToken = $event->public_token;
             }
         } catch (ExpiredVerificationException) {
             $this->expired = true;

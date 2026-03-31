@@ -7,17 +7,18 @@ use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\EmailTemplate;
 use App\Models\Event;
-use App\Models\EventGearItem;
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
-use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create(['name' => 'Original Event']);
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create(['name' => 'Original Event']);
 });
 
 it('clones event as a draft with copy suffix', function () {
@@ -77,22 +78,15 @@ it('does not copy title image path', function () {
     expect($cloned->title_image_path)->toBeNull();
 });
 
-it('clones gear items but not volunteer gear records', function () {
-    $gearItem = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    VolunteerGear::factory()->create(['event_gear_item_id' => $gearItem->id]);
+it('does not clone gear items because gear is project-level', function () {
+    $gearItem = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
 
     $action = new CloneEvent;
     $cloned = $action->execute($this->event);
 
-    $cloned->load('gearItems');
-
-    expect($cloned->gearItems)->toHaveCount(1)
-        ->and($cloned->gearItems->first()->name)->toBe('T-Shirt')
-        ->and($cloned->gearItems->first()->requires_size)->toBeTrue()
-        ->and($cloned->gearItems->first()->available_sizes)->toBe(['XS', 'S', 'M', 'L', 'XL', 'XXL']);
-
-    // Volunteer gear should NOT be cloned
-    expect(VolunteerGear::where('event_gear_item_id', $cloned->gearItems->first()->id)->count())->toBe(0);
+    // Gear items are project-level, not event-level - cloning event does not touch gear
+    expect($this->project->gearItems)->toHaveCount(1)
+        ->and($this->project->gearItems->first()->name)->toBe('T-Shirt');
 });
 
 it('clones custom registration fields but not responses', function () {
@@ -102,7 +96,7 @@ it('clones custom registration fields but not responses', function () {
         'required' => true,
         'sort_order' => 1,
     ]);
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,
         'volunteer_id' => $volunteer->id,

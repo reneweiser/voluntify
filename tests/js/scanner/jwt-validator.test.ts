@@ -53,7 +53,7 @@ describe('Ed25519 verification', () => {
 
     it('validates EdDSA-signed token with correct public key', async () => {
         const token = await createEdDSAJwt(
-            { volunteer_id: 42, event_id: 1, iat: Math.floor(Date.now() / 1000) },
+            { volunteer_id: 42, project_id: 1, iat: Math.floor(Date.now() / 1000) },
             privateKey,
         );
 
@@ -66,7 +66,7 @@ describe('Ed25519 verification', () => {
         // Sign with a completely different key
         const wrongPriv = ed.utils.randomSecretKey();
         const token = await createEdDSAJwt(
-            { volunteer_id: 42, event_id: 1, iat: Math.floor(Date.now() / 1000) },
+            { volunteer_id: 42, project_id: 1, iat: Math.floor(Date.now() / 1000) },
             wrongPriv,
         );
 
@@ -85,7 +85,7 @@ describe('Ed25519 verification', () => {
 
         // Sign with the previous key
         const token = await createEdDSAJwt(
-            { volunteer_id: 99, event_id: 1, iat: Math.floor(Date.now() / 1000) },
+            { volunteer_id: 99, project_id: 1, iat: Math.floor(Date.now() / 1000) },
             prevPriv,
         );
 
@@ -100,7 +100,7 @@ describe('security', () => {
 
     it('rejects HS256 token as unsupported algorithm', async () => {
         const header = base64UrlEncodeStr(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-        const payload = base64UrlEncodeStr(JSON.stringify({ volunteer_id: 7, event_id: 1, iat: Math.floor(Date.now() / 1000) }));
+        const payload = base64UrlEncodeStr(JSON.stringify({ volunteer_id: 7, project_id: 1, iat: Math.floor(Date.now() / 1000) }));
         const token = `${header}.${payload}.fake-signature`;
 
         const result = await validateJwt(token, keys);
@@ -110,7 +110,7 @@ describe('security', () => {
 
     it('rejects token with alg: none', async () => {
         const header = base64UrlEncodeStr(JSON.stringify({ alg: 'none', typ: 'JWT' }));
-        const payload = base64UrlEncodeStr(JSON.stringify({ volunteer_id: 1, event_id: 1, iat: Math.floor(Date.now() / 1000) }));
+        const payload = base64UrlEncodeStr(JSON.stringify({ volunteer_id: 1, project_id: 1, iat: Math.floor(Date.now() / 1000) }));
         const token = `${header}.${payload}.`;
 
         const result = await validateJwt(token, keys);

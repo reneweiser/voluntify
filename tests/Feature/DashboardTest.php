@@ -8,7 +8,6 @@ use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
-use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Livewire\Livewire;
@@ -49,8 +48,10 @@ test('shows total volunteers count', function () {
     $event = Event::factory()->for($org)->published()->create();
     $vol1 = Volunteer::factory()->create();
     $vol2 = Volunteer::factory()->create();
-    Ticket::factory()->create(['volunteer_id' => $vol1->id, 'event_id' => $event->id]);
-    Ticket::factory()->create(['volunteer_id' => $vol2->id, 'event_id' => $event->id]);
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    ShiftSignup::factory()->create(['volunteer_id' => $vol1->id, 'shift_id' => $shift->id]);
+    ShiftSignup::factory()->create(['volunteer_id' => $vol2->id, 'shift_id' => $shift->id]);
 
     Livewire::actingAs($user)
         ->test(Dashboard::class)

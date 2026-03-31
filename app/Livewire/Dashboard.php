@@ -44,8 +44,8 @@ class Dashboard extends Component
     public function totalVolunteersCount(): int
     {
         return Volunteer::whereHas(
-            'tickets',
-            fn ($q) => $q->whereIn('event_id', $this->organization->events()->select('id'))
+            'shiftSignups',
+            fn ($q) => $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->whereIn('event_id', $this->organization->events()->select('id')))
         )->count();
     }
 
@@ -75,7 +75,7 @@ class Dashboard extends Component
         return $this->organization->events()
             ->published()
             ->where('starts_at', '>=', now())
-            ->withCount('volunteers')
+            ->withVolunteerCount()
             ->orderBy('starts_at')
             ->limit(5)
             ->get();
@@ -139,7 +139,8 @@ class Dashboard extends Component
         return $this->organization->events()
             ->published()
             ->where('ends_at', '<', now())
-            ->withCount(['volunteers', 'eventArrivals'])
+            ->withVolunteerCount()
+            ->withCount('eventArrivals')
             ->orderByDesc('ends_at')
             ->limit(5)
             ->get();

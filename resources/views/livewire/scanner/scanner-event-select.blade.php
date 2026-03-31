@@ -35,7 +35,7 @@
                     <div class="mb-4">
                         <div class="flex items-center gap-2 text-sm">
                             <flux:badge size="sm" color="emerald">
-                                {{ $event->event_arrivals_count }}/{{ $event->volunteers_count }} {{ __('arrived') }}
+                                {{ $event->event_arrivals_count }}/{{ $event->volunteer_count }} {{ __('arrived') }}
                             </flux:badge>
                         </div>
                     </div>

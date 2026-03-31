@@ -11,7 +11,7 @@ use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EventArrival>
+ * @extends Factory<EventArrival>
  */
 class EventArrivalFactory extends Factory
 {
@@ -19,16 +19,10 @@ class EventArrivalFactory extends Factory
 
     public function definition(): array
     {
-        $volunteer = Volunteer::factory();
-        $event = Event::factory();
-
         return [
-            'ticket_id' => Ticket::factory()->state([
-                'volunteer_id' => $volunteer,
-                'event_id' => $event,
-            ]),
-            'volunteer_id' => $volunteer,
-            'event_id' => $event,
+            'ticket_id' => Ticket::factory(),
+            'volunteer_id' => Volunteer::factory(),
+            'event_id' => Event::factory(),
             'scanned_by' => User::factory(),
             'scanned_at' => now(),
             'method' => fake()->randomElement(ArrivalMethod::cases()),

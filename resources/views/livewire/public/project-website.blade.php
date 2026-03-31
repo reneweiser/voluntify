@@ -59,7 +59,7 @@
                         </div>
                         <div class="flex items-center gap-3">
                             <flux:text size="sm">
-                                {{ $event->volunteers_count }} {{ __('volunteers') }}
+                                {{ $event->volunteer_count }} {{ __('volunteers') }}
                             </flux:text>
                             <flux:badge size="sm" color="emerald">{{ __('Sign Up') }}</flux:badge>
                         </div>

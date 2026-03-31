@@ -6,6 +6,7 @@ use App\Livewire\Events\AttendanceTracker;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -18,7 +19,8 @@ use Livewire\Livewire;
 beforeEach(function () {
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization();
     app()->instance(Organization::class, $this->org);
-    $this->event = Event::factory()->for($this->org)->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Stage Crew']);
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
 });
@@ -93,10 +95,7 @@ it('shows conflict warning when marking no show with arrival', function () {
         'volunteer_id' => $volunteer->id,
         'shift_id' => $this->shift->id,
     ]);
-    $ticket = Ticket::factory()->create([
-        'volunteer_id' => $volunteer->id,
-        'event_id' => $this->event->id,
-    ]);
+    $ticket = Ticket::factory()->for($volunteer)->for($this->project, 'project')->create();
     EventArrival::factory()->create([
         'volunteer_id' => $volunteer->id,
         'event_id' => $this->event->id,

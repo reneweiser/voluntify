@@ -16,7 +16,9 @@ class RecordCustomFieldResponses
      */
     public function execute(Volunteer $volunteer, Event $event, array $responses): void
     {
-        $fields = $event->customRegistrationFields()->get();
+        $projectFields = $event->project?->customRegistrationFields()->get() ?? collect();
+        $eventFields = $event->customRegistrationFields()->get();
+        $fields = $projectFields->merge($eventFields);
 
         foreach ($fields as $field) {
             $rawValue = $responses[$field->id] ?? null;

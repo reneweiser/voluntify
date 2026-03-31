@@ -5,6 +5,7 @@ use App\Livewire\Public\EventSignup;
 use App\Models\EmailVerificationToken;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -18,7 +19,8 @@ beforeEach(function () {
     Notification::fake();
 
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
 });
@@ -61,7 +63,7 @@ it('completes full signup flow: signup → verify → ticket', function () {
     expect(ShiftSignup::where('volunteer_id', $volunteer->id)->where('shift_id', $this->shift->id)->exists())->toBeTrue();
 
     // Ticket generated
-    expect(Ticket::where('volunteer_id', $volunteer->id)->where('event_id', $this->event->id)->exists())->toBeTrue();
+    expect(Ticket::where('volunteer_id', $volunteer->id)->where('project_id', $this->project->id)->exists())->toBeTrue();
 
     // Step 3: Ticket access via magic link
     $magicToken = $volunteer->magicLinkTokens()->first();
@@ -70,7 +72,7 @@ it('completes full signup flow: signup → verify → ticket', function () {
 
 it('completes signup immediately for verified volunteer', function () {
     // Pre-create a verified volunteer
-    $volunteer = Volunteer::factory()->verified()->create([
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create([
         'first_name' => 'Bob',
         'last_name' => 'Verified',
         'email' => 'bob@verified.test',
@@ -86,5 +88,5 @@ it('completes signup immediately for verified volunteer', function () {
         ->assertSet('pendingVerification', false);
 
     expect(ShiftSignup::where('volunteer_id', $volunteer->id)->where('shift_id', $this->shift->id)->exists())->toBeTrue();
-    expect(Ticket::where('volunteer_id', $volunteer->id)->where('event_id', $this->event->id)->exists())->toBeTrue();
+    expect(Ticket::where('volunteer_id', $volunteer->id)->where('project_id', $this->project->id)->exists())->toBeTrue();
 });

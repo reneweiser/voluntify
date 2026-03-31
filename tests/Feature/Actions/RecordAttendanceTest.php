@@ -6,6 +6,7 @@ use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -15,10 +16,11 @@ use App\Models\VolunteerJob;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
-    $this->volunteer = Volunteer::factory()->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->create();
     $this->signup = ShiftSignup::factory()->create([
         'volunteer_id' => $this->volunteer->id,
         'shift_id' => $this->shift->id,
@@ -67,10 +69,7 @@ it('does not set conflict flag for no show without arrival', function () {
 });
 
 it('sets conflict flag when marking no show but volunteer has arrival', function () {
-    $ticket = Ticket::factory()->create([
-        'volunteer_id' => $this->volunteer->id,
-        'event_id' => $this->event->id,
-    ]);
+    $ticket = Ticket::factory()->for($this->volunteer)->for($this->project, 'project')->create();
     EventArrival::factory()->create([
         'volunteer_id' => $this->volunteer->id,
         'event_id' => $this->event->id,
@@ -83,11 +82,9 @@ it('sets conflict flag when marking no show but volunteer has arrival', function
 });
 
 it('does not detect conflict for arrival at a different event', function () {
-    $otherEvent = Event::factory()->for($this->org)->create();
-    $ticket = Ticket::factory()->create([
-        'volunteer_id' => $this->volunteer->id,
-        'event_id' => $otherEvent->id,
-    ]);
+    $otherProject = Project::factory()->for($this->org)->create();
+    $otherEvent = Event::factory()->for($this->org)->for($otherProject)->create();
+    $ticket = Ticket::factory()->for($this->volunteer)->for($otherProject, 'project')->create();
     EventArrival::factory()->create([
         'volunteer_id' => $this->volunteer->id,
         'event_id' => $otherEvent->id,

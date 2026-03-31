@@ -38,7 +38,8 @@ class VolunteerList extends Component
                 'shiftSignups.attendanceRecord',
                 'eventArrivals' => fn ($q) => $q->where('event_id', $this->event->id),
             ])
-            ->orderBy('name')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
             ->paginate(25);
     }
 

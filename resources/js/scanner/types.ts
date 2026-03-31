@@ -26,7 +26,7 @@ export interface Ticket {
     id: number;
     jwt_token: string;
     volunteer_id: number;
-    event_id: number;
+    project_id: number;
 }
 
 export interface Volunteer {

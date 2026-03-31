@@ -5,6 +5,7 @@ namespace App\Livewire\Events;
 use App\Actions\PromoteVolunteer;
 use App\Enums\StaffRole;
 use App\Exceptions\DomainException;
+use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Volunteer;
@@ -37,8 +38,11 @@ class VolunteerDetail extends Component
     #[Computed]
     public function customFieldResponses(): Collection
     {
-        $fieldIds = \App\Models\CustomRegistrationField::withTrashed()
-            ->where('event_id', $this->event->id)
+        $fieldIds = CustomRegistrationField::withTrashed()
+            ->where(function ($q) {
+                $q->where('event_id', $this->event->id)
+                    ->orWhere('project_id', $this->event->project_id);
+            })
             ->pluck('id');
 
         return $this->volunteer->customFieldResponses()

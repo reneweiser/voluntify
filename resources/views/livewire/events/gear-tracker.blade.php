@@ -20,7 +20,7 @@
         @else
             {{-- Search --}}
             <div class="mb-6">
-                <flux:input wire:model.live.debounce.300ms="search" placeholder="{{ __('Search volunteers...') }}" icon="magnifying-glass" />
+                <flux:input wire:model.live.debounce.300ms="search" placeholder="{{ __('Search volunteers...') }}" icon="magnifying-glass" aria-label="{{ __('Search volunteers') }}" />
             </div>
 
             @if ($this->volunteers->isEmpty())
@@ -49,7 +49,7 @@
                                 </flux:table.cell>
                                 @foreach ($this->gearItems as $gearItem)
                                     @php
-                                        $gear = $volunteer->volunteerGear->firstWhere('event_gear_item_id', $gearItem->id);
+                                        $gear = $volunteer->volunteerGear->firstWhere('project_gear_item_id', $gearItem->id);
                                     @endphp
                                     <flux:table.cell>
                                         @if ($gear)
@@ -57,18 +57,18 @@
                                                 @if ($gear->size)
                                                     <flux:badge size="sm" color="zinc">{{ $gear->size }}</flux:badge>
                                                 @endif
-                                                @if ($gear->picked_up_at)
-                                                    <flux:button size="xs" variant="primary" wire:click="togglePickup({{ $gear->id }})" title="{{ __('Undo pickup') }}">
+                                                @if ($gear->isPickedUp())
+                                                    <flux:button size="xs" variant="primary" wire:click="togglePickup({{ $gear->id }})" aria-label="{{ __('Undo pickup') }}">
                                                         <flux:icon name="check" class="size-4" />
                                                     </flux:button>
                                                 @else
-                                                    <flux:button size="xs" variant="ghost" wire:click="togglePickup({{ $gear->id }})" title="{{ __('Mark as picked up') }}">
+                                                    <flux:button size="xs" variant="ghost" wire:click="togglePickup({{ $gear->id }})" aria-label="{{ __('Mark as picked up') }}">
                                                         <flux:icon name="hand-raised" class="size-4" />
                                                     </flux:button>
                                                 @endif
                                             </div>
                                         @else
-                                            <flux:button size="xs" variant="ghost" wire:click="assignAndPickup({{ $gearItem->id }}, {{ $volunteer->id }})" title="{{ __('Assign & pick up') }}">
+                                            <flux:button size="xs" variant="ghost" wire:click="assignAndPickup({{ $gearItem->id }}, {{ $volunteer->id }})" aria-label="{{ __('Assign & pick up') }}">
                                                 <flux:icon name="plus" class="size-4" />
                                             </flux:button>
                                         @endif

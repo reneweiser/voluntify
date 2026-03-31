@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('event_gear_items', function (Blueprint $table) {
+        Schema::create('project_gear_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('event_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('project_id')->constrained()->cascadeOnDelete();
             $table->string('name');
+            $table->string('type')->default('size_selection');
             $table->boolean('requires_size')->default(false);
             $table->json('available_sizes')->nullable();
+            $table->json('available_states')->nullable();
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
@@ -27,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('event_gear_items');
+        Schema::dropIfExists('project_gear_items');
     }
 };

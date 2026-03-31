@@ -2,22 +2,25 @@
 
 namespace Database\Factories;
 
-use App\Models\Event;
-use App\Models\EventGearItem;
+use App\Enums\GearItemType;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/** @extends Factory<EventGearItem> */
-class EventGearItemFactory extends Factory
+/** @extends Factory<ProjectGearItem> */
+class ProjectGearItemFactory extends Factory
 {
-    protected $model = EventGearItem::class;
+    protected $model = ProjectGearItem::class;
 
     public function definition(): array
     {
         return [
-            'event_id' => Event::factory(),
+            'project_id' => Project::factory(),
             'name' => fake()->randomElement(['T-Shirt', 'Badge', 'Vest', 'Lanyard', 'Cap']),
+            'type' => GearItemType::SizeSelection,
             'requires_size' => false,
             'available_sizes' => null,
+            'available_states' => null,
             'sort_order' => 0,
         ];
     }
@@ -27,6 +30,13 @@ class EventGearItemFactory extends Factory
         return $this->state(fn () => [
             'requires_size' => true,
             'available_sizes' => $sizes,
+        ]);
+    }
+
+    public function quantity(): static
+    {
+        return $this->state(fn () => [
+            'type' => GearItemType::Quantity,
         ]);
     }
 }

@@ -113,10 +113,10 @@
                                     </a>
                                 </flux:table.cell>
                                 <flux:table.cell>{{ $pastEvent->ends_at->format('M d, Y') }}</flux:table.cell>
-                                <flux:table.cell>{{ $pastEvent->volunteers_count }}</flux:table.cell>
+                                <flux:table.cell>{{ $pastEvent->volunteer_count }}</flux:table.cell>
                                 <flux:table.cell>
-                                    @if ($pastEvent->volunteers_count > 0)
-                                        {{ round(($pastEvent->event_arrivals_count / $pastEvent->volunteers_count) * 100) }}%
+                                    @if ($pastEvent->volunteer_count > 0)
+                                        {{ round(($pastEvent->event_arrivals_count / $pastEvent->volunteer_count) * 100) }}%
                                     @else
                                         —
                                     @endif
@@ -158,7 +158,7 @@
                             </a>
                         </flux:table.cell>
                         <flux:table.cell>{{ $event->starts_at->format('M d, Y g:i A') }}</flux:table.cell>
-                        <flux:table.cell>{{ $event->volunteers_count }}</flux:table.cell>
+                        <flux:table.cell>{{ $event->volunteer_count }}</flux:table.cell>
                         <flux:table.cell>
                             <flux:badge size="sm" color="emerald">{{ __('Published') }}</flux:badge>
                         </flux:table.cell>

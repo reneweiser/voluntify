@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('tickets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('volunteer_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('event_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('project_id')->constrained()->cascadeOnDelete();
             $table->text('jwt_token');
             $table->timestamps();
 
-            $table->unique(['volunteer_id', 'event_id']);
+            $table->unique(['volunteer_id', 'project_id']);
         });
     }
 

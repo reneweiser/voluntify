@@ -23,6 +23,7 @@ class Volunteer extends Model
         'email',
         'phone',
         'email_verified_at',
+        'project_id',
         'user_id',
     ];
 
@@ -53,6 +54,11 @@ class Volunteer extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function shiftSignups(): HasMany
@@ -90,17 +96,30 @@ class Volunteer extends Model
         return $this->hasMany(CustomFieldResponse::class);
     }
 
-    public function scopeWithCustomFields(Builder $query, int $eventId): void
+    public function scopeWithCustomFields(Builder $query, int $eventId, ?int $projectId = null): void
     {
-        $query->with(['customFieldResponses' => function ($q) use ($eventId) {
-            $q->whereHas('field', fn ($fq) => $fq->withTrashed()->where('event_id', $eventId))
+        $query->with(['customFieldResponses' => function ($q) use ($eventId, $projectId) {
+            $q->whereHas('field', fn ($fq) => $fq->withTrashed()->where(function ($sq) use ($eventId, $projectId) {
+                $sq->where('event_id', $eventId);
+                if ($projectId !== null) {
+                    $sq->orWhere('project_id', $projectId);
+                }
+            }))
                 ->with(['field' => fn ($fq) => $fq->withTrashed()]);
         }]);
     }
 
+    public function scopeForProject(Builder $query, int $projectId): void
+    {
+        $query->where('project_id', $projectId);
+    }
+
     public function scopeForEvent(Builder $query, int $eventId): void
     {
-        $query->whereHas('tickets', fn (Builder $q) => $q->where('event_id', $eventId));
+        $query->where(function (Builder $q) use ($eventId) {
+            $q->whereHas('shiftSignups', fn (Builder $sq) => $sq->whereHas('shift.volunteerJob', fn (Builder $jq) => $jq->where('event_id', $eventId))
+            )->orWhereHas('eventArrivals', fn (Builder $eq) => $eq->where('event_id', $eventId));
+        });
     }
 
     public function scopeSearch(Builder $query, string $search): void
