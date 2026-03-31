@@ -7,11 +7,11 @@ use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventAnnouncement;
-use App\Models\EventGearItem;
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
-use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
@@ -19,7 +19,8 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create([
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create([
         'cancellation_cutoff_hours' => 24,
     ]);
     $this->job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Setup Crew']);
@@ -31,11 +32,7 @@ beforeEach(function () {
         'starts_at' => now()->subDays(1),
         'ends_at' => now()->subDays(1)->addHours(2),
     ]);
-    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Test', 'last_name' => 'Volunteer']);
-    Ticket::factory()->create([
-        'volunteer_id' => $this->volunteer->id,
-        'event_id' => $this->event->id,
-    ]);
+    $this->volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Test', 'last_name' => 'Volunteer']);
 });
 
 it('renders successfully with valid magic link', function () {
@@ -187,7 +184,7 @@ it('cancel action shows success banner', function () {
 });
 
 it('prevents cancelling another volunteers signup', function () {
-    $otherVolunteer = Volunteer::factory()->create();
+    $otherVolunteer = Volunteer::factory()->for($this->project)->create();
     $signup = ShiftSignup::factory()->create([
         'volunteer_id' => $otherVolunteer->id,
         'shift_id' => $this->futureShift->id,
@@ -204,6 +201,11 @@ it('prevents cancelling another volunteers signup', function () {
 });
 
 it('shows announcements for volunteers events', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
     EventAnnouncement::factory()->create([
         'event_id' => $this->event->id,
         'subject' => 'Important Parking Update',
@@ -231,16 +233,16 @@ it('shows empty states when no upcoming shifts and no announcements', function (
 });
 
 it('displays assigned gear with size and pickup status', function () {
-    $tshirt = EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    $badge = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+    $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
+    $badge = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
 
     VolunteerGear::factory()->create([
-        'event_gear_item_id' => $tshirt->id,
+        'project_gear_item_id' => $tshirt->id,
         'volunteer_id' => $this->volunteer->id,
         'size' => 'L',
     ]);
     VolunteerGear::factory()->create([
-        'event_gear_item_id' => $badge->id,
+        'project_gear_item_id' => $badge->id,
         'volunteer_id' => $this->volunteer->id,
     ]);
 
@@ -256,6 +258,11 @@ it('displays assigned gear with size and pickup status', function () {
 });
 
 it('shows custom field responses grouped by event', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Dietary Needs']);
     CustomFieldResponse::factory()->create([
         'custom_registration_field_id' => $field->id,

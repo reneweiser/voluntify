@@ -11,6 +11,9 @@
             }">
                 {{ $event->status->label() }}
             </flux:badge>
+            @if ($event->visibility === \App\Enums\EventVisibility::Private)
+                <flux:badge size="sm" color="purple">{{ __('Private') }}</flux:badge>
+            @endif
         </div>
 
         @if ($this->canManage)
@@ -162,6 +165,16 @@
                         <flux:input type="number" wire:model="attendanceGraceMinutes" min="0" max="120" placeholder="{{ __('No grace period — leave empty') }}" />
                         <flux:description>{{ __('Minutes after shift start within which a scan is still marked as on-time. Leave empty for no grace period.') }}</flux:description>
                         <flux:error name="attendanceGraceMinutes" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>{{ __('Visibility') }}</flux:label>
+                        <flux:select wire:model="visibility">
+                            @foreach (\App\Enums\EventVisibility::cases() as $vis)
+                                <flux:select.option value="{{ $vis->value }}">{{ $vis->label() }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        <flux:description>{{ __('Private events are not shown on the project website. Share the direct link to allow signups.') }}</flux:description>
                     </flux:field>
 
                     @if ($this->availableProjects->isNotEmpty())

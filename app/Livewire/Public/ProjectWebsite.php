@@ -22,7 +22,7 @@ class ProjectWebsite extends Component
     public function render(): mixed
     {
         return view('livewire.public.project-website', [
-            'events' => $this->project->publishedEvents()->withCount('volunteers')->get(),
+            'events' => $this->project->publishedEvents()->publiclyVisible()->withVolunteerCount()->get(),
         ]);
     }
 }

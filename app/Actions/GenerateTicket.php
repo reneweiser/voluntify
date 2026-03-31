@@ -15,18 +15,18 @@ class GenerateTicket
     public function execute(Volunteer $volunteer, Event $event): Ticket
     {
         $existing = Ticket::where('volunteer_id', $volunteer->id)
-            ->where('event_id', $event->id)
+            ->where('project_id', $event->project_id)
             ->first();
 
         if ($existing) {
             return $existing;
         }
 
-        $signingKey = $this->jwtKeyService->signingKey($event->id);
+        $signingKey = $this->jwtKeyService->signingKey($event->project_id);
 
         $payload = [
             'volunteer_id' => $volunteer->id,
-            'event_id' => $event->id,
+            'project_id' => $event->project_id,
             'iat' => now()->timestamp,
         ];
 
@@ -34,7 +34,7 @@ class GenerateTicket
 
         return Ticket::create([
             'volunteer_id' => $volunteer->id,
-            'event_id' => $event->id,
+            'project_id' => $event->project_id,
             'jwt_token' => $jwt,
         ]);
     }

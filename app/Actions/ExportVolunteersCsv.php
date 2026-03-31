@@ -23,12 +23,13 @@ class ExportVolunteersCsv
                 'shiftSignups.shift.volunteerJob',
                 'shiftSignups.attendanceRecord',
                 'eventArrivals' => fn ($q) => $q->where('event_id', $event->id),
-                'volunteerGear' => fn ($q) => $q->whereHas('gearItem', fn ($sq) => $sq->where('event_id', $event->id)),
+                'volunteerGear' => fn ($q) => $q->whereHas('gearItem', fn ($sq) => $sq->where('project_id', $event->project_id)),
                 'volunteerGear.gearItem',
+                'volunteerGear.pickups',
             ]);
 
         if ($customFields !== null && $customFields->isNotEmpty()) {
-            $query->withCustomFields($event->id);
+            $query->withCustomFields($event->id, $event->project_id);
         }
 
         return $query
@@ -47,7 +48,7 @@ class ExportVolunteersCsv
                     'arrived' => $volunteer->eventArrivals->isNotEmpty() ? 'Yes' : 'No',
                     'attendance' => $this->attendanceStatus($volunteer),
                     'gear' => $volunteer->volunteerGear
-                        ->map(fn ($g) => $g->size ? "{$g->gearItem->name} ({$g->size})" : $g->gearItem->name)
+                        ->map(fn ($g) => ($g->size ? "{$g->gearItem->name} ({$g->size})" : $g->gearItem->name).($g->isPickedUp() ? ' [picked up]' : ''))
                         ->implode('; '),
                 ];
 

@@ -59,7 +59,7 @@ class ManualLookup extends Component
                 'shiftSignups.shift.volunteerJob',
                 'shiftSignups.attendanceRecord',
                 'eventArrivals' => fn ($q) => $q->where('event_id', $this->eventId),
-                'tickets' => fn ($q) => $q->where('event_id', $this->eventId),
+                'tickets' => fn ($q) => $q->where('project_id', $this->event->project_id),
             ])
             ->get();
     }
@@ -67,11 +67,12 @@ class ManualLookup extends Component
     public function confirmArrival(int $volunteerId): void
     {
         $ticket = Ticket::where('volunteer_id', $volunteerId)
-            ->where('event_id', $this->eventId)
+            ->where('project_id', $this->event->project_id)
             ->firstOrFail();
 
         $arrival = app(RecordArrival::class)->execute(
             ticket: $ticket,
+            event: $this->event,
             scannedBy: auth()->user(),
             method: ArrivalMethod::ManualLookup,
         );

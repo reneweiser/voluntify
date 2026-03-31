@@ -13,14 +13,12 @@ return new class extends Migration
     {
         Schema::create('volunteer_gear', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('event_gear_item_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('project_gear_item_id')->constrained('project_gear_items')->cascadeOnDelete();
             $table->foreignId('volunteer_id')->constrained()->cascadeOnDelete();
             $table->string('size')->nullable();
-            $table->dateTime('picked_up_at')->nullable();
-            $table->foreignId('picked_up_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
-            $table->unique(['event_gear_item_id', 'volunteer_id']);
+            $table->unique(['project_gear_item_id', 'volunteer_id']);
         });
     }
 

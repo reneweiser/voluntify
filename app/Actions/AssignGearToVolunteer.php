@@ -10,11 +10,11 @@ use App\Models\VolunteerGear;
 class AssignGearToVolunteer
 {
     /**
-     * @param  array<int, string|null>  $gearSelections  Keyed by EventGearItem ID => size (or null)
+     * @param  array<int, string|null>  $gearSelections  Keyed by ProjectGearItem ID => size (or null)
      */
     public function execute(Volunteer $volunteer, Event $event, array $gearSelections = []): void
     {
-        $gearItems = $event->gearItems;
+        $gearItems = $event->project->gearItems;
 
         foreach ($gearItems as $item) {
             $size = $gearSelections[$item->id] ?? null;
@@ -31,7 +31,7 @@ class AssignGearToVolunteer
 
             VolunteerGear::firstOrCreate(
                 [
-                    'event_gear_item_id' => $item->id,
+                    'project_gear_item_id' => $item->id,
                     'volunteer_id' => $volunteer->id,
                 ],
                 ['size' => $size],

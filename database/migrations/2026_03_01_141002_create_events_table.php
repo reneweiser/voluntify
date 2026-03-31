@@ -22,6 +22,7 @@ return new class extends Migration
             $table->dateTime('starts_at');
             $table->dateTime('ends_at');
             $table->string('status')->default('draft');
+            $table->string('visibility')->default('public');
             $table->timestamps();
 
             $table->unique(['organization_id', 'slug']);

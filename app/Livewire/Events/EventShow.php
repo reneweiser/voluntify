@@ -9,12 +9,15 @@ use App\Actions\CloseRegistration;
 use App\Actions\DeleteEventImage;
 use App\Actions\PublishEvent;
 use App\Actions\UpdateEvent;
+use App\Enums\EventVisibility;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Shift;
+use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -43,6 +46,8 @@ class EventShow extends Component
 
     public $attendanceGraceMinutes = '';
 
+    public string $visibility = 'public';
+
     public bool $editing = false;
 
     public string $selectedProjectId = '';
@@ -65,7 +70,7 @@ class EventShow extends Component
     #[Computed]
     public function volunteerCount(): int
     {
-        return $this->event->volunteers()->count();
+        return Volunteer::forEvent($this->event->id)->count();
     }
 
     #[Computed]
@@ -139,6 +144,7 @@ class EventShow extends Component
             'titleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'cancellationCutoffHours' => ['nullable', 'integer', 'min:1', 'max:168'],
             'attendanceGraceMinutes' => ['nullable', 'integer', 'min:0', 'max:120'],
+            'visibility' => ['required', Rule::in(array_column(EventVisibility::cases(), 'value'))],
         ]);
 
         try {
@@ -153,6 +159,7 @@ class EventShow extends Component
                 titleImage: $this->titleImage,
                 cancellationCutoffHours: $this->cancellationCutoffHours !== '' ? (int) $this->cancellationCutoffHours : null,
                 attendanceGraceMinutes: $this->attendanceGraceMinutes !== '' ? (int) $this->attendanceGraceMinutes : null,
+                visibility: EventVisibility::from($this->visibility),
             );
 
             $this->titleImage = null;
@@ -230,5 +237,6 @@ class EventShow extends Component
         $this->cancellationCutoffHours = $this->event->cancellation_cutoff_hours ?? '';
         $this->attendanceGraceMinutes = $this->event->attendance_grace_minutes ?? '';
         $this->selectedProjectId = $this->event->project_id ? (string) $this->event->project_id : '';
+        $this->visibility = $this->event->visibility?->value ?? 'public';
     }
 }

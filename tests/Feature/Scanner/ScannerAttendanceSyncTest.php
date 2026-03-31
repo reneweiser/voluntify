@@ -4,24 +4,27 @@ use App\Enums\AttendanceStatus;
 use App\Enums\StaffRole;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->volunteerAdmin = \App\Models\User::factory()->create();
+    $this->volunteerAdmin = User::factory()->create();
     $this->org->users()->attach($this->volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
 
-    $this->entranceStaff = \App\Models\User::factory()->create();
+    $this->entranceStaff = User::factory()->create();
     $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
 
-    $this->event = Event::factory()->for($this->org)->create();
-    $this->volunteer = Volunteer::factory()->create();
-    Ticket::factory()->for($this->volunteer)->for($this->event)->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->create();
+    Ticket::factory()->for($this->volunteer)->for($this->project, 'project')->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
     $this->signup = ShiftSignup::factory()->create([
@@ -96,7 +99,7 @@ it('validates input', function () {
 });
 
 it('scopes signups to event', function () {
-    $otherEvent = Event::factory()->for($this->org)->create();
+    $otherEvent = Event::factory()->for($this->org)->for($this->project)->create();
     $otherJob = VolunteerJob::factory()->for($otherEvent)->create();
     $otherShift = Shift::factory()->for($otherJob, 'volunteerJob')->create();
     $otherSignup = ShiftSignup::factory()->create([

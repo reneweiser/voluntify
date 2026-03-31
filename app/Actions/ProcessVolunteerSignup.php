@@ -32,7 +32,7 @@ class ProcessVolunteerSignup
         ?array $customFieldResponses = null,
     ): SignupOutcome {
         $volunteer = Volunteer::firstOrCreate(
-            ['email' => $email],
+            ['email' => $email, 'project_id' => $event->project_id],
             ['first_name' => $firstName, 'last_name' => $lastName, 'phone' => $phone],
         );
 

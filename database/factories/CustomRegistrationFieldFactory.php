@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\CustomFieldType;
 use App\Models\CustomRegistrationField;
 use App\Models\Event;
+use App\Models\Project;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /** @extends Factory<CustomRegistrationField> */
@@ -50,6 +51,14 @@ class CustomRegistrationFieldFactory extends Factory
     {
         return $this->state(fn () => [
             'options' => ['multiline' => true],
+        ]);
+    }
+
+    public function projectLevel(): static
+    {
+        return $this->state(fn () => [
+            'project_id' => Project::factory(),
+            'event_id' => null,
         ]);
     }
 }

@@ -14,6 +14,7 @@ use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
+use App\Models\Volunteer;
 use App\Services\JwtKeyService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -41,9 +42,10 @@ class ScannerApiController extends Controller
             default => null,
         };
 
-        $volunteers = $event->volunteers()
+        $volunteers = Volunteer::forEvent($event->id)
             ->with([
-                'tickets' => fn ($q) => $q->where('event_id', $event->id),
+                'tickets' => fn ($q) => $q->where('project_id', $event->project_id),
+                'shiftSignups' => fn ($q) => $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->where('event_id', $event->id)),
                 'shiftSignups.shift.volunteerJob',
                 'shiftSignups.attendanceRecord',
             ])
@@ -86,7 +88,7 @@ class ScannerApiController extends Controller
             ]),
             'arrivals' => $arrivals,
             'attendance_records' => $attendanceRecords,
-            'keys' => $jwtKeyService->publicKeys($event->id),
+            'keys' => $jwtKeyService->publicKeys($event->project_id),
         ]);
     }
 
@@ -103,10 +105,11 @@ class ScannerApiController extends Controller
         Gate::authorize('scan', $event);
 
         foreach ($request->validated()['arrivals'] as $arrivalData) {
-            $ticket = Ticket::where('event_id', $event->id)->findOrFail($arrivalData['ticket_id']);
+            $ticket = Ticket::where('project_id', $event->project_id)->findOrFail($arrivalData['ticket_id']);
 
             $recordArrival->execute(
                 ticket: $ticket,
+                event: $event,
                 scannedBy: $request->user(),
                 method: ArrivalMethod::from($arrivalData['method']),
                 scannedAt: Carbon::parse($arrivalData['scanned_at']),

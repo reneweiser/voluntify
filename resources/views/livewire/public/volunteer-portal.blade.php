@@ -68,13 +68,13 @@
                             <div>
                                 <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $gear->gearItem->name }}</div>
                                 <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                    {{ $gear->gearItem->event->name }}
+                                    {{ $gear->gearItem->project->name }}
                                     @if ($gear->size)
                                         &middot; {{ __('Size:') }} {{ $gear->size }}
                                     @endif
                                 </div>
                             </div>
-                            @if ($gear->picked_up_at)
+                            @if ($gear->isPickedUp())
                                 <flux:badge size="sm" color="emerald">{{ __('Picked Up') }}</flux:badge>
                             @else
                                 <flux:badge size="sm" color="zinc">{{ __('Not Picked Up') }}</flux:badge>
@@ -89,7 +89,7 @@
         @if ($this->customFieldResponses->isNotEmpty())
             <div class="mb-8">
                 <flux:heading size="lg" class="mb-3">{{ __('Registration Info') }}</flux:heading>
-                @foreach ($this->customFieldResponses->groupBy(fn ($r) => $r->field->event->name) as $eventName => $responses)
+                @foreach ($this->customFieldResponses->groupBy(fn ($r) => $r->field->event?->name ?? $r->field->project?->name ?? __('General')) as $eventName => $responses)
                     <div class="mb-4">
                         <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400 mb-2">{{ $eventName }}</flux:text>
                         <div class="space-y-2">

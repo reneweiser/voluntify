@@ -3,7 +3,7 @@
 namespace App\Livewire\Events;
 
 use App\Models\Event;
-use App\Models\EventGearItem;
+use App\Models\ProjectGearItem;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -31,7 +31,7 @@ class EventGearSetup extends Component
     #[Computed]
     public function gearItems(): Collection
     {
-        return $this->event->gearItems()->get();
+        return $this->event->project->gearItems()->get();
     }
 
     public function addItem(): void
@@ -55,10 +55,10 @@ class EventGearSetup extends Component
             return;
         }
 
-        $maxSort = $this->event->gearItems()->max('sort_order') ?? 0;
+        $maxSort = $this->event->project->gearItems()->max('sort_order') ?? 0;
 
-        EventGearItem::create([
-            'event_id' => $this->event->id,
+        ProjectGearItem::create([
+            'project_id' => $this->event->project_id,
             'name' => $this->newItemName,
             'requires_size' => $this->newItemRequiresSize,
             'available_sizes' => $this->newItemRequiresSize ? $sizes : null,
@@ -73,7 +73,7 @@ class EventGearSetup extends Component
     {
         Gate::authorize('manageGear', $this->event);
 
-        $this->event->gearItems()->where('id', $itemId)->delete();
+        $this->event->project->gearItems()->where('id', $itemId)->delete();
 
         unset($this->gearItems);
     }

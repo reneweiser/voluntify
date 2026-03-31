@@ -9,6 +9,7 @@ use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -21,9 +22,12 @@ use Livewire\Livewire;
 beforeEach(function () {
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization();
     app()->instance(Organization::class, $this->org);
-    $this->event = Event::factory()->for($this->org)->published()->create();
-    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane@example.com', 'phone' => '+1234567890']);
-    Ticket::factory()->create(['volunteer_id' => $this->volunteer->id, 'event_id' => $this->event->id]);
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane@example.com', 'phone' => '+1234567890']);
+    $this->job = VolunteerJob::factory()->for($this->event)->create();
+    $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
+    ShiftSignup::factory()->create(['volunteer_id' => $this->volunteer->id, 'shift_id' => $this->shift->id]);
 });
 
 it('renders for authorized users', function () {
@@ -34,7 +38,7 @@ it('renders for authorized users', function () {
 });
 
 it('returns 404 for volunteer not in event', function () {
-    $otherVolunteer = Volunteer::factory()->create();
+    $otherVolunteer = Volunteer::factory()->for($this->project)->create();
 
     $this->actingAs($this->user)
         ->get(route('events.volunteers.show', [$this->event, $otherVolunteer]))
@@ -79,9 +83,7 @@ it('shows shift assignments with attendance status', function () {
 });
 
 it('shows arrival status', function () {
-    $ticket = Ticket::where('volunteer_id', $this->volunteer->id)
-        ->where('event_id', $this->event->id)
-        ->first();
+    $ticket = Ticket::factory()->for($this->volunteer)->for($this->project, 'project')->create();
 
     EventArrival::factory()->create([
         'volunteer_id' => $this->volunteer->id,

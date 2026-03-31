@@ -49,4 +49,24 @@ class Project extends Model
             ->published()
             ->orderBy('starts_at');
     }
+
+    public function volunteers(): HasMany
+    {
+        return $this->hasMany(Volunteer::class);
+    }
+
+    public function gearItems(): HasMany
+    {
+        return $this->hasMany(ProjectGearItem::class)->orderBy('sort_order');
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
+    public function customRegistrationFields(): HasMany
+    {
+        return $this->hasMany(CustomRegistrationField::class)->orderBy('sort_order');
+    }
 }

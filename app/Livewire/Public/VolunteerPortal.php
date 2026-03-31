@@ -83,11 +83,15 @@ class VolunteerPortal extends Component
             return new Collection;
         }
 
-        $eventIds = $this->volunteer->tickets()->pluck('event_id');
+        $eventIds = $this->volunteerEventIds();
+        $projectId = $this->volunteer->project_id;
 
         return CustomFieldResponse::where('volunteer_id', $this->volunteer->id)
-            ->whereHas('field', fn ($q) => $q->withoutGlobalScopes()->whereIn('event_id', $eventIds))
-            ->with(['field' => fn ($q) => $q->withTrashed()->with('event')])
+            ->whereHas('field', fn ($q) => $q->withoutGlobalScopes()->where(function ($sq) use ($eventIds, $projectId) {
+                $sq->whereIn('event_id', $eventIds)
+                    ->orWhere('project_id', $projectId);
+            }))
+            ->with(['field' => fn ($q) => $q->withTrashed()->with('event', 'project')])
             ->get();
     }
 
@@ -98,11 +102,8 @@ class VolunteerPortal extends Component
             return new Collection;
         }
 
-        $eventIds = $this->volunteer->tickets()->pluck('event_id');
-
         return VolunteerGear::where('volunteer_id', $this->volunteer->id)
-            ->whereHas('gearItem', fn ($q) => $q->whereIn('event_id', $eventIds))
-            ->with('gearItem.event')
+            ->with(['gearItem.project', 'pickups'])
             ->get();
     }
 
@@ -113,13 +114,24 @@ class VolunteerPortal extends Component
             return new Collection;
         }
 
-        $eventIds = $this->volunteer->tickets()->pluck('event_id');
+        $eventIds = $this->volunteerEventIds();
 
         return EventAnnouncement::whereIn('event_id', $eventIds)
             ->whereNotNull('sent_at')
             ->with('event')
             ->latest('sent_at')
             ->get();
+    }
+
+    /** @return \Illuminate\Support\Collection<int, int> */
+    private function volunteerEventIds(): \Illuminate\Support\Collection
+    {
+        return $this->volunteer->shiftSignups()
+            ->active()
+            ->with('shift.volunteerJob')
+            ->get()
+            ->pluck('shift.volunteerJob.event_id')
+            ->unique();
     }
 
     public function confirmCancel(int $signupId): void

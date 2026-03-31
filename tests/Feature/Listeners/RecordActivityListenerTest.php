@@ -243,7 +243,7 @@ it('logs VolunteerVerified', function () {
 
 it('logs ArrivalScanned', function () {
     $volunteer = Volunteer::factory()->create();
-    $ticket = Ticket::factory()->create(['event_id' => $this->event->id, 'volunteer_id' => $volunteer->id]);
+    $ticket = Ticket::factory()->for($volunteer)->for($this->event->project, 'project')->create();
     $arrival = EventArrival::factory()->create([
         'ticket_id' => $ticket->id,
         'volunteer_id' => $volunteer->id,

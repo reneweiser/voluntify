@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\EventStatus;
+use App\Enums\EventVisibility;
 use App\Events\Activity\EventUpdated as EventUpdatedActivity;
 use App\Exceptions\DomainException;
 use App\Models\Event;
@@ -23,6 +24,7 @@ class UpdateEvent
         ?UploadedFile $titleImage = null,
         ?int $cancellationCutoffHours = null,
         ?int $attendanceGraceMinutes = null,
+        ?EventVisibility $visibility = null,
     ): Event {
         if ($event->status === EventStatus::Archived) {
             throw new DomainException('Cannot update an archived event.');
@@ -39,6 +41,7 @@ class UpdateEvent
             'ends_at' => $endsAt,
             'cancellation_cutoff_hours' => $cancellationCutoffHours,
             'attendance_grace_minutes' => $attendanceGraceMinutes,
+            'visibility' => $visibility ?? $event->visibility,
         ];
 
         if ($titleImage) {

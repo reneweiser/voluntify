@@ -2,14 +2,14 @@
 
 namespace Database\Factories;
 
-use App\Models\Event;
+use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Ticket>
+ * @extends Factory<Ticket>
  */
 class TicketFactory extends Factory
 {
@@ -19,7 +19,7 @@ class TicketFactory extends Factory
     {
         return [
             'volunteer_id' => Volunteer::factory(),
-            'event_id' => Event::factory(),
+            'project_id' => Project::factory(),
             'jwt_token' => 'eyJ'.Str::random(100),
         ];
     }

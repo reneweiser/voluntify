@@ -52,13 +52,16 @@ class EventSignup extends Component
     #[Computed]
     public function gearItems(): Collection
     {
-        return $this->event->gearItems()->get();
+        return $this->event->project?->gearItems()->get() ?? new Collection;
     }
 
     #[Computed]
     public function customRegistrationFields(): Collection
     {
-        return $this->event->customRegistrationFields()->get();
+        $projectFields = $this->event->project?->customRegistrationFields()->get() ?? new Collection;
+        $eventFields = $this->event->customRegistrationFields()->get();
+
+        return $projectFields->merge($eventFields);
     }
 
     #[Computed]

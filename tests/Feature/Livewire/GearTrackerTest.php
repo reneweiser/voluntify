@@ -3,25 +3,32 @@
 use App\Enums\StaffRole;
 use App\Livewire\Events\GearTracker;
 use App\Models\Event;
-use App\Models\EventGearItem;
 use App\Models\Organization;
-use App\Models\Ticket;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
+use App\Models\Shift;
+use App\Models\ShiftSignup;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
+use App\Models\VolunteerJob;
 use Livewire\Livewire;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
-    $this->event = Event::factory()->for($this->org)->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->create();
     app()->instance(Organization::class, $this->org);
 });
 
 it('marks gear as picked up via toggle', function () {
-    $item = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
-    $volunteer = Volunteer::factory()->verified()->create();
+    $item = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create();
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
     $gear = VolunteerGear::factory()->create([
-        'event_gear_item_id' => $item->id,
+        'project_gear_item_id' => $item->id,
         'volunteer_id' => $volunteer->id,
     ]);
 
@@ -30,26 +37,27 @@ it('marks gear as picked up via toggle', function () {
         ->call('togglePickup', $gear->id)
         ->assertHasNoErrors();
 
-    $gear->refresh();
-    expect($gear->picked_up_at)->not->toBeNull()
-        ->and($gear->picked_up_by)->toBe($this->organizer->id);
+    expect($gear->fresh()->isPickedUp())->toBeTrue();
 });
 
 it('creates gear on-demand when marking pickup for volunteer without record', function () {
-    $item = EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
-    $volunteer = Volunteer::factory()->verified()->create();
+    $item = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create();
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
 
     Livewire::actingAs($this->organizer)
         ->test(GearTracker::class, ['eventId' => $this->event->id])
         ->call('assignAndPickup', $item->id, $volunteer->id)
         ->assertHasNoErrors();
 
-    $gear = VolunteerGear::where('event_gear_item_id', $item->id)
+    $gear = VolunteerGear::where('project_gear_item_id', $item->id)
         ->where('volunteer_id', $volunteer->id)
         ->first();
 
     expect($gear)->not->toBeNull()
-        ->and($gear->picked_up_at)->not->toBeNull();
+        ->and($gear->isPickedUp())->toBeTrue();
 });
 
 it('denies entrance staff access to gear tracker', function () {
@@ -62,18 +70,17 @@ it('denies entrance staff access to gear tracker', function () {
 });
 
 it('renders volunteers with gear status', function () {
-    $item = EventGearItem::factory()->for($this->event)->create(['name' => 'Lanyard']);
-    $volunteer = Volunteer::factory()->verified()->create(['first_name' => 'Jane', 'last_name' => 'Doe']);
+    $item = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Lanyard']);
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['first_name' => 'Jane', 'last_name' => 'Doe']);
     VolunteerGear::factory()->create([
-        'event_gear_item_id' => $item->id,
+        'project_gear_item_id' => $item->id,
         'volunteer_id' => $volunteer->id,
     ]);
 
-    // Need to make volunteer associated with this event via a ticket
-    Ticket::factory()->create([
-        'volunteer_id' => $volunteer->id,
-        'event_id' => $this->event->id,
-    ]);
+    // Make volunteer associated with this event via a shift signup
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
 
     Livewire::actingAs($this->organizer)
         ->test(GearTracker::class, ['eventId' => $this->event->id])

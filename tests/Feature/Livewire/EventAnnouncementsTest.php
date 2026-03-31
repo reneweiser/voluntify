@@ -5,9 +5,9 @@ use App\Livewire\Events\EventAnnouncements;
 use App\Models\Event;
 use App\Models\EventAnnouncement;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
-use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
@@ -19,7 +19,10 @@ beforeEach(function () {
     Notification::fake();
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization();
     app()->instance(Organization::class, $this->org);
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
+    $this->job = VolunteerJob::factory()->for($this->event)->create();
+    $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
 });
 
 it('renders for organizer role', function () {
@@ -57,11 +60,8 @@ it('validates subject and body required', function () {
 });
 
 it('sends announcement and shows in history list', function () {
-    $job = VolunteerJob::factory()->for($this->event)->create();
-    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
-    $volunteer = Volunteer::factory()->create(['email_verified_at' => now()]);
-    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $this->event->id]);
-    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email_verified_at' => now()]);
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $this->shift->id]);
 
     Livewire::actingAs($this->user)
         ->test(EventAnnouncements::class, ['eventId' => $this->event->id])
@@ -80,14 +80,10 @@ it('sends announcement and shows in history list', function () {
 });
 
 it('shows recipient count before sending', function () {
-    $job = VolunteerJob::factory()->for($this->event)->create();
-    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
-    $v1 = Volunteer::factory()->create(['email_verified_at' => now()]);
-    Ticket::factory()->create(['volunteer_id' => $v1->id, 'event_id' => $this->event->id]);
-    ShiftSignup::factory()->create(['volunteer_id' => $v1->id, 'shift_id' => $shift->id]);
-    $v2 = Volunteer::factory()->create(['email_verified_at' => now()]);
-    Ticket::factory()->create(['volunteer_id' => $v2->id, 'event_id' => $this->event->id]);
-    ShiftSignup::factory()->create(['volunteer_id' => $v2->id, 'shift_id' => $shift->id]);
+    $v1 = Volunteer::factory()->for($this->project)->create(['email_verified_at' => now()]);
+    ShiftSignup::factory()->create(['volunteer_id' => $v1->id, 'shift_id' => $this->shift->id]);
+    $v2 = Volunteer::factory()->for($this->project)->create(['email_verified_at' => now()]);
+    ShiftSignup::factory()->create(['volunteer_id' => $v2->id, 'shift_id' => $this->shift->id]);
 
     Livewire::actingAs($this->user)
         ->test(EventAnnouncements::class, ['eventId' => $this->event->id])

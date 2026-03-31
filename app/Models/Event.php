@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\HasTitleImage;
 use App\Enums\EventStatus;
+use App\Enums\EventVisibility;
 use App\ValueObjects\PublicToken;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Str;
 
 class Event extends Model
@@ -34,6 +34,7 @@ class Event extends Model
         'cancellation_cutoff_hours',
         'attendance_grace_minutes',
         'phone_required',
+        'visibility',
     ];
 
     protected function casts(): array
@@ -45,6 +46,8 @@ class Event extends Model
             'cancellation_cutoff_hours' => 'integer',
             'attendance_grace_minutes' => 'integer',
             'phone_required' => 'boolean',
+            'visibility' => EventVisibility::class,
+            'volunteer_count' => 'integer',
         ];
     }
 
@@ -67,19 +70,9 @@ class Event extends Model
         return $this->hasMany(VolunteerJob::class);
     }
 
-    public function tickets(): HasMany
-    {
-        return $this->hasMany(Ticket::class);
-    }
-
     public function eventArrivals(): HasMany
     {
         return $this->hasMany(EventArrival::class);
-    }
-
-    public function volunteers(): HasManyThrough
-    {
-        return $this->hasManyThrough(Volunteer::class, Ticket::class, 'event_id', 'id', 'id', 'volunteer_id');
     }
 
     public function emailTemplates(): HasMany
@@ -90,11 +83,6 @@ class Event extends Model
     public function announcements(): HasMany
     {
         return $this->hasMany(EventAnnouncement::class);
-    }
-
-    public function gearItems(): HasMany
-    {
-        return $this->hasMany(EventGearItem::class)->orderBy('sort_order');
     }
 
     public function customRegistrationFields(): HasMany
@@ -126,6 +114,11 @@ class Event extends Model
         return $slug;
     }
 
+    public function scopePubliclyVisible(Builder $query): void
+    {
+        $query->where('visibility', EventVisibility::Public);
+    }
+
     public function scopePublished(Builder $query): void
     {
         $query->whereIn('status', [EventStatus::PublishedOpen, EventStatus::PublishedClosed]);
@@ -134,5 +127,15 @@ class Event extends Model
     public function scopePublishedByToken(Builder $query, string $publicToken): void
     {
         $query->where('public_token', $publicToken)->published();
+    }
+
+    public function scopeWithVolunteerCount(Builder $query): void
+    {
+        $query->addSelect(['volunteer_count' => Volunteer::query()
+            ->selectRaw('count(*)')
+            ->whereColumn('volunteers.project_id', 'events.project_id')
+            ->whereHas('shiftSignups', fn ($q) => $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->whereColumn('event_id', 'events.id'))
+            ),
+        ]);
     }
 }

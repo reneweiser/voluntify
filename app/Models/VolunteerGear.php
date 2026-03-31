@@ -2,35 +2,28 @@
 
 namespace App\Models;
 
+use Database\Factories\VolunteerGearFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VolunteerGear extends Model
 {
-    /** @use HasFactory<\Database\Factories\VolunteerGearFactory> */
+    /** @use HasFactory<VolunteerGearFactory> */
     use HasFactory;
 
     protected $table = 'volunteer_gear';
 
     protected $fillable = [
-        'event_gear_item_id',
+        'project_gear_item_id',
         'volunteer_id',
         'size',
-        'picked_up_at',
-        'picked_up_by',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'picked_up_at' => 'datetime',
-        ];
-    }
 
     public function gearItem(): BelongsTo
     {
-        return $this->belongsTo(EventGearItem::class, 'event_gear_item_id');
+        return $this->belongsTo(ProjectGearItem::class, 'project_gear_item_id');
     }
 
     public function volunteer(): BelongsTo
@@ -38,8 +31,15 @@ class VolunteerGear extends Model
         return $this->belongsTo(Volunteer::class);
     }
 
-    public function pickedUpBy(): BelongsTo
+    public function pickups(): HasMany
     {
-        return $this->belongsTo(User::class, 'picked_up_by');
+        return $this->hasMany(VolunteerGearPickup::class);
+    }
+
+    public function isPickedUp(): bool
+    {
+        return $this->relationLoaded('pickups')
+            ? $this->pickups->isNotEmpty()
+            : $this->pickups()->exists();
     }
 }

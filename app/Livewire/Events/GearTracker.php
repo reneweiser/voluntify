@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Events;
 
-use App\Actions\ToggleGearPickup;
+use App\Actions\RecordGearPickup;
 use App\Models\Event;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
@@ -29,7 +29,7 @@ class GearTracker extends Component
     #[Computed]
     public function gearItems(): Collection
     {
-        return $this->event->gearItems()->get();
+        return $this->event->project->gearItems()->get();
     }
 
     #[Computed]
@@ -39,12 +39,14 @@ class GearTracker extends Component
             ->when($this->search, fn ($q) => $q->search($this->search))
             ->with([
                 'volunteerGear' => fn ($q) => $q->whereIn(
-                    'event_gear_item_id',
-                    $this->event->gearItems()->select('id'),
+                    'project_gear_item_id',
+                    $this->event->project->gearItems()->select('id'),
                 ),
                 'volunteerGear.gearItem',
+                'volunteerGear.pickups',
             ])
-            ->orderBy('name')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
             ->get();
     }
 
@@ -52,10 +54,14 @@ class GearTracker extends Component
     {
         Gate::authorize('trackGearPickup', $this->event);
 
-        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('event_id', $this->event->id))
+        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
             ->findOrFail($gearId);
 
-        app(ToggleGearPickup::class)->execute($gear, auth()->user());
+        if ($gear->isPickedUp()) {
+            $gear->pickups()->delete();
+        } else {
+            app(RecordGearPickup::class)->execute($gear, auth()->user());
+        }
 
         unset($this->volunteers);
     }
@@ -64,16 +70,18 @@ class GearTracker extends Component
     {
         Gate::authorize('trackGearPickup', $this->event);
 
-        $item = $this->event->gearItems()->findOrFail($itemId);
+        Volunteer::forEvent($this->event->id)->where('id', $volunteerId)->firstOrFail();
+
+        $item = $this->event->project->gearItems()->findOrFail($itemId);
 
         $gear = VolunteerGear::firstOrCreate(
             [
-                'event_gear_item_id' => $item->id,
+                'project_gear_item_id' => $item->id,
                 'volunteer_id' => $volunteerId,
             ],
         );
 
-        app(ToggleGearPickup::class)->execute($gear, auth()->user());
+        app(RecordGearPickup::class)->execute($gear, auth()->user());
 
         unset($this->volunteers);
     }

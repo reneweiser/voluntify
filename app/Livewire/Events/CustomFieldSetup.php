@@ -6,6 +6,7 @@ use App\Enums\CustomFieldType;
 use App\Exceptions\DomainException;
 use App\Models\CustomRegistrationField;
 use App\Models\Event;
+use App\Models\Volunteer;
 use App\Support\CustomFieldTemplates;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -40,7 +41,10 @@ class CustomFieldSetup extends Component
     #[Computed]
     public function customFields(): Collection
     {
-        return $this->event->customRegistrationFields()->get();
+        $projectFields = $this->event->project?->customRegistrationFields()->get() ?? new Collection;
+        $eventFields = $this->event->customRegistrationFields()->get();
+
+        return $projectFields->merge($eventFields);
     }
 
     public function addField(): void
@@ -170,6 +174,6 @@ class CustomFieldSetup extends Component
 
     private function eventHasSignups(): bool
     {
-        return $this->event->volunteers()->exists();
+        return Volunteer::forEvent($this->event->id)->exists();
     }
 }

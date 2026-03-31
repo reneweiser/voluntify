@@ -20,7 +20,9 @@ class VolunteerExportController extends Controller
         Gate::authorize('view', $event);
 
         $search = $request->query('search');
-        $customFields = $event->customRegistrationFields()->withTrashed()->get();
+        $projectFields = $event->project?->customRegistrationFields()->withTrashed()->get() ?? collect();
+        $eventFields = $event->customRegistrationFields()->withTrashed()->get();
+        $customFields = $projectFields->merge($eventFields);
         $rows = $action->execute($event, $search, $customFields->isNotEmpty() ? $customFields : null);
 
         $filename = str($event->name)->slug().'-volunteers.csv';

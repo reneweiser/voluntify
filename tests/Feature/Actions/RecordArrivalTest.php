@@ -5,6 +5,7 @@ use App\Enums\ArrivalMethod;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Volunteer;
@@ -12,9 +13,10 @@ use Carbon\Carbon;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->create();
-    $this->volunteer = Volunteer::factory()->create();
-    $this->ticket = Ticket::factory()->for($this->volunteer)->for($this->event)->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->create();
+    $this->ticket = Ticket::factory()->for($this->volunteer)->for($this->project, 'project')->create();
     $this->scanner = User::factory()->create();
     $this->action = app(RecordArrival::class);
 });
@@ -24,6 +26,7 @@ beforeEach(function () {
 it('creates arrival record via QR scan', function () {
     $arrival = $this->action->execute(
         ticket: $this->ticket,
+        event: $this->event,
         scannedBy: $this->scanner,
         method: ArrivalMethod::QrScan,
     );
@@ -40,6 +43,7 @@ it('creates arrival record via QR scan', function () {
 it('creates arrival record via manual lookup', function () {
     $arrival = $this->action->execute(
         ticket: $this->ticket,
+        event: $this->event,
         scannedBy: $this->scanner,
         method: ArrivalMethod::ManualLookup,
     );
@@ -52,6 +56,7 @@ it('uses now() as default scanned_at', function () {
 
     $arrival = $this->action->execute(
         ticket: $this->ticket,
+        event: $this->event,
         scannedBy: $this->scanner,
         method: ArrivalMethod::QrScan,
     );
@@ -66,12 +71,14 @@ it('uses now() as default scanned_at', function () {
 it('returns flagged duplicate on re-scan', function () {
     $first = $this->action->execute(
         ticket: $this->ticket,
+        event: $this->event,
         scannedBy: $this->scanner,
         method: ArrivalMethod::QrScan,
     );
 
     $second = $this->action->execute(
         ticket: $this->ticket,
+        event: $this->event,
         scannedBy: $this->scanner,
         method: ArrivalMethod::QrScan,
     );
@@ -86,6 +93,7 @@ it('preserves original scan time on duplicate', function () {
     Carbon::setTestNow('2025-06-15 10:00:00');
     $first = $this->action->execute(
         ticket: $this->ticket,
+        event: $this->event,
         scannedBy: $this->scanner,
         method: ArrivalMethod::QrScan,
     );
@@ -93,6 +101,7 @@ it('preserves original scan time on duplicate', function () {
     Carbon::setTestNow('2025-06-15 10:30:00');
     $second = $this->action->execute(
         ticket: $this->ticket,
+        event: $this->event,
         scannedBy: $this->scanner,
         method: ArrivalMethod::QrScan,
     );
@@ -110,6 +119,7 @@ it('uses provided scanned_at for offline sync', function () {
 
     $arrival = $this->action->execute(
         ticket: $this->ticket,
+        event: $this->event,
         scannedBy: $this->scanner,
         method: ArrivalMethod::QrScan,
         scannedAt: $offlineTime,

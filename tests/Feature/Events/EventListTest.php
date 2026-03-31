@@ -5,9 +5,11 @@ use App\Enums\StaffRole;
 use App\Livewire\Events\EventList;
 use App\Models\Event;
 use App\Models\Organization;
-use App\Models\Ticket;
+use App\Models\Shift;
+use App\Models\ShiftSignup;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Models\VolunteerJob;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -122,8 +124,10 @@ it('validates required fields when creating event', function () {
 
 it('shows volunteer count per event', function () {
     $event = Event::factory()->for($this->org)->published()->create();
-    $volunteer = Volunteer::factory()->create();
-    Ticket::factory()->create(['volunteer_id' => $volunteer->id, 'event_id' => $event->id]);
+    $volunteer = Volunteer::factory()->for($event->project)->create();
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
 
     Livewire::actingAs($this->user)
         ->test(EventList::class)

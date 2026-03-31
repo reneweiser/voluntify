@@ -4,6 +4,7 @@ use App\Livewire\Public\VolunteerTicket;
 use App\Models\Event;
 use App\Models\MagicLinkToken;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -14,11 +15,12 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create([
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create([
         'name' => 'Summer Festival',
     ]);
-    $this->volunteer = Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Smith']);
-    $this->ticket = Ticket::factory()->for($this->volunteer)->for($this->event)->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Alice', 'last_name' => 'Smith']);
+    $this->ticket = Ticket::factory()->for($this->volunteer)->for($this->project, 'project')->create();
 
     $this->plainToken = 'valid-magic-token-123';
     $this->magicLink = MagicLinkToken::factory()->create([

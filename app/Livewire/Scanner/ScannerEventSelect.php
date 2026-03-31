@@ -33,7 +33,8 @@ class ScannerEventSelect extends Component
         return currentOrganization()->events()
             ->published()
             ->orderBy('starts_at')
-            ->withCount(['volunteers', 'eventArrivals'])
+            ->withVolunteerCount()
+            ->withCount('eventArrivals')
             ->get();
     }
 }

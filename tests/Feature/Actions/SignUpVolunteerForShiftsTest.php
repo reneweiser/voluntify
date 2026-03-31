@@ -5,6 +5,7 @@ use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\MagicLinkToken;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
@@ -18,7 +19,8 @@ beforeEach(function () {
     Notification::fake();
 
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift1 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
     $this->shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
@@ -27,7 +29,7 @@ beforeEach(function () {
 });
 
 it('signs up for multiple shifts in one call', function () {
-    $volunteer = Volunteer::factory()->create(['email' => 'jane@example.com', 'first_name' => 'Jane', 'last_name' => 'Doe']);
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email' => 'jane@example.com', 'first_name' => 'Jane', 'last_name' => 'Doe']);
 
     $result = $this->action->execute(
         volunteer: $volunteer,
@@ -45,7 +47,7 @@ it('signs up for multiple shifts in one call', function () {
 });
 
 it('signs up for shifts across different jobs', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     $job2 = VolunteerJob::factory()->for($this->event)->create();
     $shift3 = Shift::factory()->for($job2, 'volunteerJob')->create(['capacity' => 5]);
 
@@ -60,7 +62,7 @@ it('signs up for shifts across different jobs', function () {
 });
 
 it('creates only one ticket and one magic link', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
 
     $this->action->execute(
         volunteer: $volunteer,
@@ -68,12 +70,12 @@ it('creates only one ticket and one magic link', function () {
         shiftIds: [$this->shift1->id, $this->shift2->id],
     );
 
-    expect(Ticket::where('event_id', $this->event->id)->count())->toBe(1);
+    expect(Ticket::where('project_id', $this->project->id)->count())->toBe(1);
     expect(MagicLinkToken::where('volunteer_id', $volunteer->id)->count())->toBe(1);
 });
 
 it('sends one notification with all shifts', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
 
     $result = $this->action->execute(
         volunteer: $volunteer,
@@ -87,7 +89,7 @@ it('sends one notification with all shifts', function () {
 });
 
 it('notification content includes all shift details', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
 
     $result = $this->action->execute(
         volunteer: $volunteer,
@@ -104,7 +106,7 @@ it('notification content includes all shift details', function () {
 });
 
 it('skips already-signed-up shifts gracefully', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     ShiftSignup::factory()->create(['shift_id' => $this->shift1->id, 'volunteer_id' => $volunteer->id]);
 
     $result = $this->action->execute(
@@ -120,7 +122,7 @@ it('skips already-signed-up shifts gracefully', function () {
 });
 
 it('skips full shifts gracefully', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
     $otherVolunteer = Volunteer::factory()->create();
     ShiftSignup::factory()->create(['shift_id' => $fullShift->id, 'volunteer_id' => $otherVolunteer->id]);
@@ -138,7 +140,7 @@ it('skips full shifts gracefully', function () {
 });
 
 it('returns empty newSignups when all shifts are full', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     $full1 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
     $full2 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
     $v1 = Volunteer::factory()->create();
@@ -159,7 +161,7 @@ it('returns empty newSignups when all shifts are full', function () {
 });
 
 it('returns empty newSignups when all shifts are duplicate', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     ShiftSignup::factory()->create(['shift_id' => $this->shift1->id, 'volunteer_id' => $volunteer->id]);
     ShiftSignup::factory()->create(['shift_id' => $this->shift2->id, 'volunteer_id' => $volunteer->id]);
 
@@ -176,7 +178,7 @@ it('returns empty newSignups when all shifts are duplicate', function () {
 });
 
 it('throws DomainException when a shift does not belong to the event', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     $otherOrg = Organization::factory()->create();
     $otherEvent = Event::factory()->for($otherOrg)->published()->create();
     $otherJob = VolunteerJob::factory()->for($otherEvent)->create();
@@ -190,7 +192,7 @@ it('throws DomainException when a shift does not belong to the event', function 
 });
 
 it('cancelled signups do not count toward capacity', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
     $cancelled = Volunteer::factory()->create();
     ShiftSignup::factory()->create([
@@ -210,7 +212,7 @@ it('cancelled signups do not count toward capacity', function () {
 });
 
 it('re-signup reactivates a cancelled row', function () {
-    $volunteer = Volunteer::factory()->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
     $signup = ShiftSignup::factory()->create([
         'shift_id' => $this->shift1->id,
         'volunteer_id' => $volunteer->id,

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\EventStatus;
+use App\Enums\EventVisibility;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
@@ -31,6 +32,7 @@ class EventFactory extends Factory
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             'status' => EventStatus::Draft,
+            'visibility' => EventVisibility::Public,
         ];
     }
 
@@ -69,6 +71,13 @@ class EventFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => EventStatus::Archived,
+        ]);
+    }
+
+    public function private(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'visibility' => EventVisibility::Private,
         ]);
     }
 }

@@ -3,13 +3,18 @@
 use App\Actions\CompleteEmailVerification;
 use App\Exceptions\DomainException;
 use App\Exceptions\ExpiredVerificationException;
+use App\Models\CustomFieldResponse;
+use App\Models\CustomRegistrationField;
 use App\Models\EmailVerificationToken;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
+use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 use App\Notifications\SignupConfirmation;
 use App\ValueObjects\HashedToken;
@@ -21,10 +26,11 @@ beforeEach(function () {
     Notification::fake();
 
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
-    $this->volunteer = Volunteer::factory()->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->create();
 });
 
 it('verifies email and creates signups for valid token', function () {
@@ -58,7 +64,7 @@ it('verifies email and creates signups for valid token', function () {
 
 it('reports skipped full shifts when shifts fill before verification', function () {
     $tinyShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
-    $otherVolunteer = Volunteer::factory()->create();
+    $otherVolunteer = Volunteer::factory()->for($this->project)->create();
     ShiftSignup::factory()->create(['shift_id' => $tinyShift->id, 'volunteer_id' => $otherVolunteer->id]);
 
     $plainToken = Str::random(64);
@@ -118,8 +124,8 @@ it('throws ModelNotFoundException for invalid token', function () {
 });
 
 it('creates gear records from token gear selections on verification', function () {
-    $tshirt = \App\Models\EventGearItem::factory()->sized()->for($this->event)->create(['name' => 'T-Shirt']);
-    $badge = \App\Models\EventGearItem::factory()->for($this->event)->create(['name' => 'Badge']);
+    $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
+    $badge = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
 
     $plainToken = Str::random(64);
     EmailVerificationToken::factory()->create([
@@ -134,13 +140,13 @@ it('creates gear records from token gear selections on verification', function (
     $action = app(CompleteEmailVerification::class);
     $action->execute($plainToken);
 
-    expect(\App\Models\VolunteerGear::count())->toBe(2);
-    expect(\App\Models\VolunteerGear::where('event_gear_item_id', $tshirt->id)->first()->size)->toBe('L');
-    expect(\App\Models\VolunteerGear::where('event_gear_item_id', $badge->id)->first()->size)->toBeNull();
+    expect(VolunteerGear::count())->toBe(2);
+    expect(VolunteerGear::where('project_gear_item_id', $tshirt->id)->first()->size)->toBe('L');
+    expect(VolunteerGear::where('project_gear_item_id', $badge->id)->first()->size)->toBeNull();
 });
 
 it('creates custom field responses from token on verification', function () {
-    $field = \App\Models\CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
+    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     $plainToken = Str::random(64);
     EmailVerificationToken::factory()->create([
@@ -155,12 +161,12 @@ it('creates custom field responses from token on verification', function () {
     $action = app(CompleteEmailVerification::class);
     $action->execute($plainToken);
 
-    expect(\App\Models\CustomFieldResponse::count())->toBe(1);
-    expect(\App\Models\CustomFieldResponse::first()->value)->toBe('Vegan');
+    expect(CustomFieldResponse::count())->toBe(1);
+    expect(CustomFieldResponse::first()->value)->toBe('Vegan');
 });
 
 it('throws DomainException for archived event', function () {
-    $archivedEvent = Event::factory()->for($this->org)->archived()->create();
+    $archivedEvent = Event::factory()->for($this->org)->for($this->project)->archived()->create();
     $job = VolunteerJob::factory()->for($archivedEvent)->create();
     $shift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 10]);
 

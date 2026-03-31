@@ -4,18 +4,21 @@ use App\Enums\ArrivalMethod;
 use App\Enums\StaffRole;
 use App\Models\Event;
 use App\Models\EventArrival;
+use App\Models\Project;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Volunteer;
 
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
 
-    $this->entranceStaff = \App\Models\User::factory()->create();
+    $this->entranceStaff = User::factory()->create();
     $this->org->users()->attach($this->entranceStaff, ['role' => StaffRole::EntranceStaff]);
 
-    $this->event = Event::factory()->for($this->org)->create();
-    $this->volunteer = Volunteer::factory()->create();
-    $this->ticket = Ticket::factory()->for($this->volunteer)->for($this->event)->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->create();
+    $this->ticket = Ticket::factory()->for($this->volunteer)->for($this->project, 'project')->create();
 });
 
 it('syncs a single arrival', function () {
@@ -43,8 +46,8 @@ it('syncs a single arrival', function () {
 });
 
 it('syncs batch of arrivals', function () {
-    $volunteer2 = Volunteer::factory()->create();
-    $ticket2 = Ticket::factory()->for($volunteer2)->for($this->event)->create();
+    $volunteer2 = Volunteer::factory()->for($this->project)->create();
+    $ticket2 = Ticket::factory()->for($volunteer2)->for($this->project, 'project')->create();
 
     $response = $this->actingAs($this->entranceStaff)
         ->withSession(['current_organization_id' => $this->org->id])
@@ -132,10 +135,11 @@ it('validates input', function () {
         ->assertUnprocessable();
 });
 
-it('rejects syncing a ticket from a different event', function () {
-    $otherEvent = Event::factory()->for($this->org)->create();
-    $otherVolunteer = Volunteer::factory()->create();
-    $otherTicket = Ticket::factory()->for($otherVolunteer)->for($otherEvent)->create();
+it('rejects syncing a ticket from a different project', function () {
+    $otherProject = Project::factory()->for($this->org)->create();
+    $otherEvent = Event::factory()->for($this->org)->for($otherProject)->create();
+    $otherVolunteer = Volunteer::factory()->for($otherProject)->create();
+    $otherTicket = Ticket::factory()->for($otherVolunteer)->for($otherProject, 'project')->create();
 
     $response = $this->actingAs($this->entranceStaff)
         ->withSession(['current_organization_id' => $this->org->id])
@@ -154,7 +158,7 @@ it('rejects syncing a ticket from a different event', function () {
 });
 
 it('returns 403 for unauthorized user', function () {
-    $volunteerAdmin = \App\Models\User::factory()->create();
+    $volunteerAdmin = User::factory()->create();
     $this->org->users()->attach($volunteerAdmin, ['role' => StaffRole::VolunteerAdmin]);
 
     $this->actingAs($volunteerAdmin)

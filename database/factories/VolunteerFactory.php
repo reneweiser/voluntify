@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Project;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,6 +21,7 @@ class VolunteerFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->optional()->e164PhoneNumber(),
             'email_verified_at' => null,
+            'project_id' => Project::factory(),
             'user_id' => null,
         ];
     }

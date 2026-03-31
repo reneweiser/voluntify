@@ -5,8 +5,9 @@ use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\EmailVerificationToken;
 use App\Models\Event;
-use App\Models\EventGearItem;
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
@@ -16,7 +17,8 @@ use Livewire\Livewire;
 beforeEach(function () {
     Notification::fake();
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create();
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
 });
@@ -71,7 +73,7 @@ it('completes signup flow with custom field responses through email verification
 });
 
 it('completes signup with custom fields for verified volunteer', function () {
-    Volunteer::factory()->verified()->create(['email' => 'verified@example.com']);
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'verified@example.com']);
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
@@ -88,7 +90,7 @@ it('completes signup with custom fields for verified volunteer', function () {
 });
 
 it('renders without error when gear item has requires_size true but available_sizes is null', function () {
-    EventGearItem::factory()->for($this->event)->create([
+    ProjectGearItem::factory()->for($this->project)->create([
         'name' => 'Broken T-Shirt',
         'requires_size' => true,
         'available_sizes' => null,

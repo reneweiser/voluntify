@@ -4,6 +4,7 @@ use App\Livewire\Public\EmailVerificationPage;
 use App\Models\EmailVerificationToken;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
@@ -17,10 +18,11 @@ beforeEach(function () {
     Notification::fake();
 
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create(['name' => 'Test Event']);
+    $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create(['name' => 'Test Event']);
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
-    $this->volunteer = Volunteer::factory()->create();
+    $this->volunteer = Volunteer::factory()->for($this->project)->create();
 });
 
 it('shows success for valid token', function () {
@@ -80,7 +82,7 @@ it('returns 404 for invalid token', function () {
 
 it('shows appropriate message when all shifts are full', function () {
     $tinyShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
-    $otherVolunteer = Volunteer::factory()->create();
+    $otherVolunteer = Volunteer::factory()->for($this->project)->create();
     ShiftSignup::factory()->create(['shift_id' => $tinyShift->id, 'volunteer_id' => $otherVolunteer->id]);
 
     $plainToken = Str::random(64);
