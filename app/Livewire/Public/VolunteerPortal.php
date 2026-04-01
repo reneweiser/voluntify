@@ -6,8 +6,8 @@ use App\Actions\CancelShiftSignup;
 use App\Actions\VerifyMagicLink;
 use App\Enums\HintLocation;
 use App\Exceptions\InvalidMagicLinkException;
+use App\Models\Announcement;
 use App\Models\CustomFieldResponse;
-use App\Models\EventAnnouncement;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
@@ -124,7 +124,7 @@ class VolunteerPortal extends Component
 
         $eventIds = $this->volunteerEventIds();
 
-        return EventAnnouncement::whereIn('event_id', $eventIds)
+        return Announcement::where('project_id', $this->volunteer->project_id)
             ->whereNotNull('sent_at')
             ->with('event')
             ->latest('sent_at')

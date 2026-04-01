@@ -85,7 +85,7 @@ class Event extends Model
 
     public function announcements(): HasMany
     {
-        return $this->hasMany(EventAnnouncement::class);
+        return $this->hasMany(Announcement::class);
     }
 
     public function customRegistrationFields(): HasMany

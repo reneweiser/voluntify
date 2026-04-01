@@ -1,7 +1,7 @@
 <?php
 
+use App\Models\Announcement;
 use App\Models\Event;
-use App\Models\EventAnnouncement;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\Shift;
@@ -138,14 +138,15 @@ it('Project isCancellationAllowed returns true when enabled with cutoff hours', 
     expect($this->project->isCancellationAllowed())->toBeTrue();
 });
 
-it('EventAnnouncement belongs to event and sender', function () {
+it('Announcement belongs to project and creator', function () {
     $user = User::factory()->create();
 
-    $announcement = EventAnnouncement::factory()->create([
+    $announcement = Announcement::factory()->create([
+        'project_id' => $this->event->project_id,
         'event_id' => $this->event->id,
-        'sent_by' => $user->id,
+        'created_by' => $user->id,
     ]);
 
-    expect($announcement->event->id)->toBe($this->event->id)
-        ->and($announcement->sender->id)->toBe($user->id);
+    expect($announcement->project->id)->toBe($this->event->project_id)
+        ->and($announcement->creator->id)->toBe($user->id);
 });

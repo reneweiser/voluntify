@@ -128,4 +128,9 @@ class Project extends Model
     {
         return $this->hasMany(HintText::class);
     }
+
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(Announcement::class);
+    }
 }

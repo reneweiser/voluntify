@@ -1,7 +1,7 @@
 ---
 pipeline_status: in_progress
-current_stage: implement
-current_focus: "M13 Phase E — #87 Announcements, #76 Dashboard rework"
+current_stage: test
+current_focus: "M13 implementation complete — all 19 features shipped. Ready for test stage."
 current_milestone: m13-polish
 entry_point: plan
 stages_to_run:
@@ -11,10 +11,11 @@ stages_to_run:
   - security-audit
 completed_stages:
   - plan
+  - implement
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-01T20:00:00"
+last_updated: "2026-04-01T22:00:00"
 ---
 
 # TALL Pipeline — Index
@@ -42,7 +43,7 @@ last_updated: "2026-04-01T20:00:00"
 | `.tall-pipeline/m11-security-audit.md` | security-audit | m11-scanner | Security audit report (0 crit, 2 high, 1 med, 4 low) | complete |
 | `.tall-pipeline/m12-guest-lists.md` | plan | m12-guest-lists | Detailed M12 plan (4 migrations, 4 models, 10 actions, 2 Livewire components, scanner extensions, ~59 tests) | complete |
 | `.tall-pipeline/m12-security-audit.md` | security-audit | m12-guest-lists | Security audit report (0 crit, 1 high, 2 med, 3 low) | complete |
-| `.tall-pipeline/m13-polish.md` | plan | m13-polish | Detailed M13 plan (19 features, 5 phases, ~14 migrations, 3 new models, ~18 actions, ~180+ tests) | complete |
+| `.tall-pipeline/m13-polish.md` | plan+impl | m13-polish | M13 plan (19 features, 5 phases) + implementation progress through Phase D | in_progress |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

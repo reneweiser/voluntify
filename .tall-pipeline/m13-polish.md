@@ -11,7 +11,7 @@
 - **Gate summary:** 19 features across 5 implementation phases. ~14 migrations, ~4 new models, ~3 new enums/enum updates, ~18 new/updated Actions, ~3 new Jobs, ~6 new/updated Livewire components, ~6 updated Livewire components, ~8 new Activity events, ~2 new Notifications, ~180+ tests.
 
 ## Implement
-- **Status:** in_progress
+- **Status:** complete
 - **Iteration:** 1
 - **Tasks:**
   - [x] Phase A — #67 Fix MATCH AGAINST email search (regex sanitization, 3 new tests)
@@ -31,8 +31,8 @@
   - [x] Phase D — #78 Clone with date offset — CloneEvent now accepts targetProjectId + dateOffsetDays, CloneProject action (copies events/jobs/shifts/gear/hints/scanners), date offset modal on EventShow + ProjectShow, 12 new tests + 1 updated test
   - [x] Phase D — #77 Gear summary — GenerateGearSummary action (aggregate counts), ExportGearSummaryCsv action (lazy cursor), GearSummary Livewire component with stats cards + per-item breakdown + CSV export, 8 new tests
   - [x] Phase D — #66 Promote rework — two-path promotion: VA (scanner assignee, no user account) vs Organizer (user + project_user), nullable user_id on volunteer_promotions, role/scanner selector in UI, 8 rewritten tests
-  - [ ] Phase E — #87 Announcements
-  - [ ] Phase E — #76 Dashboard rework
+  - [x] Phase E — #87 Announcements — new announcements table (project-scoped, event/job/shift filters), drop old event_announcements, Announcement + AnnouncementTemplate models, SendAnnouncement/CreateAnnouncement actions, SendAnnouncementJob, AnnouncementNotification, AnnouncementComposer component with cascading filters + scheduling + history, 16 new tests + 3 updated tests
+  - [x] Phase E — #76 Dashboard rework — project tiles with event/volunteer counts, next upcoming event card, smart reminders (shifts needing volunteers, recent cancellations, missing scanners), global volunteer search, German UI, 5 new tests + 5 updated tests
 
 ---
 

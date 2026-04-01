@@ -3,15 +3,16 @@
 use App\Actions\VerifyMagicLink;
 use App\Exceptions\InvalidMagicLinkException;
 use App\Livewire\Public\VolunteerPortal;
+use App\Models\Announcement;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\Event;
-use App\Models\EventAnnouncement;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
@@ -207,11 +208,13 @@ it('shows announcements for volunteers events', function () {
         'shift_id' => $this->futureShift->id,
     ]);
 
-    EventAnnouncement::factory()->create([
+    Announcement::factory()->create([
+        'project_id' => $this->event->project_id,
         'event_id' => $this->event->id,
         'subject' => 'Important Parking Update',
         'body' => 'Parking has moved to lot B.',
         'sent_at' => now(),
+        'created_by' => User::factory(),
     ]);
 
     $this->mock(VerifyMagicLink::class)

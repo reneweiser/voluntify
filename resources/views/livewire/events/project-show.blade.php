@@ -25,6 +25,9 @@
             @endcan
 
             @can('update', $project)
+                <flux:button variant="subtle" size="sm" icon="megaphone" :href="route('projects.announcements', $project)" wire:navigate>
+                    {{ __('Ankündigungen') }}
+                </flux:button>
                 <flux:button variant="subtle" size="sm" icon="globe-alt" :href="route('projects.website-editor', $project)" wire:navigate>
                     {{ __('Website') }}
                 </flux:button>

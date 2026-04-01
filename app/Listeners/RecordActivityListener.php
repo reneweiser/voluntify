@@ -36,8 +36,8 @@ use App\Events\Activity\VolunteerPromotedEvent;
 use App\Events\Activity\VolunteerSignedUp;
 use App\Events\Activity\VolunteerVerified;
 use App\Models\ActivityLog;
+use App\Models\Announcement;
 use App\Models\Event;
-use App\Models\EventAnnouncement;
 use App\Models\EventArrival;
 use App\Models\Organization;
 use App\Models\Project;
@@ -451,18 +451,22 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
 
     public function handleAnnouncementSent(AnnouncementSent $e): void
     {
+        $e->announcement->loadMissing('project');
+
         ActivityLog::create([
-            'organization_id' => $e->event->organization_id,
-            'event_id' => $e->event->id,
+            'organization_id' => $e->announcement->project->organization_id,
+            'project_id' => $e->announcement->project_id,
+            'event_id' => $e->announcement->event_id,
             'causer_type' => User::class,
             'causer_id' => $e->sender->id,
-            'subject_type' => EventAnnouncement::class,
+            'subject_type' => Announcement::class,
             'subject_id' => $e->announcement->id,
             'action' => 'sent',
             'category' => ActivityCategory::Email,
-            'description' => "Sent announcement \"{$e->announcement->subject}\" for {$e->event->name}",
+            'description' => "Sent announcement \"{$e->announcement->subject}\" for project {$e->announcement->project->name}",
             'properties' => [
                 'subject' => $e->announcement->subject,
+                'recipient_count' => $e->announcement->recipient_count,
             ],
         ]);
     }
