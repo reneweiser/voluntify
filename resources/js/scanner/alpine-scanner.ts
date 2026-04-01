@@ -15,15 +15,17 @@ import {
     storeVolunteers,
     storeKeys,
     storeAttendanceRecords,
+    storeGuestEntries,
     getKeys,
     getVolunteers,
+    getGuestEntries,
     addOutboxEntry,
     getOutboxCount,
 } from './idb-store';
 import { validateJwt } from './jwt-validator';
 import { classifyShifts, type ClassifiedShift } from './shift-context';
 import { syncOutbox } from './sync';
-import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear } from './types';
+import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear, GuestEntry } from './types';
 
 type ScannerState = 'idle' | 'loading' | 'scanning' | 'result' | 'duplicate' | 'invalid' | 'confirmed';
 
@@ -44,6 +46,8 @@ interface ScannerAppConfig {
     dataUrl: string;
     syncUrl: string;
     gearPickupUrl: string;
+    guestSyncUrl: string;
+    guestGearPickupUrl: string;
 }
 
 export function scannerApp(config: ScannerAppConfig) {
@@ -71,6 +75,37 @@ export function scannerApp(config: ScannerAppConfig) {
         _dataUrl: config.dataUrl,
         _gearPickupUrl: config.gearPickupUrl,
         _processing: false,
+        _guestEntries: [] as GuestEntry[],
+        _guestSyncUrl: config.guestSyncUrl,
+        _guestGearPickupUrl: config.guestGearPickupUrl,
+        activeTab: 'scanner' as 'scanner' | 'volunteers' | 'guests',
+        guestSearchQuery: '' as string,
+        guestResult: null as GuestEntry | null,
+
+        get filteredGuestGroups(): { label: string; guestCount: number; entries: GuestEntry[] }[] {
+            const groups = new Map<number, { label: string; guestCount: number; entries: GuestEntry[] }>();
+            const lowerQuery = this.guestSearchQuery.toLowerCase();
+
+            for (const entry of this._guestEntries) {
+                if (lowerQuery && !(
+                    (entry.name && entry.name.toLowerCase().includes(lowerQuery)) ||
+                    entry.group_label.toLowerCase().includes(lowerQuery)
+                )) {
+                    continue;
+                }
+
+                if (!groups.has(entry.guest_group_id)) {
+                    groups.set(entry.guest_group_id, {
+                        label: entry.group_label,
+                        guestCount: entry.group_guest_count,
+                        entries: [],
+                    });
+                }
+                groups.get(entry.guest_group_id)!.entries.push(entry);
+            }
+
+            return Array.from(groups.values());
+        },
 
         get canConfirmArrival(): boolean {
             return config.scannerType === 'entry_staff' || config.modes.includes('checkin');
@@ -135,6 +170,8 @@ export function scannerApp(config: ScannerAppConfig) {
                         // Persist to IndexedDB for offline use
                         await storeVolunteers(this._scannerId, data.volunteers);
                         await storeKeys(this._scannerId, data.keys);
+                        this._guestEntries = data.guest_entries ?? [];
+                        await storeGuestEntries(this._scannerId, this._guestEntries);
                         if (data.attendance_records) {
                             await storeAttendanceRecords(this._scannerId, data.attendance_records);
                         }
@@ -147,6 +184,9 @@ export function scannerApp(config: ScannerAppConfig) {
             // Fallback: load from IndexedDB
             if (this._volunteers.length === 0) {
                 this._volunteers = await getVolunteers(this._scannerId);
+            }
+            if (this._guestEntries.length === 0) {
+                this._guestEntries = await getGuestEntries(this._scannerId);
             }
 
             this.outboxCount = await getOutboxCount(this._scannerId);
@@ -171,6 +211,13 @@ export function scannerApp(config: ScannerAppConfig) {
                 const jwtResult = await validateJwt(jwtToken, keys);
 
                 if (!jwtResult.valid || !jwtResult.volunteerId) {
+                    // Dual-path: try guest token lookup (D8)
+                    const guestEntry = this._guestEntries.find((e) => e.qr_token === jwtToken);
+                    if (guestEntry) {
+                        this._handleGuestQr(guestEntry);
+                        return;
+                    }
+
                     this.state = 'invalid';
                     this.errorMessage = jwtResult.error ?? 'Invalid QR code';
                     return;
@@ -355,16 +402,97 @@ export function scannerApp(config: ScannerAppConfig) {
         },
 
         async _sync() {
-            await syncOutbox(this._scannerId, this._syncUrl, this._scannerToken);
+            await syncOutbox(this._scannerId, this._syncUrl, this._scannerToken, this._guestSyncUrl);
             this.outboxCount = await getOutboxCount(this._scannerId);
         },
 
         dismiss() {
             this.state = 'scanning';
             this.result = null;
+            this.guestResult = null;
             this.selectedVolunteer = null;
             this.resultMessage = '';
             this.errorMessage = '';
+        },
+
+        _handleGuestQr(entry: GuestEntry) {
+            const alreadyCheckedIn = entry.checked_in_at !== null;
+            this.guestResult = entry;
+
+            const label = `${entry.group_label} ${entry.number}/${entry.group_guest_count}`;
+
+            if (alreadyCheckedIn) {
+                this.state = 'duplicate';
+                this.resultMessage = `Gast — ${label} already checked in.`;
+            } else {
+                this.state = 'result';
+                this.resultMessage = `Gast — ${label}${entry.name ? ` (${entry.name})` : ''} — ready to check in.`;
+            }
+        },
+
+        async confirmGuestCheckin(guestEntryId: number) {
+            const entry = this._guestEntries.find((e) => e.id === guestEntryId);
+            if (!entry) {
+                return;
+            }
+
+            const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+            // Mark locally
+            entry.checked_in_at = now;
+
+            // Save to outbox
+            await addOutboxEntry(this._scannerId, {
+                type: 'guest_checkin',
+                guest_entry_id: guestEntryId,
+                scanned_at: now,
+            });
+            this.outboxCount = await getOutboxCount(this._scannerId);
+
+            this.state = 'confirmed';
+            this.resultMessage = `${entry.group_label} ${entry.number}/${entry.group_guest_count} checked in.`;
+
+            if (this.isOnline) {
+                await this._sync();
+            }
+
+            setTimeout(() => this.dismiss(), 2000);
+        },
+
+        async _postGuestGear(guestEntryGearId: number, payload: Record<string, unknown>) {
+            if (!this.isOnline) {
+                return;
+            }
+
+            try {
+                const response = await fetch(this._guestGearPickupUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Scanner-Token': this._scannerToken,
+                    },
+                    body: JSON.stringify({ guest_entry_gear_id: guestEntryGearId, ...payload }),
+                });
+
+                if (!response.ok) {
+                    console.error('Guest gear pickup failed:', await response.text());
+                }
+            } catch (error) {
+                console.error('Guest gear pickup network error:', error);
+            }
+        },
+
+        async selectGuestGearState(guestEntryGearId: number, state: string) {
+            await this._postGuestGear(guestEntryGearId, { status: state });
+        },
+
+        async selectGuestGearSelection(guestEntryGearId: number, selection: string) {
+            await this._postGuestGear(guestEntryGearId, { selection });
+        },
+
+        async incrementGuestGearPickup(guestEntryGearId: number) {
+            await this._postGuestGear(guestEntryGearId, { quantity: 1 });
         },
 
         destroy() {

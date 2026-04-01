@@ -66,4 +66,12 @@ class ProjectPolicy
     {
         return $user->projectRoleFor($project) === StaffRole::Organizer;
     }
+
+    /**
+     * Project Organizers (direct or inherited from org) can manage guest lists.
+     */
+    public function manageGuestLists(User $user, Project $project): bool
+    {
+        return $user->projectRoleFor($project) === StaffRole::Organizer;
+    }
 }

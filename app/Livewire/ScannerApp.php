@@ -74,4 +74,16 @@ class ScannerApp extends Component
     {
         return '/api/scanner/'.$this->scannerId.'/gear-pickup';
     }
+
+    #[Computed]
+    public function guestSyncUrl(): string
+    {
+        return '/api/scanner/'.$this->scannerId.'/guest-sync';
+    }
+
+    #[Computed]
+    public function guestGearPickupUrl(): string
+    {
+        return '/api/scanner/'.$this->scannerId.'/guest-gear-pickup';
+    }
 }

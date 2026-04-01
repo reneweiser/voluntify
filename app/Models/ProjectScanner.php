@@ -60,6 +60,11 @@ class ProjectScanner extends Model
         return $this->hasMany(ProjectScannerAssignee::class);
     }
 
+    public function guestLists(): HasMany
+    {
+        return $this->hasMany(GuestList::class, 'scanner_id');
+    }
+
     /**
      * Computed status based on time window.
      */

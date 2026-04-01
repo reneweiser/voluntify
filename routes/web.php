@@ -18,6 +18,8 @@ use App\Livewire\Events\ProjectList;
 use App\Livewire\Events\ProjectShow;
 use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
+use App\Livewire\Projects\GuestListIndex;
+use App\Livewire\Projects\GuestListShow;
 use App\Livewire\Projects\ProjectMembers;
 use App\Livewire\Projects\ScannerManagement;
 use App\Livewire\Public\EmailVerificationPage;
@@ -75,6 +77,8 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('projects/{projectId}', ProjectShow::class)->name('projects.show');
     Route::livewire('projects/{projectId}/members', ProjectMembers::class)->name('projects.members');
     Route::livewire('projects/{projectId}/scanners', ScannerManagement::class)->name('projects.scanners');
+    Route::livewire('projects/{projectId}/guest-lists', GuestListIndex::class)->name('guest-lists.index');
+    Route::livewire('projects/{projectId}/guest-lists/{guestListId}', GuestListShow::class)->name('guest-lists.show');
     Route::livewire('events/{eventId}', EventShow::class)->name('events.show');
     Route::livewire('events/{eventId}/jobs', JobsAndShiftsManager::class)->name('events.jobs');
     Route::livewire('events/{eventId}/emails', EmailTemplateEditor::class)->name('events.emails');
