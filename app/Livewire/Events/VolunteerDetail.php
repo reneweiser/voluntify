@@ -3,11 +3,13 @@
 namespace App\Livewire\Events;
 
 use App\Actions\PromoteVolunteer;
+use App\Enums\ScannerType;
 use App\Enums\StaffRole;
 use App\Exceptions\DomainException;
 use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventArrival;
+use App\Models\ProjectScanner;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +28,10 @@ class VolunteerDetail extends Component
     public Volunteer $volunteer;
 
     public bool $showPromoteModal = false;
+
+    public string $promoteRole = 'organizer';
+
+    public string $selectedScannerId = '';
 
     public function mount(int $eventId, int $volunteerId): void
     {
@@ -72,7 +78,7 @@ class VolunteerDetail extends Component
     #[Computed]
     public function canPromote(): bool
     {
-        return Gate::allows('update', $this->event) && ! $this->volunteer->user_id;
+        return Gate::allows('update', $this->event);
     }
 
     #[Computed]
@@ -81,22 +87,44 @@ class VolunteerDetail extends Component
         return (bool) $this->volunteer->user_id;
     }
 
+    /**
+     * @return Collection<int, ProjectScanner>
+     */
+    #[Computed]
+    public function vaScanners(): Collection
+    {
+        if (! $this->event->project) {
+            return new Collection;
+        }
+
+        return $this->event->project->scanners()
+            ->where('type', ScannerType::VolunteerAdmin)
+            ->get();
+    }
+
     public function promoteVolunteer(): void
     {
         Gate::authorize('update', $this->event);
 
         try {
+            $role = $this->promoteRole === 'volunteer_admin'
+                ? StaffRole::VolunteerAdmin
+                : StaffRole::Organizer;
+
             $action = app(PromoteVolunteer::class);
             $action->execute(
                 volunteer: $this->volunteer,
                 organization: $this->event->organization,
-                role: StaffRole::Organizer,
+                role: $role,
                 promotedBy: auth()->user(),
+                scannerId: $this->selectedScannerId !== '' ? (int) $this->selectedScannerId : null,
             );
 
             $this->volunteer->refresh();
             $this->showPromoteModal = false;
-            unset($this->canPromote, $this->isAlreadyPromoted);
+            $this->promoteRole = 'organizer';
+            $this->selectedScannerId = '';
+            unset($this->canPromote, $this->isAlreadyPromoted, $this->vaScanners);
             $this->dispatch('volunteer-promoted');
         } catch (DomainException $e) {
             $this->addError('promote', $e->getMessage());

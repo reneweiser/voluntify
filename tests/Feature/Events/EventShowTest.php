@@ -123,13 +123,13 @@ it('hides clone button for volunteer admin', function () {
         ->assertDontSee('Clone');
 });
 
-it('clones event and redirects to new event', function () {
+it('clones event via modal and redirects to new event', function () {
     $job = VolunteerJob::factory()->for($this->event)->create();
     Shift::factory()->for($job, 'volunteerJob')->create();
 
     Livewire::actingAs($this->user)
         ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->call('cloneEvent')
+        ->call('confirmClone')
         ->assertRedirect();
 
     $cloned = Event::where('name', 'Test Event (Copy)')->first();

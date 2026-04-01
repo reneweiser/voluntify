@@ -2,8 +2,11 @@
 
 namespace App\Livewire\Events;
 
-use App\Actions\DeleteProject;
+use App\Actions\CloneProject;
+use App\Actions\RequestProjectDeletion;
+use App\Actions\RestoreProject;
 use App\Actions\UpdateProject;
+use App\Exceptions\DomainException;
 use App\Models\Organization;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Collection;
@@ -35,6 +38,14 @@ class ProjectShow extends Component
     public $cancellationCutoffHours = '';
 
     public bool $editing = false;
+
+    public string $deletePassword = '';
+
+    public bool $showDeleteModal = false;
+
+    public bool $showCloneModal = false;
+
+    public $cloneDateOffset = '';
 
     public function mount(int $projectId): void
     {
@@ -132,14 +143,48 @@ class ProjectShow extends Component
         );
     }
 
-    public function deleteProject(): void
+    public function requestDeletion(): void
     {
         Gate::authorize('delete', $this->project);
 
-        $action = app(DeleteProject::class);
-        $action->execute($this->project);
+        $this->validate([
+            'deletePassword' => ['required', 'string'],
+        ]);
 
-        $this->redirectRoute('projects.index');
+        try {
+            $action = app(RequestProjectDeletion::class);
+            $this->project = $action->execute($this->project, $this->deletePassword);
+            $this->showDeleteModal = false;
+            $this->deletePassword = '';
+        } catch (DomainException $e) {
+            $this->addError('deletePassword', $e->getMessage());
+        }
+    }
+
+    public function restoreProject(): void
+    {
+        Gate::authorize('delete', $this->project);
+
+        $action = app(RestoreProject::class);
+        $this->project = $action->execute($this->project);
+    }
+
+    public function confirmCloneProject(): void
+    {
+        Gate::authorize('update', $this->project);
+
+        $this->validate([
+            'cloneDateOffset' => ['nullable', 'integer', 'min:-3650', 'max:3650'],
+        ]);
+
+        $action = app(CloneProject::class);
+        $offset = $this->cloneDateOffset !== '' ? (int) $this->cloneDateOffset : null;
+        $clonedProject = $action->execute($this->project, $offset);
+
+        $this->showCloneModal = false;
+        $this->cloneDateOffset = '';
+
+        $this->redirect(route('projects.show', $clonedProject), navigate: true);
     }
 
     private function fillForm(): void

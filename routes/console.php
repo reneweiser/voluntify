@@ -13,3 +13,4 @@ Schedule::command('app:mark-no-shows')->hourly();
 Schedule::command('app:release-expired-reservations')->everyMinute()->withoutOverlapping();
 Schedule::command('scanner-links:send')->everyFiveMinutes();
 Schedule::command('app:send-cancellation-digest')->everySixHours();
+Schedule::command('app:purge-pending-deletions')->daily();

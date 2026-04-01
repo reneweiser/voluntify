@@ -13,6 +13,7 @@ use App\Events\Activity\EventCloned;
 use App\Events\Activity\EventCreated;
 use App\Events\Activity\EventImageDeleted;
 use App\Events\Activity\EventPublished;
+use App\Events\Activity\EventRevertedToDraft;
 use App\Events\Activity\EventUpdated;
 use App\Events\Activity\JobCreated;
 use App\Events\Activity\JobDeleted;
@@ -614,6 +615,21 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'properties' => [
                 'scanner_name' => $e->scanner->name,
             ],
+        ]);
+    }
+
+    public function handleEventRevertedToDraft(EventRevertedToDraft $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->event->organization_id,
+            'event_id' => $e->event->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => Event::class,
+            'subject_id' => $e->event->id,
+            'action' => 'reverted_to_draft',
+            'category' => ActivityCategory::Event,
+            'description' => "Reverted event {$e->event->name} to draft",
         ]);
     }
 

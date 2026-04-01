@@ -6,6 +6,9 @@ use App\Actions\ArchiveEvent;
 use App\Actions\CloneEvent;
 use App\Actions\CloseRegistration;
 use App\Actions\PublishEvent;
+use App\Actions\RequestEventDeletion;
+use App\Actions\RestoreEvent;
+use App\Actions\RevertEventToDraft;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Shift;
@@ -19,6 +22,18 @@ use Livewire\Component;
 class EventShow extends Component
 {
     public Event $event;
+
+    public string $republishNote = '';
+
+    public bool $showRepublishModal = false;
+
+    public string $deletePassword = '';
+
+    public bool $showDeleteModal = false;
+
+    public bool $showCloneModal = false;
+
+    public $cloneDateOffset = '';
 
     public function mount(int $eventId): void
     {
@@ -68,10 +83,47 @@ class EventShow extends Component
     {
         Gate::authorize('publish', $this->event);
 
+        if ($this->event->was_previously_published) {
+            $this->showRepublishModal = true;
+
+            return;
+        }
+
         try {
             $action = app(PublishEvent::class);
             $this->event = $action->execute($this->event);
             $this->dispatch('event-published');
+        } catch (DomainException $e) {
+            $this->addError('status', $e->getMessage());
+        }
+    }
+
+    public function confirmRepublish(): void
+    {
+        Gate::authorize('publish', $this->event);
+
+        try {
+            $action = app(PublishEvent::class);
+            $this->event = $action->execute(
+                $this->event,
+                $this->republishNote ?: null,
+            );
+            $this->showRepublishModal = false;
+            $this->republishNote = '';
+            $this->dispatch('event-published');
+        } catch (DomainException $e) {
+            $this->addError('status', $e->getMessage());
+        }
+    }
+
+    public function revertToDraft(): void
+    {
+        Gate::authorize('update', $this->event);
+
+        try {
+            $action = app(RevertEventToDraft::class);
+            $this->event = $action->execute($this->event);
+            $this->dispatch('event-reverted-to-draft');
         } catch (DomainException $e) {
             $this->addError('status', $e->getMessage());
         }
@@ -103,13 +155,52 @@ class EventShow extends Component
         }
     }
 
-    public function cloneEvent(): void
+    public function openCloneModal(): void
+    {
+        $this->showCloneModal = true;
+    }
+
+    public function confirmClone(): void
     {
         Gate::authorize('create', [Event::class, $this->event->organization]);
 
+        $this->validate([
+            'cloneDateOffset' => ['nullable', 'integer', 'min:-3650', 'max:3650'],
+        ]);
+
         $action = app(CloneEvent::class);
-        $clonedEvent = $action->execute($this->event);
+        $offset = $this->cloneDateOffset !== '' ? (int) $this->cloneDateOffset : null;
+        $clonedEvent = $action->execute($this->event, dateOffsetDays: $offset);
+
+        $this->showCloneModal = false;
+        $this->cloneDateOffset = '';
 
         $this->redirect(route('events.show', $clonedEvent), navigate: true);
+    }
+
+    public function requestDeletion(): void
+    {
+        Gate::authorize('delete', $this->event);
+
+        $this->validate([
+            'deletePassword' => ['required', 'string'],
+        ]);
+
+        try {
+            $action = app(RequestEventDeletion::class);
+            $this->event = $action->execute($this->event, $this->deletePassword);
+            $this->showDeleteModal = false;
+            $this->deletePassword = '';
+        } catch (DomainException $e) {
+            $this->addError('deletePassword', $e->getMessage());
+        }
+    }
+
+    public function restoreEvent(): void
+    {
+        Gate::authorize('delete', $this->event);
+
+        $action = app(RestoreEvent::class);
+        $this->event = $action->execute($this->event);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\HasTitleImage;
 use App\ValueObjects\PublicToken;
 use Database\Factories\ProjectFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,10 @@ class Project extends Model
         'cancellation_enabled',
         'cancellation_cutoff_hours',
         'title_image_path',
+        'website_description',
+        'website_contact_info',
+        'website_published',
+        'deletion_requested_at',
     ];
 
     protected function casts(): array
@@ -34,12 +39,24 @@ class Project extends Model
         return [
             'cancellation_enabled' => 'boolean',
             'cancellation_cutoff_hours' => 'integer',
+            'website_published' => 'boolean',
+            'deletion_requested_at' => 'datetime',
         ];
     }
 
     public function isCancellationAllowed(): bool
     {
         return $this->cancellation_enabled && $this->cancellation_cutoff_hours !== null;
+    }
+
+    public function isPendingDeletion(): bool
+    {
+        return $this->deletion_requested_at !== null;
+    }
+
+    public function scopeActive(Builder $query): void
+    {
+        $query->whereNull('deletion_requested_at');
     }
 
     protected static function booted(): void
@@ -73,6 +90,7 @@ class Project extends Model
     {
         return $this->events()
             ->published()
+            ->active()
             ->orderBy('starts_at');
     }
 

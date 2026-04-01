@@ -25,12 +25,12 @@
   - [x] Phase C — #74 Hint texts — HintText model, HintLocation enum, HintTextResolver service, HintTextSettings Livewire component, EventSignup + VolunteerPortal integration, 11 tests
   - [x] Phase C — #86 Optional shift times — nullable starts_at/ends_at, shift_date column, display_text, 9 model tests, updated 30+ files
   - [x] Phase C — #85 Shift cancellation rework — project-level settings, notification_email on events, CancellationDigestNotification, SendCancellationDigestCommand (every 6h), 3 migrations, updated 12 tests + 12 new tests
-  - [ ] Phase D — #84 Re-publish notification
-  - [ ] Phase D — #83 Project website
-  - [ ] Phase D — #79 Data deletion
-  - [ ] Phase D — #78 Clone with date offset
-  - [ ] Phase D — #77 Gear summary
-  - [ ] Phase D — #66 Promote rework
+  - [x] Phase D — #84 Re-publish notification — was_previously_published flag, RevertEventToDraft action, SendRepublishNotificationJob, EventRepublishedNotification (uses EventUpdated template), re-publish modal with organizer note, 15 new tests
+  - [x] Phase D — #83 Project website — website_description/contact_info/published fields, ProjectWebsiteEditor component, enriched public ProjectWebsite with Markdown + contact info + open/closed CTAs, 10 new tests + 2 updated tests
+  - [x] Phase D — #79 Data deletion — deletion_requested_at on projects/events, RequestProjectDeletion/RequestEventDeletion (password confirmed), RestoreProject/RestoreEvent, PermanentlyDeleteProject/Event, PurgePendingDeletionsCommand (daily), 30-day grace period, UI modals, 15 new tests + 2 updated tests
+  - [x] Phase D — #78 Clone with date offset — CloneEvent now accepts targetProjectId + dateOffsetDays, CloneProject action (copies events/jobs/shifts/gear/hints/scanners), date offset modal on EventShow + ProjectShow, 12 new tests + 1 updated test
+  - [x] Phase D — #77 Gear summary — GenerateGearSummary action (aggregate counts), ExportGearSummaryCsv action (lazy cursor), GearSummary Livewire component with stats cards + per-item breakdown + CSV export, 8 new tests
+  - [x] Phase D — #66 Promote rework — two-path promotion: VA (scanner assignee, no user account) vs Organizer (user + project_user), nullable user_id on volunteer_promotions, role/scanner selector in UI, 8 rewritten tests
   - [ ] Phase E — #87 Announcements
   - [ ] Phase E — #76 Dashboard rework
 

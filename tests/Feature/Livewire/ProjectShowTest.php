@@ -49,13 +49,23 @@ it('validates name required on update', function () {
         ->assertHasErrors(['name' => 'required']);
 });
 
-it('deletes the project and redirects', function () {
+it('requests project deletion with password confirmation', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
-        ->call('deleteProject')
-        ->assertRedirect(route('projects.index'));
+        ->set('deletePassword', 'password')
+        ->call('requestDeletion');
 
-    expect(Project::find($this->project->id))->toBeNull();
+    expect($this->project->refresh()->isPendingDeletion())->toBeTrue();
+});
+
+it('restores a pending-deletion project', function () {
+    $this->project->update(['deletion_requested_at' => now()]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->call('restoreProject');
+
+    expect($this->project->refresh()->isPendingDeletion())->toBeFalse();
 });
 
 it('shows public link', function () {

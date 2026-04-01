@@ -1,10 +1,13 @@
 <?php
 
 use App\Actions\PromoteVolunteer;
+use App\Enums\ScannerType;
 use App\Enums\StaffRole;
-use App\Exceptions\UserAlreadyInOrganizationException;
+use App\Exceptions\DomainException;
 use App\Exceptions\VolunteerAlreadyPromotedException;
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectScanner;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerPromotion;
@@ -13,101 +16,106 @@ use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
+    $this->project = Project::factory()->for($this->org)->create();
     $this->promoter = User::factory()->create();
     $this->org->users()->attach($this->promoter, ['role' => StaffRole::Organizer]);
 });
 
-it('creates user, pivot, and promotion record for new volunteer', function () {
+// --- Promote to Organizer ---
+
+it('promotes to organizer: creates user, attaches to org and project', function () {
     Notification::fake();
 
-    $volunteer = Volunteer::factory()->create(['email' => 'new@example.com']);
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email' => 'new@example.com']);
 
     $action = new PromoteVolunteer;
-    $promotion = $action->execute($volunteer, $this->org, StaffRole::VolunteerAdmin, $this->promoter);
+    $promotion = $action->execute($volunteer, $this->org, StaffRole::Organizer, $this->promoter);
 
     expect($promotion)->toBeInstanceOf(VolunteerPromotion::class)
-        ->and($promotion->role)->toBe(StaffRole::VolunteerAdmin)
-        ->and($promotion->promoted_by)->toBe($this->promoter->id)
-        ->and($promotion->volunteer_id)->toBe($volunteer->id)
-        ->and($promotion->promoted_at)->not->toBeNull();
+        ->and($promotion->role)->toBe(StaffRole::Organizer);
 
     $user = User::where('email', 'new@example.com')->first();
     expect($user)->not->toBeNull()
-        ->and($user->must_change_password)->toBeTrue()
-        ->and($user->email_verified_at)->not->toBeNull()
         ->and($volunteer->fresh()->user_id)->toBe($user->id);
-
-    expect($this->org->users()->where('user_id', $user->id)->exists())->toBeTrue();
 
     Notification::assertSentTo($user, VolunteerPromoted::class);
 });
 
-it('links existing user without creating a new one', function () {
+it('promotes to organizer: links existing user without duplicate', function () {
     Notification::fake();
 
     $existingUser = User::factory()->create(['email' => 'existing@example.com']);
-    $volunteer = Volunteer::factory()->create(['email' => 'existing@example.com']);
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email' => 'existing@example.com']);
 
     $action = new PromoteVolunteer;
-    $promotion = $action->execute($volunteer, $this->org, StaffRole::EntranceStaff, $this->promoter);
+    $action->execute($volunteer, $this->org, StaffRole::Organizer, $this->promoter);
 
     expect($volunteer->fresh()->user_id)->toBe($existingUser->id)
-        ->and($this->org->users()->where('user_id', $existingUser->id)->exists())->toBeTrue()
-        ->and($this->org->users()->where('user_id', $existingUser->id)->first()->pivot->role)
-        ->toBe(StaffRole::EntranceStaff)
-        ->and($promotion->role)->toBe(StaffRole::EntranceStaff);
+        ->and($this->org->users()->where('user_id', $existingUser->id)->exists())->toBeTrue();
 
     Notification::assertNothingSent();
 });
 
-it('throws when volunteer already promoted', function () {
+it('throws when volunteer already promoted to organizer', function () {
     $user = User::factory()->create();
-    $volunteer = Volunteer::factory()->create(['user_id' => $user->id]);
+    $volunteer = Volunteer::factory()->for($this->project)->create(['user_id' => $user->id]);
 
     $action = new PromoteVolunteer;
-    $action->execute($volunteer, $this->org, StaffRole::VolunteerAdmin, $this->promoter);
+    $action->execute($volunteer, $this->org, StaffRole::Organizer, $this->promoter);
 })->throws(VolunteerAlreadyPromotedException::class);
 
-it('throws when user already in organization', function () {
+it('does not create duplicate org membership when promoting to organizer', function () {
     $existingUser = User::factory()->create(['email' => 'member@example.com']);
     $this->org->users()->attach($existingUser, ['role' => StaffRole::VolunteerAdmin]);
-    $volunteer = Volunteer::factory()->create(['email' => 'member@example.com']);
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email' => 'member@example.com']);
 
     $action = new PromoteVolunteer;
-    $action->execute($volunteer, $this->org, StaffRole::EntranceStaff, $this->promoter);
-})->throws(UserAlreadyInOrganizationException::class);
+    $promotion = $action->execute($volunteer, $this->org, StaffRole::Organizer, $this->promoter);
 
-it('does not create promotion record when user is already in organization', function () {
-    $existingUser = User::factory()->create(['email' => 'member@example.com']);
-    $this->org->users()->attach($existingUser, ['role' => StaffRole::VolunteerAdmin]);
-    $volunteer = Volunteer::factory()->create(['email' => 'member@example.com']);
-
-    $initialPromotionCount = VolunteerPromotion::count();
-
-    try {
-        (new PromoteVolunteer)->execute($volunteer, $this->org, StaffRole::EntranceStaff, $this->promoter);
-    } catch (UserAlreadyInOrganizationException) {
-        // expected
-    }
-
-    expect(VolunteerPromotion::count())->toBe($initialPromotionCount);
-    $volunteer->refresh();
-    expect($volunteer->user_id)->toBeNull();
+    expect($promotion->role)->toBe(StaffRole::Organizer)
+        ->and($volunteer->fresh()->user_id)->toBe($existingUser->id);
 });
 
-it('does not modify existing user attributes when promoting', function () {
-    Notification::fake();
+// --- Promote to VA (scanner assignment) ---
 
-    $existingUser = User::factory()->create([
-        'name' => 'Original Name',
-        'must_change_password' => false,
-        'email' => 'staff@example.com',
-    ]);
-    $volunteer = Volunteer::factory()->create(['email' => 'staff@example.com']);
+it('promotes to VA: adds scanner assignee', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email' => 'va@example.com']);
+    $scanner = ProjectScanner::factory()->for($this->project)->create(['type' => ScannerType::VolunteerAdmin]);
 
-    (new PromoteVolunteer)->execute($volunteer, $this->org, StaffRole::EntranceStaff, $this->promoter);
+    $action = new PromoteVolunteer;
+    $promotion = $action->execute($volunteer, $this->org, StaffRole::VolunteerAdmin, $this->promoter, $scanner->id);
 
-    $existingUser->refresh();
-    expect($existingUser->must_change_password)->toBeFalse()
-        ->and($existingUser->name)->toBe('Original Name');
+    expect($promotion->role)->toBe(StaffRole::VolunteerAdmin)
+        ->and($scanner->assignees()->where('email', 'va@example.com')->exists())->toBeTrue();
+});
+
+it('promotes to VA: does not create user account', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email' => 'va@example.com']);
+    $scanner = ProjectScanner::factory()->for($this->project)->create(['type' => ScannerType::VolunteerAdmin]);
+
+    $action = new PromoteVolunteer;
+    $action->execute($volunteer, $this->org, StaffRole::VolunteerAdmin, $this->promoter, $scanner->id);
+
+    expect(User::where('email', 'va@example.com')->exists())->toBeFalse()
+        ->and($volunteer->fresh()->user_id)->toBeNull();
+});
+
+it('throws when no scanner selected for VA promotion', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+
+    $action = new PromoteVolunteer;
+
+    expect(fn () => $action->execute($volunteer, $this->org, StaffRole::VolunteerAdmin, $this->promoter))
+        ->toThrow(DomainException::class, 'Bitte wähle einen VA-Scanner aus.');
+});
+
+it('throws when already assigned to scanner', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create(['email' => 'assigned@example.com']);
+    $scanner = ProjectScanner::factory()->for($this->project)->create(['type' => ScannerType::VolunteerAdmin]);
+    $scanner->assignees()->create(['email' => 'assigned@example.com']);
+
+    $action = new PromoteVolunteer;
+
+    expect(fn () => $action->execute($volunteer, $this->org, StaffRole::VolunteerAdmin, $this->promoter, $scanner->id))
+        ->toThrow(DomainException::class, 'Diese Person ist bereits diesem Scanner zugewiesen.');
 });

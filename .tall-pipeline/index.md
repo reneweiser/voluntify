@@ -1,7 +1,7 @@
 ---
 pipeline_status: in_progress
 current_stage: implement
-current_focus: "M13 Phase C complete — ready for Phase D"
+current_focus: "M13 Phase E — #87 Announcements, #76 Dashboard rework"
 current_milestone: m13-polish
 entry_point: plan
 stages_to_run:
@@ -14,7 +14,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-01"
+last_updated: "2026-04-01T20:00:00"
 ---
 
 # TALL Pipeline — Index

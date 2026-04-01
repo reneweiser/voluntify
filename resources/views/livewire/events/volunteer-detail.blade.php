@@ -114,19 +114,43 @@
         @endif
 
         {{-- Promote modal --}}
-        <flux:modal wire:model="showPromoteModal" focusable>
-            <flux:heading>{{ __('Promote to Staff') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Promote :name to a staff member. They will receive login credentials via email.', ['name' => $volunteer->full_name]) }}</flux:text>
+        <flux:modal wire:model="showPromoteModal" focusable class="max-w-lg">
+            <div class="space-y-4">
+                <flux:heading size="lg">{{ __('Befördern') }}</flux:heading>
+                <flux:text>{{ __(':name zum Team hinzufügen.', ['name' => $volunteer->full_name]) }}</flux:text>
 
-            <div class="mt-4">
-                <flux:text size="sm" class="font-medium">{{ __('Role') }}</flux:text>
-                <flux:badge size="sm" class="mt-1">{{ __('Organizer') }}</flux:badge>
+                <div>
+                    <flux:select wire:model.live="promoteRole" :label="__('Rolle')">
+                        <flux:select.option value="organizer">{{ __('Organizer — Vollzugriff') }}</flux:select.option>
+                        <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin — Scanner-Zugriff') }}</flux:select.option>
+                    </flux:select>
+                </div>
+
+                @if ($promoteRole === 'volunteer_admin')
+                    @if ($this->vaScanners->isEmpty())
+                        <flux:callout variant="warning">
+                            {{ __('Kein VA-Scanner vorhanden. Erstelle zuerst einen Scanner vom Typ "Volunteer Admin".') }}
+                        </flux:callout>
+                    @else
+                        <flux:select wire:model="selectedScannerId" :label="__('VA-Scanner auswählen')">
+                            <flux:select.option value="">{{ __('Bitte wählen...') }}</flux:select.option>
+                            @foreach ($this->vaScanners as $scanner)
+                                <flux:select.option :value="$scanner->id">{{ $scanner->name }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    @endif
+                @else
+                    <flux:text size="sm" class="text-zinc-500">{{ __('Es wird ein Benutzerkonto erstellt und Login-Daten per E-Mail gesendet.') }}</flux:text>
+                @endif
+
                 <flux:error name="promote" />
-            </div>
 
-            <div class="mt-6 flex gap-2">
-                <flux:button variant="primary" wire:click="promoteVolunteer">{{ __('Promote') }}</flux:button>
-                <flux:button variant="ghost" wire:click="$set('showPromoteModal', false)">{{ __('Cancel') }}</flux:button>
+                <div class="flex justify-end gap-2">
+                    <flux:button variant="ghost" wire:click="$set('showPromoteModal', false)">{{ __('Abbrechen') }}</flux:button>
+                    <flux:button variant="primary" wire:click="promoteVolunteer" :disabled="$promoteRole === 'volunteer_admin' && $this->vaScanners->isEmpty()">
+                        {{ __('Befördern') }}
+                    </flux:button>
+                </div>
             </div>
         </flux:modal>
     </x-events.layout>

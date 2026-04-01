@@ -35,6 +35,8 @@ class Event extends Model
         'phone_required',
         'visibility',
         'notification_email',
+        'was_previously_published',
+        'deletion_requested_at',
     ];
 
     protected function casts(): array
@@ -47,6 +49,8 @@ class Event extends Model
             'phone_required' => 'boolean',
             'visibility' => EventVisibility::class,
             'volunteer_count' => 'integer',
+            'was_previously_published' => 'boolean',
+            'deletion_requested_at' => 'datetime',
         ];
     }
 
@@ -106,6 +110,16 @@ class Event extends Model
         }
 
         return $slug;
+    }
+
+    public function isPendingDeletion(): bool
+    {
+        return $this->deletion_requested_at !== null;
+    }
+
+    public function scopeActive(Builder $query): void
+    {
+        $query->whereNull('deletion_requested_at');
     }
 
     public function scopePubliclyVisible(Builder $query): void
