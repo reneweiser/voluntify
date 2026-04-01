@@ -22,6 +22,7 @@ class SyncArrivalsRequest extends FormRequest
             'arrivals' => ['required', 'array', 'min:1'],
             'arrivals.*.ticket_id' => ['required', 'integer', 'exists:tickets,id'],
             'arrivals.*.method' => ['required', 'string', Rule::in(array_column(ArrivalMethod::cases(), 'value'))],
+            'arrivals.*.event_id' => ['nullable', 'integer', 'exists:events,id'],
             'arrivals.*.scanned_at' => ['required', 'date'],
         ];
     }

@@ -15,7 +15,7 @@ class RecordArrival
     public function execute(
         Ticket $ticket,
         Event $event,
-        User $scannedBy,
+        ?User $scannedBy,
         ArrivalMethod $method,
         ?Carbon $scannedAt = null,
     ): EventArrival {
@@ -29,7 +29,7 @@ class RecordArrival
             'ticket_id' => $ticket->id,
             'volunteer_id' => $ticket->volunteer_id,
             'event_id' => $event->id,
-            'scanned_by' => $scannedBy->id,
+            'scanned_by' => $scannedBy?->id,
             'scanned_at' => $scannedAt ?? now(),
             'method' => $method,
             'flagged' => $flagged,

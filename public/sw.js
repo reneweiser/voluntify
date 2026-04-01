@@ -35,7 +35,7 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
     // API requests: network-first
-    if (url.pathname.includes('/scanner/api/')) {
+    if (url.pathname.startsWith('/api/scanner/')) {
         event.respondWith(networkFirst(event.request));
         return;
     }

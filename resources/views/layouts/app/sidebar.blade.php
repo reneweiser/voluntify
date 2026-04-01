@@ -18,14 +18,12 @@
                     <flux:sidebar.item icon="calendar" :href="route('events.index')" :current="request()->routeIs('events.*')" wire:navigate>
                         {{ __('Events') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.*')" wire:navigate>
+                        {{ __('Projects') }}
+                    </flux:sidebar.item>
                     @php
                         $hasAccess = auth()->user()->hasAccessToOrganization(currentOrganization());
                     @endphp
-                    @if ($hasAccess)
-                        <flux:sidebar.item icon="qr-code" :href="route('scanner.index')" :current="request()->routeIs('scanner.*')" wire:navigate>
-                            {{ __('Scanner') }}
-                        </flux:sidebar.item>
-                    @endif
                     @if ($hasAccess)
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('activity-log')" :current="request()->routeIs('activity-log')" wire:navigate>
                             {{ __('Activity Log') }}

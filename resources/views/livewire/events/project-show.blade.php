@@ -12,6 +12,12 @@
                 </flux:button>
             @endif
 
+            @can('manageScanners', $project)
+                <flux:button variant="subtle" size="sm" icon="qr-code" :href="route('projects.scanners', $project)" wire:navigate>
+                    {{ __('Scanners') }}
+                </flux:button>
+            @endcan
+
             @if ($this->canManage)
                 <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteProject" wire:confirm="{{ __('Delete this project? Events will remain but be unlinked from this project.') }}">
                     {{ __('Delete Project') }}

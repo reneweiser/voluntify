@@ -23,12 +23,14 @@ readonly class ShiftSignupResult
      * @param  array<ShiftSignup>  $newSignups
      * @param  array<Shift>  $skippedFull
      * @param  array<Shift>  $skippedDuplicate
+     * @param  array<Shift>  $skippedOverlap
      */
     public function __construct(
         public Volunteer $volunteer,
         public array $newSignups = [],
         public array $skippedFull = [],
         public array $skippedDuplicate = [],
+        public array $skippedOverlap = [],
     ) {}
 
     public function hasNewSignups(): bool

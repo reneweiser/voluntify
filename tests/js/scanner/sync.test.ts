@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { syncOutbox } from '@/scanner/sync';
 import { openScannerDb, addOutboxEntry, getOutboxEntries, resetDb } from '@/scanner/idb-store';
 
-describe('sync', () => {
+describe('sync (M11 — scanner token auth)', () => {
     beforeEach(async () => {
         resetDb();
         await new Promise<void>((resolve, reject) => {
@@ -14,8 +14,9 @@ describe('sync', () => {
         await openScannerDb();
     });
 
-    it('POSTs outbox entries to sync endpoint', async () => {
+    it('POSTs outbox entries to sync endpoint with scanner token', async () => {
         await addOutboxEntry(1, {
+            type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
             method: 'qr_scan',
@@ -28,12 +29,13 @@ describe('sync', () => {
         });
         vi.stubGlobal('fetch', mockFetch);
 
-        await syncOutbox(1, '/admin/scanner/api/events/1/sync');
+        await syncOutbox(1, '/api/scanner/1/sync', 'test-scanner-token');
 
         expect(mockFetch).toHaveBeenCalledOnce();
         const [url, options] = mockFetch.mock.calls[0];
-        expect(url).toBe('/admin/scanner/api/events/1/sync');
+        expect(url).toBe('/api/scanner/1/sync');
         expect(options.method).toBe('POST');
+        expect(options.headers['X-Scanner-Token']).toBe('test-scanner-token');
 
         const body = JSON.parse(options.body);
         expect(body.arrivals).toHaveLength(1);
@@ -44,6 +46,7 @@ describe('sync', () => {
 
     it('clears synced items from outbox', async () => {
         await addOutboxEntry(1, {
+            type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
             method: 'qr_scan',
@@ -55,7 +58,7 @@ describe('sync', () => {
             json: () => Promise.resolve({ arrivals: [] }),
         }));
 
-        await syncOutbox(1, '/admin/scanner/api/events/1/sync');
+        await syncOutbox(1, '/api/scanner/1/sync', 'test-token');
 
         const remaining = await getOutboxEntries(1);
         expect(remaining).toHaveLength(0);
@@ -65,6 +68,7 @@ describe('sync', () => {
 
     it('keeps items on fetch failure', async () => {
         await addOutboxEntry(1, {
+            type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
             method: 'qr_scan',
@@ -73,7 +77,7 @@ describe('sync', () => {
 
         vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
 
-        await syncOutbox(1, '/admin/scanner/api/events/1/sync');
+        await syncOutbox(1, '/api/scanner/1/sync', 'test-token');
 
         const remaining = await getOutboxEntries(1);
         expect(remaining).toHaveLength(1);
@@ -81,21 +85,13 @@ describe('sync', () => {
         vi.unstubAllGlobals();
     });
 
-    it('includes CSRF token header when meta tag is present', async () => {
+    it('includes X-Scanner-Token header (no CSRF)', async () => {
         await addOutboxEntry(1, {
+            type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
             method: 'qr_scan',
             scanned_at: '2026-03-02 10:00:00',
-        });
-
-        const mockMeta = { getAttribute: () => 'test-csrf-token' };
-        const originalQuerySelector = document.querySelector.bind(document);
-        vi.spyOn(document, 'querySelector').mockImplementation((selector: string) => {
-            if (selector === 'meta[name="csrf-token"]') {
-                return mockMeta as unknown as Element;
-            }
-            return originalQuerySelector(selector);
         });
 
         const mockFetch = vi.fn().mockResolvedValue({
@@ -104,12 +100,12 @@ describe('sync', () => {
         });
         vi.stubGlobal('fetch', mockFetch);
 
-        await syncOutbox(1, '/admin/scanner/api/events/1/sync');
+        await syncOutbox(1, '/api/scanner/1/sync', 'my-scanner-token');
 
         const [, options] = mockFetch.mock.calls[0];
-        expect(options.headers['X-CSRF-TOKEN']).toBe('test-csrf-token');
+        expect(options.headers['X-Scanner-Token']).toBe('my-scanner-token');
+        expect(options.headers).not.toHaveProperty('X-CSRF-TOKEN');
 
-        vi.restoreAllMocks();
         vi.unstubAllGlobals();
     });
 
@@ -117,7 +113,7 @@ describe('sync', () => {
         const mockFetch = vi.fn();
         vi.stubGlobal('fetch', mockFetch);
 
-        await syncOutbox(1, '/admin/scanner/api/events/1/sync');
+        await syncOutbox(1, '/api/scanner/1/sync', 'test-token');
 
         expect(mockFetch).not.toHaveBeenCalled();
 

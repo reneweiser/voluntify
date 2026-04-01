@@ -17,6 +17,8 @@ import type { Volunteer, ScannerKeys, OutboxEntry } from '@/scanner/types';
 
 const makeVolunteer = (overrides: Partial<Volunteer> = {}): Volunteer => ({
     id: 1,
+    first_name: 'Alice',
+    last_name: 'Johnson',
     name: 'Alice Johnson',
     email: 'alice@example.com',
     ticket: { id: 10, jwt_token: 'eyJabc', volunteer_id: 1, project_id: 1 },
@@ -24,7 +26,7 @@ const makeVolunteer = (overrides: Partial<Volunteer> = {}): Volunteer => ({
     ...overrides,
 });
 
-describe('idb-store', () => {
+describe('idb-store (DB_VERSION 3 — scannerId keys)', () => {
     beforeEach(async () => {
         // Delete database between tests for isolation
         resetDb();
@@ -36,8 +38,8 @@ describe('idb-store', () => {
         await openScannerDb();
     });
 
-    it('stores and retrieves volunteers', async () => {
-        const volunteers = [makeVolunteer(), makeVolunteer({ id: 2, name: 'Bob Smith', email: 'bob@example.com' })];
+    it('stores and retrieves volunteers by scannerId', async () => {
+        const volunteers = [makeVolunteer(), makeVolunteer({ id: 2, first_name: 'Bob', last_name: 'Smith', name: 'Bob Smith', email: 'bob@example.com' })];
         await storeVolunteers(1, volunteers);
 
         const result = await getVolunteers(1);
@@ -46,10 +48,22 @@ describe('idb-store', () => {
         expect(result[1].name).toBe('Bob Smith');
     });
 
+    it('isolates volunteers by scannerId', async () => {
+        await storeVolunteers(1, [makeVolunteer()]);
+        await storeVolunteers(2, [makeVolunteer({ id: 2, first_name: 'Bob', last_name: 'Smith', name: 'Bob Smith', email: 'bob@example.com' })]);
+
+        const scanner1 = await getVolunteers(1);
+        const scanner2 = await getVolunteers(2);
+        expect(scanner1).toHaveLength(1);
+        expect(scanner1[0].name).toBe('Alice Johnson');
+        expect(scanner2).toHaveLength(1);
+        expect(scanner2[0].name).toBe('Bob Smith');
+    });
+
     it('searches volunteers by name substring', async () => {
         await storeVolunteers(1, [
             makeVolunteer(),
-            makeVolunteer({ id: 2, name: 'Bob Smith', email: 'bob@example.com' }),
+            makeVolunteer({ id: 2, first_name: 'Bob', last_name: 'Smith', name: 'Bob Smith', email: 'bob@example.com' }),
         ]);
 
         const result = await searchVolunteers(1, 'ali');
@@ -57,8 +71,9 @@ describe('idb-store', () => {
         expect(result[0].name).toBe('Alice Johnson');
     });
 
-    it('adds and retrieves outbox entries', async () => {
+    it('adds and retrieves outbox entries by scannerId', async () => {
         const entry: OutboxEntry = {
+            type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
             method: 'qr_scan',
@@ -71,14 +86,16 @@ describe('idb-store', () => {
         expect(entries[0].ticket_id).toBe(10);
     });
 
-    it('clears outbox entries', async () => {
+    it('clears outbox entries for a specific scannerId', async () => {
         await addOutboxEntry(1, {
+            type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
             method: 'qr_scan',
             scanned_at: '2026-03-02 10:00:00',
         });
         await addOutboxEntry(1, {
+            type: 'arrival',
             ticket_id: 11,
             volunteer_id: 2,
             method: 'manual_lookup',
@@ -90,7 +107,7 @@ describe('idb-store', () => {
         expect(entries).toHaveLength(0);
     });
 
-    it('stores and retrieves HMAC keys', async () => {
+    it('stores and retrieves HMAC keys by scannerId', async () => {
         const keys: ScannerKeys = { current: 'key-current', previous: 'key-previous' };
         await storeKeys(1, keys);
 
@@ -98,10 +115,11 @@ describe('idb-store', () => {
         expect(result).toEqual(keys);
     });
 
-    it('tracks outbox count', async () => {
+    it('tracks outbox count per scannerId', async () => {
         expect(await getOutboxCount(1)).toBe(0);
 
         await addOutboxEntry(1, {
+            type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
             method: 'qr_scan',
@@ -111,6 +129,7 @@ describe('idb-store', () => {
         expect(await getOutboxCount(1)).toBe(1);
 
         await addOutboxEntry(1, {
+            type: 'arrival',
             ticket_id: 11,
             volunteer_id: 2,
             method: 'qr_scan',

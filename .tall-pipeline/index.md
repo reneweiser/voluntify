@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: security-audit
-current_focus: "M10 Signup Flow Rewrite — security audit complete, all findings resolved"
-current_milestone: m10-signup
+current_focus: "M11 Scanner Rewrite — all stages complete, all high/medium security findings fixed, ready for milestone retrospective"
+current_milestone: m11-scanner
 entry_point: plan
 stages_to_run:
   - plan
@@ -26,7 +26,7 @@ last_updated: "2026-03-31T16:00:00"
 | m8-project-scoped | Project-Scoped Data | Volunteer project scope, gear remodel, ticket scope, custom fields, Private Events (#91) | m7 | complete |
 | m9-roles | Roles & Team | project_user pivot, role hierarchy, scanner roles | m7 | complete |
 | m10-signup | Signup Flow Rewrite | Multi-step wizard, shift reservations, manual enrollment | m8 | complete |
-| m11-scanner | Scanner Rewrite | Project scanners, temp auth, dual scanner types, rename volunteer tab to "Volunteers" | m8, m9 | not_started |
+| m11-scanner | Scanner Rewrite | Project scanners, temp auth, dual scanner types, rename volunteer tab to "Volunteers" | m8, m9 | in_progress |
 | m12-guest-lists | Guest Lists (#90) | Guest list CRUD, QR generation, grouped emails, scanner integration | m8, m11 | not_started |
 | m13-polish | Communication & Polish | Announcements, email templates, remaining features | m8, m9, m11 | not_started |
 
@@ -37,6 +37,8 @@ last_updated: "2026-03-31T16:00:00"
 | `.tall-plan.md` | plan | global | Full architecture plan (schema, components, actions, tests) | complete |
 | `.tall-pipeline/m9-roles.md` | plan | m9-roles | Detailed M9 implementation plan (migrations, models, policies, components, tests) | complete |
 | `.tall-pipeline/m10-signup.md` | plan | m10-signup | Detailed M10 implementation plan (schema, actions, wizard, reservations, manual enrollment, tests) | complete |
+| `.tall-pipeline/m11-scanner.md` | plan | m11-scanner | Detailed M11 implementation plan (scanner schema, temp auth, dual scanner types, TS rewrite, API, tests) | complete |
+| `.tall-pipeline/m11-security-audit.md` | security-audit | m11-scanner | Security audit report (0 crit, 2 high, 1 med, 4 low) | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

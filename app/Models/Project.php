@@ -78,4 +78,9 @@ class Project extends Model
     {
         return $this->hasMany(CustomRegistrationField::class)->orderBy('sort_order');
     }
+
+    public function scanners(): HasMany
+    {
+        return $this->hasMany(ProjectScanner::class);
+    }
 }

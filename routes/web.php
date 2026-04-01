@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\ScannerApiController;
 use App\Http\Controllers\VolunteerExportController;
 use App\Livewire\ActivityFeed;
 use App\Livewire\Auth\ChangePassword;
@@ -20,15 +19,15 @@ use App\Livewire\Events\ProjectShow;
 use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
 use App\Livewire\Projects\ProjectMembers;
+use App\Livewire\Projects\ScannerManagement;
 use App\Livewire\Public\EmailVerificationPage;
 use App\Livewire\Public\EventSignup;
 use App\Livewire\Public\JobCheatSheet;
 use App\Livewire\Public\ProjectWebsite;
 use App\Livewire\Public\VolunteerPortal;
 use App\Livewire\Public\VolunteerTicket;
-use App\Livewire\Scanner\ManualLookup;
-use App\Livewire\Scanner\QrScanner;
-use App\Livewire\Scanner\ScannerEventSelect;
+use App\Livewire\ScannerApp;
+use App\Livewire\ScannerAuth;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\Volunteer;
@@ -57,6 +56,12 @@ Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunte
 Route::livewire('my-portal/{magicToken}', VolunteerPortal::class)->name('volunteer.portal');
 Route::livewire('verify-email/{token}', EmailVerificationPage::class)->name('volunteer.verify-email');
 
+// Scanner routes (no auth — protected by scanner-specific middleware)
+Route::livewire('s/{scannerToken}', ScannerAuth::class)->name('scanner.auth');
+Route::middleware('scanner-auth')->group(function () {
+    Route::livewire('s/{scannerToken}/scan', ScannerApp::class)->name('scanner.app');
+});
+
 // Auth-only (no org required)
 Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::livewire('change-password', ChangePassword::class)->name('change-password');
@@ -69,6 +74,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('projects', ProjectList::class)->name('projects.index');
     Route::livewire('projects/{projectId}', ProjectShow::class)->name('projects.show');
     Route::livewire('projects/{projectId}/members', ProjectMembers::class)->name('projects.members');
+    Route::livewire('projects/{projectId}/scanners', ScannerManagement::class)->name('projects.scanners');
     Route::livewire('events/{eventId}', EventShow::class)->name('events.show');
     Route::livewire('events/{eventId}/jobs', JobsAndShiftsManager::class)->name('events.jobs');
     Route::livewire('events/{eventId}/emails', EmailTemplateEditor::class)->name('events.emails');
@@ -82,16 +88,6 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('events/{eventId}/gear', EventGearSetup::class)->name('events.gear');
     Route::livewire('events/{eventId}/gear-tracker', GearTracker::class)->name('events.gear-tracker');
     Route::livewire('activity-log', ActivityFeed::class)->name('activity-log');
-
-    // Scanner UI
-    Route::livewire('scanner', ScannerEventSelect::class)->name('scanner.index');
-    Route::livewire('scanner/{eventId}', QrScanner::class)->name('scanner.scan');
-    Route::livewire('scanner/{eventId}/lookup', ManualLookup::class)->name('scanner.lookup');
-
-    // Scanner API
-    Route::get('scanner/api/events/{eventId}/data', [ScannerApiController::class, 'data'])->name('scanner.data');
-    Route::post('scanner/api/events/{eventId}/sync', [ScannerApiController::class, 'sync'])->name('scanner.sync');
-    Route::post('scanner/api/events/{eventId}/attendance-sync', [ScannerApiController::class, 'syncAttendance'])->name('scanner.attendance-sync');
 });
 
 require __DIR__.'/settings.php';

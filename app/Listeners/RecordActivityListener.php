@@ -306,8 +306,8 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
         ActivityLog::create([
             'organization_id' => $e->arrival->event->organization_id,
             'event_id' => $e->arrival->event_id,
-            'causer_type' => User::class,
-            'causer_id' => $e->causer->id,
+            'causer_type' => $e->causer ? User::class : null,
+            'causer_id' => $e->causer?->id,
             'subject_type' => EventArrival::class,
             'subject_id' => $e->arrival->id,
             'action' => 'scanned',
