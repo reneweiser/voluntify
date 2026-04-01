@@ -35,20 +35,24 @@ it('creates an immediate announcement and dispatches job', function () {
     });
 });
 
-it('creates a scheduled announcement with delayed job', function () {
+it('creates a scheduled announcement with delayed job matching send_at', function () {
     Queue::fake();
 
-    $sendAt = now()->addHours(3)->format('Y-m-d H:i:s');
+    $sendAt = now()->addHours(3);
 
     $announcement = $this->action->execute($this->project, [
         'subject' => 'Scheduled update',
         'body' => 'Coming soon.',
-        'send_at' => $sendAt,
+        'send_at' => $sendAt->format('Y-m-d H:i:s'),
     ], $this->user);
 
     expect($announcement->send_at)->not->toBeNull();
 
-    Queue::assertPushed(SendAnnouncementJob::class);
+    Queue::assertPushed(SendAnnouncementJob::class, function ($job) use ($sendAt) {
+        return $job->announcement->id === $this->project->announcements->first()->id
+            && $job->delay instanceof DateTimeInterface
+            && abs($job->delay->getTimestamp() - $sendAt->getTimestamp()) < 5;
+    });
 });
 
 it('stores event and job filters', function () {

@@ -48,3 +48,23 @@ it('allows volunteer admin to view', function () {
         ->test(GearSummary::class, ['projectId' => $this->project->id])
         ->assertOk();
 });
+
+it('denies access to user with no project role', function () {
+    $stranger = User::factory()->create();
+
+    Livewire::actingAs($stranger)
+        ->test(GearSummary::class, ['projectId' => $this->project->id])
+        ->assertForbidden();
+});
+
+it('exports CSV as download', function () {
+    $item = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    VolunteerGear::factory()->create(['project_gear_item_id' => $item->id, 'volunteer_id' => $volunteer->id]);
+
+    $response = Livewire::actingAs($this->organizer)
+        ->test(GearSummary::class, ['projectId' => $this->project->id])
+        ->call('exportCsv');
+
+    $response->assertFileDownloaded("gear-summary-{$this->project->id}.csv");
+});

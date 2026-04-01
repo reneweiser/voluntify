@@ -7,6 +7,7 @@ use App\Models\HintText;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
+use App\Models\ProjectScanner;
 use App\Models\Shift;
 use App\Models\VolunteerJob;
 
@@ -99,6 +100,34 @@ it('does not copy volunteers or signups', function () {
     $cloned = $action->execute($this->project);
 
     expect($cloned->volunteers)->toHaveCount(0);
+});
+
+it('clones scanners with event_id cleared and new token', function () {
+    $event = Event::factory()->for($this->org)->for($this->project)->create();
+    $originalScanner = ProjectScanner::factory()->for($this->project)->create([
+        'event_id' => $event->id,
+        'name' => 'Main Scanner',
+    ]);
+
+    $action = app(CloneProject::class);
+    $cloned = $action->execute($this->project);
+
+    $clonedScanner = $cloned->scanners->first();
+    expect($clonedScanner)->not->toBeNull()
+        ->and($clonedScanner->name)->toBe('Main Scanner')
+        ->and($clonedScanner->project_id)->toBe($cloned->id)
+        ->and($clonedScanner->event_id)->toBeNull()
+        ->and($clonedScanner->scanner_token)->not->toBe($originalScanner->scanner_token);
+});
+
+it('clones an empty project without errors', function () {
+    $action = app(CloneProject::class);
+    $cloned = $action->execute($this->project);
+
+    expect($cloned->exists)->toBeTrue()
+        ->and($cloned->events)->toHaveCount(0)
+        ->and($cloned->gearItems)->toHaveCount(0)
+        ->and($cloned->scanners)->toHaveCount(0);
 });
 
 it('sets website_published to false on clone', function () {

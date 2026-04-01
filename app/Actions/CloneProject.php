@@ -62,6 +62,8 @@ class CloneProject
                     'updated_at',
                 ]);
                 $clonedScanner->project_id = $clonedProject->id;
+                $clonedScanner->scanner_token = bin2hex(random_bytes(32));
+                $clonedScanner->event_id = null;
                 $clonedScanner->save();
             }
 
