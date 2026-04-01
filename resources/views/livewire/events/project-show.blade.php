@@ -5,38 +5,8 @@
             <flux:heading size="xl">{{ $project->name }}</flux:heading>
         </div>
 
-        <div class="flex items-center gap-2">
-            @if ($this->canManageMembers)
-                <flux:button variant="subtle" size="sm" icon="users" :href="route('projects.members', $project)" wire:navigate>
-                    {{ __('Members') }}
-                </flux:button>
-            @endif
-
-            @can('manageScanners', $project)
-                <flux:button variant="subtle" size="sm" icon="qr-code" :href="route('projects.scanners', $project)" wire:navigate>
-                    {{ __('Scanners') }}
-                </flux:button>
-            @endcan
-
-            @can('view', $project)
-                <flux:button variant="subtle" size="sm" icon="cube" :href="route('projects.gear-summary', $project)" wire:navigate>
-                    {{ __('Gear') }}
-                </flux:button>
-            @endcan
-
-            @can('update', $project)
-                <flux:button variant="subtle" size="sm" icon="megaphone" :href="route('projects.announcements', $project)" wire:navigate>
-                    {{ __('Ankündigungen') }}
-                </flux:button>
-                <flux:button variant="subtle" size="sm" icon="globe-alt" :href="route('projects.website-editor', $project)" wire:navigate>
-                    {{ __('Website') }}
-                </flux:button>
-                <flux:button variant="subtle" size="sm" icon="information-circle" :href="route('projects.hint-texts', $project)" wire:navigate>
-                    {{ __('Hinweistexte') }}
-                </flux:button>
-            @endcan
-
-            @if ($this->canManage)
+        @if ($this->canManage)
+            <div class="flex items-center gap-2">
                 <flux:button variant="subtle" size="sm" icon="document-duplicate" wire:click="$set('showCloneModal', true)">
                     {{ __('Duplizieren') }}
                 </flux:button>
@@ -49,10 +19,11 @@
                         {{ __('Löschen') }}
                     </flux:button>
                 @endif
-            @endif
-        </div>
+            </div>
+        @endif
     </div>
 
+    <x-projects.layout :project="$project">
     {{-- Pending deletion warning --}}
     @if ($project->isPendingDeletion())
         <flux:callout variant="warning" class="mb-6">
@@ -238,6 +209,8 @@
             </div>
         @endif
     </div>
+
+    </x-projects.layout>
 
     {{-- Delete confirmation modal --}}
     <flux:modal wire:model="showDeleteModal" focusable class="max-w-lg">

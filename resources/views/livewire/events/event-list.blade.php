@@ -60,51 +60,51 @@
             @endif
         </div>
     @else
-        <div class="space-y-4">
+        <div class="flex flex-col gap-4">
             @foreach ($this->events as $event)
-                <a href="{{ route('events.show', $event) }}" wire:navigate wire:key="event-{{ $event->id }}"
-                   class="block rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 transition-all duration-200 hover:shadow-md
-                       {{ match($event->status) {
-                           \App\Enums\EventStatus::PublishedOpen => 'card-accent-emerald',
-                           \App\Enums\EventStatus::PublishedClosed => 'card-accent-amber',
-                           \App\Enums\EventStatus::Draft => 'card-accent-amber',
-                           \App\Enums\EventStatus::Archived => 'border-l-4 border-l-zinc-400',
-                       } }}">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="flex items-start gap-4">
+                <a href="{{ route('events.show', $event) }}" wire:navigate wire:key="event-{{ $event->id }}" aria-label="{{ $event->name }}">
+                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                        <div class="flex items-start gap-3">
+                            <span class="mt-1.5 size-2.5 shrink-0 rounded-full {{ match($event->status) {
+                                \App\Enums\EventStatus::PublishedOpen => 'bg-emerald-500',
+                                \App\Enums\EventStatus::PublishedClosed => 'bg-amber-500',
+                                \App\Enums\EventStatus::Draft => 'bg-amber-500',
+                                \App\Enums\EventStatus::Archived => 'bg-zinc-400',
+                            } }}"></span>
                             @if ($event->titleImageUrl())
                                 <img src="{{ $event->titleImageUrl() }}" alt="" class="size-14 shrink-0 rounded-lg object-cover" />
                             @endif
-                            <div>
-                                <flux:heading size="sm">{{ $event->name }}</flux:heading>
-                                <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-3">
+                                    <flux:heading size="sm" class="truncate">{{ $event->name }}</flux:heading>
+                                    <flux:badge size="sm" class="shrink-0" :color="match($event->status) {
+                                        \App\Enums\EventStatus::PublishedOpen => 'emerald',
+                                        \App\Enums\EventStatus::PublishedClosed => 'yellow',
+                                        \App\Enums\EventStatus::Draft => 'amber',
+                                        \App\Enums\EventStatus::Archived => 'zinc',
+                                    }">
+                                        {{ $event->status->label() }}
+                                    </flux:badge>
+                                </div>
+                                <div class="mt-1 flex flex-col gap-1 text-sm text-zinc-500 dark:text-zinc-400">
                                     <span class="inline-flex items-center gap-1">
-                                        <flux:icon name="calendar" variant="mini" class="size-4" />
+                                        <flux:icon name="calendar" variant="mini" class="size-4 shrink-0" />
                                         {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('g:i A') }}
                                     </span>
                                     @if ($event->location)
                                         <span class="inline-flex items-center gap-1">
-                                            <flux:icon name="map-pin" variant="mini" class="size-4" />
+                                            <flux:icon name="map-pin" variant="mini" class="size-4 shrink-0" />
                                             {{ $event->location }}
                                         </span>
                                     @endif
+                                    <span class="inline-flex items-center gap-1">
+                                        <flux:icon name="users" variant="mini" class="size-4 shrink-0" />
+                                        {{ $event->volunteer_count }} {{ __('volunteers') }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <flux:text size="sm">
-                                {{ $event->volunteer_count }} {{ __('volunteers') }}
-                            </flux:text>
-                            <flux:badge size="sm" :color="match($event->status) {
-                                \App\Enums\EventStatus::PublishedOpen => 'emerald',
-                                \App\Enums\EventStatus::PublishedClosed => 'yellow',
-                                \App\Enums\EventStatus::Draft => 'amber',
-                                \App\Enums\EventStatus::Archived => 'zinc',
-                            }">
-                                {{ $event->status->label() }}
-                            </flux:badge>
-                        </div>
-                    </div>
+                    </flux:card>
                 </a>
             @endforeach
         </div>

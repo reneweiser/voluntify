@@ -1,11 +1,13 @@
-<div class="mx-auto max-w-4xl p-6">
+<div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-3">
-            <flux:button variant="ghost" icon="arrow-left" :href="route('projects.show', $project)" wire:navigate aria-label="{{ __('Zurück zum Projekt') }}" />
-            <flux:heading size="xl">{{ __('Ankündigungen') }}</flux:heading>
+            <flux:button variant="ghost" icon="arrow-left" :href="route('projects.index')" wire:navigate aria-label="{{ __('Back to projects') }}" />
+            <flux:heading size="xl">{{ $project->name }}</flux:heading>
         </div>
         <flux:badge size="lg">{{ $this->recipientCount }} {{ __('Empfänger:innen') }}</flux:badge>
     </div>
+
+    <x-projects.layout :project="$project">
 
     {{-- Compose form --}}
     <flux:card class="mb-6">
@@ -93,6 +95,8 @@
             @endforeach
         </div>
     @endif
+
+    </x-projects.layout>
 
     {{-- Send confirmation modal --}}
     <flux:modal wire:model="showConfirmModal" focusable class="max-w-md">

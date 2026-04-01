@@ -47,42 +47,43 @@
             <flux:text class="mt-2">{{ __('Schau später noch einmal vorbei.') }}</flux:text>
         </div>
     @else
-        <div class="space-y-4">
+        <div class="flex flex-col gap-4">
             @foreach ($events as $event)
-                <a href="{{ route('events.public', $event->public_token) }}" wire:key="event-{{ $event->id }}"
-                   class="block rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 transition-all duration-200 hover:shadow-md card-accent-emerald">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="flex items-start gap-4">
+                <a href="{{ route('events.public', $event->public_token) }}" wire:key="event-{{ $event->id }}" aria-label="{{ $event->name }}">
+                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                        <div class="flex items-start gap-3">
+                            <span class="mt-1.5 size-2.5 shrink-0 rounded-full {{ $event->status === \App\Enums\EventStatus::PublishedOpen ? 'bg-emerald-500' : 'bg-zinc-400' }}"></span>
                             @if ($event->titleImageUrl())
                                 <img src="{{ $event->titleImageUrl() }}" alt="" class="size-14 shrink-0 rounded-lg object-cover" />
                             @endif
-                            <div>
-                                <flux:heading size="sm">{{ $event->name }}</flux:heading>
-                                <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-3">
+                                    <flux:heading size="sm" class="truncate">{{ $event->name }}</flux:heading>
+                                    @if ($event->status === \App\Enums\EventStatus::PublishedOpen)
+                                        <flux:badge size="sm" class="shrink-0" color="emerald">{{ __('Anmelden') }}</flux:badge>
+                                    @else
+                                        <flux:badge size="sm" class="shrink-0" color="zinc">{{ __('Registrierung geschlossen') }}</flux:badge>
+                                    @endif
+                                </div>
+                                <div class="mt-1 flex flex-col gap-1 text-sm text-zinc-500 dark:text-zinc-400">
                                     <span class="inline-flex items-center gap-1">
-                                        <flux:icon name="calendar" variant="mini" class="size-4" />
+                                        <flux:icon name="calendar" variant="mini" class="size-4 shrink-0" />
                                         {{ $event->starts_at->format('d.m.Y H:i') }} &mdash; {{ $event->ends_at->format('H:i') }}
                                     </span>
                                     @if ($event->location)
                                         <span class="inline-flex items-center gap-1">
-                                            <flux:icon name="map-pin" variant="mini" class="size-4" />
+                                            <flux:icon name="map-pin" variant="mini" class="size-4 shrink-0" />
                                             {{ $event->location }}
                                         </span>
                                     @endif
+                                    <span class="inline-flex items-center gap-1">
+                                        <flux:icon name="users" variant="mini" class="size-4 shrink-0" />
+                                        {{ $event->volunteer_count }} {{ __('Helfer:innen') }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <flux:text size="sm">
-                                {{ $event->volunteer_count }} {{ __('Helfer:innen') }}
-                            </flux:text>
-                            @if ($event->status === \App\Enums\EventStatus::PublishedOpen)
-                                <flux:badge size="sm" color="emerald">{{ __('Anmelden') }}</flux:badge>
-                            @else
-                                <flux:badge size="sm" color="zinc">{{ __('Registrierung geschlossen') }}</flux:badge>
-                            @endif
-                        </div>
-                    </div>
+                    </flux:card>
                 </a>
             @endforeach
         </div>

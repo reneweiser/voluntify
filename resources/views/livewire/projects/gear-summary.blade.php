@@ -1,8 +1,8 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-3">
-            <flux:button variant="ghost" icon="arrow-left" :href="route('projects.show', $project)" wire:navigate aria-label="{{ __('Zurück zum Projekt') }}" />
-            <flux:heading size="xl">{{ __('Gear-Übersicht') }}</flux:heading>
+            <flux:button variant="ghost" icon="arrow-left" :href="route('projects.index')" wire:navigate aria-label="{{ __('Back to projects') }}" />
+            <flux:heading size="xl">{{ $project->name }}</flux:heading>
         </div>
         @can('update', $project)
             <flux:button variant="subtle" icon="arrow-down-tray" wire:click="exportCsv">
@@ -11,20 +11,37 @@
         @endcan
     </div>
 
+    <x-projects.layout :project="$project">
+
     {{-- Stats cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
-            <flux:text size="sm">{{ __('Gesamt zugewiesen') }}</flux:text>
-            <flux:heading size="xl">{{ $this->totalAssigned }}</flux:heading>
-        </div>
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 card-accent-emerald card-gradient-emerald">
-            <flux:text size="sm">{{ __('Abgeholt') }}</flux:text>
-            <flux:heading size="xl">{{ $this->totalPickedUp }}</flux:heading>
-        </div>
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 card-accent-amber card-gradient-amber">
-            <flux:text size="sm">{{ __('Ausstehend') }}</flux:text>
-            <flux:heading size="xl">{{ $this->totalPending }}</flux:heading>
-        </div>
+        <flux:card size="sm">
+            <div class="flex items-center gap-3">
+                <span class="size-2.5 shrink-0 rounded-full bg-zinc-400"></span>
+                <div>
+                    <flux:text size="sm">{{ __('Gesamt zugewiesen') }}</flux:text>
+                    <flux:heading size="xl">{{ $this->totalAssigned }}</flux:heading>
+                </div>
+            </div>
+        </flux:card>
+        <flux:card size="sm">
+            <div class="flex items-center gap-3">
+                <span class="size-2.5 shrink-0 rounded-full bg-emerald-500"></span>
+                <div>
+                    <flux:text size="sm">{{ __('Abgeholt') }}</flux:text>
+                    <flux:heading size="xl">{{ $this->totalPickedUp }}</flux:heading>
+                </div>
+            </div>
+        </flux:card>
+        <flux:card size="sm">
+            <div class="flex items-center gap-3">
+                <span class="size-2.5 shrink-0 rounded-full bg-amber-500"></span>
+                <div>
+                    <flux:text size="sm">{{ __('Ausstehend') }}</flux:text>
+                    <flux:heading size="xl">{{ $this->totalPending }}</flux:heading>
+                </div>
+            </div>
+        </flux:card>
     </div>
 
     {{-- Per-item breakdown --}}
@@ -63,4 +80,5 @@
             @endforeach
         </div>
     @endif
+    </x-projects.layout>
 </div>

@@ -40,28 +40,27 @@
             @endif
         </div>
     @else
-        <div class="space-y-4">
+        <div class="flex flex-col gap-4">
             @foreach ($this->projects as $project)
-                <a href="{{ route('projects.show', $project) }}" wire:navigate wire:key="project-{{ $project->id }}"
-                   class="block rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 transition-all duration-200 hover:shadow-md card-accent-emerald">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="flex items-start gap-4">
+                <a href="{{ route('projects.show', $project) }}" wire:navigate wire:key="project-{{ $project->id }}" aria-label="{{ $project->name }}">
+                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                        <div class="flex items-start gap-3">
                             @if ($project->titleImageUrl())
                                 <img src="{{ $project->titleImageUrl() }}" alt="" class="size-14 shrink-0 rounded-lg object-cover" />
                             @endif
-                            <div>
-                                <flux:heading size="sm">{{ $project->name }}</flux:heading>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-3">
+                                    <flux:heading size="sm" class="truncate">{{ $project->name }}</flux:heading>
+                                    <flux:badge size="sm" class="shrink-0" color="zinc">
+                                        {{ $project->events_count }} {{ __('events') }}
+                                    </flux:badge>
+                                </div>
                                 @if ($project->description)
                                     <flux:text size="sm" class="mt-1 line-clamp-1">{{ $project->description }}</flux:text>
                                 @endif
                             </div>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <flux:badge size="sm" color="zinc">
-                                {{ $project->events_count }} {{ __('events') }}
-                            </flux:badge>
-                        </div>
-                    </div>
+                    </flux:card>
                 </a>
             @endforeach
         </div>

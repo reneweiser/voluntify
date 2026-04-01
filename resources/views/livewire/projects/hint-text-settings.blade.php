@@ -1,9 +1,10 @@
 <div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center gap-3 mb-6">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('projects.show', $project)" wire:navigate aria-label="{{ __('Back to project') }}" />
-        <flux:heading size="xl">{{ __('Hinweistexte') }} &mdash; {{ $project->name }}</flux:heading>
+        <flux:button variant="ghost" icon="arrow-left" :href="route('projects.index')" wire:navigate aria-label="{{ __('Back to projects') }}" />
+        <flux:heading size="xl">{{ $project->name }}</flux:heading>
     </div>
 
+    <x-projects.layout :project="$project">
     <flux:text class="mb-6 text-zinc-500 dark:text-zinc-400">
         {{ __('Konfiguriere Hilfetexte, die Freiwilligen an verschiedenen Stellen angezeigt werden.') }}
     </flux:text>
@@ -63,4 +64,5 @@
             </flux:card>
         @endforeach
     </div>
+    </x-projects.layout>
 </div>

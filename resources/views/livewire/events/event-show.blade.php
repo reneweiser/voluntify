@@ -17,10 +17,8 @@
         </div>
 
         @if ($this->canManage)
-            <div class="flex items-center gap-2">
-                <flux:button variant="subtle" icon="cog-6-tooth" :href="route('events.settings', $event)" wire:navigate>
-                    {{ __('Settings') }}
-                </flux:button>
+            {{-- Expanded buttons (lg and up) --}}
+            <div class="hidden xl:flex items-center gap-2">
                 <flux:button variant="subtle" icon="document-duplicate" wire:click="openCloneModal">
                     {{ __('Clone') }}
                 </flux:button>
@@ -63,6 +61,58 @@
                         {{ __('Löschen') }}
                     </flux:button>
                 @endif
+            </div>
+
+            {{-- Collapsed dropdown (below lg) --}}
+            <div class="xl:hidden">
+                <flux:dropdown position="bottom" align="end">
+                    <flux:button variant="ghost" icon="ellipsis-vertical" aria-label="{{ __('Actions') }}" />
+                    <flux:menu>
+                        <flux:menu.item icon="document-duplicate" wire:click="openCloneModal">
+                            {{ __('Clone') }}
+                        </flux:menu.item>
+                        @if ($event->isPendingDeletion())
+                            <flux:menu.item icon="arrow-uturn-left" wire:click="restoreEvent">
+                                {{ __('Wiederherstellen') }}
+                            </flux:menu.item>
+                        @elseif ($event->status === \App\Enums\EventStatus::Draft)
+                            @if ($event->was_previously_published)
+                                <flux:menu.item icon="arrow-path" wire:click="publishEvent">
+                                    {{ __('Erneut veröffentlichen') }}
+                                </flux:menu.item>
+                            @else
+                                <flux:menu.item icon="globe-alt" wire:click="publishEvent" wire:confirm="{{ __('Publish this event? It will become publicly accessible.') }}">
+                                    {{ __('Publish') }}
+                                </flux:menu.item>
+                            @endif
+                            <flux:menu.separator />
+                            <flux:menu.item variant="danger" icon="trash" wire:click="$set('showDeleteModal', true)">
+                                {{ __('Löschen') }}
+                            </flux:menu.item>
+                        @elseif ($event->status === \App\Enums\EventStatus::PublishedOpen)
+                            <flux:menu.item icon="lock-closed" wire:click="closeRegistration" wire:confirm="{{ __('Close registration? Volunteers will no longer be able to sign up, but the event page remains visible.') }}">
+                                {{ __('Close Registration') }}
+                            </flux:menu.item>
+                            <flux:menu.item icon="pencil-square" wire:click="revertToDraft" wire:confirm="{{ __('Zurück zu Entwurf? Das Event wird nicht mehr öffentlich sichtbar sein.') }}">
+                                {{ __('Zurück zu Entwurf') }}
+                            </flux:menu.item>
+                            <flux:menu.item icon="archive-box" wire:click="archiveEvent" wire:confirm="{{ __('Archive this event? It will be removed from public view.') }}">
+                                {{ __('Archive') }}
+                            </flux:menu.item>
+                        @elseif ($event->status === \App\Enums\EventStatus::PublishedClosed)
+                            <flux:menu.item icon="pencil-square" wire:click="revertToDraft" wire:confirm="{{ __('Zurück zu Entwurf? Das Event wird nicht mehr öffentlich sichtbar sein.') }}">
+                                {{ __('Zurück zu Entwurf') }}
+                            </flux:menu.item>
+                            <flux:menu.item icon="archive-box" wire:click="archiveEvent" wire:confirm="{{ __('Archive this event? It will be removed from public view.') }}">
+                                {{ __('Archive') }}
+                            </flux:menu.item>
+                        @elseif ($event->status === \App\Enums\EventStatus::Archived)
+                            <flux:menu.item variant="danger" icon="trash" wire:click="$set('showDeleteModal', true)">
+                                {{ __('Löschen') }}
+                            </flux:menu.item>
+                        @endif
+                    </flux:menu>
+                </flux:dropdown>
             </div>
         @endif
     </div>
@@ -110,8 +160,9 @@
 
         {{-- Metric cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 card-accent-emerald card-gradient-emerald">
+            <flux:card size="sm">
                 <div class="flex items-center gap-3">
+                    <span class="size-2.5 shrink-0 rounded-full bg-emerald-500"></span>
                     <div class="flex size-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
                         <flux:icon name="user-group" variant="mini" class="size-5" />
                     </div>
@@ -120,9 +171,10 @@
                         <flux:heading size="xl">{{ $this->volunteerCount }}</flux:heading>
                     </div>
                 </div>
-            </div>
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 card-accent-amber card-gradient-amber">
+            </flux:card>
+            <flux:card size="sm">
                 <div class="flex items-center gap-3">
+                    <span class="size-2.5 shrink-0 rounded-full bg-amber-500"></span>
                     <div class="flex size-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
                         <flux:icon name="briefcase" variant="mini" class="size-5" />
                     </div>
@@ -131,9 +183,10 @@
                         <flux:heading size="xl">{{ $this->jobCount }}</flux:heading>
                     </div>
                 </div>
-            </div>
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 card-accent-sky card-gradient-sky">
+            </flux:card>
+            <flux:card size="sm">
                 <div class="flex items-center gap-3">
+                    <span class="size-2.5 shrink-0 rounded-full bg-sky-500"></span>
                     <div class="flex size-9 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400">
                         <flux:icon name="clock" variant="mini" class="size-5" />
                     </div>
@@ -142,7 +195,7 @@
                         <flux:heading size="xl">{{ $this->shiftCount }}</flux:heading>
                     </div>
                 </div>
-            </div>
+            </flux:card>
         </div>
 
         {{-- Title image --}}

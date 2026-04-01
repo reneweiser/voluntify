@@ -1,8 +1,8 @@
-<div class="mx-auto max-w-4xl p-6">
+<div class="mx-auto max-w-7xl p-6">
     <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-3">
-            <flux:button variant="ghost" icon="arrow-left" :href="route('projects.show', $project)" wire:navigate aria-label="{{ __('Back to project') }}" />
-            <flux:heading size="xl">{{ __('Projekt-Website') }}</flux:heading>
+            <flux:button variant="ghost" icon="arrow-left" :href="route('projects.index')" wire:navigate aria-label="{{ __('Back to projects') }}" />
+            <flux:heading size="xl">{{ $project->name }}</flux:heading>
         </div>
         <div class="flex items-center gap-3">
             @if ($websitePublished)
@@ -12,6 +12,8 @@
             @endif
         </div>
     </div>
+
+    <x-projects.layout :project="$project">
 
     {{-- Public URL --}}
     @if ($websitePublished)
@@ -100,4 +102,5 @@
             </div>
         </div>
     @endif
+    </x-projects.layout>
 </div>
