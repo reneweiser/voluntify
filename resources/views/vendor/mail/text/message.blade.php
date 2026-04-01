@@ -23,6 +23,7 @@
         <x-mail::footer>
             © {{ date('Y') }} {{ config('app.name') }}. @lang('All rights reserved.')
 {{ __('Volunteer management made simple.') }}
+{{ __('Built by') }} René Weiser (https://reneweiser.de)
         </x-mail::footer>
     </x-slot:footer>
 </x-mail::layout>

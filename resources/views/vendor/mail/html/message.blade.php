@@ -22,7 +22,8 @@
 <x-slot:footer>
 <x-mail::footer>
 © {{ date('Y') }} {{ config('app.name') }}. {{ __('All rights reserved.') }}<br>
-<span style="font-size: 11px;">{{ __('Volunteer management made simple.') }}</span>
+<span style="font-size: 11px;">{{ __('Volunteer management made simple.') }}</span><br>
+<span style="font-size: 11px;">{{ __('Built by') }} <a href="https://reneweiser.de">René Weiser</a></span>
 </x-mail::footer>
 </x-slot:footer>
 </x-mail::layout>

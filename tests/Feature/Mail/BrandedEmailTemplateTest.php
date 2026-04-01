@@ -44,7 +44,10 @@ it('includes the branded tagline in footer', function () {
     $notification = new SignupConfirmation($this->event, [$this->shift->id], 'test-token');
     $html = renderNotificationHtml($this->volunteer, $notification);
 
-    expect($html)->toContain('Volunteer management made simple.');
+    expect($html)
+        ->toContain('Volunteer management made simple.')
+        ->toContain('reneweiser.de')
+        ->toContain('René Weiser');
 });
 
 it('includes Voluntify in the header', function () {
