@@ -1,4 +1,4 @@
-import { getOutboxEntries, clearOutbox } from './idb-store';
+import { getOutboxEntries, deleteOutboxEntries } from './idb-store';
 
 function getHeaders(scannerToken: string): Record<string, string> {
     return {
@@ -8,18 +8,22 @@ function getHeaders(scannerToken: string): Record<string, string> {
     };
 }
 
-export async function syncOutbox(scannerId: number, syncUrl: string, scannerToken: string): Promise<void> {
+export async function syncOutbox(
+    scannerId: number,
+    syncUrl: string,
+    scannerToken: string,
+    guestSyncUrl?: string,
+): Promise<void> {
     const entries = await getOutboxEntries(scannerId);
 
     if (entries.length === 0) {
         return;
     }
 
-    const arrivals = entries.filter((e) => !e.type || e.type === 'arrival');
-
     const headers = getHeaders(scannerToken);
-    let allSynced = true;
 
+    // Sync arrivals
+    const arrivals = entries.filter((e) => !e.type || e.type === 'arrival');
     if (arrivals.length > 0) {
         try {
             const response = await fetch(syncUrl, {
@@ -35,15 +39,34 @@ export async function syncOutbox(scannerId: number, syncUrl: string, scannerToke
                 }),
             });
 
-            if (!response.ok) {
-                allSynced = false;
+            if (response.ok) {
+                await deleteOutboxEntries(arrivals.map((e) => e.localId));
             }
         } catch {
-            allSynced = false;
+            // Network error — will retry next sync
         }
     }
 
-    if (allSynced) {
-        await clearOutbox(scannerId);
+    // Sync guest check-ins
+    const guestCheckins = entries.filter((e) => e.type === 'guest_checkin');
+    if (guestCheckins.length > 0 && guestSyncUrl) {
+        try {
+            const response = await fetch(guestSyncUrl, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    guest_checkins: guestCheckins.map((e) => ({
+                        guest_entry_id: e.guest_entry_id,
+                        checked_in_at: e.scanned_at,
+                    })),
+                }),
+            });
+
+            if (response.ok) {
+                await deleteOutboxEntries(guestCheckins.map((e) => e.localId));
+            }
+        } catch {
+            // Network error — will retry next sync
+        }
     }
 }

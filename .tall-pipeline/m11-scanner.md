@@ -98,7 +98,20 @@
 
 ## Cross-Milestone Interface
 
-*(to be completed when milestone ships)*
+| Category | Items |
+|---|---|
+| Models | `ProjectScanner` (id, project_id, event_id?, name, type, modes, auth_code, scanner_token, starts_at, ends_at); `ProjectScannerAssignee` (id, project_scanner_id, email, link_sent_at, authenticated_at) |
+| Enums | `ScannerType` (EntryStaff, VolunteerAdmin); `ScannerMode` (Checkin, GearPickup) |
+| Actions | `CreateProjectScanner::execute(Project, array): ProjectScanner`; `UpdateProjectScanner::execute(ProjectScanner, array): ProjectScanner`; `DeleteProjectScanner::execute(ProjectScanner): void`; `SendScannerLinks::execute(ProjectScanner): void`; `AuthenticateScanner::execute(ProjectScanner, string): bool` |
+| Jobs | `SendScannerLinksJob` (queued, per-assignee, sends ScannerLinkMail) |
+| Middleware | `scanner-auth` (session-based, web routes); `scanner-api` (X-Scanner-Token header, API routes) |
+| Routes (public) | `scanner.auth` → `GET /s/{scannerToken}` (ScannerAuth); `scanner.app` → `GET /s/{scannerToken}/scan` (ScannerApp, scanner-auth middleware) |
+| Routes (API) | `scanner-api.data` → `GET /api/scanner/{scannerId}/data`; `scanner-api.sync` → `POST .../sync`; `scanner-api.gear-pickup` → `POST .../gear-pickup` (all scanner-api middleware) |
+| Routes (admin) | `projects.scanners` → `GET /projects/{projectId}/scanners` (ScannerManagement) |
+| Livewire | `ScannerAuth` (public auth page, 6-digit PIN); `ScannerApp` (scanner UI, both types); `Projects\ScannerManagement` (admin CRUD) |
+| Controller | `ScannerDataController` (data, sync, gearPickup endpoints) |
+| Policy | `ProjectPolicy::manageScanners()` — Organizer only |
+| Key patterns | Scanner token = 64-byte hex; auth code = bcrypt-hashed 6-digit PIN; session-based web auth; header-based API auth; time window enforcement via `isActive()`/`isExpired()` |
 
 ## Decisions
 

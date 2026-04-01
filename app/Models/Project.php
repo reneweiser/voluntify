@@ -83,4 +83,9 @@ class Project extends Model
     {
         return $this->hasMany(ProjectScanner::class);
     }
+
+    public function guestLists(): HasMany
+    {
+        return $this->hasMany(GuestList::class);
+    }
 }

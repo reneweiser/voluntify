@@ -75,9 +75,33 @@ export interface ScannerKeys {
     previous: string;
 }
 
+export interface GuestEntryGearItem {
+    id: number;
+    gear_item_name: string;
+    gear_item_type: 'size_selection' | 'quantity';
+    available_sizes?: string[] | null;
+    available_states?: string[] | null;
+    quantity: number;
+    picked_up_count: number;
+    selection: string | null;
+    status: string | null;
+}
+
+export interface GuestEntry {
+    id: number;
+    guest_group_id: number;
+    group_label: string;
+    group_guest_count: number;
+    number: number;
+    name: string | null;
+    qr_token?: string | null;
+    checked_in_at: string | null;
+    gear: GuestEntryGearItem[];
+}
+
 export interface OutboxEntry {
     id?: number;
-    type: 'arrival' | 'attendance';
+    type: 'arrival' | 'attendance' | 'guest_checkin';
     ticket_id?: number;
     volunteer_id?: number;
     event_id?: number;
@@ -85,5 +109,6 @@ export interface OutboxEntry {
     scanned_at: string;
     shift_signup_id?: number;
     status?: 'on_time' | 'late' | 'no_show';
+    guest_entry_id?: number;
 }
 

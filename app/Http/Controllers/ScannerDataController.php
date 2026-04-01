@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CheckInGuest;
 use App\Actions\RecordArrival;
 use App\Actions\RecordGearPickup;
+use App\Actions\RecordGuestGearPickup;
 use App\Enums\ArrivalMethod;
 use App\Enums\ScannerType;
+use App\Exceptions\DomainException;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\EventArrival;
+use App\Models\GuestEntry;
+use App\Models\GuestEntryGear;
 use App\Models\ProjectScanner;
 use App\Models\Ticket;
 use App\Models\Volunteer;
@@ -62,6 +67,8 @@ class ScannerDataController extends Controller
         $shiftSignupIds = $volunteers->flatMap(fn ($v) => $v->shiftSignups->pluck('id'));
         $attendanceRecords = AttendanceRecord::whereIn('shift_signup_id', $shiftSignupIds)->get();
 
+        $guestEntries = $this->loadGuestEntries($scanner);
+
         return response()->json([
             'scanner' => [
                 'id' => $scanner->id,
@@ -101,6 +108,7 @@ class ScannerDataController extends Controller
             'arrivals' => $arrivals,
             'attendance_records' => $attendanceRecords,
             'keys' => $jwtKeyService->publicKeys($projectId),
+            'guest_entries' => $guestEntries,
         ]);
     }
 
@@ -191,5 +199,186 @@ class ScannerDataController extends Controller
             'success' => true,
             'pickup' => $pickup,
         ]);
+    }
+
+    public function guestCheckin(
+        int $scannerId,
+        Request $request,
+        CheckInGuest $checkInGuest,
+    ): JsonResponse {
+        /** @var ProjectScanner $scanner */
+        $scanner = $request->attributes->get('scanner');
+
+        if ($scanner->id !== $scannerId) {
+            return response()->json(['error' => 'Scanner ID mismatch.'], 403);
+        }
+
+        if ($scanner->type !== ScannerType::EntryStaff) {
+            return response()->json(['error' => 'Only entry staff scanners can check in guests.'], 403);
+        }
+
+        $request->validate([
+            'guest_entry_id' => ['required', 'integer'],
+        ]);
+
+        $entry = GuestEntry::whereHas('group.guestList', function ($q) use ($scanner) {
+            $q->confirmed()->where('scanner_id', $scanner->id);
+        })->findOrFail($request->integer('guest_entry_id'));
+
+        try {
+            $result = $checkInGuest->execute($entry);
+
+            return response()->json([
+                'success' => true,
+                'guest_entry' => $result,
+                'already_checked_in' => false,
+            ]);
+        } catch (DomainException) {
+            return response()->json([
+                'success' => true,
+                'guest_entry' => $entry->fresh(),
+                'already_checked_in' => true,
+            ]);
+        }
+    }
+
+    public function guestGearPickup(
+        int $scannerId,
+        Request $request,
+        RecordGuestGearPickup $recordGuestGearPickup,
+    ): JsonResponse {
+        /** @var ProjectScanner $scanner */
+        $scanner = $request->attributes->get('scanner');
+
+        if ($scanner->id !== $scannerId) {
+            return response()->json(['error' => 'Scanner ID mismatch.'], 403);
+        }
+
+        if ($scanner->type !== ScannerType::VolunteerAdmin) {
+            return response()->json(['error' => 'Only volunteer admin scanners can record guest gear pickups.'], 403);
+        }
+
+        $request->validate([
+            'guest_entry_gear_id' => ['required', 'integer'],
+            'selection' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'string', 'max:255'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $gear = GuestEntryGear::whereHas('entry.group.guestList', function ($q) use ($scanner) {
+            $q->confirmed()->where('project_id', $scanner->project_id);
+        })->findOrFail($request->integer('guest_entry_gear_id'));
+
+        $result = $recordGuestGearPickup->execute($gear, $request->only(['selection', 'status', 'quantity']));
+
+        return response()->json([
+            'success' => true,
+            'guest_entry_gear' => $result,
+        ]);
+    }
+
+    public function guestSync(
+        int $scannerId,
+        Request $request,
+        CheckInGuest $checkInGuest,
+    ): JsonResponse {
+        /** @var ProjectScanner $scanner */
+        $scanner = $request->attributes->get('scanner');
+
+        if ($scanner->id !== $scannerId) {
+            return response()->json(['error' => 'Scanner ID mismatch.'], 403);
+        }
+
+        if ($scanner->type !== ScannerType::EntryStaff) {
+            return response()->json(['error' => 'Only entry staff scanners can sync guest check-ins.'], 403);
+        }
+
+        $validated = $request->validate([
+            'guest_checkins' => ['present', 'array'],
+            'guest_checkins.*.guest_entry_id' => ['required', 'integer'],
+            'guest_checkins.*.checked_in_at' => ['required', 'date'],
+        ]);
+
+        foreach ($validated['guest_checkins'] as $checkinData) {
+            $entry = GuestEntry::whereHas('group.guestList', function ($q) use ($scanner) {
+                $q->confirmed()->where('scanner_id', $scanner->id);
+            })->find($checkinData['guest_entry_id']);
+
+            if ($entry && ! $entry->isCheckedIn()) {
+                $entry->update([
+                    'checked_in_at' => Carbon::parse($checkinData['checked_in_at']),
+                ]);
+            }
+        }
+
+        $guestEntries = $this->loadGuestEntries($scanner);
+
+        return response()->json([
+            'guest_entries' => $guestEntries,
+        ]);
+    }
+
+    /**
+     * Load guest entries for the scanner data payload.
+     * Entry Staff: entries from confirmed lists linked to this scanner (includes qr_token).
+     * Volunteer Admin: entries with gear from all confirmed lists in the project (excludes qr_token).
+     */
+    private function loadGuestEntries(ProjectScanner $scanner): array
+    {
+        if ($scanner->type === ScannerType::EntryStaff) {
+            $entries = GuestEntry::whereHas('group.guestList', function ($q) use ($scanner) {
+                $q->confirmed()->where('scanner_id', $scanner->id);
+            })->with(['group', 'gear.gearItem'])->get();
+
+            return $entries->map(fn (GuestEntry $e) => [
+                'id' => $e->id,
+                'guest_group_id' => $e->guest_group_id,
+                'group_label' => $e->group->label,
+                'group_guest_count' => $e->group->guest_count,
+                'number' => $e->number,
+                'name' => $e->name,
+                'qr_token' => $e->qr_token,
+                'checked_in_at' => $e->checked_in_at,
+                'gear' => $e->gear->map(fn ($g) => [
+                    'id' => $g->id,
+                    'gear_item_name' => $g->gearItem->name,
+                    'gear_item_type' => $g->gearItem->type->value,
+                    'quantity' => $g->quantity,
+                    'picked_up_count' => $g->picked_up_count,
+                    'selection' => $g->selection,
+                    'status' => $g->status,
+                ]),
+            ])->all();
+        }
+
+        if ($scanner->type === ScannerType::VolunteerAdmin) {
+            $entries = GuestEntry::whereHas('gear')
+                ->whereHas('group.guestList', function ($q) use ($scanner) {
+                    $q->confirmed()->where('project_id', $scanner->project_id);
+                })->with(['group', 'gear.gearItem'])->get();
+
+            return $entries->map(fn (GuestEntry $e) => [
+                'id' => $e->id,
+                'guest_group_id' => $e->guest_group_id,
+                'group_label' => $e->group->label,
+                'group_guest_count' => $e->group->guest_count,
+                'number' => $e->number,
+                'name' => $e->name,
+                'checked_in_at' => $e->checked_in_at,
+                'gear' => $e->gear->map(fn ($g) => [
+                    'id' => $g->id,
+                    'gear_item_name' => $g->gearItem->name,
+                    'gear_item_type' => $g->gearItem->type->value,
+                    'available_sizes' => $g->gearItem->available_sizes,
+                    'available_states' => $g->gearItem->available_states,
+                    'quantity' => $g->quantity,
+                    'picked_up_count' => $g->picked_up_count,
+                    'selection' => $g->selection,
+                    'status' => $g->status,
+                ]),
+            ])->all();
+        }
+
+        return [];
     }
 }

@@ -1,7 +1,7 @@
-import type { Volunteer, ScannerKeys, OutboxEntry, AttendanceRecord } from './types';
+import type { Volunteer, ScannerKeys, OutboxEntry, AttendanceRecord, GuestEntry } from './types';
 
 const DB_NAME = 'voluntify-scanner';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbInstance: IDBDatabase | null = null;
 
@@ -14,25 +14,34 @@ export function openScannerDb(): Promise<IDBDatabase> {
 
         const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-        request.onupgradeneeded = () => {
+        request.onupgradeneeded = (event) => {
             const db = request.result;
+            const oldVersion = (event as IDBVersionChangeEvent).oldVersion;
 
-            // Drop old v2 stores on upgrade from v2 → v3
-            for (const name of Array.from(db.objectStoreNames)) {
-                db.deleteObjectStore(name);
+            if (oldVersion < 3) {
+                // Full rebuild for versions before 3
+                for (const name of Array.from(db.objectStoreNames)) {
+                    db.deleteObjectStore(name);
+                }
+
+                const volStore = db.createObjectStore('volunteers', { keyPath: ['scannerId', 'id'] });
+                volStore.createIndex('byScanner', 'scannerId', { unique: false });
+
+                const outboxStore = db.createObjectStore('outbox', { keyPath: 'localId', autoIncrement: true });
+                outboxStore.createIndex('byScanner', 'scannerId', { unique: false });
+
+                db.createObjectStore('keys', { keyPath: 'scannerId' });
+
+                const attStore = db.createObjectStore('attendance', { keyPath: ['scannerId', 'id'] });
+                attStore.createIndex('byScanner', 'scannerId', { unique: false });
             }
 
-            // Recreate with scannerId-based keys
-            const volStore = db.createObjectStore('volunteers', { keyPath: ['scannerId', 'id'] });
-            volStore.createIndex('byScanner', 'scannerId', { unique: false });
-
-            const outboxStore = db.createObjectStore('outbox', { keyPath: 'localId', autoIncrement: true });
-            outboxStore.createIndex('byScanner', 'scannerId', { unique: false });
-
-            db.createObjectStore('keys', { keyPath: 'scannerId' });
-
-            const attStore = db.createObjectStore('attendance', { keyPath: ['scannerId', 'id'] });
-            attStore.createIndex('byScanner', 'scannerId', { unique: false });
+            if (oldVersion < 4) {
+                if (!db.objectStoreNames.contains('guest_entries')) {
+                    const guestStore = db.createObjectStore('guest_entries', { keyPath: ['scannerId', 'id'] });
+                    guestStore.createIndex('byScanner', 'scannerId', { unique: false });
+                }
+            }
         };
 
         request.onsuccess = () => {
@@ -110,7 +119,7 @@ export async function addOutboxEntry(scannerId: number, entry: OutboxEntry): Pro
     await reqToPromise(store.add({ ...entry, scannerId }));
 }
 
-export async function getOutboxEntries(scannerId: number): Promise<OutboxEntry[]> {
+export async function getOutboxEntries(scannerId: number): Promise<(OutboxEntry & { localId: number })[]> {
     const store = await tx('outbox', 'readonly');
     const index = store.index('byScanner');
     return reqToPromise(index.getAll(scannerId));
@@ -142,6 +151,42 @@ export async function storeAttendanceRecords(scannerId: number, records: Attenda
 
     for (const r of records) {
         store.put({ ...r, scannerId });
+    }
+}
+
+export async function storeGuestEntries(scannerId: number, entries: GuestEntry[]): Promise<void> {
+    const store = await tx('guest_entries', 'readwrite');
+    const index = store.index('byScanner');
+    const existingKeys = await reqToPromise(index.getAllKeys(scannerId));
+    for (const key of existingKeys) {
+        store.delete(key);
+    }
+    for (const entry of entries) {
+        store.put({ ...entry, scannerId });
+    }
+}
+
+export async function getGuestEntries(scannerId: number): Promise<GuestEntry[]> {
+    const store = await tx('guest_entries', 'readonly');
+    const index = store.index('byScanner');
+    const results = await reqToPromise(index.getAll(scannerId));
+    return results.map(({ scannerId: _, ...entry }) => entry as GuestEntry);
+}
+
+export async function searchGuestEntries(scannerId: number, query: string): Promise<GuestEntry[]> {
+    const entries = await getGuestEntries(scannerId);
+    const lowerQuery = query.toLowerCase();
+    return entries.filter(
+        (e) =>
+            (e.name && e.name.toLowerCase().includes(lowerQuery)) ||
+            e.group_label.toLowerCase().includes(lowerQuery)
+    );
+}
+
+export async function deleteOutboxEntries(localIds: number[]): Promise<void> {
+    const store = await tx('outbox', 'readwrite');
+    for (const id of localIds) {
+        store.delete(id);
     }
 }
 
