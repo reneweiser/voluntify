@@ -1,29 +1,23 @@
 import { getOutboxEntries, clearOutbox } from './idb-store';
 
-function getHeaders(): Record<string, string> {
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers: Record<string, string> = {
+function getHeaders(scannerToken: string): Record<string, string> {
+    return {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
+        'X-Scanner-Token': scannerToken,
     };
-    if (csrfMeta) {
-        headers['X-CSRF-TOKEN'] = csrfMeta.getAttribute('content') ?? '';
-    }
-    return headers;
 }
 
-export async function syncOutbox(eventId: number, syncUrl: string, attendanceSyncUrl?: string): Promise<void> {
-    const entries = await getOutboxEntries(eventId);
+export async function syncOutbox(scannerId: number, syncUrl: string, scannerToken: string): Promise<void> {
+    const entries = await getOutboxEntries(scannerId);
 
     if (entries.length === 0) {
         return;
     }
 
     const arrivals = entries.filter((e) => !e.type || e.type === 'arrival');
-    const attendance = entries.filter((e) => e.type === 'attendance');
 
-    const headers = getHeaders();
+    const headers = getHeaders(scannerToken);
     let allSynced = true;
 
     if (arrivals.length > 0) {
@@ -31,10 +25,10 @@ export async function syncOutbox(eventId: number, syncUrl: string, attendanceSyn
             const response = await fetch(syncUrl, {
                 method: 'POST',
                 headers,
-                credentials: 'same-origin',
                 body: JSON.stringify({
                     arrivals: arrivals.map((e) => ({
                         ticket_id: e.ticket_id,
+                        event_id: e.event_id,
                         method: e.method,
                         scanned_at: e.scanned_at,
                     })),
@@ -49,30 +43,7 @@ export async function syncOutbox(eventId: number, syncUrl: string, attendanceSyn
         }
     }
 
-    if (attendance.length > 0 && attendanceSyncUrl) {
-        try {
-            const response = await fetch(attendanceSyncUrl, {
-                method: 'POST',
-                headers,
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    attendance: attendance.map((e) => ({
-                        shift_signup_id: e.shift_signup_id,
-                        status: e.status,
-                        scanned_at: e.scanned_at,
-                    })),
-                }),
-            });
-
-            if (!response.ok) {
-                allSynced = false;
-            }
-        } catch {
-            allSynced = false;
-        }
-    }
-
     if (allSynced) {
-        await clearOutbox(eventId);
+        await clearOutbox(scannerId);
     }
 }

@@ -2,6 +2,8 @@
 
 use App\Http\Middleware\RequirePasswordChange;
 use App\Http\Middleware\ResolveOrganization;
+use App\Http\Middleware\ScannerApiMiddleware;
+use App\Http\Middleware\ScannerAuthMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'resolve-org' => ResolveOrganization::class,
+            'scanner-auth' => ScannerAuthMiddleware::class,
+            'scanner-api' => ScannerApiMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

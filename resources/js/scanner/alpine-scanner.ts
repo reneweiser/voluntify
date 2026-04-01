@@ -1,14 +1,13 @@
 /**
- * Alpine.js scannerApp component.
+ * Alpine.js scannerApp component — M11 rewrite.
  *
- * Wires together: camera → JWT validation → IndexedDB lookup → result display → confirm → outbox → sync.
+ * Wires together: camera -> JWT validation -> IndexedDB lookup -> result display -> confirm -> outbox -> sync.
  *
- * State machine: idle → loading → scanning → result (new/duplicate/invalid) → confirmed
+ * State machine: idle -> loading -> scanning -> result (new/duplicate/invalid) -> confirmed
  *
- * Role-based post-scan behavior:
- * - entrance_staff: arrival confirmation only
- * - volunteer_admin: shift attendance panel
- * - organizer: both arrival + attendance
+ * Type-based post-scan behavior:
+ * - entry_staff: arrival confirmation only
+ * - volunteer_admin: shift attendance + gear pickup (gear is online-only)
  */
 import { startCamera, stopCamera } from './camera';
 import {
@@ -24,11 +23,9 @@ import {
 import { validateJwt } from './jwt-validator';
 import { classifyShifts, type ClassifiedShift } from './shift-context';
 import { syncOutbox } from './sync';
-import type { Volunteer, ArrivalRecord, AttendanceRecord } from './types';
+import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear } from './types';
 
 type ScannerState = 'idle' | 'loading' | 'scanning' | 'result' | 'duplicate' | 'invalid' | 'confirmed';
-
-type UserRole = 'organizer' | 'entrance_staff' | 'volunteer_admin' | null;
 
 interface ScannerResult {
     name: string;
@@ -39,41 +36,56 @@ interface ScannerResult {
     shiftSignups: { id: number; shiftId: number; startsAt: string }[];
 }
 
-export function scannerApp(config: { eventId: number }) {
+interface ScannerAppConfig {
+    scannerId: number;
+    scannerType: 'entry_staff' | 'volunteer_admin';
+    modes: string[];
+    scannerToken: string;
+    dataUrl: string;
+    syncUrl: string;
+    gearPickupUrl: string;
+}
+
+export function scannerApp(config: ScannerAppConfig) {
     return {
         state: 'idle' as ScannerState,
         result: null as ScannerResult | null,
+        resultMessage: '' as string,
         errorMessage: '' as string,
         isOnline: navigator.onLine,
         outboxCount: 0,
+        selectedVolunteer: null as Volunteer | null,
+        scannerType: config.scannerType,
 
         // Internal state
-        _eventId: config.eventId,
+        _scannerId: config.scannerId,
+        _scannerToken: config.scannerToken,
         _volunteers: [] as Volunteer[],
         _arrivals: [] as ArrivalRecord[],
         _attendanceRecords: [] as AttendanceRecord[],
-        _userRole: null as UserRole,
+        _gearItems: [] as GearItem[],
+        _volunteerGear: {} as Record<number, VolunteerGear[]>,
         _graceMinutes: null as number | null,
-        _syncUrl: '',
-        _attendanceSyncUrl: '',
-        _dataUrl: '',
+        _eventIds: [] as number[],
+        _syncUrl: config.syncUrl,
+        _dataUrl: config.dataUrl,
+        _gearPickupUrl: config.gearPickupUrl,
         _processing: false,
 
         get canConfirmArrival(): boolean {
-            return this._userRole === 'organizer' || this._userRole === 'entrance_staff';
+            return config.scannerType === 'entry_staff' || config.modes.includes('checkin');
+        },
+
+        get canPickupGear(): boolean {
+            return config.modes.includes('gear_pickup');
         },
 
         get canMarkAttendance(): boolean {
-            return this._userRole === 'organizer' || this._userRole === 'volunteer_admin';
+            return config.scannerType === 'volunteer_admin';
         },
 
         async init() {
             await openScannerDb();
-
-            // Compute API URLs
-            this._dataUrl = `/admin/scanner/api/events/${this._eventId}/data`;
-            this._syncUrl = `/admin/scanner/api/events/${this._eventId}/sync`;
-            this._attendanceSyncUrl = `/admin/scanner/api/events/${this._eventId}/attendance-sync`;
 
             // Online/offline listeners
             window.addEventListener('online', () => {
@@ -86,15 +98,13 @@ export function scannerApp(config: { eventId: number }) {
 
             // Load data
             this.state = 'loading';
-            await this._loadEventData();
+            await this._loadScannerData();
 
             // Start camera
-            const video = (this as unknown as { $refs: Record<string, HTMLVideoElement | HTMLCanvasElement> }).$refs
-                .video as HTMLVideoElement;
-            const canvas = (this as unknown as { $refs: Record<string, HTMLVideoElement | HTMLCanvasElement> }).$refs
-                .canvas as HTMLCanvasElement;
+            const video = document.getElementById('scanner-video') as HTMLVideoElement | null;
+            const canvas = document.createElement('canvas');
 
-            if (video && canvas) {
+            if (video) {
                 await startCamera(video, canvas, (data: string) => this._onQrDetected(data), (error: Error) => {
                     this.state = 'invalid';
                     this.errorMessage = `Camera error: ${error.message}`;
@@ -103,32 +113,30 @@ export function scannerApp(config: { eventId: number }) {
             }
         },
 
-        async _loadEventData() {
+        async _loadScannerData() {
             if (this.isOnline) {
                 try {
-                    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
                     const headers: Record<string, string> = {
                         Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-Scanner-Token': this._scannerToken,
                     };
-                    if (csrfMeta) {
-                        headers['X-CSRF-TOKEN'] = csrfMeta.getAttribute('content') ?? '';
-                    }
 
-                    const response = await fetch(this._dataUrl, { headers, credentials: 'same-origin' });
+                    const response = await fetch(this._dataUrl, { headers });
                     if (response.ok) {
                         const data = await response.json();
                         this._volunteers = data.volunteers;
                         this._arrivals = data.arrivals;
                         this._attendanceRecords = data.attendance_records ?? [];
-                        this._userRole = data.user_role ?? null;
-                        this._graceMinutes = data.event?.attendance_grace_minutes ?? null;
+                        this._gearItems = data.gear_items ?? [];
+                        this._volunteerGear = data.volunteer_gear ?? {};
+                        this._eventIds = (data.events ?? []).map((e: { id: number }) => e.id);
+                        this._graceMinutes = data.events?.[0]?.attendance_grace_minutes ?? null;
 
                         // Persist to IndexedDB for offline use
-                        await storeVolunteers(this._eventId, data.volunteers);
-                        await storeKeys(this._eventId, data.keys);
+                        await storeVolunteers(this._scannerId, data.volunteers);
+                        await storeKeys(this._scannerId, data.keys);
                         if (data.attendance_records) {
-                            await storeAttendanceRecords(this._eventId, data.attendance_records);
+                            await storeAttendanceRecords(this._scannerId, data.attendance_records);
                         }
                     }
                 } catch {
@@ -138,10 +146,10 @@ export function scannerApp(config: { eventId: number }) {
 
             // Fallback: load from IndexedDB
             if (this._volunteers.length === 0) {
-                this._volunteers = await getVolunteers(this._eventId);
+                this._volunteers = await getVolunteers(this._scannerId);
             }
 
-            this.outboxCount = await getOutboxCount(this._eventId);
+            this.outboxCount = await getOutboxCount(this._scannerId);
         },
 
         async _onQrDetected(jwtToken: string) {
@@ -152,7 +160,7 @@ export function scannerApp(config: { eventId: number }) {
 
             try {
                 // Get keys from IndexedDB
-                const keys = await getKeys(this._eventId);
+                const keys = await getKeys(this._scannerId);
                 if (!keys) {
                     this.state = 'invalid';
                     this.errorMessage = 'No signing keys available. Go online to sync.';
@@ -172,13 +180,14 @@ export function scannerApp(config: { eventId: number }) {
                 const volunteer = this._volunteers.find((v) => v.id === jwtResult.volunteerId);
                 if (!volunteer) {
                     this.state = 'invalid';
-                    this.errorMessage = 'Volunteer not found for this event';
+                    this.errorMessage = 'Volunteer not found';
                     return;
                 }
 
                 // Check for existing arrival
                 const alreadyArrived = this._arrivals.some((a) => a.volunteer_id === volunteer.id);
 
+                this.selectedVolunteer = volunteer;
                 this.result = {
                     name: volunteer.name,
                     email: volunteer.email,
@@ -192,7 +201,13 @@ export function scannerApp(config: { eventId: number }) {
                     })),
                 };
 
-                this.state = alreadyArrived ? 'duplicate' : 'result';
+                if (alreadyArrived) {
+                    this.state = 'duplicate';
+                    this.resultMessage = `${volunteer.name} has already been checked in.`;
+                } else {
+                    this.state = 'result';
+                    this.resultMessage = `${volunteer.name} — ready to check in.`;
+                }
             } finally {
                 // Brief cooldown to prevent rapid re-scans
                 setTimeout(() => {
@@ -206,10 +221,13 @@ export function scannerApp(config: { eventId: number }) {
                 return;
             }
 
+            const eventId = this._eventIds[0] ?? 0;
+
             const entry = {
                 type: 'arrival' as const,
                 ticket_id: this.result.ticketId,
                 volunteer_id: this.result.volunteerId,
+                event_id: eventId,
                 method: 'qr_scan' as const,
                 scanned_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
             };
@@ -219,8 +237,8 @@ export function scannerApp(config: { eventId: number }) {
                 id: 0,
                 ticket_id: entry.ticket_id,
                 volunteer_id: entry.volunteer_id,
-                event_id: this._eventId,
-                scanned_by: 0,
+                event_id: eventId,
+                scanned_by: null,
                 scanned_at: entry.scanned_at,
                 method: entry.method,
                 flagged: false,
@@ -228,10 +246,11 @@ export function scannerApp(config: { eventId: number }) {
             });
 
             // Save to outbox
-            await addOutboxEntry(this._eventId, entry);
-            this.outboxCount = await getOutboxCount(this._eventId);
+            await addOutboxEntry(this._scannerId, entry);
+            this.outboxCount = await getOutboxCount(this._scannerId);
 
             this.state = 'confirmed';
+            this.resultMessage = `${this.result.name} checked in successfully.`;
 
             // Try to sync immediately if online
             if (this.isOnline) {
@@ -245,11 +264,10 @@ export function scannerApp(config: { eventId: number }) {
         },
 
         async confirmAttendance(shiftSignupId: number) {
-            if (!this.result) {
+            if (!this.result || !this.isOnline) {
                 return;
             }
 
-            // Determine on-time vs late
             const signup = this.result.shiftSignups.find((s) => s.id === shiftSignupId);
             if (!signup) {
                 return;
@@ -263,33 +281,72 @@ export function scannerApp(config: { eventId: number }) {
 
             const status = now <= deadline ? 'on_time' : 'late';
 
-            const entry = {
-                type: 'attendance' as const,
-                shift_signup_id: shiftSignupId,
-                status: status as 'on_time' | 'late',
-                scanned_at: now.toISOString().replace('T', ' ').substring(0, 19),
-            };
+            // Online-only: no IDB outbox for attendance (no scanner attendance sync endpoint)
+            try {
+                const response = await fetch(this._syncUrl.replace('/sync', '/attendance'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Scanner-Token': this._scannerToken,
+                    },
+                    body: JSON.stringify({
+                        shift_signup_id: shiftSignupId,
+                        status,
+                        scanned_at: now.toISOString().replace('T', ' ').substring(0, 19),
+                    }),
+                });
 
-            // Track locally
+                if (!response.ok) {
+                    console.error('Attendance confirmation failed:', await response.text());
+                    return;
+                }
+            } catch (error) {
+                console.error('Attendance confirmation network error:', error);
+                return;
+            }
+
             this._attendanceRecords.push({
                 id: 0,
                 shift_signup_id: shiftSignupId,
                 status,
             });
 
-            // Update the shift's classified status
             if (this.result) {
                 const shift = this.result.shifts.find((s) => s.signupId === shiftSignupId);
                 if (shift) {
                     shift.status = 'attended';
                 }
             }
+        },
 
-            await addOutboxEntry(this._eventId, entry);
-            this.outboxCount = await getOutboxCount(this._eventId);
+        /**
+         * Online-only gear pickup (D4/D10: no IDB buffering for gear state changes).
+         */
+        async selectGearState(volunteerGearId: number, state: string) {
+            if (!this.isOnline) {
+                return;
+            }
 
-            if (this.isOnline) {
-                await this._sync();
+            try {
+                const response = await fetch(this._gearPickupUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Scanner-Token': this._scannerToken,
+                    },
+                    body: JSON.stringify({
+                        volunteer_gear_id: volunteerGearId,
+                        state,
+                    }),
+                });
+
+                if (!response.ok) {
+                    console.error('Gear pickup failed:', await response.text());
+                }
+            } catch (error) {
+                console.error('Gear pickup network error:', error);
             }
         },
 
@@ -298,18 +355,20 @@ export function scannerApp(config: { eventId: number }) {
         },
 
         async _sync() {
-            await syncOutbox(this._eventId, this._syncUrl, this._attendanceSyncUrl);
-            this.outboxCount = await getOutboxCount(this._eventId);
+            await syncOutbox(this._scannerId, this._syncUrl, this._scannerToken);
+            this.outboxCount = await getOutboxCount(this._scannerId);
         },
 
         dismiss() {
             this.state = 'scanning';
             this.result = null;
+            this.selectedVolunteer = null;
+            this.resultMessage = '';
             this.errorMessage = '';
         },
 
         destroy() {
-            const video = (this as unknown as { $refs: Record<string, HTMLVideoElement> }).$refs.video;
+            const video = document.getElementById('scanner-video') as HTMLVideoElement | null;
             if (video) {
                 stopCamera(video);
             }

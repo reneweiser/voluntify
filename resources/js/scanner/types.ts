@@ -31,10 +31,27 @@ export interface Ticket {
 
 export interface Volunteer {
     id: number;
+    first_name: string;
+    last_name: string;
     name: string;
     email: string;
     ticket: Ticket;
     shift_signups: ShiftSignup[];
+}
+
+export interface GearItem {
+    id: number;
+    name: string;
+    type: 'size_selection' | 'quantity';
+    states: string[] | null;
+}
+
+export interface VolunteerGear {
+    id: number;
+    project_gear_item_id: number;
+    state: string | null;
+    quantity: number;
+    picked_up_at: string | null;
 }
 
 export interface ArrivalRecord {
@@ -42,7 +59,7 @@ export interface ArrivalRecord {
     ticket_id: number;
     volunteer_id: number;
     event_id: number;
-    scanned_by: number;
+    scanned_by: number | null;
     scanned_at: string;
     method: 'qr_scan' | 'manual_lookup';
     flagged: boolean;
@@ -63,17 +80,10 @@ export interface OutboxEntry {
     type: 'arrival' | 'attendance';
     ticket_id?: number;
     volunteer_id?: number;
+    event_id?: number;
     method?: 'qr_scan' | 'manual_lookup';
     scanned_at: string;
     shift_signup_id?: number;
     status?: 'on_time' | 'late' | 'no_show';
 }
 
-export interface ScannerData {
-    event: { id: number; name: string; attendance_grace_minutes: number | null };
-    user_role: 'organizer' | 'entrance_staff' | 'volunteer_admin' | null;
-    volunteers: Volunteer[];
-    arrivals: ArrivalRecord[];
-    attendance_records: AttendanceRecord[];
-    keys: ScannerKeys;
-}

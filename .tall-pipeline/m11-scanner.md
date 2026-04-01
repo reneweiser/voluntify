@@ -9,19 +9,90 @@
 - **Gate summary:** 2 migrations, 2 new models, 2 new enums, 5 new actions, 1 job, 1 mailable, 1 command, 2 middleware, 3 new Livewire components, 1 new API controller, 7 TS module updates, SW update. 4-pass self-review passed. 12 decisions recorded.
 
 ## Implement
-- **Status:** in_progress
+- **Status:** complete
+- **Iteration:** 1
+- **Gate summary:** 1046 tests green (2293 assertions), 31 TS tests green. 27 new files, ~15 modified, 11 deleted. Pint clean. migrate:fresh --seed clean. 14 review concerns fixed (13 accepted, 1 rejected). Rate limiting on PIN auth, IDOR fix on gear pickup, #[Locked] hardening, aria-live regions, dead code cleanup.
 - **Tasks (bug fix #49 — overlap detection):**
   - [x] RED: 4 failing tests for overlap detection (existing signup, intra-batch, adjacent boundary, reactivation)
   - [x] Add `skippedOverlap` to `ShiftSignupResult`
   - [x] Implement overlap detection in `SignUpVolunteerForShifts` (committedShifts pre-load, predicate, null guards, lockForUpdate, return array, constructor)
   - [x] Update `EventSignup` submitSignup() for overlap feedback
   - [x] All 1046 tests green, pint clean
+- **Tasks (M11 Scanner Rewrite):**
+  - **Phase 1: Migrations + Models + Enums + Factories**
+    - [x] Create ScannerType and ScannerMode enums
+    - [x] Create create_project_scanners_table migration
+    - [x] Create create_project_scanner_assignees_table migration
+    - [x] Run migrations
+    - [x] Create ProjectScanner model with factory, scopes, casts
+    - [x] Create ProjectScannerAssignee model with factory
+    - [x] Add scanners() relationship to Project model
+    - [x] RED: Write ProjectScanner model unit tests
+    - [x] GREEN: All 12 model tests pass
+  - **Phase 2: Actions + Policy**
+    - [x] RED: Write CreateProjectScanner action tests (5 tests)
+    - [x] GREEN: Implement CreateProjectScanner action
+    - [x] RED: Write AuthenticateScanner action tests (4 tests)
+    - [x] GREEN: Implement AuthenticateScanner action
+    - [x] RED: Write SendScannerLinks action tests (3 tests)
+    - [x] GREEN: Implement SendScannerLinks action + SendScannerLinksJob stub
+    - [x] Implement UpdateProjectScanner action
+    - [x] Implement DeleteProjectScanner action
+    - [x] Add manageScanners() to ProjectPolicy
+  - **Phase 3: Middleware + Auth Flow**
+    - [x] Create ScannerAuthMiddleware + ScannerApiMiddleware
+    - [x] Register middleware aliases in bootstrap/app.php
+    - [x] RED: Write ScannerAuth Livewire component tests (6 tests)
+    - [x] GREEN: Implement ScannerAuth component + blade
+    - [x] Register scanner auth + app routes
+  - **Phase 4: ScannerApp Livewire Component**
+    - [x] RED: Write ScannerApp component tests (6 tests)
+    - [x] GREEN: Implement ScannerApp component + blade
+    - [x] All 6 tests pass
+  - **Phase 5: Scanner API Controller**
+    - [x] RED: Write ScannerApiMiddleware tests (5 tests)
+    - [x] GREEN: ScannerApiMiddleware passes
+    - [x] RED: Write ScannerDataController tests (7 tests)
+    - [x] GREEN: Implement ScannerDataController (data/sync/gearPickup)
+    - [x] Register API routes + nullable scannedBy in RecordArrival/RecordGearPickup
+  - **Phase 6: ScannerManagement Admin Component**
+    - [x] RED: Write ScannerManagement tests (9 tests)
+    - [x] GREEN: Implement ScannerManagement component + blade (Flux UI)
+    - [x] Register admin route + navigation
+  - **Phase 7: Queue Job + Scheduled Command**
+    - [x] Implement SendScannerLinksJob + ScannerLinkMail mailable
+    - [x] RED: Write SendScannerLinksCommand tests (4 tests)
+    - [x] GREEN: Implement SendScannerLinksCommand
+    - [x] Register in routes/console.php
+  - **Phase 8: TypeScript Rewrite**
+    - [x] Update types.ts (added GearItem, VolunteerGear, ScannerConfig, EventInfo)
+    - [x] Update idb-store.ts (DB_VERSION 3, scannerId keys)
+    - [x] Update sync.ts (new URLs, X-Scanner-Token header)
+    - [x] Rewrite alpine-scanner.ts (new config, gear support, token auth)
+    - [x] Create gear-pickup.ts (online-only)
+    - [x] Update sw.js (new API path pattern)
+    - [x] All 35 TS tests pass + build succeeds
+  - **Phase 9: Remove Old Scanner Code**
+    - [x] Delete old scanner components (QrScanner, ManualLookup, ScannerEventSelect)
+    - [x] Delete old ScannerApiController
+    - [x] Remove old scanner routes from web.php
+    - [x] Delete old scanner tests (7 files) + SyncArrivalsRequestTest
+    - [x] Replace sidebar scanner link with Projects link + add Scanners button to ProjectShow
+  - **Phase 10: Issue #48 + Final Cleanup**
+    - [x] Verified volunteer tab label already says "Volunteers" (no-op per D12)
+    - [x] Updated ScannerNavigationTest for new sidebar layout
+    - [x] Run Pint — all clean
+    - [x] Full test suite: 1046 passed (2293 assertions)
+    - [x] migrate:fresh --seed clean
 
 ## Test
-- **Status:** not_started
+- **Status:** complete
+- **Gate summary:** 1126 tests green (2466 assertions). 80 new tests across 8 new files + 1 updated file. Coverage gaps filled for: UpdateProjectScanner (7), DeleteProjectScanner (3), SendScannerLinksJob (4), ProjectPolicy::manageScanners (4), ScannerAuth rate limiting + edge cases (12), ScannerAuthMiddleware (7), ScannerDataController IDOR + edge cases (10), ScannerManagement validation + IDOR (18), ProjectScanner model boundaries (13), integration flows (2). Pint clean.
 
 ## Security Audit
-- **Status:** not_started
+- **Status:** complete
+- **Report:** `.tall-pipeline/m11-security-audit.md`
+- **Gate summary:** 0 critical, 2 high, 1 medium, 4 low. All high/medium findings FIXED: (1) session()->regenerate() added, (2) throttle:60,1 on scanner API, (3) Rule::exists eventId validation. Low: non-timing-safe token lookup (accepted risk), volunteer PII to entry staff, missing attendance API endpoint, console.error leaking. 1126 tests green after fixes.
 
 ---
 
@@ -47,6 +118,26 @@
 | D12 | plan | Rename `/admin/events/{eventId}/volunteers` tab label from "Volunteers" to "Volunteers" (no-op on UI — it already says "Volunteers" per #48 check) | Issue #48 asked to rename this — verify it's already correct before touching it | sidebar/tabs |
 
 ## Reviews
+
+### implement — 2026-03-31
+
+| # | Perspective | Concern | Severity | Resolution | Rationale |
+|---|---|---|---|---|---|
+| S1 | Simplicity Zealot | `link_sent_at` double-write in action + job; failed sends invisible | high | accepted | Removed eager update from action |
+| S2 | Simplicity Zealot | Attendance outbox dead path; entries accumulate, block clear | high | accepted | Changed to online-only direct API call |
+| P1 | Security Paranoid | No brute-force protection on 6-digit PIN | high | accepted | Added RateLimiter (5/min, token+IP key) |
+| P2 | Security Paranoid | IDOR on gear pickup — no project scope check | high | accepted | Scoped query through project relationship |
+| A1 | Accessibility Champion | ScannerApp result panel has no aria-live | high | accepted | Added role="alert" aria-live="assertive" |
+| A2 | Accessibility Champion | ScannerAuth error message has no role="alert" | high | accepted | Added role="alert" aria-live="assertive" |
+| S3 | Simplicity Zealot | gear-pickup.ts dead code, unused exports | medium | accepted | Deleted file, removed unused exports |
+| P3 | Security Paranoid | scannerToken unlocked on ScannerApp + ScannerAuth | medium | accepted | Added #[Locked] |
+| P4 | Security Paranoid | modes and eventId unlocked on ScannerApp | medium | accepted | Added #[Locked] |
+| P5 | Security Paranoid | rawAuthCode persists in Livewire snapshot | medium | accepted | Replaced with session()->flash() |
+| A3 | Accessibility Champion | Remove-assignee × buttons lack aria-label | medium | accepted | Added aria-label with email context |
+| A4 | Accessibility Champion | Add-assignee email input has no label | medium | accepted | Added aria-label |
+| S4 | Simplicity Zealot | DeleteProjectScanner is a one-line action | low | rejected | Project convention: all domain logic in actions |
+| S5 | Simplicity Zealot | ScannerAuthMiddleware checks isExpired but not isActive | low | accepted | Changed to !isActive() |
+| A5 | Accessibility Champion | Video viewfinder has no ARIA label | low | accepted | Added aria-label |
 
 ## Feedback Loops
 

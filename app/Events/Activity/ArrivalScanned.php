@@ -12,6 +12,6 @@ class ArrivalScanned
 
     public function __construct(
         public readonly EventArrival $arrival,
-        public readonly User $causer,
+        public readonly ?User $causer = null,
     ) {}
 }

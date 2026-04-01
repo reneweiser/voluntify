@@ -58,4 +58,12 @@ class ProjectPolicy
     {
         return $user->isOrgOrganizerFor($project->organization);
     }
+
+    /**
+     * Project Organizers (direct or inherited from org) can manage scanners.
+     */
+    public function manageScanners(User $user, Project $project): bool
+    {
+        return $user->projectRoleFor($project) === StaffRole::Organizer;
+    }
 }

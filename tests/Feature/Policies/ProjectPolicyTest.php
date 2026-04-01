@@ -36,6 +36,10 @@ it('allows organizer to manage members', function () {
     expect($this->organizer->can('manageMembers', $this->project))->toBeTrue();
 });
 
+it('allows organizer to manage scanners', function () {
+    expect($this->organizer->can('manageScanners', $this->project))->toBeTrue();
+});
+
 // --- Project-level Organizer ---
 
 describe('project organizer', function () {
@@ -68,6 +72,10 @@ describe('project organizer', function () {
         expect($this->projectOrganizer->can('manageMembers', $this->project))->toBeFalse();
     });
 
+    it('allows project organizer to manage scanners', function () {
+        expect($this->projectOrganizer->can('manageScanners', $this->project))->toBeTrue();
+    });
+
     it('denies project organizer from viewing other projects', function () {
         $otherProject = Project::factory()->for($this->org)->create();
 
@@ -87,4 +95,17 @@ it('denies non-member from viewing a project', function () {
     $outsider = User::factory()->create();
 
     expect($outsider->can('view', $this->project))->toBeFalse();
+});
+
+it('denies non-member from managing scanners', function () {
+    $outsider = User::factory()->create();
+
+    expect($outsider->can('manageScanners', $this->project))->toBeFalse();
+});
+
+it('denies volunteer admin from managing scanners', function () {
+    $va = User::factory()->create();
+    $this->project->users()->attach($va, ['role' => StaffRole::VolunteerAdmin]);
+
+    expect($va->can('manageScanners', $this->project))->toBeFalse();
 });

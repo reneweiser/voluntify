@@ -1,7 +1,7 @@
 ---
 pipeline_status: in_progress
-current_stage: plan
-current_focus: "M11 Scanner Rewrite — planning phase"
+current_stage: security-audit
+current_focus: "M11 Scanner Rewrite — all stages complete, all high/medium security findings fixed, ready for milestone retrospective"
 current_milestone: m11-scanner
 entry_point: plan
 stages_to_run:
@@ -38,6 +38,7 @@ last_updated: "2026-03-31T16:00:00"
 | `.tall-pipeline/m9-roles.md` | plan | m9-roles | Detailed M9 implementation plan (migrations, models, policies, components, tests) | complete |
 | `.tall-pipeline/m10-signup.md` | plan | m10-signup | Detailed M10 implementation plan (schema, actions, wizard, reservations, manual enrollment, tests) | complete |
 | `.tall-pipeline/m11-scanner.md` | plan | m11-scanner | Detailed M11 implementation plan (scanner schema, temp auth, dual scanner types, TS rewrite, API, tests) | complete |
+| `.tall-pipeline/m11-security-audit.md` | security-audit | m11-scanner | Security audit report (0 crit, 2 high, 1 med, 4 low) | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

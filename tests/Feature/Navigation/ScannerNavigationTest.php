@@ -10,15 +10,15 @@ beforeEach(function () {
     $this->project = Project::factory()->for($this->org)->create();
 });
 
-it('shows scanner link for organizer', function () {
+it('shows projects link for organizer', function () {
     $this->actingAs($this->organizer)
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Scanner');
+        ->assertSee('Projects');
 });
 
-it('shows scanner link for project organizer', function () {
+it('shows projects link for project organizer', function () {
     $projectOrganizer = User::factory()->create();
     $this->project->users()->attach($projectOrganizer, ['role' => StaffRole::Organizer]);
 
@@ -26,15 +26,15 @@ it('shows scanner link for project organizer', function () {
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Scanner');
+        ->assertSee('Projects');
 });
 
-it('hides scanner link for non-member', function () {
+it('shows projects link for all authenticated users', function () {
     $outsider = User::factory()->create();
 
     $this->actingAs($outsider)
         ->withSession(['current_organization_id' => $this->org->id])
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertDontSee('Scanner');
+        ->assertSee('Projects');
 });
