@@ -55,6 +55,7 @@ class Dashboard extends Component
             ->withCount([
                 'events' => fn ($q) => $q->published()->where('starts_at', '>=', now()),
                 'volunteers',
+                'scanners',
             ])
             ->latest();
 
@@ -134,7 +135,7 @@ class Dashboard extends Component
 
         // Projects without scanners
         foreach ($this->projects as $project) {
-            if ($project->events_count > 0 && $project->scanners()->count() === 0) {
+            if ($project->events_count > 0 && $project->scanners_count === 0) {
                 $reminders[] = [
                     'type' => 'warning',
                     'message' => "Projekt \"{$project->name}\" hat keine Scanner konfiguriert",

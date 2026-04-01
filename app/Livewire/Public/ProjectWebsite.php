@@ -5,6 +5,7 @@ namespace App\Livewire\Public;
 use App\Models\Project;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -12,6 +13,7 @@ use Livewire\Component;
 #[Title('Project')]
 class ProjectWebsite extends Component
 {
+    #[Locked]
     public Project $project;
 
     public function mount(string $publicToken): void
@@ -30,7 +32,10 @@ class ProjectWebsite extends Component
             return null;
         }
 
-        return Str::markdown($this->project->website_description);
+        return Str::markdown($this->project->website_description, [
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ]);
     }
 
     public function render(): mixed

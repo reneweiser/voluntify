@@ -12,6 +12,7 @@ use App\Models\Project;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -21,6 +22,7 @@ class ProjectShow extends Component
 {
     use WithFileUploads;
 
+    #[Locked]
     public Project $project;
 
     public string $name = '';

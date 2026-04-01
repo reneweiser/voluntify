@@ -10,12 +10,14 @@ use App\Models\VolunteerJob;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Ankündigungen')]
 class AnnouncementComposer extends Component
 {
+    #[Locked]
     public Project $project;
 
     public string $subject = '';
@@ -53,6 +55,7 @@ class AnnouncementComposer extends Component
         }
 
         return VolunteerJob::where('event_id', (int) $this->selectedEventId)
+            ->whereHas('event', fn ($q) => $q->where('project_id', $this->project->id))
             ->orderBy('name')
             ->get();
     }
@@ -65,6 +68,9 @@ class AnnouncementComposer extends Component
         }
 
         return Shift::where('volunteer_job_id', (int) $this->selectedJobId)
+            ->whereHas('volunteerJob', fn ($q) => $q->whereHas(
+                'event', fn ($eq) => $eq->where('project_id', $this->project->id)
+            ))
             ->orderBy('shift_date')
             ->get();
     }
@@ -143,13 +149,33 @@ class AnnouncementComposer extends Component
             'sendAt' => ['nullable', 'date', 'after:now'],
         ]);
 
+        $eventId = $this->selectedEventId ? (int) $this->selectedEventId : null;
+        $jobId = $this->selectedJobId ? (int) $this->selectedJobId : null;
+        $shiftId = $this->selectedShiftId ? (int) $this->selectedShiftId : null;
+
+        if ($eventId && ! $this->project->events()->where('id', $eventId)->exists()) {
+            abort(403);
+        }
+
+        if ($jobId && ! VolunteerJob::where('id', $jobId)
+            ->whereHas('event', fn ($q) => $q->where('project_id', $this->project->id))
+            ->exists()) {
+            abort(403);
+        }
+
+        if ($shiftId && ! Shift::where('id', $shiftId)
+            ->whereHas('volunteerJob.event', fn ($q) => $q->where('project_id', $this->project->id))
+            ->exists()) {
+            abort(403);
+        }
+
         $action = app(CreateAnnouncement::class);
         $action->execute($this->project, [
             'subject' => $this->subject,
             'body' => $this->body,
-            'event_id' => $this->selectedEventId ? (int) $this->selectedEventId : null,
-            'job_id' => $this->selectedJobId ? (int) $this->selectedJobId : null,
-            'shift_id' => $this->selectedShiftId ? (int) $this->selectedShiftId : null,
+            'event_id' => $eventId,
+            'job_id' => $jobId,
+            'shift_id' => $shiftId,
             'send_at' => $this->sendAt ?: null,
         ], auth()->user());
 

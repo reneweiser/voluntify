@@ -6,12 +6,14 @@ use App\Models\Project;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Projekt-Website')]
 class ProjectWebsiteEditor extends Component
 {
+    #[Locked]
     public Project $project;
 
     public string $websiteDescription = '';

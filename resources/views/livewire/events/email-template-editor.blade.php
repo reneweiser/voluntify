@@ -92,7 +92,7 @@
                     <div>
                         <flux:text size="sm" class="font-medium">Inhalt:</flux:text>
                         <div class="mt-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 p-4 prose dark:prose-invert prose-sm max-w-none">
-                            {!! \Illuminate\Support\Str::markdown($previewBody) !!}
+                            {!! \Illuminate\Support\Str::markdown($previewBody, ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
                         </div>
                     </div>
                 </flux:card>

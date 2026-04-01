@@ -9,12 +9,14 @@ use App\Models\Event;
 use App\Services\EmailTemplateRenderer;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Email Templates')]
 class EmailTemplateEditor extends Component
 {
+    #[Locked]
     public Event $event;
 
     public string $selectedType = '';
@@ -94,7 +96,7 @@ class EmailTemplateEditor extends Component
 
         $this->validate([
             'subject' => ['required', 'string', 'max:255'],
-            'body' => ['required', 'string'],
+            'body' => ['required', 'string', 'max:10000'],
         ]);
 
         $type = EmailTemplateType::from($this->selectedType);

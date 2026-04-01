@@ -34,6 +34,36 @@
   - [x] Phase E — #87 Announcements — new announcements table (project-scoped, event/job/shift filters), drop old event_announcements, Announcement + AnnouncementTemplate models, SendAnnouncement/CreateAnnouncement actions, SendAnnouncementJob, AnnouncementNotification, AnnouncementComposer component with cascading filters + scheduling + history, 16 new tests + 3 updated tests
   - [x] Phase E — #76 Dashboard rework — project tiles with event/volunteer counts, next upcoming event card, smart reminders (shifts needing volunteers, recent cancellations, missing scanners), global volunteer search, German UI, 5 new tests + 5 updated tests
 
+## Test
+- **Status:** complete
+- **Iteration:** 1
+- **Gate summary:** 1449 tests passing (3179 assertions). 210+ M13-specific tests exceeding 180+ target. Domain actions ~100% coverage, Livewire components ~90%. 8 new tests added during test stage. 1 implementation bug found and fixed (CloneProject scanner_token + event_id).
+- **New tests added:**
+  - [x] `RestoreEventTest.php` — 2 tests (happy path + error case)
+  - [x] `GearSummaryTest.php` — 2 tests added (auth boundary + CSV export)
+  - [x] `PurgePendingDeletionsTest.php` — 2 tests added (cascade child records + 30-day boundary)
+  - [x] `CloneProjectTest.php` — 2 tests added (scanner event_id clearing + empty project)
+  - [x] `CreateAnnouncementTest.php` — 1 test updated (delay assertion strengthened)
+- **Bug fixed:** `CloneProject::execute()` — scanner clone had null `scanner_token` (NOT NULL violation) and leaked source `event_id` cross-project. Fixed by generating new token and clearing `event_id`.
+
+## Security Audit
+- **Status:** complete
+- **Iteration:** 1 (audit) + 1 (remediation)
+- **Gate summary:** 14 findings (0 crit, 1 high, 4 medium, 5 low, 4 info). All high/medium findings resolved. Report at `.tall-pipeline/m13-security-audit.md`.
+- **Fixes applied:**
+  - [x] #1 HIGH XSS: `Str::markdown(html_input: 'strip', allow_unsafe_links: false)` in ProjectWebsite + email template preview
+  - [x] #2 MEDIUM XSS: Same markdown sanitization in email template preview
+  - [x] #4 MEDIUM IDOR: AnnouncementComposer filter queries scoped through project + send() validates IDs
+  - [x] #5 MEDIUM #[Locked]: Added to 7 Livewire components (ProjectWebsite, ProjectWebsiteEditor, ProjectShow, EventSettings, EmailTemplateEditor, AnnouncementComposer, GearSummary)
+  - [x] #6 LOW: Email template body max:10000 validation
+  - [x] SS-1: Dashboard N+1 fixed with withCount('scanners')
+  - [x] SS-3: Per-email rate limiting wired to signup flow (3/hour per email)
+- **Deferred:**
+  - #3 MEDIUM: magic-link-request rate limiter (signup flow already rate-limited by IP; no separate request endpoint)
+  - #7-#10 LOW: LIKE wildcard escaping, announcement portal scoping, FK constraint, temp password
+  - #11-#14 INFO: Security headers, roave/security-advisories, static analysis, npm audit
+  - SP-3: Pre-M13 components missing #[Locked] (out of M13 scope)
+
 ---
 
 ## Implementation Phases (Internal Dependencies)
@@ -1522,10 +1552,46 @@ No changes to theme configuration. All features use existing design tokens and F
 | JD-4 | Junior Dev Lens | "Ganztägig" fallback contradicts "custom text required when no times" validation | medium | accepted | Remove "Ganztägig" fallback. Custom text is required when both times are absent. |
 | JD-5 | Junior Dev Lens | Job naming `SendRepublishNotificationJob` breaks `Send[Thing]Job` convention | low | accepted | Rename to `SendRepublishNotificationJobJob`. |
 
+### test — 2026-04-01
+
+| # | Perspective | Concern | Severity | Resolution | Rationale |
+|---|---|---|---|---|---|
+| EUA-1 | End User Advocate | Cascade deletion has no child-record assertions in purge test | high | accepted | Added integration test verifying all child tables (events, jobs, shifts, signups, volunteers, gear, scanners, hints, announcements) are deleted |
+| DA-6 | Devil's Advocate | Cascade deletion has zero integration coverage for child records | high | accepted | Merged with EUA-1 — same fix |
+| DA-7 | Devil's Advocate | Magic-link and email-verification rate limiters are dead code (defined but not wired) | high | deferred | Implementation gap, not test gap. Track as follow-up PR to wire limiters to routes/components. |
+| EUA-2 | End User Advocate | Cancellation digest job untested | high | rejected | `tests/Feature/Commands/SendCancellationDigestTest.php` exists with 7 tests. Reviewer missed it. |
+| EUA-3 | End User Advocate | Announcement scheduling delay not verified against send_at | medium | accepted | Strengthened delay assertion to verify delay timestamp matches send_at |
+| EUA-4 | End User Advocate | AnnouncementComposer doesn't test history view | medium | deferred | Low risk, organizer history is a read-only view. Track for follow-up. |
+| DA-8 | Devil's Advocate | CloneProject missing scanner event_id remapping test | medium | accepted | Added test + fixed bug: scanner clone had null scanner_token and leaked event_id |
+| EUA-5 | End User Advocate | Cancellation error messages in English, not German | low | deferred | Cosmetic, platform is German-only but messages are internal to tests. Track for follow-up. |
+| DA-9 | Devil's Advocate | Purge 30-day exact boundary not tested | low | accepted | Added boundary test confirming strict >30 day behavior |
+| DA-10 | Devil's Advocate | No duplicate notification test for multi-shift volunteers in announcements | low | deferred | Low risk: `whereHas` on volunteers table inherently prevents duplicates. |
+
+### security-audit — 2026-04-01
+
+| # | Perspective | Concern | Severity | Resolution | Rationale |
+|---|---|---|---|---|---|
+| SP-1 | Security Paranoid | `strip_tags` allows `<a onclick>` and `javascript:` URIs — wrong tool for HTML sanitization | high | accepted | Replaced with `Str::markdown(html_input: 'strip', allow_unsafe_links: false)` which strips raw HTML at the CommonMark parser level |
+| SP-2 | Security Paranoid | `send()` passes unscoped `selectedEventId` to `CreateAnnouncement` | medium | accepted | Added ID ownership validation in `send()` for event, job, and shift |
+| SP-3 | Security Paranoid | Pre-M13 components (EventShow, JobsAndShiftsManager, etc.) missing `#[Locked]` | medium | deferred | Out of M13 scope. Track as technical debt. |
+| SP-4 | Security Paranoid | `recipientCount()` doesn't scope event through project | low | accepted | Covered by SP-2 fix — send() now validates all IDs |
+| SP-5 | Security Paranoid | Inconsistent `strip_tags` allowlists | low | accepted | Resolved by SP-1 — both locations now use `html_input: 'strip'` consistently |
+| SS-1 | Scalability Skeptic | Dashboard N+1 on `$project->scanners()->count()` in loop | medium | accepted | Fixed with `withCount('scanners')` in projects query |
+| SS-2 | Scalability Skeptic | Dashboard `scopedEvents()` called 4 times | medium | deferred | Optimization, not security. Livewire computed caching mitigates within single request. |
+| SS-3 | Scalability Skeptic | Dead rate limiters = cost/availability risk on public endpoints | high | accepted | Wired per-email rate limiting (3/hour) to signup flow. Magic link limiter remains dead code — no separate request endpoint exists. |
+| SS-4 | Scalability Skeptic | Double-nested `whereHas` on shifts in AnnouncementComposer | low | deferred | Acceptable at current scale. Monitor with Pulse. |
+| SS-5 | Scalability Skeptic | 3-level nested EXISTS on attendance summary | low | deferred | Acceptable at current scale. |
+
 ## Feedback Loops
 
 | # | Date | Direction | Trigger | Fix | Resolution |
 |---|---|---|---|---|---|
+| 1 | 2026-04-01 | test → implement | CloneProject scanner_token null + event_id leak | Fixed `CloneProject::execute()`: generate new token, clear event_id | resolved |
+| 2 | 2026-04-01 | security-audit → implement | XSS via Str::markdown in ProjectWebsite | Replaced strip_tags with html_input:'strip' + allow_unsafe_links:false | resolved |
+| 3 | 2026-04-01 | security-audit → implement | IDOR in AnnouncementComposer filter + send | Scoped queries + ID validation in send() | resolved |
+| 4 | 2026-04-01 | security-audit → implement | Missing #[Locked] on 7 Livewire components | Added #[Locked] to all M13 model properties | resolved |
+| 5 | 2026-04-01 | security-audit → implement | Dashboard N+1 on scanners count | Added withCount('scanners') to projects query | resolved |
+| 6 | 2026-04-01 | security-audit → implement | Unthrottled email-bombing via signup flow | Added per-email rate limiting (3/hour) to EventSignup::submitSignup | resolved |
 
 ---
 

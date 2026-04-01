@@ -7,6 +7,7 @@ use App\Actions\GenerateGearSummary;
 use App\Models\Project;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -14,6 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 #[Title('Gear-Übersicht')]
 class GearSummary extends Component
 {
+    #[Locked]
     public Project $project;
 
     public function mount(int $projectId): void

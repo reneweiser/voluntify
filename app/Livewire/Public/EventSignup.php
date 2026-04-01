@@ -272,6 +272,15 @@ class EventSignup extends Component
         }
         RateLimiter::hit('signup-submit:'.request()->ip(), 300);
 
+        // Per-email rate limit: prevent email-bombing a specific address (3 per hour)
+        $emailKey = 'email-verification-resend:'.strtolower(trim($this->volunteerEmail));
+        if ($this->volunteerEmail && RateLimiter::tooManyAttempts($emailKey, 3)) {
+            $this->addError('volunteerEmail', 'Zu viele Versuche für diese E-Mail-Adresse. Bitte warte eine Stunde.');
+
+            return;
+        }
+        RateLimiter::hit($emailKey, 3600);
+
         $this->validatePersonalInfo();
 
         if ($this->hasGearOrFields) {

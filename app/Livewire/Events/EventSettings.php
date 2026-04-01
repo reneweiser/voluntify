@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -22,6 +23,7 @@ class EventSettings extends Component
 {
     use WithFileUploads;
 
+    #[Locked]
     public Event $event;
 
     public string $name = '';
