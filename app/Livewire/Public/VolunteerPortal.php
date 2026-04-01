@@ -4,12 +4,14 @@ namespace App\Livewire\Public;
 
 use App\Actions\CancelShiftSignup;
 use App\Actions\VerifyMagicLink;
+use App\Enums\HintLocation;
 use App\Exceptions\InvalidMagicLinkException;
+use App\Models\Announcement;
 use App\Models\CustomFieldResponse;
-use App\Models\EventAnnouncement;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
+use App\Services\HintTextResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -53,10 +55,13 @@ class VolunteerPortal extends Component
 
         return $this->volunteer->shiftSignups()
             ->active()
-            ->whereHas('shift', fn ($q) => $q->where('starts_at', '>', now()))
-            ->with('shift.volunteerJob.event')
+            ->whereHas('shift', fn ($q) => $q->where(function ($sq) {
+                $sq->where(fn ($inner) => $inner->whereNotNull('starts_at')->where('starts_at', '>', now()))
+                    ->orWhere(fn ($inner) => $inner->whereNull('starts_at')->where('shift_date', '>', now()->toDateString()));
+            }))
+            ->with('shift.volunteerJob.event.project')
             ->get()
-            ->sortBy('shift.starts_at')
+            ->sortBy('shift.shift_date')
             ->values();
     }
 
@@ -69,10 +74,13 @@ class VolunteerPortal extends Component
 
         return $this->volunteer->shiftSignups()
             ->active()
-            ->whereHas('shift', fn ($q) => $q->where('ends_at', '<=', now()))
+            ->whereHas('shift', fn ($q) => $q->where(function ($sq) {
+                $sq->where(fn ($inner) => $inner->whereNotNull('ends_at')->where('ends_at', '<=', now()))
+                    ->orWhere(fn ($inner) => $inner->whereNull('ends_at')->where('shift_date', '<', now()->toDateString()));
+            }))
             ->with('shift.volunteerJob.event')
             ->get()
-            ->sortByDesc('shift.starts_at')
+            ->sortByDesc('shift.shift_date')
             ->values();
     }
 
@@ -116,11 +124,32 @@ class VolunteerPortal extends Component
 
         $eventIds = $this->volunteerEventIds();
 
-        return EventAnnouncement::whereIn('event_id', $eventIds)
+        return Announcement::where('project_id', $this->volunteer->project_id)
             ->whereNotNull('sent_at')
             ->with('event')
             ->latest('sent_at')
             ->get();
+    }
+
+    #[Computed]
+    public function hintPortalTopBanner(): ?string
+    {
+        return $this->resolveHint(HintLocation::PortalTopBanner);
+    }
+
+    #[Computed]
+    public function hintPortalShiftsSection(): ?string
+    {
+        return $this->resolveHint(HintLocation::PortalShiftsSection);
+    }
+
+    private function resolveHint(HintLocation $location): ?string
+    {
+        if (! $this->volunteer?->project) {
+            return null;
+        }
+
+        return app(HintTextResolver::class)->resolve($location, $this->volunteer->project);
     }
 
     /** @return \Illuminate\Support\Collection<int, int> */

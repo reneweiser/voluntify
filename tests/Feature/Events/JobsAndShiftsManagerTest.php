@@ -96,6 +96,7 @@ it('allows organizer to create a shift', function () {
     Livewire::actingAs($this->user)
         ->test(JobsAndShiftsManager::class, ['eventId' => $this->event->id])
         ->call('openCreateShift', $job->id)
+        ->set('shiftDate', '2026-07-01')
         ->set('shiftStartsAt', '2026-07-01T09:00')
         ->set('shiftEndsAt', '2026-07-01T13:00')
         ->set('shiftCapacity', 20)

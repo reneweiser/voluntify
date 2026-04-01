@@ -11,18 +11,22 @@ class UpdateShift
 {
     public function execute(
         Shift $shift,
-        CarbonInterface $startsAt,
-        CarbonInterface $endsAt,
+        CarbonInterface $shiftDate,
+        ?CarbonInterface $startsAt,
+        ?CarbonInterface $endsAt,
         int $capacity,
+        ?string $displayText = null,
     ): Shift {
         if ($capacity < $shift->activeSignups()->count()) {
             throw new DomainException('Cannot reduce capacity below current number of signups.');
         }
 
         $updateData = [
+            'shift_date' => $shiftDate,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             'capacity' => $capacity,
+            'display_text' => $displayText,
         ];
 
         $changed = collect($updateData)

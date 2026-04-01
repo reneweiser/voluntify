@@ -9,12 +9,14 @@ use App\Models\Event;
 use App\Services\EmailTemplateRenderer;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Email Templates')]
 class EmailTemplateEditor extends Component
 {
+    #[Locked]
     public Event $event;
 
     public string $selectedType = '';
@@ -94,7 +96,7 @@ class EmailTemplateEditor extends Component
 
         $this->validate([
             'subject' => ['required', 'string', 'max:255'],
-            'body' => ['required', 'string'],
+            'body' => ['required', 'string', 'max:10000'],
         ]);
 
         $type = EmailTemplateType::from($this->selectedType);
@@ -129,17 +131,75 @@ class EmailTemplateEditor extends Component
         $type = EmailTemplateType::from($this->selectedType);
         $renderer = app(EmailTemplateRenderer::class);
 
-        $rendered = $renderer->render($type, $this->event, [
-            'volunteer_name' => 'Jane Doe',
-            'event_name' => $this->event->name,
-            'job_name' => 'Setup Crew',
-            'shift_date' => $this->event->starts_at->format('M d, Y'),
-            'shift_time' => $this->event->starts_at->format('g:i A').' — '.$this->event->ends_at->format('g:i A'),
-            'event_location' => $this->event->location ? "**Location:** {$this->event->location}" : '',
-        ]);
+        $rendered = $renderer->render($type, $this->event, $this->getSampleVariables($type));
 
         $this->previewSubject = $rendered['subject'];
         $this->previewBody = $rendered['body'];
         $this->showPreview = true;
+    }
+
+    /**
+     * Returns sample variables for template preview based on type.
+     *
+     * @return array<string, string>
+     */
+    private function getSampleVariables(EmailTemplateType $type): array
+    {
+        $common = [
+            'vorname' => 'Anna',
+            'nachname' => 'Schmidt',
+            'telefon' => '+49 170 1234567',
+            'volunteer_name' => 'Anna Schmidt',
+            'event_name' => $this->event->name,
+            'project_name' => $this->event->project?->name ?? 'Beispielprojekt',
+            'kontakt_email' => $this->event->project?->contact_email ?? 'kontakt@example.com',
+            'portal_link' => 'https://example.com/portal/vorschau',
+        ];
+
+        return match ($type) {
+            EmailTemplateType::SignupConfirmation => array_merge($common, [
+                'job_name' => 'Aufbau-Team',
+                'shift_date' => $this->event->starts_at->format('d.m.Y'),
+                'shift_time' => $this->event->starts_at->format('H:i').' — '.$this->event->ends_at->format('H:i'),
+                'shifts_summary' => "- Aufbau-Team: {$this->event->starts_at->format('d.m.Y H:i')} — {$this->event->ends_at->format('H:i')}",
+                'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
+                'gear_zusammenfassung' => 'T-Shirt (Größe M), Funkgerät',
+            ]),
+            EmailTemplateType::PreShiftReminder24h,
+            EmailTemplateType::PreShiftReminder4h => array_merge($common, [
+                'job_name' => 'Aufbau-Team',
+                'shift_date' => $this->event->starts_at->format('d.m.Y'),
+                'shift_time' => $this->event->starts_at->format('H:i').' — '.$this->event->ends_at->format('H:i'),
+                'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
+                'cheat_sheet_url' => '[Aufgaben-Infos anzeigen](https://example.com/cheat-sheet)',
+            ]),
+            EmailTemplateType::EmailVerification => $common,
+            EmailTemplateType::StaffInvitation => [
+                'name' => 'Max Mustermann',
+                'organization_name' => currentOrganization()->name,
+                'temporary_password' => 'Beispiel-Passwort-123',
+                'login_url' => route('login'),
+            ],
+            EmailTemplateType::VolunteerPromoted => [
+                'name' => 'Anna Schmidt',
+                'organization_name' => currentOrganization()->name,
+                'role_name' => 'Helfer-Admin',
+                'temporary_password' => 'Beispiel-Passwort-123',
+                'login_url' => route('login'),
+            ],
+            EmailTemplateType::AddedToOrganization => [
+                'name' => 'Max Mustermann',
+                'organization_name' => currentOrganization()->name,
+                'role_name' => 'Organisator',
+                'login_url' => route('login'),
+            ],
+            EmailTemplateType::EventAnnouncement => [
+                'subject' => 'Wichtige Info zu '.$this->event->name,
+                'body' => 'Dies ist eine Beispiel-Ankündigung für die Vorschau.',
+            ],
+            EmailTemplateType::EventUpdated => array_merge($common, [
+                'organizer_note' => 'Die Startzeit hat sich um 30 Minuten nach hinten verschoben.',
+            ]),
+        };
     }
 }

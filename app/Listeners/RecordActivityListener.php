@@ -13,6 +13,7 @@ use App\Events\Activity\EventCloned;
 use App\Events\Activity\EventCreated;
 use App\Events\Activity\EventImageDeleted;
 use App\Events\Activity\EventPublished;
+use App\Events\Activity\EventRevertedToDraft;
 use App\Events\Activity\EventUpdated;
 use App\Events\Activity\JobCreated;
 use App\Events\Activity\JobDeleted;
@@ -21,7 +22,12 @@ use App\Events\Activity\MemberInvited;
 use App\Events\Activity\MemberLeft;
 use App\Events\Activity\ProjectCreated;
 use App\Events\Activity\ProjectDeleted;
+use App\Events\Activity\ProjectMemberAdded;
+use App\Events\Activity\ProjectMemberRemoved;
 use App\Events\Activity\ProjectUpdated;
+use App\Events\Activity\ScannerAssigneeAdded;
+use App\Events\Activity\ScannerAssigneeRemoved;
+use App\Events\Activity\ScannerLockout;
 use App\Events\Activity\ShiftCreated;
 use App\Events\Activity\ShiftDeleted;
 use App\Events\Activity\ShiftUpdated;
@@ -30,11 +36,12 @@ use App\Events\Activity\VolunteerPromotedEvent;
 use App\Events\Activity\VolunteerSignedUp;
 use App\Events\Activity\VolunteerVerified;
 use App\Models\ActivityLog;
+use App\Models\Announcement;
 use App\Models\Event;
-use App\Models\EventAnnouncement;
 use App\Models\EventArrival;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\ProjectScanner;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerPromotion;
@@ -221,8 +228,10 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'category' => ActivityCategory::Shift,
             'description' => "Created shift for {$e->shift->volunteerJob->name}",
             'properties' => [
-                'starts_at' => $e->shift->starts_at->toISOString(),
-                'ends_at' => $e->shift->ends_at->toISOString(),
+                'shift_date' => $e->shift->shift_date->toDateString(),
+                'starts_at' => $e->shift->starts_at?->toISOString(),
+                'ends_at' => $e->shift->ends_at?->toISOString(),
+                'display_text' => $e->shift->display_text,
                 'capacity' => $e->shift->capacity,
                 'job_name' => $e->shift->volunteerJob->name,
             ],
@@ -434,25 +443,30 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'properties' => [
                 'volunteer_name' => $e->volunteer->full_name,
                 'job_name' => $e->signup->shift->volunteerJob->name,
-                'shift_starts_at' => $e->signup->shift->starts_at->toISOString(),
+                'shift_date' => $e->signup->shift->shift_date->toDateString(),
+                'shift_starts_at' => $e->signup->shift->starts_at?->toISOString(),
             ],
         ]);
     }
 
     public function handleAnnouncementSent(AnnouncementSent $e): void
     {
+        $e->announcement->loadMissing('project');
+
         ActivityLog::create([
-            'organization_id' => $e->event->organization_id,
-            'event_id' => $e->event->id,
+            'organization_id' => $e->announcement->project->organization_id,
+            'project_id' => $e->announcement->project_id,
+            'event_id' => $e->announcement->event_id,
             'causer_type' => User::class,
             'causer_id' => $e->sender->id,
-            'subject_type' => EventAnnouncement::class,
+            'subject_type' => Announcement::class,
             'subject_id' => $e->announcement->id,
             'action' => 'sent',
             'category' => ActivityCategory::Email,
-            'description' => "Sent announcement \"{$e->announcement->subject}\" for {$e->event->name}",
+            'description' => "Sent announcement \"{$e->announcement->subject}\" for project {$e->announcement->project->name}",
             'properties' => [
                 'subject' => $e->announcement->subject,
+                'recipient_count' => $e->announcement->recipient_count,
             ],
         ]);
     }
@@ -506,6 +520,120 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
                 'name' => $e->projectName,
                 'orphaned_events' => $e->orphanedEventNames,
             ],
+        ]);
+    }
+
+    public function handleProjectMemberAdded(ProjectMemberAdded $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->project->organization_id,
+            'project_id' => $e->project->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => User::class,
+            'subject_id' => $e->user->id,
+            'action' => 'added',
+            'category' => ActivityCategory::Member,
+            'description' => "Added {$e->user->name} as {$e->role->value} to project {$e->project->name}",
+            'properties' => [
+                'user_name' => $e->user->name,
+                'email' => $e->user->email,
+                'role' => $e->role->value,
+            ],
+        ]);
+    }
+
+    public function handleProjectMemberRemoved(ProjectMemberRemoved $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->project->organization_id,
+            'project_id' => $e->project->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => User::class,
+            'subject_id' => $e->user->id,
+            'action' => 'removed',
+            'category' => ActivityCategory::Member,
+            'description' => "Removed {$e->user->name} from project {$e->project->name}",
+            'properties' => [
+                'user_name' => $e->user->name,
+                'email' => $e->user->email,
+            ],
+        ]);
+    }
+
+    public function handleScannerAssigneeAdded(ScannerAssigneeAdded $e): void
+    {
+        $e->scanner->loadMissing('project');
+
+        ActivityLog::create([
+            'organization_id' => $e->scanner->project->organization_id,
+            'project_id' => $e->scanner->project_id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => ProjectScanner::class,
+            'subject_id' => $e->scanner->id,
+            'action' => 'assignee_added',
+            'category' => ActivityCategory::Member,
+            'description' => "Added {$e->email} to scanner {$e->scanner->name}",
+            'properties' => [
+                'email' => $e->email,
+                'scanner_name' => $e->scanner->name,
+            ],
+        ]);
+    }
+
+    public function handleScannerAssigneeRemoved(ScannerAssigneeRemoved $e): void
+    {
+        $e->scanner->loadMissing('project');
+
+        ActivityLog::create([
+            'organization_id' => $e->scanner->project->organization_id,
+            'project_id' => $e->scanner->project_id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => ProjectScanner::class,
+            'subject_id' => $e->scanner->id,
+            'action' => 'assignee_removed',
+            'category' => ActivityCategory::Member,
+            'description' => "Removed {$e->email} from scanner {$e->scanner->name}",
+            'properties' => [
+                'email' => $e->email,
+                'scanner_name' => $e->scanner->name,
+            ],
+        ]);
+    }
+
+    public function handleScannerLockout(ScannerLockout $e): void
+    {
+        $e->scanner->loadMissing('project');
+
+        ActivityLog::create([
+            'organization_id' => $e->scanner->project->organization_id,
+            'project_id' => $e->scanner->project_id,
+            'subject_type' => ProjectScanner::class,
+            'subject_id' => $e->scanner->id,
+            'action' => 'lockout',
+            'category' => ActivityCategory::System,
+            'description' => "Scanner {$e->scanner->name} locked out after 5 failed authentication attempts",
+            'properties' => [
+                'scanner_name' => $e->scanner->name,
+            ],
+        ]);
+    }
+
+    public function handleEventRevertedToDraft(EventRevertedToDraft $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->event->organization_id,
+            'event_id' => $e->event->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => Event::class,
+            'subject_id' => $e->event->id,
+            'action' => 'reverted_to_draft',
+            'category' => ActivityCategory::Event,
+            'description' => "Reverted event {$e->event->name} to draft",
         ]);
     }
 

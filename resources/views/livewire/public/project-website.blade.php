@@ -1,8 +1,8 @@
 <div>
     @section('meta')
         <meta property="og:title" content="{{ $project->name }}" />
-        @if ($project->description)
-            <meta property="og:description" content="{{ $project->description }}" />
+        @if ($project->website_description ?? $project->description)
+            <meta property="og:description" content="{{ Str::limit(strip_tags($project->website_description ?? $project->description), 200) }}" />
         @endif
         @if ($project->titleImageUrl())
             <meta property="og:image" content="{{ $project->titleImageUrl() }}" />
@@ -20,16 +20,31 @@
     {{-- Project header --}}
     <div class="mb-8">
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
-        @if ($project->description)
+        @if ($renderedDescription)
+            <div class="prose dark:prose-invert mt-4 max-w-none">
+                {!! $renderedDescription !!}
+            </div>
+        @elseif ($project->description)
             <flux:text class="mt-2">{{ $project->description }}</flux:text>
         @endif
     </div>
 
+    {{-- Contact info --}}
+    @if ($project->website_contact_info)
+        <div class="mb-8 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <flux:icon name="envelope" variant="mini" class="size-4 text-zinc-500" />
+                <flux:text size="sm" class="font-medium">{{ __('Kontakt') }}</flux:text>
+            </div>
+            <flux:text>{{ $project->website_contact_info }}</flux:text>
+        </div>
+    @endif
+
     {{-- Events list --}}
     @if ($events->isEmpty())
         <div class="rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 p-12 text-center">
-            <flux:heading size="sm">{{ __('No events available yet') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Check back later for upcoming events.') }}</flux:text>
+            <flux:heading size="sm">{{ __('Aktuell keine Events verfügbar') }}</flux:heading>
+            <flux:text class="mt-2">{{ __('Schau später noch einmal vorbei.') }}</flux:text>
         </div>
     @else
         <div class="space-y-4">
@@ -46,7 +61,7 @@
                                 <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
                                     <span class="inline-flex items-center gap-1">
                                         <flux:icon name="calendar" variant="mini" class="size-4" />
-                                        {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('g:i A') }}
+                                        {{ $event->starts_at->format('d.m.Y H:i') }} &mdash; {{ $event->ends_at->format('H:i') }}
                                     </span>
                                     @if ($event->location)
                                         <span class="inline-flex items-center gap-1">
@@ -59,9 +74,13 @@
                         </div>
                         <div class="flex items-center gap-3">
                             <flux:text size="sm">
-                                {{ $event->volunteer_count }} {{ __('volunteers') }}
+                                {{ $event->volunteer_count }} {{ __('Helfer:innen') }}
                             </flux:text>
-                            <flux:badge size="sm" color="emerald">{{ __('Sign Up') }}</flux:badge>
+                            @if ($event->status === \App\Enums\EventStatus::PublishedOpen)
+                                <flux:badge size="sm" color="emerald">{{ __('Anmelden') }}</flux:badge>
+                            @else
+                                <flux:badge size="sm" color="zinc">{{ __('Registrierung geschlossen') }}</flux:badge>
+                            @endif
                         </div>
                     </div>
                 </a>

@@ -117,7 +117,7 @@
                                             />
                                             <div class="flex-1">
                                                 <flux:text size="sm">
-                                                    {{ $shift->starts_at->format('M d, g:i A') }} &ndash; {{ $shift->ends_at->format('g:i A') }}
+                                                    {{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}
                                                 </flux:text>
                                             </div>
                                             <flux:badge size="sm" :color="$isFull ? 'red' : 'emerald'">

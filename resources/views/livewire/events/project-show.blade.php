@@ -18,13 +18,47 @@
                 </flux:button>
             @endcan
 
-            @if ($this->canManage)
-                <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteProject" wire:confirm="{{ __('Delete this project? Events will remain but be unlinked from this project.') }}">
-                    {{ __('Delete Project') }}
+            @can('view', $project)
+                <flux:button variant="subtle" size="sm" icon="cube" :href="route('projects.gear-summary', $project)" wire:navigate>
+                    {{ __('Gear') }}
                 </flux:button>
+            @endcan
+
+            @can('update', $project)
+                <flux:button variant="subtle" size="sm" icon="megaphone" :href="route('projects.announcements', $project)" wire:navigate>
+                    {{ __('Ankündigungen') }}
+                </flux:button>
+                <flux:button variant="subtle" size="sm" icon="globe-alt" :href="route('projects.website-editor', $project)" wire:navigate>
+                    {{ __('Website') }}
+                </flux:button>
+                <flux:button variant="subtle" size="sm" icon="information-circle" :href="route('projects.hint-texts', $project)" wire:navigate>
+                    {{ __('Hinweistexte') }}
+                </flux:button>
+            @endcan
+
+            @if ($this->canManage)
+                <flux:button variant="subtle" size="sm" icon="document-duplicate" wire:click="$set('showCloneModal', true)">
+                    {{ __('Duplizieren') }}
+                </flux:button>
+                @if ($project->isPendingDeletion())
+                    <flux:button variant="primary" size="sm" icon="arrow-uturn-left" wire:click="restoreProject">
+                        {{ __('Wiederherstellen') }}
+                    </flux:button>
+                @else
+                    <flux:button variant="danger" size="sm" icon="trash" wire:click="$set('showDeleteModal', true)">
+                        {{ __('Löschen') }}
+                    </flux:button>
+                @endif
             @endif
         </div>
     </div>
+
+    {{-- Pending deletion warning --}}
+    @if ($project->isPendingDeletion())
+        <flux:callout variant="warning" class="mb-6">
+            {{ __('Dieses Projekt ist zur Löschung vorgemerkt und wird am :date endgültig gelöscht.', ['date' => $project->deletion_requested_at->addDays(30)->format('d.m.Y')]) }}
+        </flux:callout>
+    @endif
 
     {{-- Public link --}}
     <div class="mb-6 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 flex items-start gap-3">
@@ -64,6 +98,42 @@
                     <flux:error name="description" />
                 </flux:field>
 
+                <flux:separator class="my-2" />
+
+                <flux:heading size="sm" class="mb-2">{{ __('E-Mail-Einstellungen') }}</flux:heading>
+
+                <flux:field>
+                    <flux:label>{{ __('Absendername') }}</flux:label>
+                    <flux:input wire:model="senderName" placeholder="{{ __('Name der in E-Mails als Absender angezeigt wird') }}" />
+                    <flux:error name="senderName" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Kontakt-E-Mail') }}</flux:label>
+                    <flux:input type="email" wire:model="contactEmail" placeholder="{{ __('Antwort-Adresse für Freiwillige') }}" />
+                    <flux:error name="contactEmail" />
+                </flux:field>
+
+                <flux:separator class="my-2" />
+
+                <flux:heading size="sm" class="mb-2">{{ __('Stornierung') }}</flux:heading>
+
+                <flux:field>
+                    <flux:checkbox wire:model.live="cancellationEnabled" label="{{ __('Stornierung aktivieren') }}" />
+                    <flux:description>{{ __('Erlaubt Freiwilligen, ihre Anmeldungen bis zur Vorlaufzeit selbst zu stornieren.') }}</flux:description>
+                </flux:field>
+
+                @if ($cancellationEnabled)
+                    <flux:field>
+                        <flux:label>{{ __('Vorlaufzeit in Stunden') }}</flux:label>
+                        <flux:input type="number" wire:model="cancellationCutoffHours" min="1" max="168" />
+                        <flux:description>{{ __('Bis wie viele Stunden vor Schichtbeginn eine Stornierung möglich ist.') }}</flux:description>
+                        <flux:error name="cancellationCutoffHours" />
+                    </flux:field>
+                @endif
+
+                <flux:separator class="my-2" />
+
                 <flux:field>
                     <flux:label>{{ __('Title Image') }}</flux:label>
                     @if ($project->titleImageUrl() && !$titleImage)
@@ -94,6 +164,33 @@
                     @else
                         <flux:text size="sm" class="text-zinc-400">{{ __('No description set.') }}</flux:text>
                     @endif
+
+                    @if ($project->sender_name || $project->contact_email)
+                        <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-2">
+                            <flux:text size="sm" class="font-medium">{{ __('E-Mail-Einstellungen') }}</flux:text>
+                            @if ($project->sender_name)
+                                <div>
+                                    <flux:text size="sm" class="text-zinc-500">{{ __('Absendername') }}</flux:text>
+                                    <flux:text size="sm">{{ $project->sender_name }}</flux:text>
+                                </div>
+                            @endif
+                            @if ($project->contact_email)
+                                <div>
+                                    <flux:text size="sm" class="text-zinc-500">{{ __('Kontakt-E-Mail') }}</flux:text>
+                                    <flux:text size="sm">{{ $project->contact_email }}</flux:text>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-2">
+                        <flux:text size="sm" class="font-medium">{{ __('Stornierung') }}</flux:text>
+                        @if ($project->cancellation_enabled)
+                            <flux:text size="sm">{{ __(':hours Stunden Vorlaufzeit', ['hours' => $project->cancellation_cutoff_hours]) }}</flux:text>
+                        @else
+                            <flux:text size="sm" class="text-zinc-400">{{ __('Deaktiviert') }}</flux:text>
+                        @endif
+                    </div>
                 </div>
 
                 @if ($this->canManage)
@@ -141,4 +238,47 @@
             </div>
         @endif
     </div>
+
+    {{-- Delete confirmation modal --}}
+    <flux:modal wire:model="showDeleteModal" focusable class="max-w-lg">
+        <div class="space-y-4">
+            <flux:heading size="lg">{{ __('Projekt löschen') }}</flux:heading>
+            <flux:text>{{ __('Das Projekt wird in 30 Tagen endgültig gelöscht. Du kannst es in dieser Zeit jederzeit wiederherstellen.') }}</flux:text>
+            <flux:input type="password" wire:model="deletePassword" :label="__('Passwort bestätigen')" :placeholder="__('Dein aktuelles Passwort')" />
+            @error('deletePassword')
+                <flux:text class="text-red-500 text-sm">{{ $message }}</flux:text>
+            @enderror
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Abbrechen') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="danger" wire:click="requestDeletion">
+                    {{ __('Löschung anfordern') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Clone modal --}}
+    <flux:modal wire:model="showCloneModal" focusable class="max-w-lg">
+        <div class="space-y-4">
+            <flux:heading size="lg">{{ __('Projekt duplizieren') }}</flux:heading>
+            <flux:text>{{ __('Alle Events, Jobs, Schichten und Konfigurationen werden kopiert. Freiwillige und Anmeldungen werden nicht übernommen.') }}</flux:text>
+            <flux:input
+                type="number"
+                wire:model="cloneDateOffset"
+                :label="__('Datumsverschiebung (Tage)')"
+                :placeholder="__('z.B. 365 für nächstes Jahr')"
+            />
+            <flux:text size="sm" class="text-zinc-500">{{ __('Leer lassen, um die gleichen Daten zu verwenden.') }}</flux:text>
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Abbrechen') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="primary" wire:click="confirmCloneProject">
+                    {{ __('Duplizieren') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

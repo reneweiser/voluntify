@@ -15,6 +15,7 @@ class SendPreShiftReminders
             ->active()
             ->where($window->flagColumn(), false)
             ->whereHas('shift', fn ($q) => $q
+                ->whereNotNull('starts_at')
                 ->where('starts_at', '>', now())
                 ->where('starts_at', '<=', now()->addHours($window->hours()))
             )

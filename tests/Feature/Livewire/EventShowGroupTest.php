@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\StaffRole;
+use App\Livewire\Events\EventSettings;
 use App\Livewire\Events\EventShow;
 use App\Models\Event;
 use App\Models\Organization;
@@ -29,17 +30,17 @@ it('rejects assigning event to a project from another organization', function ()
     $foreignProject = Project::factory()->for($otherOrg)->create();
 
     expect(fn () => Livewire::actingAs($this->organizer)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->test(EventSettings::class, ['eventId' => $this->event->id])
         ->set('selectedProjectId', (string) $foreignProject->id)
         ->call('updateProject')
     )->toThrow(ModelNotFoundException::class);
 });
 
-it('allows assigning event to a project via dropdown', function () {
+it('allows assigning event to a project via settings dropdown', function () {
     $project = Project::factory()->for($this->org)->create(['name' => 'Assign Project']);
 
     Livewire::actingAs($this->organizer)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->test(EventSettings::class, ['eventId' => $this->event->id])
         ->set('selectedProjectId', (string) $project->id)
         ->call('updateProject')
         ->assertHasNoErrors();

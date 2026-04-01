@@ -16,8 +16,10 @@ class DeleteShift
 
         $shift->loadMissing('volunteerJob.event');
         $shiftData = [
-            'starts_at' => $shift->starts_at->toDateTimeString(),
-            'ends_at' => $shift->ends_at->toDateTimeString(),
+            'shift_date' => $shift->shift_date->toDateString(),
+            'starts_at' => $shift->starts_at?->toDateTimeString(),
+            'ends_at' => $shift->ends_at?->toDateTimeString(),
+            'display_text' => $shift->display_text,
             'capacity' => $shift->capacity,
             'job_name' => $shift->volunteerJob->name,
             'event_id' => $shift->volunteerJob->event_id,

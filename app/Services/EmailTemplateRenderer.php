@@ -7,23 +7,48 @@ use App\Models\Event;
 
 class EmailTemplateRenderer
 {
-    /** @var array<string, array{subject: string, body: string}> */
+    /**
+     * German default templates for all email types.
+     * #81 - Converted to German with new placeholders.
+     *
+     * @var array<string, array{subject: string, body: string}>
+     */
     private const DEFAULTS = [
         'signup_confirmation' => [
-            'subject' => "You're signed up for {{event_name}}!",
-            'body' => "Hello {{volunteer_name}}!\n\nYou've been signed up for **{{event_name}}**.\n\n**Your Shifts:**\n{{shifts_summary}}\n{{event_location}}\nYou will receive your ticket with a QR code via a separate link.\n\nThank you for volunteering!",
+            'subject' => 'Anmeldebestätigung für {{event_name}}',
+            'body' => "Hallo {{vorname}}!\n\nDu bist für **{{event_name}}** angemeldet.\n\n**Deine Schichten:**\n{{shifts_summary}}\n{{event_location}}\n\nDu erhältst dein Ticket mit QR-Code über einen separaten Link.\n\nVielen Dank für deine Unterstützung!",
         ],
         'pre_shift_reminder_24h' => [
-            'subject' => 'Reminder: Your shift for {{event_name}} is tomorrow',
-            'body' => "Hello {{volunteer_name}}!\n\nThis is a reminder that your shift for **{{event_name}}** is coming up tomorrow.\n\n**Job:** {{job_name}}\n**Shift:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\nSee you there!",
+            'subject' => 'Erinnerung: Deine Schicht bei {{event_name}} ist morgen',
+            'body' => "Hallo {{vorname}}!\n\nDies ist eine Erinnerung, dass deine Schicht bei **{{event_name}}** morgen stattfindet.\n\n**Aufgabe:** {{job_name}}\n**Schicht:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\n\nBis morgen!",
         ],
         'pre_shift_reminder_4h' => [
-            'subject' => 'Reminder: Your shift for {{event_name}} starts soon',
-            'body' => "Hello {{volunteer_name}}!\n\nYour shift for **{{event_name}}** starts in a few hours.\n\n**Job:** {{job_name}}\n**Shift:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\nSee you soon!",
+            'subject' => 'Erinnerung: Deine Schicht bei {{event_name}} beginnt bald',
+            'body' => "Hallo {{vorname}}!\n\nDeine Schicht bei **{{event_name}}** beginnt in wenigen Stunden.\n\n**Aufgabe:** {{job_name}}\n**Schicht:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\n\nBis gleich!",
         ],
         'email_verification' => [
-            'subject' => 'Verify your email for {{event_name}}',
-            'body' => "Hello {{volunteer_name}}!\n\nPlease verify your email address to complete your volunteer signup for **{{event_name}}**.\n\nThis link will expire in 24 hours. Your shift selections are not reserved until you verify.",
+            'subject' => 'Bestätige deine E-Mail für {{event_name}}',
+            'body' => "Hallo {{vorname}}!\n\nBitte bestätige deine E-Mail-Adresse, um deine Anmeldung als Helfer:in bei **{{event_name}}** abzuschließen.\n\nDieser Link ist 24 Stunden gültig. Deine Schichtauswahl ist erst nach der Bestätigung reserviert.",
+        ],
+        'staff_invitation' => [
+            'subject' => 'Einladung zu {{organization_name}}',
+            'body' => "Hallo {{name}}!\n\nDu wurdest zu **{{organization_name}}** auf Voluntify eingeladen.\n\nDein temporäres Passwort lautet: **{{temporary_password}}**\n\nBeim ersten Login wirst du aufgefordert, dein Passwort zu ändern.\n\nVielen Dank, dass du dabei bist!",
+        ],
+        'volunteer_promoted' => [
+            'subject' => 'Du wurdest bei {{organization_name}} befördert',
+            'body' => "Hallo {{name}}!\n\nDu wurdest bei **{{organization_name}}** auf Voluntify zu **{{role_name}}** befördert.\n\nDein temporäres Passwort lautet: **{{temporary_password}}**\n\nBeim ersten Login wirst du aufgefordert, dein Passwort zu ändern.\n\nVielen Dank für dein Engagement!",
+        ],
+        'added_to_organization' => [
+            'subject' => 'Du wurdest zu {{organization_name}} hinzugefügt',
+            'body' => "Hallo {{name}}!\n\nDu wurdest als **{{role_name}}** zu **{{organization_name}}** hinzugefügt.\n\nVielen Dank, dass du dabei bist!",
+        ],
+        'event_announcement' => [
+            'subject' => '{{subject}}',
+            'body' => '{{body}}',
+        ],
+        'event_updated' => [
+            'subject' => 'Aktualisierung zu {{event_name}}',
+            'body' => "Hallo {{vorname}}!\n\nEs gibt Neuigkeiten zu **{{event_name}}**:\n\n{{organizer_note}}\n\nBesuche dein Portal für weitere Details: {{portal_link}}",
         ],
     ];
 
@@ -61,33 +86,79 @@ class EmailTemplateRenderer
     }
 
     /**
+     * Returns available placeholders for a template type.
+     * #81 - Added new German placeholders (vorname, nachname, telefon, etc.)
+     *
      * @return array<string>
      */
     public function availablePlaceholders(EmailTemplateType $type): array
     {
         return match ($type) {
             EmailTemplateType::SignupConfirmation => [
-                'volunteer_name',
+                'vorname',
+                'nachname',
+                'telefon',
+                'volunteer_name', // Legacy - kept for backwards compatibility
                 'event_name',
                 'shifts_summary',
                 'job_name',
                 'shift_date',
                 'shift_time',
                 'event_location',
+                'portal_link',
+                'kontakt_email',
+                'project_name',
             ],
             EmailTemplateType::PreShiftReminder24h,
             EmailTemplateType::PreShiftReminder4h => [
-                'volunteer_name',
+                'vorname',
+                'nachname',
+                'volunteer_name', // Legacy
                 'event_name',
                 'job_name',
                 'shift_date',
                 'shift_time',
                 'event_location',
                 'cheat_sheet_url',
+                'portal_link',
+                'kontakt_email',
+                'project_name',
             ],
             EmailTemplateType::EmailVerification => [
-                'volunteer_name',
+                'vorname',
+                'nachname',
+                'volunteer_name', // Legacy
                 'event_name',
+            ],
+            EmailTemplateType::StaffInvitation => [
+                'name',
+                'organization_name',
+                'temporary_password',
+                'login_url',
+            ],
+            EmailTemplateType::VolunteerPromoted => [
+                'name',
+                'organization_name',
+                'role_name',
+                'temporary_password',
+                'login_url',
+            ],
+            EmailTemplateType::AddedToOrganization => [
+                'name',
+                'organization_name',
+                'role_name',
+                'login_url',
+            ],
+            EmailTemplateType::EventAnnouncement => [
+                'subject',
+                'body',
+            ],
+            EmailTemplateType::EventUpdated => [
+                'vorname',
+                'nachname',
+                'event_name',
+                'organizer_note',
+                'portal_link',
             ],
         };
     }

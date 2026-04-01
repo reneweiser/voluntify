@@ -7,7 +7,7 @@ use App\Models\VolunteerJob;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Shift>
+ * @extends Factory<Shift>
  */
 class ShiftFactory extends Factory
 {
@@ -20,10 +20,20 @@ class ShiftFactory extends Factory
 
         return [
             'volunteer_job_id' => VolunteerJob::factory(),
+            'shift_date' => $startsAt->format('Y-m-d'),
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             'capacity' => fake()->numberBetween(5, 30),
         ];
+    }
+
+    public function withoutTimes(?string $displayText = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'starts_at' => null,
+            'ends_at' => null,
+            'display_text' => $displayText,
+        ]);
     }
 
     public function full(): static

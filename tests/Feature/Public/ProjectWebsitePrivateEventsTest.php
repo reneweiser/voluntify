@@ -9,7 +9,9 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->project = Project::factory()->for($this->org)->create();
+    $this->project = Project::factory()->for($this->org)->create([
+        'website_published' => true,
+    ]);
 });
 
 it('shows public published events on project website', function () {

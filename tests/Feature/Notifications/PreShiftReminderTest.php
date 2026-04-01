@@ -25,8 +25,9 @@ it('renders 24h reminder with default template', function () {
     $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
     $mail = $notification->toMail($this->volunteer);
 
+    // #81 - Updated to expect German subject ("morgen" instead of "tomorrow")
     expect($mail->subject)->toContain('Summer Fest')
-        ->and($mail->subject)->toContain('tomorrow')
+        ->and($mail->subject)->toContain('morgen')
         ->and(implode(' ', $mail->introLines))->toContain('Stage Crew')
         ->and(implode(' ', $mail->introLines))->toContain('Central Park');
 });
@@ -35,8 +36,9 @@ it('renders 4h reminder with default template', function () {
     $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder4h);
     $mail = $notification->toMail($this->volunteer);
 
+    // #81 - Updated to expect German subject ("bald" instead of "soon")
     expect($mail->subject)->toContain('Summer Fest')
-        ->and($mail->subject)->toContain('soon')
+        ->and($mail->subject)->toContain('bald')
         ->and(implode(' ', $mail->introLines))->toContain('Stage Crew');
 });
 

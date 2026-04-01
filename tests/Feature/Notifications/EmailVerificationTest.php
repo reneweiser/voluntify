@@ -26,9 +26,10 @@ it('sends email with event details and verification URL', function () {
     Notification::assertSentTo($this->volunteer, EmailVerification::class, function ($notification) {
         $mail = $notification->toMail($this->volunteer);
 
-        expect($mail->subject)->toBe('Verify your email for Summer Fest')
+        // #81 - Updated to expect German subject and content
+        expect($mail->subject)->toBe('Bestätige deine E-Mail für Summer Fest')
             ->and(implode(' ', $mail->introLines))->toContain('Summer Fest')
-            ->and(implode(' ', $mail->introLines))->toContain('verify your email');
+            ->and(implode(' ', $mail->introLines))->toContain('bestätige');
 
         return true;
     });
@@ -53,7 +54,8 @@ it('uses default template when no custom template exists', function () {
     $notification = new EmailVerification($this->event, $this->verificationUrl);
     $mail = $notification->toMail($this->volunteer);
 
-    expect($mail->subject)->toBe('Verify your email for Summer Fest')
+    // #81 - Updated to expect German defaults
+    expect($mail->subject)->toBe('Bestätige deine E-Mail für Summer Fest')
         ->and(implode(' ', $mail->introLines))->toContain('Summer Fest');
 });
 
@@ -62,10 +64,11 @@ it('is queued', function () {
         ->toBeInstanceOf(ShouldQueue::class);
 });
 
-it('includes verification action URL', function () {
+it('includes verification action URL in German', function () {
     $notification = new EmailVerification($this->event, $this->verificationUrl);
     $mail = $notification->toMail($this->volunteer);
 
-    expect($mail->actionText)->toBe('Verify Email & Complete Signup')
+    // #81 - Updated to German button text
+    expect($mail->actionText)->toBe('E-Mail bestätigen & Anmeldung abschließen')
         ->and($mail->actionUrl)->toBe($this->verificationUrl);
 });

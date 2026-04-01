@@ -45,19 +45,26 @@ class PreShiftReminder extends Notification implements ShouldQueue
             $this->templateType,
             $this->event,
             [
+                // #81 - German placeholders (primary)
+                'vorname' => $notifiable->first_name,
+                'nachname' => $notifiable->last_name,
+                // Legacy placeholders (backwards compatibility)
                 'volunteer_name' => $notifiable->full_name,
                 'event_name' => $this->event->name,
                 'job_name' => $job->name,
-                'shift_date' => $this->shift->starts_at->format('M d, Y'),
-                'shift_time' => $this->shift->starts_at->format('g:i A').' — '.$this->shift->ends_at->format('g:i A'),
-                'event_location' => $this->event->location ? "**Location:** {$this->event->location}" : '',
-                'cheat_sheet_url' => $cheatSheetUrl ? "[View Job Instructions]({$cheatSheetUrl})" : '',
+                'shift_date' => $this->shift->shift_date->format('d.m.Y'),
+                'shift_time' => $this->shift->displayTimeRange(),
+                'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
+                'cheat_sheet_url' => $cheatSheetUrl ? "[Aufgaben-Infos anzeigen]({$cheatSheetUrl})" : '',
+                'portal_link' => '', // Will be set when portal URL is available
+                'kontakt_email' => $this->event->project?->contact_email ?? $this->event->organization->smtp_from_address ?? '',
+                'project_name' => $this->event->project?->name ?? '',
             ],
         );
 
         $mail = (new MailMessage)
             ->subject($rendered['subject'])
-            ->greeting("Hello {$notifiable->full_name}!");
+            ->greeting("Hallo {$notifiable->first_name}!");
 
         foreach (explode("\n", $rendered['body']) as $line) {
             $trimmed = trim($line);
@@ -66,6 +73,6 @@ class PreShiftReminder extends Notification implements ShouldQueue
             }
         }
 
-        return $this->applyOrgMailer($mail, $this->event->organization);
+        return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ShiftSignupFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ShiftSignup extends Model
 {
-    /** @use HasFactory<\Database\Factories\ShiftSignupFactory> */
+    /** @use HasFactory<ShiftSignupFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -46,6 +47,10 @@ class ShiftSignup extends Model
     {
         if ($this->isCancelled()) {
             return false;
+        }
+
+        if (! $this->shift->hasDefinedTimes()) {
+            return $this->shift->shift_date->startOfDay()->isAfter(now()->addHours($cutoffHours));
         }
 
         return $this->shift->starts_at->isAfter(now()->addHours($cutoffHours));

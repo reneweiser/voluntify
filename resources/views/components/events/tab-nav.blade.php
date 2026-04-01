@@ -36,14 +36,16 @@
         {{ __('Emails') }}
     </flux:navlist.item>
     @can('update', $event)
-        <flux:navlist.item
-            :href="route('events.announcements', $event)"
-            :current="request()->routeIs('events.announcements')"
-            icon="megaphone"
-            wire:navigate
-        >
-            {{ __('Announcements') }}
-        </flux:navlist.item>
+        @if ($event->project_id)
+            <flux:navlist.item
+                :href="route('projects.announcements', $event->project_id)"
+                :current="request()->routeIs('projects.announcements')"
+                icon="megaphone"
+                wire:navigate
+            >
+                {{ __('Ankündigungen') }}
+            </flux:navlist.item>
+        @endif
     @endcan
     @can('manageJobs', $event)
         <flux:navlist.item
@@ -93,6 +95,16 @@
             wire:navigate
         >
             {{ __('Attendance') }}
+        </flux:navlist.item>
+    @endcan
+    @can('update', $event)
+        <flux:navlist.item
+            :href="route('events.settings', $event)"
+            :current="request()->routeIs('events.settings')"
+            icon="cog-6-tooth"
+            wire:navigate
+        >
+            {{ __('Settings') }}
         </flux:navlist.item>
     @endcan
 </flux:navlist>

@@ -18,28 +18,61 @@
 
         @if ($this->canManage)
             <div class="flex items-center gap-2">
-                <flux:button variant="subtle" icon="document-duplicate" wire:click="cloneEvent" wire:confirm="{{ __('Clone this event? A new Draft event will be created with the same jobs and shifts.') }}">
+                <flux:button variant="subtle" icon="cog-6-tooth" :href="route('events.settings', $event)" wire:navigate>
+                    {{ __('Settings') }}
+                </flux:button>
+                <flux:button variant="subtle" icon="document-duplicate" wire:click="openCloneModal">
                     {{ __('Clone') }}
                 </flux:button>
-                @if ($event->status === \App\Enums\EventStatus::Draft)
-                    <flux:button variant="primary" wire:click="publishEvent" wire:confirm="{{ __('Publish this event? It will become publicly accessible.') }}">
-                        {{ __('Publish') }}
+                @if ($event->isPendingDeletion())
+                    <flux:button variant="primary" size="sm" icon="arrow-uturn-left" wire:click="restoreEvent">
+                        {{ __('Wiederherstellen') }}
+                    </flux:button>
+                @elseif ($event->status === \App\Enums\EventStatus::Draft)
+                    @if ($event->was_previously_published)
+                        <flux:button variant="primary" wire:click="publishEvent">
+                            {{ __('Erneut veröffentlichen') }}
+                        </flux:button>
+                    @else
+                        <flux:button variant="primary" wire:click="publishEvent" wire:confirm="{{ __('Publish this event? It will become publicly accessible.') }}">
+                            {{ __('Publish') }}
+                        </flux:button>
+                    @endif
+                    <flux:button variant="danger" size="sm" icon="trash" wire:click="$set('showDeleteModal', true)">
+                        {{ __('Löschen') }}
                     </flux:button>
                 @elseif ($event->status === \App\Enums\EventStatus::PublishedOpen)
                     <flux:button variant="subtle" wire:click="closeRegistration" wire:confirm="{{ __('Close registration? Volunteers will no longer be able to sign up, but the event page remains visible.') }}">
                         {{ __('Close Registration') }}
                     </flux:button>
+                    <flux:button variant="subtle" wire:click="revertToDraft" wire:confirm="{{ __('Zurück zu Entwurf? Das Event wird nicht mehr öffentlich sichtbar sein.') }}">
+                        {{ __('Zurück zu Entwurf') }}
+                    </flux:button>
                     <flux:button variant="subtle" wire:click="archiveEvent" wire:confirm="{{ __('Archive this event? It will be removed from public view.') }}">
                         {{ __('Archive') }}
                     </flux:button>
                 @elseif ($event->status === \App\Enums\EventStatus::PublishedClosed)
+                    <flux:button variant="subtle" wire:click="revertToDraft" wire:confirm="{{ __('Zurück zu Entwurf? Das Event wird nicht mehr öffentlich sichtbar sein.') }}">
+                        {{ __('Zurück zu Entwurf') }}
+                    </flux:button>
                     <flux:button variant="subtle" wire:click="archiveEvent" wire:confirm="{{ __('Archive this event? It will be removed from public view.') }}">
                         {{ __('Archive') }}
+                    </flux:button>
+                @elseif ($event->status === \App\Enums\EventStatus::Archived)
+                    <flux:button variant="danger" size="sm" icon="trash" wire:click="$set('showDeleteModal', true)">
+                        {{ __('Löschen') }}
                     </flux:button>
                 @endif
             </div>
         @endif
     </div>
+
+    {{-- Pending deletion warning --}}
+    @if ($event->isPendingDeletion())
+        <flux:callout variant="warning" class="mb-4">
+            {{ __('Dieses Event ist zur Löschung vorgemerkt und wird am :date endgültig gelöscht.', ['date' => $event->deletion_requested_at->addDays(30)->format('d.m.Y')]) }}
+        </flux:callout>
+    @endif
 
     {{-- Status errors --}}
     @error('status')
@@ -119,127 +152,116 @@
             </div>
         @endif
 
-        {{-- Event details / edit form --}}
+        {{-- Event details (read-only) --}}
         <flux:card>
-            @if ($editing)
-                <form wire:submit="saveEvent" class="space-y-4">
-                    <flux:field>
-                        <flux:label>{{ __('Event Name') }}</flux:label>
-                        <flux:input wire:model="name" />
-                        <flux:error name="name" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Description') }}</flux:label>
-                        <flux:textarea wire:model="description" rows="3" />
-                        <flux:error name="description" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Location') }}</flux:label>
-                        <flux:input wire:model="location" />
-                        <flux:error name="location" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Starts At') }}</flux:label>
-                        <flux:input type="datetime-local" wire:model="startsAt" />
-                        <flux:error name="startsAt" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Ends At') }}</flux:label>
-                        <flux:input type="datetime-local" wire:model="endsAt" />
-                        <flux:error name="endsAt" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Cancellation Cutoff (hours)') }}</flux:label>
-                        <flux:input type="number" wire:model="cancellationCutoffHours" min="1" max="168" placeholder="{{ __('Disabled — leave empty') }}" />
-                        <flux:description>{{ __('Volunteers can cancel signups up to this many hours before their shift. Leave empty to disable.') }}</flux:description>
-                        <flux:error name="cancellationCutoffHours" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Attendance Grace Period (minutes)') }}</flux:label>
-                        <flux:input type="number" wire:model="attendanceGraceMinutes" min="0" max="120" placeholder="{{ __('No grace period — leave empty') }}" />
-                        <flux:description>{{ __('Minutes after shift start within which a scan is still marked as on-time. Leave empty for no grace period.') }}</flux:description>
-                        <flux:error name="attendanceGraceMinutes" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Visibility') }}</flux:label>
-                        <flux:select wire:model="visibility">
-                            @foreach (\App\Enums\EventVisibility::cases() as $vis)
-                                <flux:select.option value="{{ $vis->value }}">{{ $vis->label() }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
-                        <flux:description>{{ __('Private events are not shown on the project website. Share the direct link to allow signups.') }}</flux:description>
-                    </flux:field>
-
-                    @if ($this->availableProjects->isNotEmpty())
-                        <flux:field>
-                            <flux:label>{{ __('Project') }}</flux:label>
-                            <flux:select wire:model="selectedProjectId" wire:change="updateProject" placeholder="{{ __('None') }}">
-                                <flux:select.option value="">{{ __('None') }}</flux:select.option>
-                                @foreach ($this->availableProjects as $project)
-                                    <flux:select.option :value="$project->id">{{ $project->name }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
-                        </flux:field>
-                    @endif
-
-                    <flux:field>
-                        <flux:label>{{ __('Title Image') }}</flux:label>
-                        @if ($event->titleImageUrl() && !$titleImage)
-                            <div class="flex items-center gap-3 mb-2">
-                                <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="h-20 w-32 object-cover rounded" />
-                                <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteImage" wire:confirm="{{ __('Remove this image?') }}">
-                                    {{ __('Remove') }}
-                                </flux:button>
-                            </div>
-                        @endif
-                        <flux:input type="file" wire:model="titleImage" accept="image/jpeg,image/png,image/webp" />
-                        <flux:error name="titleImage" />
-                    </flux:field>
-
-                    <div class="flex gap-2">
-                        <flux:button type="submit" variant="primary">{{ __('Save Changes') }}</flux:button>
-                        <flux:button variant="ghost" wire:click="cancelEditing">{{ __('Cancel') }}</flux:button>
+            <div class="space-y-3">
+                @if ($event->description)
+                    <div>
+                        <flux:text size="sm" class="font-medium">{{ __('Description') }}</flux:text>
+                        <flux:text class="mt-1">{{ $event->description }}</flux:text>
                     </div>
-                </form>
-            @else
-                <div class="flex items-start justify-between">
-                    <div class="space-y-3">
-                        @if ($event->description)
-                            <div>
-                                <flux:text size="sm" class="font-medium">{{ __('Description') }}</flux:text>
-                                <flux:text class="mt-1">{{ $event->description }}</flux:text>
-                            </div>
-                        @endif
+                @endif
 
-                        @if ($event->location)
-                            <div>
-                                <flux:text size="sm" class="font-medium">{{ __('Location') }}</flux:text>
-                                <flux:text class="mt-1">{{ $event->location }}</flux:text>
-                            </div>
-                        @endif
-
-                        <div>
-                            <flux:text size="sm" class="font-medium">{{ __('Date & Time') }}</flux:text>
-                            <flux:text class="mt-1">
-                                {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('M d, Y g:i A') }}
-                            </flux:text>
-                        </div>
+                @if ($event->location)
+                    <div>
+                        <flux:text size="sm" class="font-medium">{{ __('Location') }}</flux:text>
+                        <flux:text class="mt-1">{{ $event->location }}</flux:text>
                     </div>
+                @endif
 
-                    @if ($this->canManage && $event->status !== \App\Enums\EventStatus::Archived)
-                        <flux:button variant="subtle" size="sm" icon="pencil" wire:click="startEditing">
-                            {{ __('Edit') }}
-                        </flux:button>
-                    @endif
+                <div>
+                    <flux:text size="sm" class="font-medium">{{ __('Date & Time') }}</flux:text>
+                    <flux:text class="mt-1">
+                        {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('M d, Y g:i A') }}
+                    </flux:text>
                 </div>
-            @endif
+
+                @if ($event->visibility === \App\Enums\EventVisibility::Private)
+                    <div>
+                        <flux:text size="sm" class="font-medium">{{ __('Visibility') }}</flux:text>
+                        <flux:text class="mt-1">{{ __('Private') }}</flux:text>
+                    </div>
+                @endif
+
+                @if ($event->notification_email)
+                    <div>
+                        <flux:text size="sm" class="font-medium">{{ __('Benachrichtigungs-E-Mail') }}</flux:text>
+                        <flux:text class="mt-1">{{ $event->notification_email }}</flux:text>
+                    </div>
+                @endif
+
+                @if ($event->attendance_grace_minutes)
+                    <div>
+                        <flux:text size="sm" class="font-medium">{{ __('Grace Period') }}</flux:text>
+                        <flux:text class="mt-1">{{ $event->attendance_grace_minutes }} {{ __('minutes') }}</flux:text>
+                    </div>
+                @endif
+            </div>
         </flux:card>
     </x-events.layout>
+
+    {{-- Re-publish modal --}}
+    <flux:modal wire:model="showRepublishModal" focusable class="max-w-lg">
+        <div class="space-y-4">
+            <flux:heading size="lg">{{ __('Erneut veröffentlichen') }}</flux:heading>
+            <flux:text>{{ __('Dieses Event wurde bereits veröffentlicht. Angemeldete Helfer:innen werden per E-Mail über die Reaktivierung informiert.') }}</flux:text>
+            <flux:textarea
+                wire:model="republishNote"
+                :label="__('Nachricht an Helfer:innen (optional)')"
+                :placeholder="__('z.B. Neuer Termin, geänderter Ort...')"
+                rows="3"
+            />
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Abbrechen') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="primary" wire:click="confirmRepublish">
+                    {{ __('Veröffentlichen & benachrichtigen') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Clone modal --}}
+    <flux:modal wire:model="showCloneModal" focusable class="max-w-lg">
+        <div class="space-y-4">
+            <flux:heading size="lg">{{ __('Event duplizieren') }}</flux:heading>
+            <flux:text>{{ __('Ein neues Entwurfs-Event wird mit denselben Jobs und Schichten erstellt.') }}</flux:text>
+            <flux:input
+                type="number"
+                wire:model="cloneDateOffset"
+                :label="__('Datumsverschiebung (Tage)')"
+                :placeholder="__('z.B. 7 für eine Woche später, -7 für früher')"
+            />
+            <flux:text size="sm" class="text-zinc-500">{{ __('Leer lassen, um die gleichen Daten zu verwenden.') }}</flux:text>
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Abbrechen') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="primary" wire:click="confirmClone">
+                    {{ __('Duplizieren') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Delete confirmation modal --}}
+    <flux:modal wire:model="showDeleteModal" focusable class="max-w-lg">
+        <div class="space-y-4">
+            <flux:heading size="lg">{{ __('Event löschen') }}</flux:heading>
+            <flux:text>{{ __('Dieses Event wird in 30 Tagen endgültig gelöscht. Du kannst es in dieser Zeit jederzeit wiederherstellen.') }}</flux:text>
+            <flux:input type="password" wire:model="deletePassword" :label="__('Passwort bestätigen')" :placeholder="__('Dein aktuelles Passwort')" />
+            @error('deletePassword')
+                <flux:text class="text-red-500 text-sm">{{ $message }}</flux:text>
+            @enderror
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Abbrechen') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="danger" wire:click="requestDeletion">
+                    {{ __('Löschung anfordern') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

@@ -2,13 +2,17 @@
 
 namespace App\Livewire\Events;
 
-use App\Actions\DeleteProject;
+use App\Actions\CloneProject;
+use App\Actions\RequestProjectDeletion;
+use App\Actions\RestoreProject;
 use App\Actions\UpdateProject;
+use App\Exceptions\DomainException;
 use App\Models\Organization;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -18,6 +22,7 @@ class ProjectShow extends Component
 {
     use WithFileUploads;
 
+    #[Locked]
     public Project $project;
 
     public string $name = '';
@@ -26,7 +31,23 @@ class ProjectShow extends Component
 
     public $titleImage;
 
+    public string $senderName = '';
+
+    public string $contactEmail = '';
+
+    public bool $cancellationEnabled = false;
+
+    public $cancellationCutoffHours = '';
+
     public bool $editing = false;
+
+    public string $deletePassword = '';
+
+    public bool $showDeleteModal = false;
+
+    public bool $showCloneModal = false;
+
+    public $cloneDateOffset = '';
 
     public function mount(int $projectId): void
     {
@@ -88,6 +109,10 @@ class ProjectShow extends Component
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'titleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'senderName' => ['nullable', 'string', 'max:255'],
+            'contactEmail' => ['nullable', 'email', 'max:255'],
+            'cancellationEnabled' => ['boolean'],
+            'cancellationCutoffHours' => ['nullable', 'required_if:cancellationEnabled,true', 'integer', 'min:1', 'max:168'],
         ]);
 
         $action = app(UpdateProject::class);
@@ -96,6 +121,10 @@ class ProjectShow extends Component
             name: $this->name,
             description: $this->description ?: null,
             titleImage: $this->titleImage,
+            senderName: $this->senderName ?: null,
+            contactEmail: $this->contactEmail ?: null,
+            cancellationEnabled: $this->cancellationEnabled,
+            cancellationCutoffHours: $this->cancellationCutoffHours !== '' ? (int) $this->cancellationCutoffHours : null,
         );
 
         $this->titleImage = null;
@@ -116,19 +145,57 @@ class ProjectShow extends Component
         );
     }
 
-    public function deleteProject(): void
+    public function requestDeletion(): void
     {
         Gate::authorize('delete', $this->project);
 
-        $action = app(DeleteProject::class);
-        $action->execute($this->project);
+        $this->validate([
+            'deletePassword' => ['required', 'string'],
+        ]);
 
-        $this->redirectRoute('projects.index');
+        try {
+            $action = app(RequestProjectDeletion::class);
+            $this->project = $action->execute($this->project, $this->deletePassword);
+            $this->showDeleteModal = false;
+            $this->deletePassword = '';
+        } catch (DomainException $e) {
+            $this->addError('deletePassword', $e->getMessage());
+        }
+    }
+
+    public function restoreProject(): void
+    {
+        Gate::authorize('delete', $this->project);
+
+        $action = app(RestoreProject::class);
+        $this->project = $action->execute($this->project);
+    }
+
+    public function confirmCloneProject(): void
+    {
+        Gate::authorize('update', $this->project);
+
+        $this->validate([
+            'cloneDateOffset' => ['nullable', 'integer', 'min:-3650', 'max:3650'],
+        ]);
+
+        $action = app(CloneProject::class);
+        $offset = $this->cloneDateOffset !== '' ? (int) $this->cloneDateOffset : null;
+        $clonedProject = $action->execute($this->project, $offset);
+
+        $this->showCloneModal = false;
+        $this->cloneDateOffset = '';
+
+        $this->redirect(route('projects.show', $clonedProject), navigate: true);
     }
 
     private function fillForm(): void
     {
         $this->name = $this->project->name;
         $this->description = $this->project->description ?? '';
+        $this->senderName = $this->project->sender_name ?? '';
+        $this->contactEmail = $this->project->contact_email ?? '';
+        $this->cancellationEnabled = $this->project->cancellation_enabled;
+        $this->cancellationCutoffHours = $this->project->cancellation_cutoff_hours ?? '';
     }
 }

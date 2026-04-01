@@ -164,3 +164,50 @@ it('keeps same project_id from source event', function () {
 
     expect($cloned->project_id)->toBe($this->event->project_id);
 });
+
+it('clones into a different project when targetProjectId is set', function () {
+    $targetProject = Project::factory()->for($this->org)->create();
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event, targetProjectId: $targetProject->id);
+
+    expect($cloned->project_id)->toBe($targetProject->id);
+});
+
+it('applies date offset to event and shift dates', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => '2026-06-01 10:00:00',
+        'ends_at' => '2026-06-01 18:00:00',
+    ]);
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event, dateOffsetDays: 7);
+
+    $clonedShift = $cloned->volunteerJobs->first()->shifts->first();
+
+    expect($cloned->starts_at->gt($this->event->starts_at))->toBeTrue()
+        ->and($clonedShift->shift_date->format('Y-m-d'))->toBe('2026-06-08')
+        ->and($clonedShift->starts_at->format('Y-m-d'))->toBe('2026-06-08')
+        ->and($clonedShift->ends_at->format('Y-m-d'))->toBe('2026-06-08');
+});
+
+it('handles date offset with null shift times', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    Shift::factory()->for($job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => null,
+        'ends_at' => null,
+        'display_text' => 'Ganztags',
+    ]);
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event, dateOffsetDays: 14);
+
+    $clonedShift = $cloned->volunteerJobs->first()->shifts->first();
+
+    expect($clonedShift->shift_date->format('Y-m-d'))->toBe('2026-06-15')
+        ->and($clonedShift->starts_at)->toBeNull()
+        ->and($clonedShift->ends_at)->toBeNull();
+});

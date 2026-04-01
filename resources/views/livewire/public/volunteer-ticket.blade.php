@@ -43,7 +43,7 @@
                         <div wire:key="signup-{{ $signup->id }}" class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4">
                             <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $signup->shift->volunteerJob->name }}</div>
                             <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ $signup->shift->starts_at->format('M d, Y g:i A') }} &mdash; {{ $signup->shift->ends_at->format('g:i A') }}
+                                {{ $signup->shift->shift_date->format('M d, Y') }} — {{ $signup->shift->displayTimeRange() }}
                             </div>
                         </div>
                     @endforeach

@@ -25,14 +25,14 @@ it('rate limits after 5 failed attempts', function () {
         $component
             ->set('authCode', '000000')
             ->call('authenticate')
-            ->assertSet('errorMessage', 'Invalid code. Please try again.');
+            ->assertSet('errorMessage', 'Ungültiger Code. Bitte versuche es erneut.');
     }
 
     $component
         ->set('authCode', '000000')
         ->call('authenticate');
 
-    expect($component->get('errorMessage'))->toContain('Too many attempts');
+    expect($component->get('errorMessage'))->toContain('Zu viele Versuche');
 });
 
 it('blocks correct code when rate limited', function () {
@@ -50,7 +50,7 @@ it('blocks correct code when rate limited', function () {
         ->set('authCode', '123456')
         ->call('authenticate');
 
-    expect($component->get('errorMessage'))->toContain('Too many attempts');
+    expect($component->get('errorMessage'))->toContain('Zu viele Versuche');
     $component->assertNoRedirect();
 });
 

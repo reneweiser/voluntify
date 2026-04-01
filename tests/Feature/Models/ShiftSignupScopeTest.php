@@ -1,8 +1,9 @@
 <?php
 
+use App\Models\Announcement;
 use App\Models\Event;
-use App\Models\EventAnnouncement;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\User;
@@ -10,9 +11,11 @@ use App\Models\VolunteerJob;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->event = Event::factory()->for($this->org)->published()->create([
+    $this->project = Project::factory()->for($this->org)->create([
+        'cancellation_enabled' => true,
         'cancellation_cutoff_hours' => 24,
     ]);
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'capacity' => 5,
@@ -113,26 +116,37 @@ it('ShiftSignup isCancellable returns false when past cutoff', function () {
     expect($signup->isCancellable(24))->toBeFalse();
 });
 
-it('Event isCancellationAllowed returns false when cancellation_cutoff_hours is null', function () {
-    $event = Event::factory()->for($this->org)->create([
+it('Project isCancellationAllowed returns false when cancellation disabled', function () {
+    $project = Project::factory()->for($this->org)->create([
+        'cancellation_enabled' => false,
         'cancellation_cutoff_hours' => null,
     ]);
 
-    expect($event->isCancellationAllowed())->toBeFalse();
+    expect($project->isCancellationAllowed())->toBeFalse();
 });
 
-it('Event isCancellationAllowed returns true when cancellation_cutoff_hours is set', function () {
-    expect($this->event->isCancellationAllowed())->toBeTrue();
-});
-
-it('EventAnnouncement belongs to event and sender', function () {
-    $user = User::factory()->create();
-
-    $announcement = EventAnnouncement::factory()->create([
-        'event_id' => $this->event->id,
-        'sent_by' => $user->id,
+it('Project isCancellationAllowed returns false when enabled but no cutoff hours', function () {
+    $project = Project::factory()->for($this->org)->create([
+        'cancellation_enabled' => true,
+        'cancellation_cutoff_hours' => null,
     ]);
 
-    expect($announcement->event->id)->toBe($this->event->id)
-        ->and($announcement->sender->id)->toBe($user->id);
+    expect($project->isCancellationAllowed())->toBeFalse();
+});
+
+it('Project isCancellationAllowed returns true when enabled with cutoff hours', function () {
+    expect($this->project->isCancellationAllowed())->toBeTrue();
+});
+
+it('Announcement belongs to project and creator', function () {
+    $user = User::factory()->create();
+
+    $announcement = Announcement::factory()->create([
+        'project_id' => $this->event->project_id,
+        'event_id' => $this->event->id,
+        'created_by' => $user->id,
+    ]);
+
+    expect($announcement->project->id)->toBe($this->event->project_id)
+        ->and($announcement->creator->id)->toBe($user->id);
 });

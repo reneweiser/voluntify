@@ -3,62 +3,43 @@
 namespace App\Livewire\Events;
 
 use App\Actions\ArchiveEvent;
-use App\Actions\AssignEventsToProject;
 use App\Actions\CloneEvent;
 use App\Actions\CloseRegistration;
-use App\Actions\DeleteEventImage;
 use App\Actions\PublishEvent;
-use App\Actions\UpdateEvent;
-use App\Enums\EventVisibility;
+use App\Actions\RequestEventDeletion;
+use App\Actions\RestoreEvent;
+use App\Actions\RevertEventToDraft;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Shift;
 use App\Models\Volunteer;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 #[Title('Event Details')]
 class EventShow extends Component
 {
-    use WithFileUploads;
-
     public Event $event;
 
-    public string $name = '';
+    public string $republishNote = '';
 
-    public string $description = '';
+    public bool $showRepublishModal = false;
 
-    public string $location = '';
+    public string $deletePassword = '';
 
-    public string $startsAt = '';
+    public bool $showDeleteModal = false;
 
-    public string $endsAt = '';
+    public bool $showCloneModal = false;
 
-    public $titleImage;
-
-    public $cancellationCutoffHours = '';
-
-    public $attendanceGraceMinutes = '';
-
-    public string $visibility = 'public';
-
-    public bool $editing = false;
-
-    public string $selectedProjectId = '';
+    public $cloneDateOffset = '';
 
     public function mount(int $eventId): void
     {
         $this->event = currentOrganization()->events()->findOrFail($eventId);
 
         Gate::authorize('view', $this->event);
-
-        $this->fillForm();
     }
 
     #[Computed]
@@ -98,94 +79,51 @@ class EventShow extends Component
         return route('events.public', $this->event->public_token);
     }
 
-    #[Computed]
-    public function availableProjects(): Collection
-    {
-        return currentOrganization()->projects()->orderBy('name')->get();
-    }
-
-    public function updateProject(): void
-    {
-        Gate::authorize('update', $this->event);
-
-        if ($this->selectedProjectId !== '') {
-            $project = currentOrganization()->projects()->findOrFail((int) $this->selectedProjectId);
-            $action = app(AssignEventsToProject::class);
-            $action->execute($project, [$this->event->id]);
-        }
-
-        $this->event->refresh();
-    }
-
-    public function startEditing(): void
-    {
-        Gate::authorize('update', $this->event);
-
-        $this->editing = true;
-    }
-
-    public function cancelEditing(): void
-    {
-        $this->editing = false;
-        $this->fillForm();
-        $this->resetValidation();
-    }
-
-    public function saveEvent(): void
-    {
-        Gate::authorize('update', $this->event);
-
-        $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'startsAt' => ['required', 'date'],
-            'endsAt' => ['required', 'date', 'after:startsAt'],
-            'titleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'cancellationCutoffHours' => ['nullable', 'integer', 'min:1', 'max:168'],
-            'attendanceGraceMinutes' => ['nullable', 'integer', 'min:0', 'max:120'],
-            'visibility' => ['required', Rule::in(array_column(EventVisibility::cases(), 'value'))],
-        ]);
-
-        try {
-            $action = app(UpdateEvent::class);
-            $this->event = $action->execute(
-                event: $this->event,
-                name: $this->name,
-                description: $this->description ?: null,
-                location: $this->location ?: null,
-                startsAt: Carbon::parse($this->startsAt),
-                endsAt: Carbon::parse($this->endsAt),
-                titleImage: $this->titleImage,
-                cancellationCutoffHours: $this->cancellationCutoffHours !== '' ? (int) $this->cancellationCutoffHours : null,
-                attendanceGraceMinutes: $this->attendanceGraceMinutes !== '' ? (int) $this->attendanceGraceMinutes : null,
-                visibility: EventVisibility::from($this->visibility),
-            );
-
-            $this->titleImage = null;
-            $this->editing = false;
-            $this->dispatch('event-updated');
-        } catch (DomainException $e) {
-            $this->addError('name', $e->getMessage());
-        }
-    }
-
-    public function deleteImage(): void
-    {
-        Gate::authorize('update', $this->event);
-
-        $action = app(DeleteEventImage::class);
-        $this->event = $action->execute($this->event);
-    }
-
     public function publishEvent(): void
     {
         Gate::authorize('publish', $this->event);
+
+        if ($this->event->was_previously_published) {
+            $this->showRepublishModal = true;
+
+            return;
+        }
 
         try {
             $action = app(PublishEvent::class);
             $this->event = $action->execute($this->event);
             $this->dispatch('event-published');
+        } catch (DomainException $e) {
+            $this->addError('status', $e->getMessage());
+        }
+    }
+
+    public function confirmRepublish(): void
+    {
+        Gate::authorize('publish', $this->event);
+
+        try {
+            $action = app(PublishEvent::class);
+            $this->event = $action->execute(
+                $this->event,
+                $this->republishNote ?: null,
+            );
+            $this->showRepublishModal = false;
+            $this->republishNote = '';
+            $this->dispatch('event-published');
+        } catch (DomainException $e) {
+            $this->addError('status', $e->getMessage());
+        }
+    }
+
+    public function revertToDraft(): void
+    {
+        Gate::authorize('update', $this->event);
+
+        try {
+            $action = app(RevertEventToDraft::class);
+            $this->event = $action->execute($this->event);
+            $this->dispatch('event-reverted-to-draft');
         } catch (DomainException $e) {
             $this->addError('status', $e->getMessage());
         }
@@ -217,26 +155,52 @@ class EventShow extends Component
         }
     }
 
-    public function cloneEvent(): void
+    public function openCloneModal(): void
+    {
+        $this->showCloneModal = true;
+    }
+
+    public function confirmClone(): void
     {
         Gate::authorize('create', [Event::class, $this->event->organization]);
 
+        $this->validate([
+            'cloneDateOffset' => ['nullable', 'integer', 'min:-3650', 'max:3650'],
+        ]);
+
         $action = app(CloneEvent::class);
-        $clonedEvent = $action->execute($this->event);
+        $offset = $this->cloneDateOffset !== '' ? (int) $this->cloneDateOffset : null;
+        $clonedEvent = $action->execute($this->event, dateOffsetDays: $offset);
+
+        $this->showCloneModal = false;
+        $this->cloneDateOffset = '';
 
         $this->redirect(route('events.show', $clonedEvent), navigate: true);
     }
 
-    private function fillForm(): void
+    public function requestDeletion(): void
     {
-        $this->name = $this->event->name;
-        $this->description = $this->event->description ?? '';
-        $this->location = $this->event->location ?? '';
-        $this->startsAt = $this->event->starts_at->format('Y-m-d\TH:i');
-        $this->endsAt = $this->event->ends_at->format('Y-m-d\TH:i');
-        $this->cancellationCutoffHours = $this->event->cancellation_cutoff_hours ?? '';
-        $this->attendanceGraceMinutes = $this->event->attendance_grace_minutes ?? '';
-        $this->selectedProjectId = $this->event->project_id ? (string) $this->event->project_id : '';
-        $this->visibility = $this->event->visibility?->value ?? 'public';
+        Gate::authorize('delete', $this->event);
+
+        $this->validate([
+            'deletePassword' => ['required', 'string'],
+        ]);
+
+        try {
+            $action = app(RequestEventDeletion::class);
+            $this->event = $action->execute($this->event, $this->deletePassword);
+            $this->showDeleteModal = false;
+            $this->deletePassword = '';
+        } catch (DomainException $e) {
+            $this->addError('deletePassword', $e->getMessage());
+        }
+    }
+
+    public function restoreEvent(): void
+    {
+        Gate::authorize('delete', $this->event);
+
+        $action = app(RestoreEvent::class);
+        $this->event = $action->execute($this->event);
     }
 }

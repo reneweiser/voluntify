@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ActivityCategory;
 use Carbon\CarbonInterface;
+use Database\Factories\ActivityLogFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,13 +13,14 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ActivityLog extends Model
 {
-    /** @use HasFactory<\Database\Factories\ActivityLogFactory> */
+    /** @use HasFactory<ActivityLogFactory> */
     use HasFactory;
 
     const UPDATED_AT = null;
 
     protected $fillable = [
         'organization_id',
+        'project_id',
         'event_id',
         'causer_type',
         'causer_id',
@@ -44,6 +46,11 @@ class ActivityLog extends Model
         return $this->belongsTo(Organization::class);
     }
 
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
@@ -62,6 +69,11 @@ class ActivityLog extends Model
     public function scopeForOrganization(Builder $query, int $organizationId): void
     {
         $query->where('organization_id', $organizationId);
+    }
+
+    public function scopeForProject(Builder $query, int $projectId): void
+    {
+        $query->where('project_id', $projectId);
     }
 
     public function scopeForEvent(Builder $query, int $eventId): void

@@ -6,6 +6,8 @@ use App\Actions\CreateProjectScanner;
 use App\Actions\DeleteProjectScanner;
 use App\Actions\SendScannerLinks;
 use App\Actions\UpdateProjectScanner;
+use App\Events\Activity\ScannerAssigneeAdded;
+use App\Events\Activity\ScannerAssigneeRemoved;
 use App\Models\Event;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
@@ -212,9 +214,13 @@ class ScannerManagement extends Component
 
         $scanner = ProjectScanner::where('project_id', $this->projectId)->findOrFail($scannerId);
 
-        $scanner->assignees()->firstOrCreate(
+        $assignee = $scanner->assignees()->firstOrCreate(
             ['email' => $email],
         );
+
+        if ($assignee->wasRecentlyCreated) {
+            ScannerAssigneeAdded::dispatch($scanner, $email, auth()->user());
+        }
 
         unset($this->scanners);
     }
@@ -225,7 +231,12 @@ class ScannerManagement extends Component
             $q->where('project_id', $this->projectId);
         })->findOrFail($assigneeId);
 
+        $scanner = $assignee->projectScanner;
+        $email = $assignee->email;
+
         $assignee->delete();
+
+        ScannerAssigneeRemoved::dispatch($scanner, $email, auth()->user());
 
         unset($this->scanners);
     }

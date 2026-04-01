@@ -43,7 +43,7 @@
                     id="tab-scanner"
                     :aria-selected="activeTab === 'scanner'"
                     aria-controls="tabpanel-scanner"
-                    class="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                    class="min-h-12 flex-1 px-4 py-3 text-sm font-medium transition-colors"
                     :class="activeTab === 'scanner' ? 'text-white border-b-2 border-emerald-500' : 'text-zinc-400 hover:text-zinc-200'"
                     @click="activeTab = 'scanner'"
                 >
@@ -55,7 +55,7 @@
                     id="tab-volunteers"
                     :aria-selected="activeTab === 'volunteers'"
                     aria-controls="tabpanel-volunteers"
-                    class="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                    class="min-h-12 flex-1 px-4 py-3 text-sm font-medium transition-colors"
                     :class="activeTab === 'volunteers' ? 'text-white border-b-2 border-emerald-500' : 'text-zinc-400 hover:text-zinc-200'"
                     @click="activeTab = 'volunteers'"
                 >
@@ -67,7 +67,7 @@
                     id="tab-guests"
                     :aria-selected="activeTab === 'guests'"
                     aria-controls="tabpanel-guests"
-                    class="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                    class="min-h-12 flex-1 px-4 py-3 text-sm font-medium transition-colors"
                     :class="activeTab === 'guests' ? 'text-white border-b-2 border-emerald-500' : 'text-zinc-400 hover:text-zinc-200'"
                     @click="activeTab = 'guests'"
                 >
@@ -118,7 +118,7 @@
                         <div class="mt-3 flex justify-center">
                             <button
                                 type="button"
-                                class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                                class="min-h-12 w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-medium text-white hover:bg-emerald-500 active:bg-emerald-700"
                                 @click="confirmGuestCheckin(guestResult.id)"
                                 :aria-label="'Check in ' + guestResult.group_label + ' #' + guestResult.number"
                             >
@@ -143,7 +143,7 @@
                         x-model.debounce.300ms="guestSearchQuery"
                         placeholder="{{ __('Search guests...') }}"
                         aria-label="{{ __('Search guests') }}"
-                        class="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        class="min-h-12 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-base text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                 </div>
 
@@ -157,18 +157,18 @@
                             </div>
                             <div class="space-y-2">
                                 <template x-for="entry in group.entries" :key="entry.id">
-                                    <div class="flex items-center justify-between rounded-lg bg-zinc-900 px-3 py-2" aria-live="polite">
-                                        <div>
+                                    <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3" aria-live="polite">
+                                        <div class="min-w-0 flex-1">
                                             <span class="text-sm text-white" x-text="'#' + entry.number + (entry.name ? ' — ' + entry.name : '')"></span>
                                         </div>
-                                        <div>
+                                        <div class="ml-3 shrink-0">
                                             <template x-if="entry.checked_in_at">
-                                                <span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300">{{ __('Checked in') }}</span>
+                                                <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-sm text-emerald-300">{{ __('Checked in') }}</span>
                                             </template>
                                             <template x-if="!entry.checked_in_at">
                                                 <button
                                                     type="button"
-                                                    class="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500"
+                                                    class="min-h-10 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 active:bg-emerald-700"
                                                     @click="confirmGuestCheckin(entry.id)"
                                                     :aria-label="'Check in #' + entry.number + (entry.name ? ' ' + entry.name : '')"
                                                 >

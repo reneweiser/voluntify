@@ -48,6 +48,11 @@ class EventPolicy
         return $this->isProjectOrganizer($user, $event);
     }
 
+    public function delete(User $user, Event $event): bool
+    {
+        return $this->isProjectOrganizer($user, $event);
+    }
+
     public function manageJobs(User $user, Event $event): bool
     {
         return $this->isProjectOrganizer($user, $event);

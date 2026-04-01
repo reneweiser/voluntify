@@ -22,12 +22,14 @@ it('updates shift times and capacity', function () {
 
     $updated = $this->action->execute(
         shift: $shift,
+        shiftDate: Carbon::parse('2026-07-01'),
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 20,
     );
 
     expect($updated->capacity)->toBe(20)
+        ->and($updated->shift_date->format('Y-m-d'))->toBe('2026-07-01')
         ->and($updated->starts_at->format('H:i'))->toBe('14:00')
         ->and($updated->ends_at->format('H:i'))->toBe('18:00');
 });
@@ -42,6 +44,7 @@ it('throws DomainException when reducing capacity below current signups', functi
 
     expect(fn () => $this->action->execute(
         shift: $shift,
+        shiftDate: Carbon::parse('2026-07-01'),
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 2,
@@ -58,6 +61,7 @@ it('allows reducing capacity to exactly current signups', function () {
 
     $updated = $this->action->execute(
         shift: $shift,
+        shiftDate: Carbon::parse('2026-07-01'),
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 3,

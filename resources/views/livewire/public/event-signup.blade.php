@@ -194,7 +194,7 @@
                                     $isFull = $spotsLeft === 0;
                                     $isSelected = in_array($shift->id, $selectedShiftIds);
                                     $isConflicting = in_array($shift->id, $this->overlappingShiftIds);
-                                    $shiftTimeLabel = $job->name.' — '.$shift->starts_at->format('M d, g:i A').' to '.$shift->ends_at->format('g:i A');
+                                    $shiftTimeLabel = $job->name.' — '.$shift->shift_date->format('M d').' '.$shift->displayTimeRange();
                                 @endphp
                                 <label
                                     class="flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all duration-200
@@ -212,7 +212,7 @@
                                         />
                                         <div>
                                             <flux:text size="sm" class="font-medium">
-                                                {{ $shift->starts_at->format('M d, g:i A') }} &mdash; {{ $shift->ends_at->format('g:i A') }}
+                                                {{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}
                                             </flux:text>
                                             <flux:text size="sm">
                                                 {{ $spotsLeft }} {{ __('spots remaining') }}
@@ -339,12 +339,18 @@
                 <flux:field>
                     <flux:label>{{ __('Email') }}</flux:label>
                     <flux:input type="email" wire:model="volunteerEmail" placeholder="{{ __('your@email.com') }}" />
+                    @if ($this->hintSignupEmail)
+                        <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">{{ $this->hintSignupEmail }}</flux:text>
+                    @endif
                     <flux:error name="volunteerEmail" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>{{ __('Phone') }} @unless($event->phone_required)<span class="text-zinc-400 font-normal">({{ __('optional') }})</span>@endunless</flux:label>
                     <flux:input type="tel" wire:model="volunteerPhone" placeholder="{{ __('+1 555 123 4567') }}" />
+                    @if ($this->hintSignupPhone)
+                        <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">{{ $this->hintSignupPhone }}</flux:text>
+                    @endif
                     <flux:error name="volunteerPhone" />
                 </flux:field>
             </div>
@@ -364,6 +370,10 @@
             <div class="space-y-6 mb-6">
                 <flux:heading size="lg" id="step-heading-{{ \App\Enums\WizardState::Confirming->value }}" tabindex="-1">{{ __('Confirm Your Signup') }}</flux:heading>
 
+                @if ($this->hintSignupSummary)
+                    <flux:callout variant="info">{{ $this->hintSignupSummary }}</flux:callout>
+                @endif
+
                 {{-- Selected shifts summary --}}
                 <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
                     <flux:heading size="sm" class="mb-3">{{ __('Selected Shifts') }}</flux:heading>
@@ -374,7 +384,7 @@
                                     <div class="flex items-center gap-2 text-sm" wire:key="confirm-shift-{{ $shift->id }}">
                                         <flux:icon name="check" variant="mini" class="size-4 text-emerald-500" />
                                         <span class="font-medium">{{ $job->name }}:</span>
-                                        <span>{{ $shift->starts_at->format('M d, g:i A') }} &mdash; {{ $shift->ends_at->format('g:i A') }}</span>
+                                        <span>{{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}</span>
                                     </div>
                                 @endif
                             @endforeach

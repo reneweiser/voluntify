@@ -41,9 +41,13 @@ class JobsAndShiftsManager extends Component
 
     public ?int $editingShiftId = null;
 
+    public string $shiftDate = '';
+
     public string $shiftStartsAt = '';
 
     public string $shiftEndsAt = '';
+
+    public string $shiftDisplayText = '';
 
     public int $shiftCapacity = 10;
 
@@ -58,7 +62,7 @@ class JobsAndShiftsManager extends Component
     public function jobs(): Collection
     {
         return $this->event->volunteerJobs()
-            ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('starts_at')])
+            ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('shift_date')->orderBy('starts_at')])
             ->get();
     }
 
@@ -145,7 +149,7 @@ class JobsAndShiftsManager extends Component
     {
         Gate::authorize('manageJobs', $this->event);
 
-        $this->reset('editingShiftId', 'shiftStartsAt', 'shiftEndsAt');
+        $this->reset('editingShiftId', 'shiftDate', 'shiftStartsAt', 'shiftEndsAt', 'shiftDisplayText');
         $this->shiftCapacity = 10;
         $this->shiftJobId = $jobId;
         $this->showShiftModal = true;
@@ -158,8 +162,10 @@ class JobsAndShiftsManager extends Component
         $shift = $this->findShift($shiftId);
         $this->editingShiftId = $shift->id;
         $this->shiftJobId = $shift->volunteer_job_id;
-        $this->shiftStartsAt = $shift->starts_at->format('Y-m-d\TH:i');
-        $this->shiftEndsAt = $shift->ends_at->format('Y-m-d\TH:i');
+        $this->shiftDate = $shift->shift_date->format('Y-m-d');
+        $this->shiftStartsAt = $shift->starts_at?->format('Y-m-d\TH:i') ?? '';
+        $this->shiftEndsAt = $shift->ends_at?->format('Y-m-d\TH:i') ?? '';
+        $this->shiftDisplayText = $shift->display_text ?? '';
         $this->shiftCapacity = $shift->capacity;
         $this->showShiftModal = true;
     }
@@ -168,32 +174,44 @@ class JobsAndShiftsManager extends Component
     {
         Gate::authorize('manageJobs', $this->event);
 
-        $this->validate([
-            'shiftStartsAt' => ['required', 'date'],
-            'shiftEndsAt' => ['required', 'date', 'after:shiftStartsAt'],
+        $rules = [
+            'shiftDate' => ['required', 'date'],
+            'shiftStartsAt' => ['nullable', 'date'],
+            'shiftEndsAt' => ['nullable', 'date', 'after:shiftStartsAt', 'required_with:shiftStartsAt'],
             'shiftCapacity' => ['required', 'integer', 'min:1'],
-        ]);
+            'shiftDisplayText' => [empty($this->shiftStartsAt) ? 'required' : 'nullable', 'string', 'max:255'],
+        ];
+
+        $this->validate($rules);
+
+        $startsAt = $this->shiftStartsAt ? Carbon::parse($this->shiftStartsAt) : null;
+        $endsAt = $this->shiftEndsAt ? Carbon::parse($this->shiftEndsAt) : null;
+        $displayText = $this->shiftDisplayText ?: null;
 
         if ($this->editingShiftId) {
             $shift = $this->findShift($this->editingShiftId);
             app(UpdateShift::class)->execute(
                 shift: $shift,
-                startsAt: Carbon::parse($this->shiftStartsAt),
-                endsAt: Carbon::parse($this->shiftEndsAt),
+                shiftDate: Carbon::parse($this->shiftDate),
+                startsAt: $startsAt,
+                endsAt: $endsAt,
                 capacity: $this->shiftCapacity,
+                displayText: $displayText,
             );
         } else {
             $job = $this->event->volunteerJobs()->findOrFail($this->shiftJobId);
             app(CreateShift::class)->execute(
                 job: $job,
-                startsAt: Carbon::parse($this->shiftStartsAt),
-                endsAt: Carbon::parse($this->shiftEndsAt),
+                shiftDate: Carbon::parse($this->shiftDate),
+                startsAt: $startsAt,
+                endsAt: $endsAt,
                 capacity: $this->shiftCapacity,
+                displayText: $displayText,
             );
         }
 
         $this->showShiftModal = false;
-        $this->reset('editingShiftId', 'shiftJobId', 'shiftStartsAt', 'shiftEndsAt');
+        $this->reset('editingShiftId', 'shiftJobId', 'shiftDate', 'shiftStartsAt', 'shiftEndsAt', 'shiftDisplayText');
         $this->shiftCapacity = 10;
         unset($this->jobs);
     }

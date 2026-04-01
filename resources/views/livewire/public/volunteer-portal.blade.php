@@ -17,9 +17,18 @@
             <flux:callout variant="success" class="mb-6">{{ $successMessage }}</flux:callout>
         @endif
 
+        {{-- Portal top banner hint --}}
+        @if ($this->hintPortalTopBanner)
+            <flux:callout variant="info" class="mb-6">{{ $this->hintPortalTopBanner }}</flux:callout>
+        @endif
+
         {{-- Upcoming Shifts --}}
         <div class="mb-8">
             <flux:heading size="lg" class="mb-3">{{ __('Upcoming Shifts') }}</flux:heading>
+
+            @if ($this->hintPortalShiftsSection)
+                <flux:text size="sm" class="mb-3 text-zinc-500 dark:text-zinc-400">{{ $this->hintPortalShiftsSection }}</flux:text>
+            @endif
 
             @if ($this->upcomingSignups->isEmpty())
                 <flux:text class="text-zinc-500 dark:text-zinc-400">{{ __('No upcoming shifts.') }}</flux:text>
@@ -28,7 +37,8 @@
                     @foreach ($this->upcomingSignups as $signup)
                         @php
                             $event = $signup->shift->volunteerJob->event;
-                            $canCancel = $event->isCancellationAllowed() && $signup->isCancellable($event->cancellation_cutoff_hours);
+                            $project = $event->project;
+                            $canCancel = $project->isCancellationAllowed() && $signup->isCancellable($project->cancellation_cutoff_hours);
                         @endphp
                         <div wire:key="upcoming-{{ $signup->id }}" class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4">
                             <div class="flex items-start justify-between gap-3">
@@ -38,11 +48,11 @@
                                         {{ $event->name }}
                                     </div>
                                     <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ $signup->shift->starts_at->format('M d, Y g:i A') }} &mdash; {{ $signup->shift->ends_at->format('g:i A') }}
+                                        {{ $signup->shift->shift_date->format('M d, Y') }} — {{ $signup->shift->displayTimeRange() }}
                                     </div>
-                                    @if ($event->isCancellationAllowed())
+                                    @if ($project->isCancellationAllowed())
                                         <div class="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-                                            {{ __('Cancellation allowed up to :hours hours before the shift', ['hours' => $event->cancellation_cutoff_hours]) }}
+                                            {{ __('Cancellation allowed up to :hours hours before the shift', ['hours' => $project->cancellation_cutoff_hours]) }}
                                         </div>
                                     @endif
                                 </div>
@@ -138,7 +148,7 @@
                                 {{ $signup->shift->volunteerJob->event->name }}
                             </div>
                             <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ $signup->shift->starts_at->format('M d, Y g:i A') }} &mdash; {{ $signup->shift->ends_at->format('g:i A') }}
+                                {{ $signup->shift->shift_date->format('M d, Y') }} — {{ $signup->shift->displayTimeRange() }}
                             </div>
                         </div>
                     @endforeach

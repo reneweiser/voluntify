@@ -78,7 +78,7 @@
                                         @foreach ($job->shifts as $shift)
                                             <flux:table.row :key="'shift-'.$shift->id">
                                                 <flux:table.cell>
-                                                    {{ $shift->starts_at->format('M d, g:i A') }} &mdash; {{ $shift->ends_at->format('g:i A') }}
+                                                    {{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}
                                                 </flux:table.cell>
                                                 <flux:table.cell>
                                                     {{ $shift->signups_count }} / {{ $shift->capacity }}
@@ -160,15 +160,34 @@
                 </div>
 
                 <flux:field>
-                    <flux:label>{{ __('Starts At') }}</flux:label>
-                    <flux:input type="datetime-local" wire:model="shiftStartsAt" />
+                    <flux:label>{{ __('Date') }}</flux:label>
+                    <flux:input type="date" wire:model="shiftDate" />
+                    <flux:error name="shiftDate" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Starts At') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
+                    <flux:input type="datetime-local" wire:model.live="shiftStartsAt" />
                     <flux:error name="shiftStartsAt" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>{{ __('Ends At') }}</flux:label>
+                    <flux:label>{{ __('Ends At') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
                     <flux:input type="datetime-local" wire:model="shiftEndsAt" />
                     <flux:error name="shiftEndsAt" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Display Text') }}
+                        @if (empty($shiftStartsAt))
+                            <span class="text-red-500 font-normal">*</span>
+                        @else
+                            <span class="text-zinc-400 font-normal">({{ __('optional') }})</span>
+                        @endif
+                    </flux:label>
+                    <flux:input wire:model="shiftDisplayText" placeholder="{{ __('e.g. Ganzer Tag, Flexibel') }}" />
+                    <flux:description>{{ __('Shown instead of times when no start/end time is set.') }}</flux:description>
+                    <flux:error name="shiftDisplayText" />
                 </flux:field>
 
                 <flux:field>

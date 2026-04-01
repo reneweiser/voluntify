@@ -60,39 +60,38 @@ test('shows total volunteers count', function () {
         ->assertSee('2'); // total volunteers
 });
 
-test('shows shifts needing attention count', function () {
+test('reminders show shifts needing volunteers', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization();
     app()->instance(Organization::class, $org);
 
     $event = Event::factory()->for($org)->published()->create(['starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(4)]);
     $job = VolunteerJob::factory()->for($event)->create();
-    // Shift with capacity 5, 0 signups -> needs attention
     Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 5]);
-    // Shift with capacity 1, 1 signup -> does not need attention
     $fullShift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 1]);
     ShiftSignup::factory()->create(['shift_id' => $fullShift->id]);
 
-    Livewire::actingAs($user)
-        ->test(Dashboard::class)
-        ->assertSee('1'); // shifts needing attention
+    $component = Livewire::actingAs($user)->test(Dashboard::class);
+    $reminders = $component->get('reminders');
+
+    expect(collect($reminders)->contains(fn ($r) => str_contains($r['message'], 'Schicht(en)')))->toBeTrue();
 });
 
-test('shiftsNeedingAttention excludes cancelled signups', function () {
+test('reminders count excludes cancelled signups from shift capacity check', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization();
     app()->instance(Organization::class, $org);
 
     $event = Event::factory()->for($org)->published()->create(['starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(4)]);
     $job = VolunteerJob::factory()->for($event)->create();
-    // Shift with capacity 1, 1 cancelled signup -> should still need attention
     $shift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 1]);
     ShiftSignup::factory()->create([
         'shift_id' => $shift->id,
         'cancelled_at' => now(),
     ]);
 
-    Livewire::actingAs($user)
-        ->test(Dashboard::class)
-        ->assertSee('1'); // shift still needs attention because signup is cancelled
+    $component = Livewire::actingAs($user)->test(Dashboard::class);
+    $reminders = $component->get('reminders');
+
+    expect(collect($reminders)->contains(fn ($r) => str_contains($r['message'], 'Schicht(en)')))->toBeTrue();
 });
 
 test('lists upcoming events in table', function () {
@@ -131,23 +130,23 @@ test('create event button visible for org organizer only', function () {
 
     Livewire::actingAs($organizer)
         ->test(Dashboard::class)
-        ->assertSee('Create Event');
+        ->assertSee('Neues Event');
 
     ['user' => $projectOrganizer, 'organization' => $org2] = createUserWithProjectOrganization();
     app()->instance(Organization::class, $org2);
 
     Livewire::actingAs($projectOrganizer)
         ->test(Dashboard::class)
-        ->assertDontSee('Create Event');
+        ->assertDontSee('Neues Event');
 });
 
-test('empty state renders when no events', function () {
+test('empty state renders when no projects', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization();
     app()->instance(Organization::class, $org);
 
     Livewire::actingAs($user)
         ->test(Dashboard::class)
-        ->assertSee('No upcoming events');
+        ->assertSee('Keine Projekte');
 });
 
 test('no-show rate is 0 when no attendance records', function () {
@@ -214,9 +213,9 @@ test('attendance summary counts correctly', function () {
 
     Livewire::actingAs($user)
         ->test(Dashboard::class)
-        ->assertSee('On Time')
-        ->assertSee('Late')
-        ->assertSee('Unmarked');
+        ->assertSee('Pünktlich')
+        ->assertSee('Verspätet')
+        ->assertSee('Offen');
 });
 
 test('recent past events only includes past events', function () {
@@ -237,7 +236,83 @@ test('recent past events only includes past events', function () {
     Livewire::actingAs($user)
         ->test(Dashboard::class)
         ->assertSee('Past Gala')
-        ->assertSee('Recent Past Events');
+        ->assertSee('Vergangene Events');
+});
+
+test('displays project tiles with counts', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    $project = Project::factory()->for($org)->create(['name' => 'Summer Festival']);
+    Event::factory()->for($org)->for($project)->published()->create([
+        'starts_at' => now()->addWeek(),
+        'ends_at' => now()->addWeek()->addHours(4),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('Summer Festival')
+        ->assertSee('Projekte');
+});
+
+test('shows next upcoming event', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    Event::factory()->for($org)->published()->create([
+        'name' => 'Next Big Event',
+        'starts_at' => now()->addDays(3),
+        'ends_at' => now()->addDays(3)->addHours(4),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('Next Big Event')
+        ->assertSee('Nächstes Event');
+});
+
+test('shows smart reminders for shifts needing volunteers', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    $event = Event::factory()->for($org)->published()->create([
+        'starts_at' => now()->addWeek(),
+        'ends_at' => now()->addWeek()->addHours(4),
+    ]);
+    $job = VolunteerJob::factory()->for($event)->create();
+    Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 5]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('Schicht(en) brauchen noch Helfer:innen');
+});
+
+test('global volunteer search returns results', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    $project = Project::factory()->for($org)->create();
+    app()->instance(Organization::class, $org);
+
+    Volunteer::factory()->for($project)->create([
+        'first_name' => 'Alice',
+        'last_name' => 'Wonderland',
+        'email' => 'alice@test.com',
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->set('search', 'Alice')
+        ->assertSee('Alice Wonderland')
+        ->assertSee('alice@test.com');
+});
+
+test('global search shows no results for short queries', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+    app()->instance(Organization::class, $org);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->set('search', 'A')
+        ->assertDontSee('Keine Ergebnisse');
 });
 
 test('project organizer only sees events from assigned project', function () {
