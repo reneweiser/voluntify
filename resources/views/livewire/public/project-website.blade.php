@@ -50,7 +50,7 @@
         <div class="flex flex-col gap-4">
             @foreach ($events as $event)
                 <a href="{{ route('events.public', $event->public_token) }}" wire:key="event-{{ $event->id }}" aria-label="{{ $event->name }}">
-                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-white/20">
                         <div class="flex items-start gap-3">
                             <span class="mt-1.5 size-2.5 shrink-0 rounded-full {{ $event->status === \App\Enums\EventStatus::PublishedOpen ? 'bg-emerald-500' : 'bg-zinc-400' }}"></span>
                             @if ($event->titleImageUrl())

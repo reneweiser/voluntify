@@ -29,7 +29,7 @@
         <div class="flex flex-col gap-4">
             @foreach ($this->projects as $project)
                 <a href="{{ route('projects.show', $project) }}" wire:navigate wire:key="project-{{ $project->id }}" aria-label="{{ $project->name }}">
-                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-white/20">
                         <div class="flex items-start gap-3">
                             @if ($project->titleImageUrl())
                                 <img src="{{ $project->titleImageUrl() }}" alt="" class="size-14 shrink-0 rounded-lg object-cover" />

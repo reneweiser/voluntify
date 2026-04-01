@@ -49,7 +49,7 @@
         <div class="flex flex-col gap-4">
             @foreach ($this->events as $event)
                 <a href="{{ route('events.show', $event) }}" wire:navigate wire:key="event-{{ $event->id }}" aria-label="{{ $event->name }}">
-                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-white/20">
                         <div class="flex items-start gap-3">
                             <span class="mt-1.5 size-2.5 shrink-0 rounded-full {{ match($event->status) {
                                 \App\Enums\EventStatus::PublishedOpen => 'bg-emerald-500',
