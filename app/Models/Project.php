@@ -22,8 +22,25 @@ class Project extends Model
         'organization_id',
         'name',
         'description',
+        'sender_name',
+        'contact_email',
+        'cancellation_enabled',
+        'cancellation_cutoff_hours',
         'title_image_path',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'cancellation_enabled' => 'boolean',
+            'cancellation_cutoff_hours' => 'integer',
+        ];
+    }
+
+    public function isCancellationAllowed(): bool
+    {
+        return $this->cancellation_enabled && $this->cancellation_cutoff_hours !== null;
+    }
 
     protected static function booted(): void
     {
@@ -87,5 +104,10 @@ class Project extends Model
     public function guestLists(): HasMany
     {
         return $this->hasMany(GuestList::class);
+    }
+
+    public function hintTexts(): HasMany
+    {
+        return $this->hasMany(HintText::class);
     }
 }

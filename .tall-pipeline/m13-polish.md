@@ -20,11 +20,11 @@
   - [x] Phase A — #80 Rate limiting (30min lockout, German messages, ScannerLockout event, 5 tests)
   - [x] Phase B — #81 Email templates (German defaults, new placeholders, EventUpdated type) — 5 new enum cases, German defaults for all 9 types, 18 new tests
   - [x] Phase B — #55 Event-level email templates — all 9 types editable, German UI labels, German preview sample data, label() method on enum, 6 new tests
-  - [ ] Phase C — #47 Project email settings
-  - [ ] Phase C — #46 Event settings area
-  - [ ] Phase C — #74 Hint texts
-  - [ ] Phase C — #86 Optional shift times
-  - [ ] Phase C — #85 Shift cancellation rework
+  - [x] Phase C — #47 Project email settings — sender_name/contact_email on projects, UsesOrganizationMailer project override, 8 new tests
+  - [x] Phase C — #46 Event settings area — EventSettings component, route, tab-nav, EventShow refactored to read-only, 13 new tests + 10 updated tests
+  - [x] Phase C — #74 Hint texts — HintText model, HintLocation enum, HintTextResolver service, HintTextSettings Livewire component, EventSignup + VolunteerPortal integration, 11 tests
+  - [x] Phase C — #86 Optional shift times — nullable starts_at/ends_at, shift_date column, display_text, 9 model tests, updated 30+ files
+  - [x] Phase C — #85 Shift cancellation rework — project-level settings, notification_email on events, CancellationDigestNotification, SendCancellationDigestCommand (every 6h), 3 migrations, updated 12 tests + 12 new tests
   - [ ] Phase D — #84 Re-publish notification
   - [ ] Phase D — #83 Project website
   - [ ] Phase D — #79 Data deletion

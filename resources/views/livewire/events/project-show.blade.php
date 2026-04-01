@@ -18,6 +18,12 @@
                 </flux:button>
             @endcan
 
+            @can('update', $project)
+                <flux:button variant="subtle" size="sm" icon="information-circle" :href="route('projects.hint-texts', $project)" wire:navigate>
+                    {{ __('Hinweistexte') }}
+                </flux:button>
+            @endcan
+
             @if ($this->canManage)
                 <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteProject" wire:confirm="{{ __('Delete this project? Events will remain but be unlinked from this project.') }}">
                     {{ __('Delete Project') }}
@@ -64,6 +70,42 @@
                     <flux:error name="description" />
                 </flux:field>
 
+                <flux:separator class="my-2" />
+
+                <flux:heading size="sm" class="mb-2">{{ __('E-Mail-Einstellungen') }}</flux:heading>
+
+                <flux:field>
+                    <flux:label>{{ __('Absendername') }}</flux:label>
+                    <flux:input wire:model="senderName" placeholder="{{ __('Name der in E-Mails als Absender angezeigt wird') }}" />
+                    <flux:error name="senderName" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Kontakt-E-Mail') }}</flux:label>
+                    <flux:input type="email" wire:model="contactEmail" placeholder="{{ __('Antwort-Adresse für Freiwillige') }}" />
+                    <flux:error name="contactEmail" />
+                </flux:field>
+
+                <flux:separator class="my-2" />
+
+                <flux:heading size="sm" class="mb-2">{{ __('Stornierung') }}</flux:heading>
+
+                <flux:field>
+                    <flux:checkbox wire:model.live="cancellationEnabled" label="{{ __('Stornierung aktivieren') }}" />
+                    <flux:description>{{ __('Erlaubt Freiwilligen, ihre Anmeldungen bis zur Vorlaufzeit selbst zu stornieren.') }}</flux:description>
+                </flux:field>
+
+                @if ($cancellationEnabled)
+                    <flux:field>
+                        <flux:label>{{ __('Vorlaufzeit in Stunden') }}</flux:label>
+                        <flux:input type="number" wire:model="cancellationCutoffHours" min="1" max="168" />
+                        <flux:description>{{ __('Bis wie viele Stunden vor Schichtbeginn eine Stornierung möglich ist.') }}</flux:description>
+                        <flux:error name="cancellationCutoffHours" />
+                    </flux:field>
+                @endif
+
+                <flux:separator class="my-2" />
+
                 <flux:field>
                     <flux:label>{{ __('Title Image') }}</flux:label>
                     @if ($project->titleImageUrl() && !$titleImage)
@@ -94,6 +136,33 @@
                     @else
                         <flux:text size="sm" class="text-zinc-400">{{ __('No description set.') }}</flux:text>
                     @endif
+
+                    @if ($project->sender_name || $project->contact_email)
+                        <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-2">
+                            <flux:text size="sm" class="font-medium">{{ __('E-Mail-Einstellungen') }}</flux:text>
+                            @if ($project->sender_name)
+                                <div>
+                                    <flux:text size="sm" class="text-zinc-500">{{ __('Absendername') }}</flux:text>
+                                    <flux:text size="sm">{{ $project->sender_name }}</flux:text>
+                                </div>
+                            @endif
+                            @if ($project->contact_email)
+                                <div>
+                                    <flux:text size="sm" class="text-zinc-500">{{ __('Kontakt-E-Mail') }}</flux:text>
+                                    <flux:text size="sm">{{ $project->contact_email }}</flux:text>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-2">
+                        <flux:text size="sm" class="font-medium">{{ __('Stornierung') }}</flux:text>
+                        @if ($project->cancellation_enabled)
+                            <flux:text size="sm">{{ __(':hours Stunden Vorlaufzeit', ['hours' => $project->cancellation_cutoff_hours]) }}</flux:text>
+                        @else
+                            <flux:text size="sm" class="text-zinc-400">{{ __('Deaktiviert') }}</flux:text>
+                        @endif
+                    </div>
                 </div>
 
                 @if ($this->canManage)

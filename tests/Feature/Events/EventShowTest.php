@@ -8,8 +8,6 @@ use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\User;
 use App\Models\VolunteerJob;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -32,34 +30,19 @@ it('shows event name and status', function () {
         ->assertSee('Draft');
 });
 
-it('shows edit button for organizer on non-archived events', function () {
+it('shows settings button for organizer on non-archived events', function () {
     Livewire::actingAs($this->user)
         ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->assertSee('Edit');
+        ->assertSee('Settings');
 });
 
-it('hides edit button for volunteer admin', function () {
+it('hides settings button for volunteer admin', function () {
     $admin = User::factory()->create();
     $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($admin)
         ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->assertDontSee('Edit');
-});
-
-it('allows organizer to edit event details', function () {
-    Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->call('startEditing')
-        ->set('name', 'Updated Event')
-        ->set('startsAt', '2026-09-01T10:00')
-        ->set('endsAt', '2026-09-01T18:00')
-        ->call('saveEvent')
-        ->assertHasNoErrors()
-        ->assertSet('editing', false)
-        ->assertDispatched('event-updated');
-
-    expect($this->event->fresh()->name)->toBe('Updated Event');
+        ->assertDontSee('Settings');
 });
 
 it('allows organizer to publish a draft event', function () {
@@ -125,77 +108,6 @@ it('returns 404 for events from other organizations', function () {
         ->assertNotFound();
 });
 
-it('allows organizer to upload title image', function () {
-    Storage::fake('public');
-
-    $image = UploadedFile::fake()->image('banner.jpg', 1200, 400);
-
-    Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->call('startEditing')
-        ->set('titleImage', $image)
-        ->set('startsAt', '2026-09-01T10:00')
-        ->set('endsAt', '2026-09-01T18:00')
-        ->call('saveEvent')
-        ->assertHasNoErrors();
-
-    expect($this->event->fresh()->title_image_path)->not->toBeNull();
-    Storage::disk('public')->assertExists($this->event->fresh()->title_image_path);
-});
-
-it('allows organizer to delete title image', function () {
-    Storage::fake('public');
-
-    $image = UploadedFile::fake()->image('banner.jpg');
-    $path = $image->store('events/'.$this->event->id, 'public');
-    $this->event->update(['title_image_path' => $path]);
-
-    Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->call('deleteImage');
-
-    expect($this->event->fresh()->title_image_path)->toBeNull();
-    Storage::disk('public')->assertMissing($path);
-});
-
-it('rejects oversized image upload', function () {
-    Storage::fake('public');
-
-    $image = UploadedFile::fake()->image('huge.jpg')->size(3000);
-
-    Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->call('startEditing')
-        ->set('titleImage', $image)
-        ->set('startsAt', '2026-09-01T10:00')
-        ->set('endsAt', '2026-09-01T18:00')
-        ->call('saveEvent')
-        ->assertHasErrors('titleImage');
-});
-
-it('rejects non-image file upload', function () {
-    Storage::fake('public');
-
-    $file = UploadedFile::fake()->create('document.pdf', 100, 'application/pdf');
-
-    Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->call('startEditing')
-        ->set('titleImage', $file)
-        ->set('startsAt', '2026-09-01T10:00')
-        ->set('endsAt', '2026-09-01T18:00')
-        ->call('saveEvent')
-        ->assertHasErrors('titleImage');
-});
-
-it('hides edit button on archived events', function () {
-    $this->event->update(['status' => EventStatus::Archived]);
-
-    Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
-        ->assertDontSee('Edit');
-});
-
 it('shows clone button for organizer', function () {
     Livewire::actingAs($this->user)
         ->test(EventShow::class, ['eventId' => $this->event->id])
@@ -223,4 +135,17 @@ it('clones event and redirects to new event', function () {
     $cloned = Event::where('name', 'Test Event (Copy)')->first();
     expect($cloned)->not->toBeNull()
         ->and($cloned->status)->toBe(EventStatus::Draft);
+});
+
+it('displays event details in read-only mode', function () {
+    $this->event->update([
+        'description' => 'A great event',
+        'location' => 'Berlin',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->assertSee('A great event')
+        ->assertSee('Berlin')
+        ->assertSee('Date & Time');
 });

@@ -26,6 +26,14 @@ class ProjectShow extends Component
 
     public $titleImage;
 
+    public string $senderName = '';
+
+    public string $contactEmail = '';
+
+    public bool $cancellationEnabled = false;
+
+    public $cancellationCutoffHours = '';
+
     public bool $editing = false;
 
     public function mount(int $projectId): void
@@ -88,6 +96,10 @@ class ProjectShow extends Component
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'titleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'senderName' => ['nullable', 'string', 'max:255'],
+            'contactEmail' => ['nullable', 'email', 'max:255'],
+            'cancellationEnabled' => ['boolean'],
+            'cancellationCutoffHours' => ['nullable', 'required_if:cancellationEnabled,true', 'integer', 'min:1', 'max:168'],
         ]);
 
         $action = app(UpdateProject::class);
@@ -96,6 +108,10 @@ class ProjectShow extends Component
             name: $this->name,
             description: $this->description ?: null,
             titleImage: $this->titleImage,
+            senderName: $this->senderName ?: null,
+            contactEmail: $this->contactEmail ?: null,
+            cancellationEnabled: $this->cancellationEnabled,
+            cancellationCutoffHours: $this->cancellationCutoffHours !== '' ? (int) $this->cancellationCutoffHours : null,
         );
 
         $this->titleImage = null;
@@ -130,5 +146,9 @@ class ProjectShow extends Component
     {
         $this->name = $this->project->name;
         $this->description = $this->project->description ?? '';
+        $this->senderName = $this->project->sender_name ?? '';
+        $this->contactEmail = $this->project->contact_email ?? '';
+        $this->cancellationEnabled = $this->project->cancellation_enabled;
+        $this->cancellationCutoffHours = $this->project->cancellation_cutoff_hours ?? '';
     }
 }

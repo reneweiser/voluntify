@@ -63,3 +63,26 @@ it('shows public link', function () {
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->assertSee(route('projects.public', $this->project->public_token));
 });
+
+it('can edit sender_name and contact_email', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->call('startEditing')
+        ->set('senderName', 'Festival Team')
+        ->set('contactEmail', 'info@festival.de')
+        ->call('saveProject')
+        ->assertHasNoErrors();
+
+    expect($this->project->fresh())
+        ->sender_name->toBe('Festival Team')
+        ->contact_email->toBe('info@festival.de');
+});
+
+it('validates contact_email format', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->call('startEditing')
+        ->set('contactEmail', 'not-an-email')
+        ->call('saveProject')
+        ->assertHasErrors(['contactEmail' => 'email']);
+});

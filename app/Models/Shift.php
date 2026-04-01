@@ -17,14 +17,17 @@ class Shift extends Model
 
     protected $fillable = [
         'volunteer_job_id',
+        'shift_date',
         'starts_at',
         'ends_at',
+        'display_text',
         'capacity',
     ];
 
     protected function casts(): array
     {
         return [
+            'shift_date' => 'date',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'capacity' => 'integer',
@@ -72,8 +75,30 @@ class Shift extends Model
         return max(0, $this->capacity - $signupCount - $reservationCount);
     }
 
+    public function hasDefinedTimes(): bool
+    {
+        return $this->starts_at !== null;
+    }
+
+    public function displayTimeRange(): string
+    {
+        if ($this->display_text) {
+            return $this->display_text;
+        }
+
+        if ($this->hasDefinedTimes()) {
+            return $this->starts_at->format('H:i').' – '.$this->ends_at->format('H:i');
+        }
+
+        return $this->display_text ?? '';
+    }
+
     public function attendanceStatusAt(CarbonInterface $scannedAt, ?int $graceMinutes = null): AttendanceStatus
     {
+        if (! $this->hasDefinedTimes()) {
+            return AttendanceStatus::OnTime;
+        }
+
         $deadline = $graceMinutes !== null
             ? $this->starts_at->copy()->addMinutes($graceMinutes)
             : $this->starts_at;

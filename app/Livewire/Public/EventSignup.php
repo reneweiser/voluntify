@@ -5,10 +5,12 @@ namespace App\Livewire\Public;
 use App\Actions\ProcessVolunteerSignup;
 use App\Actions\ReserveShifts;
 use App\Enums\EventStatus;
+use App\Enums\HintLocation;
 use App\Enums\WizardState;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\ShiftReservation;
+use App\Services\HintTextResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
@@ -75,8 +77,35 @@ class EventSignup extends Component
     public function jobs(): Collection
     {
         return $this->event->volunteerJobs()
-            ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('starts_at')])
+            ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('shift_date')->orderBy('starts_at')])
             ->get();
+    }
+
+    #[Computed]
+    public function hintSignupEmail(): ?string
+    {
+        return $this->resolveHint(HintLocation::SignupEmail);
+    }
+
+    #[Computed]
+    public function hintSignupPhone(): ?string
+    {
+        return $this->resolveHint(HintLocation::SignupPhone);
+    }
+
+    #[Computed]
+    public function hintSignupSummary(): ?string
+    {
+        return $this->resolveHint(HintLocation::SignupSummary);
+    }
+
+    private function resolveHint(HintLocation $location): ?string
+    {
+        if (! $this->event->project) {
+            return null;
+        }
+
+        return app(HintTextResolver::class)->resolve($location, $this->event->project);
     }
 
     /**

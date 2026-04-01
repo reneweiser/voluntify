@@ -43,7 +43,7 @@ class ExportVolunteersCsv
                     'email' => $volunteer->email,
                     'phone' => $volunteer->phone ?? '',
                     'shifts' => $volunteer->shiftSignups
-                        ->map(fn ($s) => $s->shift->volunteerJob->name.': '.$s->shift->starts_at->format('M d, g:i A'))
+                        ->map(fn ($s) => $s->shift->volunteerJob->name.': '.$s->shift->shift_date->format('d.m.Y').' '.$s->shift->displayTimeRange())
                         ->implode('; '),
                     'arrived' => $volunteer->eventArrivals->isNotEmpty() ? 'Yes' : 'No',
                     'attendance' => $this->attendanceStatus($volunteer),

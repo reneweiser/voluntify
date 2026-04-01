@@ -35,6 +35,6 @@ class EventAnnouncementNotification extends Notification
             ->line("Update from **{$this->event->name}**:")
             ->line($this->announcementBody);
 
-        return $this->applyOrgMailer($mail, $this->event->organization);
+        return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
     }
 }

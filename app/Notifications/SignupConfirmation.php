@@ -43,9 +43,8 @@ class SignupConfirmation extends Notification implements ShouldQueue
 
         $shiftsSummary = $shifts->map(function (Shift $shift) {
             $job = $shift->volunteerJob;
-            $dateRange = $shift->starts_at->format('d.m.Y H:i').' — '.$shift->ends_at->format('H:i');
 
-            return "- {$job->name}: {$dateRange}";
+            return "- {$job->name}: {$shift->shift_date->format('d.m.Y')} {$shift->displayTimeRange()}";
         })->implode("\n");
 
         $renderer = app(EmailTemplateRenderer::class);
@@ -62,8 +61,8 @@ class SignupConfirmation extends Notification implements ShouldQueue
                 'event_name' => $this->event->name,
                 'shifts_summary' => $shiftsSummary,
                 'job_name' => $firstJob->name,
-                'shift_date' => $firstShift->starts_at->format('d.m.Y'),
-                'shift_time' => $firstShift->starts_at->format('H:i').' — '.$firstShift->ends_at->format('H:i'),
+                'shift_date' => $firstShift->shift_date->format('d.m.Y'),
+                'shift_time' => $firstShift->displayTimeRange(),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
                 'portal_link' => route('volunteer.ticket', $this->magicLinkToken),
                 'project_name' => $this->event->project?->name ?? '',
@@ -85,6 +84,6 @@ class SignupConfirmation extends Notification implements ShouldQueue
         $ticketUrl = route('volunteer.ticket', $this->magicLinkToken);
         $mail->action('Ticket anzeigen', $ticketUrl);
 
-        return $this->applyOrgMailer($mail, $this->event->organization);
+        return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
     }
 }

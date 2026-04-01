@@ -91,8 +91,10 @@ class ScannerDataController extends Controller
                     'id' => $signup->id,
                     'shift' => [
                         'id' => $signup->shift->id,
+                        'shift_date' => $signup->shift->shift_date->toDateString(),
                         'starts_at' => $signup->shift->starts_at,
                         'ends_at' => $signup->shift->ends_at,
+                        'display_text' => $signup->shift->display_text,
                         'volunteer_job' => [
                             'id' => $signup->shift->volunteerJob->id,
                             'name' => $signup->shift->volunteerJob->name,

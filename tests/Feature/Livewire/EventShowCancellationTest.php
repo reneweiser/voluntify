@@ -1,60 +1,78 @@
 <?php
 
-use App\Livewire\Events\EventShow;
-use App\Models\Event;
+use App\Livewire\Events\ProjectShow;
 use App\Models\Organization;
+use App\Models\Project;
 use Livewire\Livewire;
 
 beforeEach(function () {
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization();
     app()->instance(Organization::class, $this->org);
-    $this->event = Event::factory()->for($this->org)->create();
+    $this->project = Project::factory()->for($this->org)->create();
 });
 
-it('can set cancellation_cutoff_hours when editing event', function () {
+it('can enable cancellation on project', function () {
     Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
+        ->set('cancellationEnabled', true)
         ->set('cancellationCutoffHours', 48)
-        ->call('saveEvent')
+        ->call('saveProject')
         ->assertHasNoErrors();
 
-    expect($this->event->fresh()->cancellation_cutoff_hours)->toBe(48);
+    $this->project->refresh();
+    expect($this->project->cancellation_enabled)->toBeTrue()
+        ->and($this->project->cancellation_cutoff_hours)->toBe(48);
 });
 
-it('validates range 1-168 when provided', function () {
+it('validates cutoff hours range 1-168', function () {
     Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
+        ->set('cancellationEnabled', true)
         ->set('cancellationCutoffHours', 200)
-        ->call('saveEvent')
+        ->call('saveProject')
         ->assertHasErrors(['cancellationCutoffHours']);
 });
 
-it('accepts null for cancellation disabled', function () {
-    $this->event->update(['cancellation_cutoff_hours' => 24]);
-
+it('requires cutoff hours when cancellation enabled', function () {
     Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
+        ->set('cancellationEnabled', true)
         ->set('cancellationCutoffHours', '')
-        ->call('saveEvent')
-        ->assertHasNoErrors();
-
-    expect($this->event->fresh()->cancellation_cutoff_hours)->toBeNull();
+        ->call('saveProject')
+        ->assertHasErrors(['cancellationCutoffHours']);
 });
 
-it('value persists after save', function () {
+it('can disable cancellation on project', function () {
+    $this->project->update([
+        'cancellation_enabled' => true,
+        'cancellation_cutoff_hours' => 24,
+    ]);
+
     Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('cancellationCutoffHours', 24)
-        ->call('saveEvent')
+        ->set('cancellationEnabled', false)
+        ->call('saveProject')
         ->assertHasNoErrors();
 
-    // Reload and check it shows the value
+    $this->project->refresh();
+    expect($this->project->cancellation_enabled)->toBeFalse();
+});
+
+it('values persist after save', function () {
     Livewire::actingAs($this->user)
-        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
+        ->set('cancellationEnabled', true)
+        ->set('cancellationCutoffHours', 24)
+        ->call('saveProject')
+        ->assertHasNoErrors();
+
+    Livewire::actingAs($this->user)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->assertSet('cancellationEnabled', true)
         ->assertSet('cancellationCutoffHours', 24);
 });

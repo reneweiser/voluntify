@@ -52,8 +52,8 @@ class PreShiftReminder extends Notification implements ShouldQueue
                 'volunteer_name' => $notifiable->full_name,
                 'event_name' => $this->event->name,
                 'job_name' => $job->name,
-                'shift_date' => $this->shift->starts_at->format('d.m.Y'),
-                'shift_time' => $this->shift->starts_at->format('H:i').' — '.$this->shift->ends_at->format('H:i'),
+                'shift_date' => $this->shift->shift_date->format('d.m.Y'),
+                'shift_time' => $this->shift->displayTimeRange(),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
                 'cheat_sheet_url' => $cheatSheetUrl ? "[Aufgaben-Infos anzeigen]({$cheatSheetUrl})" : '',
                 'portal_link' => '', // Will be set when portal URL is available
@@ -73,6 +73,6 @@ class PreShiftReminder extends Notification implements ShouldQueue
             }
         }
 
-        return $this->applyOrgMailer($mail, $this->event->organization);
+        return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
     }
 }

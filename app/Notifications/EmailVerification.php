@@ -58,6 +58,6 @@ class EmailVerification extends Notification implements ShouldQueue
 
         $mail->action('E-Mail bestätigen & Anmeldung abschließen', $this->verificationUrl);
 
-        return $this->applyOrgMailer($mail, $this->event->organization);
+        return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
     }
 }

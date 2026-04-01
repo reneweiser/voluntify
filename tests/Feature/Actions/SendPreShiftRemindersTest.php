@@ -150,6 +150,24 @@ it('skips cancelled signups', function () {
     Notification::assertNothingSent();
 });
 
+it('skips shifts without defined times', function () {
+    $shift = Shift::factory()->create([
+        'volunteer_job_id' => test()->job->id,
+        'starts_at' => null,
+        'ends_at' => null,
+        'display_text' => 'Ganzer Tag',
+    ]);
+    ShiftSignup::factory()->create([
+        'shift_id' => $shift->id,
+        'volunteer_id' => Volunteer::factory()->create(['email_verified_at' => now()])->id,
+    ]);
+
+    $count = test()->action->execute(ReminderWindow::TwentyFourHour);
+
+    expect($count)->toBe(0);
+    Notification::assertNothingSent();
+});
+
 it('returns correct count', function () {
     createSignupWithShiftStartingIn(20);
     createSignupWithShiftStartingIn(22);

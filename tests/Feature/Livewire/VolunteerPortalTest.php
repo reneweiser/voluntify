@@ -19,10 +19,11 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
-    $this->project = Project::factory()->for($this->org)->create();
-    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create([
+    $this->project = Project::factory()->for($this->org)->create([
+        'cancellation_enabled' => true,
         'cancellation_cutoff_hours' => 24,
     ]);
+    $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Setup Crew']);
     $this->futureShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'starts_at' => now()->addDays(3),
@@ -115,7 +116,7 @@ it('shows cancel button when cancellation allowed and within cutoff', function (
 });
 
 it('hides cancel button when cancellation disabled', function () {
-    $this->event->update(['cancellation_cutoff_hours' => null]);
+    $this->project->update(['cancellation_enabled' => false]);
 
     ShiftSignup::factory()->create([
         'volunteer_id' => $this->volunteer->id,

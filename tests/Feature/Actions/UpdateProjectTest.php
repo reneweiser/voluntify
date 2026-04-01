@@ -68,3 +68,33 @@ it('keeps existing image when no new image and removeTitleImage is false', funct
     Storage::disk('public')->assertExists($this->imagePath);
     expect($project->title_image_path)->toBe($this->imagePath);
 });
+
+it('updates sender_name and contact_email', function () {
+    $action = new UpdateProject;
+
+    $project = $action->execute(
+        project: $this->project,
+        name: $this->project->name,
+        senderName: 'Festival Team',
+        contactEmail: 'info@festival.de',
+    );
+
+    expect($project->sender_name)->toBe('Festival Team')
+        ->and($project->contact_email)->toBe('info@festival.de');
+});
+
+it('allows sender_name and contact_email to be nullable', function () {
+    $action = new UpdateProject;
+
+    $this->project->update(['sender_name' => 'Old Name', 'contact_email' => 'old@test.de']);
+
+    $project = $action->execute(
+        project: $this->project,
+        name: $this->project->name,
+        senderName: null,
+        contactEmail: null,
+    );
+
+    expect($project->sender_name)->toBeNull()
+        ->and($project->contact_email)->toBeNull();
+});

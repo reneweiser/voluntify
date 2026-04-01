@@ -18,7 +18,7 @@
             <flux:select wire:model.live="selectedShiftId" placeholder="{{ __('Select a shift...') }}">
                 @foreach ($this->shifts as $shift)
                     <flux:select.option :value="$shift->id" wire:key="shift-option-{{ $shift->id }}">
-                        {{ $shift->job_name }}: {{ $shift->starts_at->format('M d, g:i A') }} — {{ $shift->ends_at->format('g:i A') }}
+                        {{ $shift->job_name }}: {{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}
                         ({{ $shift->attended_count }}/{{ $shift->signups_count }} {{ __('marked') }})
                     </flux:select.option>
                 @endforeach

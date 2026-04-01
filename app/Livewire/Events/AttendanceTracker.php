@@ -33,7 +33,7 @@ class AttendanceTracker extends Component
             ->with(['shifts' => fn ($q) => $q->withCount([
                 'activeSignups as signups_count',
                 'activeSignups as attended_count' => fn ($q) => $q->has('attendanceRecord'),
-            ])->orderBy('starts_at')])
+            ])->orderBy('shift_date')->orderBy('starts_at')])
             ->get()
             ->pluck('shifts')
             ->flatten()

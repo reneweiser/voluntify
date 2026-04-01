@@ -95,4 +95,14 @@
             {{ __('Attendance') }}
         </flux:navlist.item>
     @endcan
+    @can('update', $event)
+        <flux:navlist.item
+            :href="route('events.settings', $event)"
+            :current="request()->routeIs('events.settings')"
+            icon="cog-6-tooth"
+            wire:navigate
+        >
+            {{ __('Settings') }}
+        </flux:navlist.item>
+    @endcan
 </flux:navlist>

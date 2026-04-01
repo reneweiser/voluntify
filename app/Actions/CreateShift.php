@@ -11,14 +11,18 @@ class CreateShift
 {
     public function execute(
         VolunteerJob $job,
-        CarbonInterface $startsAt,
-        CarbonInterface $endsAt,
+        CarbonInterface $shiftDate,
+        ?CarbonInterface $startsAt,
+        ?CarbonInterface $endsAt,
         int $capacity,
+        ?string $displayText = null,
     ): Shift {
         $shift = $job->shifts()->create([
+            'shift_date' => $shiftDate,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             'capacity' => $capacity,
+            'display_text' => $displayText,
         ]);
 
         if (auth()->user()) {

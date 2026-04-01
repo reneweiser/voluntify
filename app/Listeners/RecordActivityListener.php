@@ -227,8 +227,10 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'category' => ActivityCategory::Shift,
             'description' => "Created shift for {$e->shift->volunteerJob->name}",
             'properties' => [
-                'starts_at' => $e->shift->starts_at->toISOString(),
-                'ends_at' => $e->shift->ends_at->toISOString(),
+                'shift_date' => $e->shift->shift_date->toDateString(),
+                'starts_at' => $e->shift->starts_at?->toISOString(),
+                'ends_at' => $e->shift->ends_at?->toISOString(),
+                'display_text' => $e->shift->display_text,
                 'capacity' => $e->shift->capacity,
                 'job_name' => $e->shift->volunteerJob->name,
             ],
@@ -440,7 +442,8 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'properties' => [
                 'volunteer_name' => $e->volunteer->full_name,
                 'job_name' => $e->signup->shift->volunteerJob->name,
-                'shift_starts_at' => $e->signup->shift->starts_at->toISOString(),
+                'shift_date' => $e->signup->shift->shift_date->toDateString(),
+                'shift_starts_at' => $e->signup->shift->starts_at?->toISOString(),
             ],
         ]);
     }

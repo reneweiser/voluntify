@@ -31,10 +31,10 @@ class Event extends Model
         'ends_at',
         'status',
         'title_image_path',
-        'cancellation_cutoff_hours',
         'attendance_grace_minutes',
         'phone_required',
         'visibility',
+        'notification_email',
     ];
 
     protected function casts(): array
@@ -43,7 +43,6 @@ class Event extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'status' => EventStatus::class,
-            'cancellation_cutoff_hours' => 'integer',
             'attendance_grace_minutes' => 'integer',
             'phone_required' => 'boolean',
             'visibility' => EventVisibility::class,
@@ -93,11 +92,6 @@ class Event extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
-    }
-
-    public function isCancellationAllowed(): bool
-    {
-        return $this->cancellation_cutoff_hours !== null;
     }
 
     public static function generateUniqueSlug(Organization $organization, string $name): string
