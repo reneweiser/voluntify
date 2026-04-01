@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Volunteer;
+use Illuminate\Database\Eloquent\Collection;
 
 beforeEach(function () {
     Volunteer::factory()->create(['first_name' => 'Alice', 'last_name' => 'Johnson', 'email' => 'alice@example.com']);
@@ -45,6 +46,25 @@ it('finds volunteers by last_name with short query', function () {
 
 it('returns empty for no match', function () {
     $results = Volunteer::query()->search('Zzznotfound')->get();
+
+    expect($results)->toHaveCount(0);
+});
+
+it('finds volunteers by email containing @ symbol', function () {
+    $results = Volunteer::query()->search('alice@example.com')->get();
+
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->first_name)->toBe('Alice');
+});
+
+it('does not throw with special boolean mode characters', function () {
+    $results = Volunteer::query()->search('+Alice -Bob ~test')->get();
+
+    expect($results)->toBeInstanceOf(Collection::class);
+});
+
+it('returns empty for search with only special characters', function () {
+    $results = Volunteer::query()->search('@#$%^&')->get();
 
     expect($results)->toHaveCount(0);
 });

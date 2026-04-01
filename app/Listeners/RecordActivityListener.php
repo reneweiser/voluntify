@@ -21,7 +21,12 @@ use App\Events\Activity\MemberInvited;
 use App\Events\Activity\MemberLeft;
 use App\Events\Activity\ProjectCreated;
 use App\Events\Activity\ProjectDeleted;
+use App\Events\Activity\ProjectMemberAdded;
+use App\Events\Activity\ProjectMemberRemoved;
 use App\Events\Activity\ProjectUpdated;
+use App\Events\Activity\ScannerAssigneeAdded;
+use App\Events\Activity\ScannerAssigneeRemoved;
+use App\Events\Activity\ScannerLockout;
 use App\Events\Activity\ShiftCreated;
 use App\Events\Activity\ShiftDeleted;
 use App\Events\Activity\ShiftUpdated;
@@ -35,6 +40,7 @@ use App\Models\EventAnnouncement;
 use App\Models\EventArrival;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\ProjectScanner;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerPromotion;
@@ -505,6 +511,105 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
             'properties' => [
                 'name' => $e->projectName,
                 'orphaned_events' => $e->orphanedEventNames,
+            ],
+        ]);
+    }
+
+    public function handleProjectMemberAdded(ProjectMemberAdded $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->project->organization_id,
+            'project_id' => $e->project->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => User::class,
+            'subject_id' => $e->user->id,
+            'action' => 'added',
+            'category' => ActivityCategory::Member,
+            'description' => "Added {$e->user->name} as {$e->role->value} to project {$e->project->name}",
+            'properties' => [
+                'user_name' => $e->user->name,
+                'email' => $e->user->email,
+                'role' => $e->role->value,
+            ],
+        ]);
+    }
+
+    public function handleProjectMemberRemoved(ProjectMemberRemoved $e): void
+    {
+        ActivityLog::create([
+            'organization_id' => $e->project->organization_id,
+            'project_id' => $e->project->id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => User::class,
+            'subject_id' => $e->user->id,
+            'action' => 'removed',
+            'category' => ActivityCategory::Member,
+            'description' => "Removed {$e->user->name} from project {$e->project->name}",
+            'properties' => [
+                'user_name' => $e->user->name,
+                'email' => $e->user->email,
+            ],
+        ]);
+    }
+
+    public function handleScannerAssigneeAdded(ScannerAssigneeAdded $e): void
+    {
+        $e->scanner->loadMissing('project');
+
+        ActivityLog::create([
+            'organization_id' => $e->scanner->project->organization_id,
+            'project_id' => $e->scanner->project_id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => ProjectScanner::class,
+            'subject_id' => $e->scanner->id,
+            'action' => 'assignee_added',
+            'category' => ActivityCategory::Member,
+            'description' => "Added {$e->email} to scanner {$e->scanner->name}",
+            'properties' => [
+                'email' => $e->email,
+                'scanner_name' => $e->scanner->name,
+            ],
+        ]);
+    }
+
+    public function handleScannerAssigneeRemoved(ScannerAssigneeRemoved $e): void
+    {
+        $e->scanner->loadMissing('project');
+
+        ActivityLog::create([
+            'organization_id' => $e->scanner->project->organization_id,
+            'project_id' => $e->scanner->project_id,
+            'causer_type' => User::class,
+            'causer_id' => $e->causer->id,
+            'subject_type' => ProjectScanner::class,
+            'subject_id' => $e->scanner->id,
+            'action' => 'assignee_removed',
+            'category' => ActivityCategory::Member,
+            'description' => "Removed {$e->email} from scanner {$e->scanner->name}",
+            'properties' => [
+                'email' => $e->email,
+                'scanner_name' => $e->scanner->name,
+            ],
+        ]);
+    }
+
+    public function handleScannerLockout(ScannerLockout $e): void
+    {
+        $e->scanner->loadMissing('project');
+
+        ActivityLog::create([
+            'organization_id' => $e->scanner->project->organization_id,
+            'project_id' => $e->scanner->project_id,
+            'subject_type' => ProjectScanner::class,
+            'subject_id' => $e->scanner->id,
+            'action' => 'lockout',
+            'category' => ActivityCategory::System,
+            'description' => "Scanner {$e->scanner->name} locked out after 5 failed authentication attempts",
+            'properties' => [
+                'scanner_name' => $e->scanner->name,
             ],
         ]);
     }

@@ -65,7 +65,7 @@ class ProjectMembers extends Component
         }
 
         try {
-            $action->execute($this->project, $user);
+            $action->execute($this->project, $user, auth()->user());
         } catch (MemberAlreadyExistsException) {
             $this->addError('inviteEmail', 'This user is already a project member.');
 
@@ -102,7 +102,7 @@ class ProjectMembers extends Component
             return;
         }
 
-        $action->execute($this->project, $user);
+        $action->execute($this->project, $user, auth()->user());
 
         $this->showRemoveModal = false;
         $this->reset('removeMemberId');

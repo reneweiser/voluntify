@@ -136,8 +136,16 @@ class Volunteer extends Model
             return;
         }
 
-        $term = str_replace(['+', '-', '*', '~', '<', '>', '(', ')', '"'], '', $search);
-        $booleanTerm = '+'.implode('* +', explode(' ', trim($term))).'*';
+        $term = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $search);
+        $words = array_filter(explode(' ', trim($term)));
+
+        if ($words === []) {
+            $query->whereRaw('0 = 1');
+
+            return;
+        }
+
+        $booleanTerm = '+'.implode('* +', $words).'*';
 
         $query->whereRaw(
             'MATCH(first_name, last_name, email) AGAINST(? IN BOOLEAN MODE)',

@@ -71,7 +71,7 @@ it('shows error for wrong auth code', function () {
     Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
         ->set('authCode', '999999')
         ->call('authenticate')
-        ->assertSet('errorMessage', 'Invalid code. Please try again.')
+        ->assertSet('errorMessage', 'Ungültiger Code. Bitte versuche es erneut.')
         ->assertNoRedirect();
 
     Carbon::setTestNow();

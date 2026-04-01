@@ -6,6 +6,7 @@ use App\Livewire\Events\EmailTemplateEditor;
 use App\Models\EmailTemplate;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\User;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -84,7 +85,7 @@ it('shows preview with sample data', function () {
 });
 
 it('denies access to volunteer admin', function () {
-    $admin = \App\Models\User::factory()->create();
+    $admin = User::factory()->create();
     $this->org->users()->attach($admin, ['role' => StaffRole::VolunteerAdmin]);
 
     Livewire::actingAs($admin)
@@ -108,4 +109,90 @@ it('returns 404 for events from other organizations', function () {
     $this->actingAs($this->user)
         ->get(route('events.emails', $otherEvent))
         ->assertNotFound();
+});
+
+// ============================================================================
+// #55 Event-Level Email Templates — All 9 Types
+// ============================================================================
+
+it('can save custom templates for all 9 types [#55]', function (EmailTemplateType $type) {
+    Livewire::actingAs($this->user)
+        ->test(EmailTemplateEditor::class, ['eventId' => $this->event->id])
+        ->set('selectedType', $type->value)
+        ->set('subject', "Custom subject for {$type->value}")
+        ->set('body', "Custom body for {$type->value}")
+        ->call('saveTemplate')
+        ->assertHasNoErrors()
+        ->assertDispatched('template-saved');
+
+    expect(EmailTemplate::where('event_id', $this->event->id)
+        ->where('type', $type)
+        ->exists()
+    )->toBeTrue();
+})->with(fn () => EmailTemplateType::cases());
+
+it('loads correct defaults for all 9 types [#55]', function (EmailTemplateType $type) {
+    Livewire::actingAs($this->user)
+        ->test(EmailTemplateEditor::class, ['eventId' => $this->event->id])
+        ->set('selectedType', $type->value)
+        ->assertNotSet('subject', '')
+        ->assertNotSet('body', '');
+})->with(fn () => EmailTemplateType::cases());
+
+it('shows correct available placeholders for new types [#55]', function () {
+    $component = Livewire::actingAs($this->user)
+        ->test(EmailTemplateEditor::class, ['eventId' => $this->event->id])
+        ->set('selectedType', EmailTemplateType::EventUpdated->value);
+
+    $placeholders = $component->instance()->availablePlaceholders();
+
+    expect($placeholders)->toContain('vorname')
+        ->and($placeholders)->toContain('organizer_note')
+        ->and($placeholders)->toContain('portal_link');
+});
+
+it('preview renders with German sample data for new types [#55]', function () {
+    Livewire::actingAs($this->user)
+        ->test(EmailTemplateEditor::class, ['eventId' => $this->event->id])
+        ->set('selectedType', EmailTemplateType::EventUpdated->value)
+        ->call('previewTemplate')
+        ->assertSet('showPreview', true)
+        ->assertNotSet('previewSubject', '')
+        ->assertNotSet('previewBody', '');
+});
+
+it('custom template overrides system default in rendered email [#55]', function () {
+    EmailTemplate::factory()->create([
+        'event_id' => $this->event->id,
+        'type' => EmailTemplateType::EventUpdated,
+        'subject' => 'Custom: Update zu {{event_name}}',
+        'body' => 'Eigener Text: {{organizer_note}}',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(EmailTemplateEditor::class, ['eventId' => $this->event->id])
+        ->set('selectedType', EmailTemplateType::EventUpdated->value)
+        ->assertSet('subject', 'Custom: Update zu {{event_name}}')
+        ->assertSet('body', 'Eigener Text: {{organizer_note}}');
+});
+
+it('reset to default works for new types [#55]', function () {
+    EmailTemplate::factory()->create([
+        'event_id' => $this->event->id,
+        'type' => EmailTemplateType::EventUpdated,
+        'subject' => 'Custom',
+        'body' => 'Custom body',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(EmailTemplateEditor::class, ['eventId' => $this->event->id])
+        ->set('selectedType', EmailTemplateType::EventUpdated->value)
+        ->call('resetToDefault')
+        ->assertDispatched('template-reset');
+
+    expect(
+        EmailTemplate::where('event_id', $this->event->id)
+            ->where('type', EmailTemplateType::EventUpdated)
+            ->exists()
+    )->toBeFalse();
 });

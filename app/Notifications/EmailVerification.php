@@ -36,6 +36,10 @@ class EmailVerification extends Notification implements ShouldQueue
             EmailTemplateType::EmailVerification,
             $this->event,
             [
+                // #81 - German placeholders (primary)
+                'vorname' => $notifiable->first_name,
+                'nachname' => $notifiable->last_name,
+                // Legacy placeholders (backwards compatibility)
                 'volunteer_name' => $notifiable->full_name,
                 'event_name' => $this->event->name,
             ],
@@ -43,7 +47,7 @@ class EmailVerification extends Notification implements ShouldQueue
 
         $mail = (new MailMessage)
             ->subject($rendered['subject'])
-            ->greeting("Hello {$notifiable->full_name}!");
+            ->greeting("Hallo {$notifiable->first_name}!");
 
         foreach (explode("\n", $rendered['body']) as $line) {
             $trimmed = trim($line);
@@ -52,7 +56,7 @@ class EmailVerification extends Notification implements ShouldQueue
             }
         }
 
-        $mail->action('Verify Email & Complete Signup', $this->verificationUrl);
+        $mail->action('E-Mail bestätigen & Anmeldung abschließen', $this->verificationUrl);
 
         return $this->applyOrgMailer($mail, $this->event->organization);
     }

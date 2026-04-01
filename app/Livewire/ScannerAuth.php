@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Actions\AuthenticateScanner;
+use App\Events\Activity\ScannerLockout;
 use App\Models\ProjectScanner;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
@@ -53,11 +54,11 @@ class ScannerAuth extends Component
             'authCode' => ['required', 'digits:6'],
         ]);
 
-        $rateLimitKey = 'scanner_auth:'.$this->scannerToken.':'.request()->ip();
+        $rateLimitKey = 'scanner_auth:'.$this->scannerToken;
 
         if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
-            $seconds = RateLimiter::availableIn($rateLimitKey);
-            $this->errorMessage = "Too many attempts. Please try again in {$seconds} seconds.";
+            $minutes = (int) ceil(RateLimiter::availableIn($rateLimitKey) / 60);
+            $this->errorMessage = "Zu viele Versuche. Bitte warte {$minutes} Minuten.";
             $this->authCode = '';
 
             return;
@@ -69,9 +70,13 @@ class ScannerAuth extends Component
         $result = $action->execute($scanner, $this->authCode);
 
         if (! $result) {
-            RateLimiter::hit($rateLimitKey, 60);
-            $this->errorMessage = 'Invalid code. Please try again.';
+            RateLimiter::hit($rateLimitKey, 1800);
+            $this->errorMessage = 'Ungültiger Code. Bitte versuche es erneut.';
             $this->authCode = '';
+
+            if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+                ScannerLockout::dispatch($scanner);
+            }
 
             return;
         }

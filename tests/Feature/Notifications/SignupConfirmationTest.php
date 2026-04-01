@@ -30,7 +30,8 @@ it('sends email with event details', function () {
     Notification::assertSentTo($this->volunteer, SignupConfirmation::class, function ($notification) {
         $mail = $notification->toMail($this->volunteer);
 
-        expect($mail->subject)->toBe("You're signed up for Summer Fest!")
+        // #81 - Updated to expect German subject and content
+        expect($mail->subject)->toBe('Anmeldebestätigung für Summer Fest')
             ->and(implode(' ', $mail->introLines))->toContain('Summer Fest')
             ->and(implode(' ', $mail->introLines))->toContain('Gate Security')
             ->and(implode(' ', $mail->introLines))->toContain('Central Park');
@@ -59,7 +60,8 @@ it('uses default template when no custom template exists', function () {
     $notification = new SignupConfirmation($this->event, [$this->shift->id], 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
-    expect($mail->subject)->toBe("You're signed up for Summer Fest!")
+    // #81 - Updated to expect German defaults
+    expect($mail->subject)->toBe('Anmeldebestätigung für Summer Fest')
         ->and(implode(' ', $mail->introLines))->toContain('Summer Fest')
         ->and(implode(' ', $mail->introLines))->toContain('Gate Security');
 });
@@ -69,10 +71,11 @@ it('is queued', function () {
         ->toBeInstanceOf(ShouldQueue::class);
 });
 
-it('includes View Your Ticket action URL', function () {
+it('includes ticket action URL in German', function () {
     $notification = new SignupConfirmation($this->event, [$this->shift->id], 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
-    expect($mail->actionText)->toBe('View Your Ticket')
+    // #81 - Updated to German button text
+    expect($mail->actionText)->toBe('Ticket anzeigen')
         ->and($mail->actionUrl)->toBe(route('volunteer.ticket', 'test-token'));
 });

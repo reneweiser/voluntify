@@ -55,6 +55,24 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('public-api', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip());
         });
+
+        RateLimiter::for('magic-link-request', function (Request $request) {
+            return [
+                Limit::perHour(3)->by('magic-link:'.$request->input('email', '')),
+                Limit::perMinute(10)->by('magic-link-ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('email-verification-resend', function (Request $request) {
+            return [
+                Limit::perHour(3)->by('verify-resend:'.$request->input('email', '')),
+                Limit::perMinute(10)->by('verify-resend-ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('scanner-auth-attempt', function (Request $request) {
+            return Limit::perMinutes(30, 5)->by('scanner-auth:'.$request->route('scannerToken', ''));
+        });
     }
 
     protected function configureDefaults(): void
