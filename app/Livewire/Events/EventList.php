@@ -5,9 +5,11 @@ namespace App\Livewire\Events;
 use App\Actions\CreateEvent;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -19,6 +21,8 @@ class EventList extends Component
     use WithFileUploads;
 
     public string $statusFilter = '';
+
+    public ?int $eventProjectId = null;
 
     public string $eventName = '';
 
@@ -72,6 +76,12 @@ class EventList extends Component
     }
 
     #[Computed]
+    public function projects(): Collection
+    {
+        return $this->organization->projects()->active()->orderBy('name')->get();
+    }
+
+    #[Computed]
     public function canCreateEvents(): bool
     {
         return Gate::allows('create', [Event::class, $this->organization]);
@@ -93,6 +103,7 @@ class EventList extends Component
         Gate::authorize('create', [Event::class, $this->organization]);
 
         $this->validate([
+            'eventProjectId' => ['required', Rule::exists('projects', 'id')->where('organization_id', $this->organization->id)],
             'eventName' => ['required', 'string', 'max:255'],
             'eventDescription' => ['nullable', 'string'],
             'eventLocation' => ['nullable', 'string', 'max:255'],
@@ -101,10 +112,13 @@ class EventList extends Component
             'eventTitleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
+        $project = $this->organization->projects()->findOrFail($this->eventProjectId);
+
         $action = app(CreateEvent::class);
 
         $event = $action->execute(
             organization: $this->organization,
+            project: $project,
             name: $this->eventName,
             description: $this->eventDescription ?: null,
             location: $this->eventLocation ?: null,
@@ -113,7 +127,7 @@ class EventList extends Component
             titleImage: $this->eventTitleImage,
         );
 
-        $this->reset('eventName', 'eventDescription', 'eventLocation', 'eventStartsAt', 'eventEndsAt', 'eventTitleImage', 'showCreateModal');
+        $this->reset('eventProjectId', 'eventName', 'eventDescription', 'eventLocation', 'eventStartsAt', 'eventEndsAt', 'eventTitleImage', 'showCreateModal');
 
         $this->redirectRoute('events.show', $event);
     }

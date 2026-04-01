@@ -9,20 +9,6 @@
         @endif
     </div>
 
-    {{-- Tab bar --}}
-    <nav aria-label="{{ __('Event views') }}">
-        <div class="flex gap-2 mb-6 border-b border-zinc-200 dark:border-zinc-700">
-            <a href="{{ route('events.index') }}" wire:navigate aria-current="page"
-               class="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-600 dark:border-emerald-400">
-                {{ __('Events') }}
-            </a>
-            <a href="{{ route('projects.index') }}" wire:navigate
-               class="px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 border-b-2 border-transparent">
-                {{ __('Projects') }}
-            </a>
-        </div>
-    </nav>
-
     {{-- Status filter buttons --}}
     <div class="flex flex-wrap gap-2 mb-6">
         <flux:button
@@ -120,6 +106,25 @@
             </div>
 
             <flux:field>
+                <flux:label>{{ __('Project') }}</flux:label>
+                @if ($this->projects->isEmpty())
+                    <flux:text size="sm" class="text-zinc-500">
+                        {{ __('No projects available.') }}
+                        <a href="{{ route('projects.index') }}" wire:navigate class="text-emerald-600 dark:text-emerald-400 underline">{{ __('Create a project first') }}</a>.
+                    </flux:text>
+                @else
+                    <flux:select wire:model="eventProjectId" placeholder="{{ __('Select a project...') }}">
+                        @foreach ($this->projects as $project)
+                            <flux:select.option :value="$project->id" wire:key="project-option-{{ $project->id }}">
+                                {{ $project->name }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+                @endif
+                <flux:error name="eventProjectId" />
+            </flux:field>
+
+            <flux:field>
                 <flux:label>{{ __('Event Name') }}</flux:label>
                 <flux:input wire:model="eventName" placeholder="{{ __('e.g. Summer Carnival') }}" />
                 <flux:error name="eventName" />
@@ -157,7 +162,7 @@
 
             <div class="flex">
                 <flux:spacer />
-                <flux:button type="submit" variant="primary">{{ __('Create Event') }}</flux:button>
+                <flux:button type="submit" variant="primary" :disabled="$this->projects->isEmpty()">{{ __('Create Event') }}</flux:button>
             </div>
         </form>
     </flux:modal>

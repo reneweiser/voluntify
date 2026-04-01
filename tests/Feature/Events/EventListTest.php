@@ -100,8 +100,11 @@ it('hides create button for project organizers', function () {
 });
 
 it('creates a draft event and redirects to detail', function () {
+    $project = Project::factory()->for($this->org)->create();
+
     Livewire::actingAs($this->user)
         ->test(EventList::class)
+        ->set('eventProjectId', $project->id)
         ->set('eventName', 'New Festival')
         ->set('eventDescription', 'A fun event')
         ->set('eventLocation', 'The Park')
@@ -114,14 +117,15 @@ it('creates a draft event and redirects to detail', function () {
 
     expect($event)->not->toBeNull()
         ->and($event->status)->toBe(EventStatus::Draft)
-        ->and($event->organization_id)->toBe($this->org->id);
+        ->and($event->organization_id)->toBe($this->org->id)
+        ->and($event->project_id)->toBe($project->id);
 });
 
 it('validates required fields when creating event', function () {
     Livewire::actingAs($this->user)
         ->test(EventList::class)
         ->call('createEvent')
-        ->assertHasErrors(['eventName', 'eventStartsAt', 'eventEndsAt']);
+        ->assertHasErrors(['eventProjectId', 'eventName', 'eventStartsAt', 'eventEndsAt']);
 });
 
 it('shows volunteer count per event', function () {

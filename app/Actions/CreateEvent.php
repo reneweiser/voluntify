@@ -14,19 +14,15 @@ class CreateEvent
 {
     public function execute(
         Organization $organization,
+        Project $project,
         string $name,
         ?string $description,
         ?string $location,
         CarbonInterface $startsAt,
         CarbonInterface $endsAt,
         ?UploadedFile $titleImage = null,
-        ?Project $project = null,
     ): Event {
         $slug = Event::generateUniqueSlug($organization, $name);
-
-        if (! $project) {
-            $project = $organization->projects()->create(['name' => $name]);
-        }
 
         $event = new Event;
         $event->organization_id = $organization->id;

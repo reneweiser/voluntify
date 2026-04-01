@@ -3,12 +3,14 @@
 use App\Actions\CreateEvent;
 use App\Enums\EventStatus;
 use App\Models\Organization;
+use App\Models\Project;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
+    $this->project = Project::factory()->for($this->org, 'organization')->create();
 });
 
 it('creates a draft event for the organization', function () {
@@ -16,6 +18,7 @@ it('creates a draft event for the organization', function () {
 
     $event = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'Summer Carnival',
         description: 'A fun summer event',
         location: 'Central Park',
@@ -36,6 +39,7 @@ it('generates a slug from the event name', function () {
 
     $event = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'My Great Event',
         description: null,
         location: null,
@@ -51,6 +55,7 @@ it('auto-generates a public token', function () {
 
     $event = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'Token Event',
         description: null,
         location: null,
@@ -67,6 +72,7 @@ it('allows nullable description and location', function () {
 
     $event = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'Minimal Event',
         description: null,
         location: null,
@@ -83,6 +89,7 @@ it('appends numeric suffix for duplicate slugs within same organization', functi
 
     $first = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'Summer Carnival',
         description: null,
         location: null,
@@ -92,6 +99,7 @@ it('appends numeric suffix for duplicate slugs within same organization', functi
 
     $second = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'Summer Carnival',
         description: null,
         location: null,
@@ -111,6 +119,7 @@ it('stores title image when provided', function () {
 
     $event = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'Image Event',
         description: null,
         location: null,
@@ -128,6 +137,7 @@ it('creates event without image', function () {
 
     $event = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'No Image Event',
         description: null,
         location: null,
@@ -141,9 +151,11 @@ it('creates event without image', function () {
 it('allows same slug in different organizations', function () {
     $action = new CreateEvent;
     $otherOrg = Organization::factory()->create();
+    $otherProject = Project::factory()->for($otherOrg, 'organization')->create();
 
     $first = $action->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'Summer Carnival',
         description: null,
         location: null,
@@ -153,6 +165,7 @@ it('allows same slug in different organizations', function () {
 
     $second = $action->execute(
         organization: $otherOrg,
+        project: $otherProject,
         name: 'Summer Carnival',
         description: null,
         location: null,

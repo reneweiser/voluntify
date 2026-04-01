@@ -5,8 +5,14 @@
             <flux:heading size="xl">{{ $project->name }}</flux:heading>
         </div>
 
-        @if ($this->canManage)
-            <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2">
+            @if ($this->canCreateEvents)
+                <flux:button variant="primary" size="sm" icon="plus" wire:click="$set('showCreateEventModal', true)">
+                    {{ __('Create Event') }}
+                </flux:button>
+            @endif
+
+            @if ($this->canManage)
                 <flux:button variant="subtle" size="sm" icon="document-duplicate" wire:click="$set('showCloneModal', true)">
                     {{ __('Duplizieren') }}
                 </flux:button>
@@ -19,8 +25,8 @@
                         {{ __('Löschen') }}
                     </flux:button>
                 @endif
-            </div>
-        @endif
+            @endif
+        </div>
     </div>
 
     <x-projects.layout :project="$project">
@@ -254,4 +260,57 @@
             </div>
         </div>
     </flux:modal>
+
+    {{-- Create Event Modal --}}
+    @if ($this->canCreateEvents)
+    <flux:modal wire:model.self="showCreateEventModal" class="md:w-96">
+        <form wire:submit="createEvent" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Create Event') }}</flux:heading>
+                <flux:text class="mt-2">{{ __('Create a new event in this project.') }}</flux:text>
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('Event Name') }}</flux:label>
+                <flux:input wire:model="newEventName" placeholder="{{ __('e.g. Summer Carnival') }}" />
+                <flux:error name="newEventName" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Description') }}</flux:label>
+                <flux:textarea wire:model="newEventDescription" rows="3" />
+                <flux:error name="newEventDescription" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Location') }}</flux:label>
+                <flux:input wire:model="newEventLocation" placeholder="{{ __('e.g. Central Park') }}" />
+                <flux:error name="newEventLocation" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Starts At') }}</flux:label>
+                <flux:input type="datetime-local" wire:model="newEventStartsAt" />
+                <flux:error name="newEventStartsAt" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Ends At') }}</flux:label>
+                <flux:input type="datetime-local" wire:model="newEventEndsAt" />
+                <flux:error name="newEventEndsAt" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Title Image') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
+                <flux:input type="file" wire:model="newEventTitleImage" accept="image/jpeg,image/png,image/webp" />
+                <flux:error name="newEventTitleImage" />
+            </flux:field>
+
+            <div class="flex">
+                <flux:spacer />
+                <flux:button type="submit" variant="primary">{{ __('Create Event') }}</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+    @endif
 </div>

@@ -7,6 +7,7 @@ use App\Livewire\Events\EventShow;
 use App\Livewire\Public\EventSignup;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Carbon;
@@ -14,6 +15,7 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization();
+    $this->project = Project::factory()->for($this->org, 'organization')->create();
     app()->instance(Organization::class, $this->org);
 });
 
@@ -22,6 +24,7 @@ it('completes event lifecycle: create → add jobs → publish → public access
     $createAction = new CreateEvent;
     $event = $createAction->execute(
         organization: $this->org,
+        project: $this->project,
         name: 'Lifecycle Test Event',
         description: 'Testing the full lifecycle',
         location: 'Test Venue',

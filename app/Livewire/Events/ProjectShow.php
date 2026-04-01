@@ -3,13 +3,16 @@
 namespace App\Livewire\Events;
 
 use App\Actions\CloneProject;
+use App\Actions\CreateEvent;
 use App\Actions\RequestProjectDeletion;
 use App\Actions\RestoreProject;
 use App\Actions\UpdateProject;
 use App\Exceptions\DomainException;
+use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -49,6 +52,20 @@ class ProjectShow extends Component
 
     public $cloneDateOffset = '';
 
+    public bool $showCreateEventModal = false;
+
+    public string $newEventName = '';
+
+    public string $newEventDescription = '';
+
+    public string $newEventLocation = '';
+
+    public string $newEventStartsAt = '';
+
+    public string $newEventEndsAt = '';
+
+    public $newEventTitleImage;
+
     public function mount(int $projectId): void
     {
         $this->project = currentOrganization()->projects()->findOrFail($projectId);
@@ -71,6 +88,12 @@ class ProjectShow extends Component
     }
 
     #[Computed]
+    public function canCreateEvents(): bool
+    {
+        return Gate::allows('create', [Event::class, $this->organization]);
+    }
+
+    #[Computed]
     public function canManageMembers(): bool
     {
         return Gate::allows('manageMembers', $this->project);
@@ -86,6 +109,37 @@ class ProjectShow extends Component
     public function publicUrl(): string
     {
         return route('projects.public', $this->project->public_token);
+    }
+
+    public function createEvent(): void
+    {
+        Gate::authorize('create', [Event::class, $this->organization]);
+
+        $this->validate([
+            'newEventName' => ['required', 'string', 'max:255'],
+            'newEventDescription' => ['nullable', 'string'],
+            'newEventLocation' => ['nullable', 'string', 'max:255'],
+            'newEventStartsAt' => ['required', 'date'],
+            'newEventEndsAt' => ['required', 'date', 'after:newEventStartsAt'],
+            'newEventTitleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        $action = app(CreateEvent::class);
+
+        $event = $action->execute(
+            organization: $this->organization,
+            project: $this->project,
+            name: $this->newEventName,
+            description: $this->newEventDescription ?: null,
+            location: $this->newEventLocation ?: null,
+            startsAt: Carbon::parse($this->newEventStartsAt),
+            endsAt: Carbon::parse($this->newEventEndsAt),
+            titleImage: $this->newEventTitleImage,
+        );
+
+        $this->reset('newEventName', 'newEventDescription', 'newEventLocation', 'newEventStartsAt', 'newEventEndsAt', 'newEventTitleImage', 'showCreateEventModal');
+
+        $this->redirectRoute('events.show', $event);
     }
 
     public function startEditing(): void

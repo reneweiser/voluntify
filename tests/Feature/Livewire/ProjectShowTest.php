@@ -96,3 +96,30 @@ it('validates contact_email format', function () {
         ->call('saveProject')
         ->assertHasErrors(['contactEmail' => 'email']);
 });
+
+it('creates event in the current project', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->set('showCreateEventModal', true)
+        ->set('newEventName', 'Project Event')
+        ->set('newEventStartsAt', '2026-09-01 10:00')
+        ->set('newEventEndsAt', '2026-09-01 18:00')
+        ->call('createEvent')
+        ->assertHasNoErrors()
+        ->assertRedirect();
+
+    $event = $this->project->events()->first();
+    expect($event)->not->toBeNull()
+        ->and($event->name)->toBe('Project Event')
+        ->and($event->project_id)->toBe($this->project->id);
+});
+
+it('validates event name required when creating event', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->set('showCreateEventModal', true)
+        ->set('newEventStartsAt', '2026-09-01 10:00')
+        ->set('newEventEndsAt', '2026-09-01 18:00')
+        ->call('createEvent')
+        ->assertHasErrors(['newEventName' => 'required']);
+});
