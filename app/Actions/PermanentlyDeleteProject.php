@@ -4,11 +4,12 @@ namespace App\Actions;
 
 use App\Events\Activity\ProjectDeleted as ProjectDeletedActivity;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 
 class PermanentlyDeleteProject
 {
-    public function execute(Project $project): void
+    public function execute(Project $project, ?User $causer = null): void
     {
         $projectName = $project->name;
         $organizationId = $project->organization_id;
@@ -21,8 +22,8 @@ class PermanentlyDeleteProject
         // Database cascades handle all related records
         $project->delete();
 
-        if (auth()->check()) {
-            ProjectDeletedActivity::dispatch($projectName, $organizationId, $orphanedEventNames, auth()->user());
+        if ($causer) {
+            ProjectDeletedActivity::dispatch($projectName, $organizationId, $orphanedEventNames, $causer);
         }
     }
 }

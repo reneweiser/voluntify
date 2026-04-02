@@ -3,6 +3,7 @@
 use App\Actions\CloneEvent;
 use App\Enums\EmailTemplateType;
 use App\Enums\EventStatus;
+use App\Events\Activity\EventCloned;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\EmailTemplate;
@@ -12,18 +13,21 @@ use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
+use Illuminate\Support\Facades\Event as EventFacade;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->project = Project::factory()->for($this->org)->create();
     $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create(['name' => 'Original Event']);
+    $this->user = User::factory()->create();
 });
 
 it('clones event as a draft with copy suffix', function () {
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     expect($cloned->exists)->toBeTrue()
         ->and($cloned->id)->not->toBe($this->event->id)
@@ -34,7 +38,7 @@ it('clones event as a draft with copy suffix', function () {
 
 it('generates fresh public token and slug', function () {
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     expect($cloned->public_token)->not->toBe($this->event->public_token)
         ->and($cloned->slug)->not->toBe($this->event->slug)
@@ -47,7 +51,7 @@ it('copies jobs and shifts', function () {
     Shift::factory()->for($job, 'volunteerJob')->count(2)->create();
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     expect($cloned->volunteerJobs)->toHaveCount(1)
         ->and($cloned->volunteerJobs->first()->name)->toBe('Sound Crew')
@@ -60,7 +64,7 @@ it('does not copy signups', function () {
     ShiftSignup::factory()->create(['shift_id' => $shift->id]);
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     $cloned->load('volunteerJobs.shifts');
     $clonedShift = $cloned->volunteerJobs->first()->shifts->first();
@@ -73,7 +77,7 @@ it('does not copy title image path', function () {
     $this->event->update(['title_image_path' => 'events/1/banner.jpg']);
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     expect($cloned->title_image_path)->toBeNull();
 });
@@ -82,7 +86,7 @@ it('does not clone gear items because gear is project-level', function () {
     $gearItem = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     // Gear items are project-level, not event-level - cloning event does not touch gear
     expect($this->project->gearItems)->toHaveCount(1)
@@ -104,7 +108,7 @@ it('clones custom registration fields but not responses', function () {
     ]);
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     $cloned->load('customRegistrationFields');
 
@@ -122,7 +126,7 @@ it('does not clone soft-deleted custom fields', function () {
     $deletedField->delete();
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     $cloned->load('customRegistrationFields');
 
@@ -132,7 +136,7 @@ it('does not clone soft-deleted custom fields', function () {
 
 it('handles event with no jobs', function () {
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     expect($cloned->exists)->toBeTrue()
         ->and($cloned->volunteerJobs)->toHaveCount(0);
@@ -149,7 +153,7 @@ it('clones email templates', function () {
     ]);
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     $cloned->load('emailTemplates');
 
@@ -160,7 +164,7 @@ it('clones email templates', function () {
 
 it('keeps same project_id from source event', function () {
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event);
+    $cloned = $action->execute($this->event, $this->user);
 
     expect($cloned->project_id)->toBe($this->event->project_id);
 });
@@ -169,7 +173,7 @@ it('clones into a different project when targetProjectId is set', function () {
     $targetProject = Project::factory()->for($this->org)->create();
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event, targetProjectId: $targetProject->id);
+    $cloned = $action->execute($this->event, $this->user, targetProjectId: $targetProject->id);
 
     expect($cloned->project_id)->toBe($targetProject->id);
 });
@@ -183,7 +187,7 @@ it('applies date offset to event and shift dates', function () {
     ]);
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event, dateOffsetDays: 7);
+    $cloned = $action->execute($this->event, $this->user, dateOffsetDays: 7);
 
     $clonedShift = $cloned->volunteerJobs->first()->shifts->first();
 
@@ -203,11 +207,24 @@ it('handles date offset with null shift times', function () {
     ]);
 
     $action = new CloneEvent;
-    $cloned = $action->execute($this->event, dateOffsetDays: 14);
+    $cloned = $action->execute($this->event, $this->user, dateOffsetDays: 14);
 
     $clonedShift = $cloned->volunteerJobs->first()->shifts->first();
 
     expect($clonedShift->shift_date->format('Y-m-d'))->toBe('2026-06-15')
         ->and($clonedShift->starts_at)->toBeNull()
         ->and($clonedShift->ends_at)->toBeNull();
+});
+
+it('dispatches EventCloned event with causer', function () {
+    EventFacade::fake([EventCloned::class]);
+
+    $action = new CloneEvent;
+    $cloned = $action->execute($this->event, $this->user);
+
+    EventFacade::assertDispatched(EventCloned::class, function (EventCloned $event) use ($cloned) {
+        return $event->newEvent->id === $cloned->id
+            && $event->sourceEvent->id === $this->event->id
+            && $event->causer->id === $this->user->id;
+    });
 });

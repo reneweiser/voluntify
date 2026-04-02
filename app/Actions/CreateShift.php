@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Events\Activity\ShiftCreated;
 use App\Models\Shift;
+use App\Models\User;
 use App\Models\VolunteerJob;
 use Carbon\CarbonInterface;
 
@@ -16,6 +17,7 @@ class CreateShift
         ?CarbonInterface $endsAt,
         int $capacity,
         ?string $displayText = null,
+        ?User $causer = null,
     ): Shift {
         $shift = $job->shifts()->create([
             'shift_date' => $shiftDate,
@@ -25,8 +27,8 @@ class CreateShift
             'display_text' => $displayText,
         ]);
 
-        if (auth()->user()) {
-            ShiftCreated::dispatch($shift, auth()->user());
+        if ($causer) {
+            ShiftCreated::dispatch($shift, $causer);
         }
 
         return $shift;

@@ -8,10 +8,12 @@ use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
+use App\Models\User;
 use App\Models\VolunteerJob;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
+    $this->user = User::factory()->create();
     $this->publishAction = new PublishEvent;
     $this->closeAction = new CloseRegistration;
     $this->archiveAction = new ArchiveEvent;
@@ -22,7 +24,7 @@ it('transitions Draft → PublishedOpen via publish', function () {
     $job = VolunteerJob::factory()->for($event)->create();
     Shift::factory()->for($job, 'volunteerJob')->create();
 
-    $event = $this->publishAction->execute($event);
+    $event = $this->publishAction->execute($event, causer: $this->user);
 
     expect($event->status)->toBe(EventStatus::PublishedOpen);
 });
@@ -38,7 +40,7 @@ it('transitions PublishedOpen → PublishedClosed via close registration', funct
 it('transitions PublishedOpen → Archived via archive', function () {
     $event = Event::factory()->for($this->org)->published()->create();
 
-    $event = $this->archiveAction->execute($event);
+    $event = $this->archiveAction->execute($event, $this->user);
 
     expect($event->status)->toBe(EventStatus::Archived);
 });
@@ -46,7 +48,7 @@ it('transitions PublishedOpen → Archived via archive', function () {
 it('transitions PublishedClosed → Archived via archive', function () {
     $event = Event::factory()->for($this->org)->publishedClosed()->create();
 
-    $event = $this->archiveAction->execute($event);
+    $event = $this->archiveAction->execute($event, $this->user);
 
     expect($event->status)->toBe(EventStatus::Archived);
 });
@@ -54,7 +56,7 @@ it('transitions PublishedClosed → Archived via archive', function () {
 it('rejects Draft → Archived (must publish first)', function () {
     $event = Event::factory()->for($this->org)->create();
 
-    expect(fn () => $this->archiveAction->execute($event))
+    expect(fn () => $this->archiveAction->execute($event, $this->user))
         ->toThrow(DomainException::class);
 });
 
@@ -63,14 +65,14 @@ it('rejects PublishedClosed → PublishedOpen (cannot re-open)', function () {
     $job = VolunteerJob::factory()->for($event)->create();
     Shift::factory()->for($job, 'volunteerJob')->create();
 
-    expect(fn () => $this->publishAction->execute($event))
+    expect(fn () => $this->publishAction->execute($event, causer: $this->user))
         ->toThrow(DomainException::class, 'Event is already published.');
 });
 
 it('rejects Archived → PublishedOpen (cannot publish archived)', function () {
     $event = Event::factory()->for($this->org)->archived()->create();
 
-    expect(fn () => $this->publishAction->execute($event))
+    expect(fn () => $this->publishAction->execute($event, causer: $this->user))
         ->toThrow(DomainException::class, 'Cannot publish an archived event.');
 });
 
@@ -84,7 +86,7 @@ it('rejects Archived → PublishedClosed (cannot close archived)', function () {
 it('rejects Archived → Archived (already archived)', function () {
     $event = Event::factory()->for($this->org)->archived()->create();
 
-    expect(fn () => $this->archiveAction->execute($event))
+    expect(fn () => $this->archiveAction->execute($event, $this->user))
         ->toThrow(DomainException::class, 'Event is already archived.');
 });
 
@@ -95,12 +97,12 @@ it('completes full lifecycle: Draft → PublishedOpen → PublishedClosed → Ar
 
     expect($event->status)->toBe(EventStatus::Draft);
 
-    $event = $this->publishAction->execute($event);
+    $event = $this->publishAction->execute($event, causer: $this->user);
     expect($event->status)->toBe(EventStatus::PublishedOpen);
 
     $event = $this->closeAction->execute($event);
     expect($event->status)->toBe(EventStatus::PublishedClosed);
 
-    $event = $this->archiveAction->execute($event);
+    $event = $this->archiveAction->execute($event, $this->user);
     expect($event->status)->toBe(EventStatus::Archived);
 });

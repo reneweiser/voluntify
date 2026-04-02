@@ -5,10 +5,11 @@ namespace App\Actions;
 use App\Events\Activity\ShiftDeleted;
 use App\Exceptions\HasSignupsException;
 use App\Models\Shift;
+use App\Models\User;
 
 class DeleteShift
 {
-    public function execute(Shift $shift): void
+    public function execute(Shift $shift, User $causer): void
     {
         if ($shift->signups()->exists()) {
             throw new HasSignupsException('Cannot delete a shift that has volunteer signups.');
@@ -28,8 +29,6 @@ class DeleteShift
 
         $shift->delete();
 
-        if (auth()->user()) {
-            ShiftDeleted::dispatch($shiftData, auth()->user());
-        }
+        ShiftDeleted::dispatch($shiftData, $causer);
     }
 }

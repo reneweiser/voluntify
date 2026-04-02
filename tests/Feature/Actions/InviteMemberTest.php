@@ -87,11 +87,10 @@ it('throws MemberAlreadyExistsException for duplicate member', function () {
         ->toThrow(MemberAlreadyExistsException::class, 'This user is already a member.');
 });
 
-it('dispatches MemberInvited event when authenticated', function () {
+it('dispatches MemberInvited event when causer is provided', function () {
     ['user' => $authUser] = createUserWithOrganization(StaffRole::Organizer);
-    $this->actingAs($authUser);
 
-    $this->action->execute($this->org, 'New User', 'new@example.com', StaffRole::VolunteerAdmin);
+    $this->action->execute($this->org, 'New User', 'new@example.com', StaffRole::VolunteerAdmin, $authUser);
 
     EventFacade::assertDispatched(MemberInvited::class, function ($e) use ($authUser) {
         return $e->organization->is($this->org)
@@ -102,7 +101,7 @@ it('dispatches MemberInvited event when authenticated', function () {
     });
 });
 
-it('skips event dispatch when not authenticated', function () {
+it('skips event dispatch when causer is null', function () {
     $this->action->execute($this->org, 'New User', 'new@example.com', StaffRole::VolunteerAdmin);
 
     EventFacade::assertNotDispatched(MemberInvited::class);

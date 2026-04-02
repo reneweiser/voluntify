@@ -55,16 +55,15 @@ it('cascades deletion to related events', function () {
     expect(Event::find($event->id))->toBeNull();
 });
 
-it('dispatches activity event with correct data when authenticated', function () {
+it('dispatches activity event with correct data when causer is provided', function () {
     EventFacade::fake([ProjectDeletedActivity::class]);
 
     ['user' => $user] = createUserWithOrganization(StaffRole::Organizer);
-    $this->actingAs($user);
 
     $project = Project::factory()->for($this->org)->create(['name' => 'My Project']);
     $event = Event::factory()->for($this->org)->for($project)->create(['name' => 'Orphaned Event']);
 
-    $this->action->execute($project);
+    $this->action->execute($project, $user);
 
     EventFacade::assertDispatched(ProjectDeletedActivity::class, function ($e) use ($user) {
         return $e->projectName === 'My Project'
@@ -74,7 +73,7 @@ it('dispatches activity event with correct data when authenticated', function ()
     });
 });
 
-it('skips activity event when not authenticated', function () {
+it('skips activity event when causer is null', function () {
     EventFacade::fake([ProjectDeletedActivity::class]);
 
     $project = Project::factory()->for($this->org)->create();
@@ -88,13 +87,12 @@ it('captures orphaned event names before deletion', function () {
     EventFacade::fake([ProjectDeletedActivity::class]);
 
     ['user' => $user] = createUserWithOrganization(StaffRole::Organizer);
-    $this->actingAs($user);
 
     $project = Project::factory()->for($this->org)->create();
     Event::factory()->for($this->org)->for($project)->create(['name' => 'Event A']);
     Event::factory()->for($this->org)->for($project)->create(['name' => 'Event B']);
 
-    $this->action->execute($project);
+    $this->action->execute($project, $user);
 
     EventFacade::assertDispatched(ProjectDeletedActivity::class, function ($e) {
         return count($e->orphanedEventNames) === 2

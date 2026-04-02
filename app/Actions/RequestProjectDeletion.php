@@ -4,13 +4,14 @@ namespace App\Actions;
 
 use App\Exceptions\DomainException;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class RequestProjectDeletion
 {
-    public function execute(Project $project, string $password): Project
+    public function execute(Project $project, string $password, User $causer): Project
     {
-        if (! Hash::check($password, auth()->user()->password)) {
+        if (! Hash::check($password, $causer->password)) {
             throw new DomainException('Falsches Passwort.');
         }
 

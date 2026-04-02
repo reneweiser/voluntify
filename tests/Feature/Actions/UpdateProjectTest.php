@@ -1,14 +1,18 @@
 <?php
 
 use App\Actions\UpdateProject;
+use App\Events\Activity\ProjectUpdated as ProjectUpdatedActivity;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     Storage::fake('public');
     $this->org = Organization::factory()->create();
+    $this->user = User::factory()->create();
     $this->image = UploadedFile::fake()->image('original.jpg', 800, 600);
     $this->imagePath = $this->image->store('projects/1', 'public');
     $this->project = Project::factory()->for($this->org)->create([
@@ -23,6 +27,7 @@ it('updates name and description', function () {
         project: $this->project,
         name: 'Updated Name',
         description: 'Updated description',
+        causer: $this->user,
     );
 
     expect($project->name)->toBe('Updated Name')
@@ -37,6 +42,7 @@ it('replaces image and deletes old one', function () {
         project: $this->project,
         name: $this->project->name,
         titleImage: $newImage,
+        causer: $this->user,
     );
 
     Storage::disk('public')->assertMissing($this->imagePath);
@@ -51,6 +57,7 @@ it('removes image when removeTitleImage is true', function () {
         project: $this->project,
         name: $this->project->name,
         removeTitleImage: true,
+        causer: $this->user,
     );
 
     Storage::disk('public')->assertMissing($this->imagePath);
@@ -63,6 +70,7 @@ it('keeps existing image when no new image and removeTitleImage is false', funct
     $project = $action->execute(
         project: $this->project,
         name: 'New Name',
+        causer: $this->user,
     );
 
     Storage::disk('public')->assertExists($this->imagePath);
@@ -77,6 +85,7 @@ it('updates sender_name and contact_email', function () {
         name: $this->project->name,
         senderName: 'Festival Team',
         contactEmail: 'info@festival.de',
+        causer: $this->user,
     );
 
     expect($project->sender_name)->toBe('Festival Team')
@@ -93,8 +102,23 @@ it('allows sender_name and contact_email to be nullable', function () {
         name: $this->project->name,
         senderName: null,
         contactEmail: null,
+        causer: $this->user,
     );
 
     expect($project->sender_name)->toBeNull()
         ->and($project->contact_email)->toBeNull();
+});
+
+it('dispatches ProjectUpdatedActivity event with causer', function () {
+    Event::fake([ProjectUpdatedActivity::class]);
+
+    $action = new UpdateProject;
+
+    $action->execute(
+        project: $this->project,
+        name: 'Changed Name',
+        causer: $this->user,
+    );
+
+    Event::assertDispatched(ProjectUpdatedActivity::class, fn ($e) => $e->causer->id === $this->user->id);
 });

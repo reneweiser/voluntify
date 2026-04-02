@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Events\Activity\ShiftUpdated;
 use App\Exceptions\DomainException;
 use App\Models\Shift;
+use App\Models\User;
 use Carbon\CarbonInterface;
 
 class UpdateShift
@@ -16,6 +17,7 @@ class UpdateShift
         ?CarbonInterface $endsAt,
         int $capacity,
         ?string $displayText = null,
+        ?User $causer = null,
     ): Shift {
         if ($capacity < $shift->activeSignups()->count()) {
             throw new DomainException('Cannot reduce capacity below current number of signups.');
@@ -36,8 +38,8 @@ class UpdateShift
 
         $shift->update($updateData);
 
-        if ($changed && auth()->user()) {
-            ShiftUpdated::dispatch($shift->refresh(), auth()->user(), $changed);
+        if ($changed && $causer) {
+            ShiftUpdated::dispatch($shift->refresh(), $causer, $changed);
         }
 
         return $shift->refresh();

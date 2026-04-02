@@ -16,7 +16,7 @@ class InviteMember
 {
     public function __construct(private CreateOrganization $createOrganization) {}
 
-    public function execute(Organization $organization, string $name, string $email, StaffRole $role): User
+    public function execute(Organization $organization, string $name, string $email, StaffRole $role, ?User $causer = null): User
     {
         $user = User::where('email', $email)->first();
         $isExistingUser = (bool) $user;
@@ -49,8 +49,8 @@ class InviteMember
             'role' => $role,
         ]);
 
-        if (auth()->user()) {
-            MemberInvited::dispatch($organization, $user->name, $email, $role, auth()->user());
+        if ($causer) {
+            MemberInvited::dispatch($organization, $user->name, $email, $role, $causer);
         }
 
         if ($isExistingUser) {

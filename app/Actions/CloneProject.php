@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class CloneProject
@@ -11,9 +12,9 @@ class CloneProject
         private CloneEvent $cloneEvent,
     ) {}
 
-    public function execute(Project $project, ?int $dateOffsetDays = null): Project
+    public function execute(Project $project, User $causer, ?int $dateOffsetDays = null): Project
     {
-        return DB::transaction(function () use ($project, $dateOffsetDays) {
+        return DB::transaction(function () use ($project, $causer, $dateOffsetDays) {
             $project->load(['events', 'gearItems', 'customRegistrationFields', 'hintTexts', 'scanners']);
 
             $clonedProject = $project->replicate([
@@ -31,7 +32,7 @@ class CloneProject
             $clonedProject->save();
 
             foreach ($project->events as $event) {
-                $this->cloneEvent->execute($event, $clonedProject->id, $dateOffsetDays);
+                $this->cloneEvent->execute($event, $causer, targetProjectId: $clonedProject->id, dateOffsetDays: $dateOffsetDays);
             }
 
             foreach ($project->gearItems as $gearItem) {

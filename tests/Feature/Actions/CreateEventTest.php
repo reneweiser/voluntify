@@ -2,15 +2,19 @@
 
 use App\Actions\CreateEvent;
 use App\Enums\EventStatus;
+use App\Events\Activity\EventCreated;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->project = Project::factory()->for($this->org, 'organization')->create();
+    $this->user = User::factory()->create();
 });
 
 it('creates a draft event for the organization', function () {
@@ -24,6 +28,7 @@ it('creates a draft event for the organization', function () {
         location: 'Central Park',
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
     );
 
     expect($event->exists)->toBeTrue()
@@ -45,6 +50,7 @@ it('generates a slug from the event name', function () {
         location: null,
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
     );
 
     expect($event->slug)->toBe('my-great-event');
@@ -61,6 +67,7 @@ it('auto-generates a public token', function () {
         location: null,
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
     );
 
     expect($event->public_token)->toBeString()
@@ -78,6 +85,7 @@ it('allows nullable description and location', function () {
         location: null,
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
     );
 
     expect($event->description)->toBeNull()
@@ -95,6 +103,7 @@ it('appends numeric suffix for duplicate slugs within same organization', functi
         location: null,
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
     );
 
     $second = $action->execute(
@@ -105,6 +114,7 @@ it('appends numeric suffix for duplicate slugs within same organization', functi
         location: null,
         startsAt: Carbon::parse('2026-08-01 10:00'),
         endsAt: Carbon::parse('2026-08-01 18:00'),
+        causer: $this->user,
     );
 
     expect($first->slug)->toBe('summer-carnival')
@@ -126,6 +136,7 @@ it('stores title image when provided', function () {
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         titleImage: $image,
+        causer: $this->user,
     );
 
     expect($event->title_image_path)->not->toBeNull();
@@ -143,6 +154,7 @@ it('creates event without image', function () {
         location: null,
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
     );
 
     expect($event->title_image_path)->toBeNull();
@@ -161,6 +173,7 @@ it('allows same slug in different organizations', function () {
         location: null,
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
     );
 
     $second = $action->execute(
@@ -171,8 +184,28 @@ it('allows same slug in different organizations', function () {
         location: null,
         startsAt: Carbon::parse('2026-07-01 10:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
     );
 
     expect($first->slug)->toBe('summer-carnival')
         ->and($second->slug)->toBe('summer-carnival');
+});
+
+it('dispatches EventCreated activity event with causer', function () {
+    Event::fake([EventCreated::class]);
+
+    $action = new CreateEvent;
+
+    $action->execute(
+        organization: $this->org,
+        project: $this->project,
+        name: 'Dispatch Test',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-07-01 10:00'),
+        endsAt: Carbon::parse('2026-07-01 18:00'),
+        causer: $this->user,
+    );
+
+    Event::assertDispatched(EventCreated::class, fn ($e) => $e->causer->id === $this->user->id);
 });

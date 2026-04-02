@@ -3,13 +3,17 @@
 use App\Actions\DeleteEmailTemplate;
 use App\Actions\SaveEmailTemplate;
 use App\Enums\EmailTemplateType;
+use App\Events\Activity\EmailTemplateUpdated;
 use App\Models\EmailTemplate;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\User;
+use Illuminate\Support\Facades\Event as EventFacade;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->event = Event::factory()->for($this->org)->create();
+    $this->user = User::factory()->create();
 });
 
 it('creates a new email template', function () {
@@ -20,6 +24,7 @@ it('creates a new email template', function () {
         type: EmailTemplateType::SignupConfirmation,
         subject: 'Welcome to {{event_name}}',
         body: 'Hi {{volunteer_name}}, thanks for signing up!',
+        causer: $this->user,
     );
 
     expect($template)->toBeInstanceOf(EmailTemplate::class)
@@ -37,6 +42,7 @@ it('updates existing template on duplicate type', function () {
         type: EmailTemplateType::SignupConfirmation,
         subject: 'Original Subject',
         body: 'Original body',
+        causer: $this->user,
     );
 
     $action->execute(
@@ -44,6 +50,7 @@ it('updates existing template on duplicate type', function () {
         type: EmailTemplateType::SignupConfirmation,
         subject: 'Updated Subject',
         body: 'Updated body',
+        causer: $this->user,
     );
 
     expect(EmailTemplate::where('event_id', $this->event->id)->count())->toBe(1);
@@ -61,6 +68,7 @@ it('allows different types for same event', function () {
         type: EmailTemplateType::SignupConfirmation,
         subject: 'Signup Subject',
         body: 'Signup body',
+        causer: $this->user,
     );
 
     $action->execute(
@@ -68,6 +76,7 @@ it('allows different types for same event', function () {
         type: EmailTemplateType::PreShiftReminder24h,
         subject: 'Reminder Subject',
         body: 'Reminder body',
+        causer: $this->user,
     );
 
     expect(EmailTemplate::where('event_id', $this->event->id)->count())->toBe(2);
@@ -87,4 +96,20 @@ it('deletes a template and reverts to default', function () {
             ->where('type', EmailTemplateType::SignupConfirmation)
             ->exists()
     )->toBeFalse();
+});
+
+it('dispatches EmailTemplateUpdated activity event with causer', function () {
+    EventFacade::fake([EmailTemplateUpdated::class]);
+
+    $action = new SaveEmailTemplate;
+
+    $action->execute(
+        event: $this->event,
+        type: EmailTemplateType::SignupConfirmation,
+        subject: 'Test Subject',
+        body: 'Test body',
+        causer: $this->user,
+    );
+
+    EventFacade::assertDispatched(EmailTemplateUpdated::class, fn ($e) => $e->causer->id === $this->user->id);
 });

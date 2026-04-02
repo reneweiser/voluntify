@@ -1,13 +1,17 @@
 <?php
 
 use App\Actions\UpdateVolunteerJob;
+use App\Events\Activity\JobUpdated;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\User;
 use App\Models\VolunteerJob;
+use Illuminate\Support\Facades\Event as EventFacade;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->event = Event::factory()->for($this->org)->create();
+    $this->user = User::factory()->create();
     $this->action = new UpdateVolunteerJob;
 });
 
@@ -19,9 +23,26 @@ it('updates job fields', function () {
         name: 'Updated Job',
         description: 'New description',
         instructions: 'New instructions',
+        causer: $this->user,
     );
 
     expect($updated->name)->toBe('Updated Job')
         ->and($updated->description)->toBe('New description')
         ->and($updated->instructions)->toBe('New instructions');
+});
+
+it('dispatches JobUpdated activity event with causer', function () {
+    EventFacade::fake([JobUpdated::class]);
+
+    $job = VolunteerJob::factory()->for($this->event)->create();
+
+    $this->action->execute(
+        job: $job,
+        name: 'Changed Name',
+        description: 'New description',
+        instructions: 'New instructions',
+        causer: $this->user,
+    );
+
+    EventFacade::assertDispatched(JobUpdated::class, fn ($e) => $e->causer->id === $this->user->id);
 });

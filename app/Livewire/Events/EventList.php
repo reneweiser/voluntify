@@ -125,6 +125,7 @@ class EventList extends Component
             startsAt: Carbon::parse($this->eventStartsAt),
             endsAt: Carbon::parse($this->eventEndsAt),
             titleImage: $this->eventTitleImage,
+            causer: auth()->user(),
         );
 
         $this->reset('eventProjectId', 'eventName', 'eventDescription', 'eventLocation', 'eventStartsAt', 'eventEndsAt', 'eventTitleImage', 'showCreateModal');

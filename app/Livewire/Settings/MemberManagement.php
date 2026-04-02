@@ -111,6 +111,7 @@ class MemberManagement extends Component
                 $this->inviteName,
                 $this->inviteEmail,
                 StaffRole::Organizer,
+                auth()->user(),
             );
         } catch (MemberAlreadyExistsException) {
             $this->addError('inviteEmail', 'This user is already a member.');

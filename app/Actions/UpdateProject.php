@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Events\Activity\ProjectUpdated as ProjectUpdatedActivity;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,6 +20,7 @@ class UpdateProject
         ?string $contactEmail = null,
         ?bool $cancellationEnabled = null,
         ?int $cancellationCutoffHours = null,
+        ?User $causer = null,
     ): Project {
         $original = [
             'name' => $project->name,
@@ -63,8 +65,8 @@ class UpdateProject
             }
         }
 
-        if ($changed && auth()->user()) {
-            ProjectUpdatedActivity::dispatch($project, auth()->user(), $changed);
+        if ($changed && $causer) {
+            ProjectUpdatedActivity::dispatch($project, $causer, $changed);
         }
 
         return $project;

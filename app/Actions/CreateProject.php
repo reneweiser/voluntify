@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Events\Activity\ProjectCreated as ProjectCreatedActivity;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 
 class CreateProject
@@ -14,6 +15,7 @@ class CreateProject
         string $name,
         ?string $description = null,
         ?UploadedFile $titleImage = null,
+        ?User $causer = null,
     ): Project {
         $project = $organization->projects()->create([
             'name' => $name,
@@ -25,8 +27,8 @@ class CreateProject
             $project->update(['title_image_path' => $path]);
         }
 
-        if (auth()->user()) {
-            ProjectCreatedActivity::dispatch($project, auth()->user());
+        if ($causer) {
+            ProjectCreatedActivity::dispatch($project, $causer);
         }
 
         return $project;

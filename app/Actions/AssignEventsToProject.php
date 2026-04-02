@@ -6,13 +6,14 @@ use App\Events\Activity\EventAssignedToProject;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Project;
+use App\Models\User;
 
 class AssignEventsToProject
 {
     /**
      * @param  array<int>  $eventIds
      */
-    public function execute(Project $project, array $eventIds): void
+    public function execute(Project $project, array $eventIds, User $causer): void
     {
         $events = Event::whereIn('id', $eventIds)->get();
 
@@ -24,10 +25,8 @@ class AssignEventsToProject
 
         Event::whereIn('id', $eventIds)->update(['project_id' => $project->id]);
 
-        if (auth()->user()) {
-            foreach ($events as $event) {
-                EventAssignedToProject::dispatch($project, $event, auth()->user());
-            }
+        foreach ($events as $event) {
+            EventAssignedToProject::dispatch($project, $event, $causer);
         }
     }
 }

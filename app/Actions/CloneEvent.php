@@ -5,11 +5,12 @@ namespace App\Actions;
 use App\Enums\EventStatus;
 use App\Events\Activity\EventCloned;
 use App\Models\Event;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class CloneEvent
 {
-    public function execute(Event $event, ?int $targetProjectId = null, ?int $dateOffsetDays = null): Event
+    public function execute(Event $event, User $causer, ?int $targetProjectId = null, ?int $dateOffsetDays = null): Event
     {
         $clonedEvent = DB::transaction(function () use ($event, $targetProjectId, $dateOffsetDays) {
             $event->load(['volunteerJobs.shifts', 'customRegistrationFields', 'emailTemplates']);
@@ -79,9 +80,7 @@ class CloneEvent
             return $clonedEvent->fresh();
         });
 
-        if (auth()->user()) {
-            EventCloned::dispatch($clonedEvent, $event, auth()->user());
-        }
+        EventCloned::dispatch($clonedEvent, $event, $causer);
 
         return $clonedEvent;
     }

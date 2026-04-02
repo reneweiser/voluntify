@@ -107,6 +107,7 @@ class EmailTemplateEditor extends Component
             type: $type,
             subject: $this->subject,
             body: $this->body,
+            causer: auth()->user(),
         );
 
         unset($this->isCustomized);

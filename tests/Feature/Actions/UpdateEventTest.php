@@ -2,15 +2,19 @@
 
 use App\Actions\DeleteEventImage;
 use App\Actions\UpdateEvent;
+use App\Events\Activity\EventUpdated as EventUpdatedActivity;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event as EventFacade;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
+    $this->user = User::factory()->create();
     $this->action = new UpdateEvent;
 });
 
@@ -24,6 +28,7 @@ it('updates event fields', function () {
         location: 'New Location',
         startsAt: Carbon::parse('2026-08-01 10:00'),
         endsAt: Carbon::parse('2026-08-01 18:00'),
+        causer: $this->user,
     );
 
     expect($updated->name)->toBe('Updated Name')
@@ -42,6 +47,7 @@ it('cannot update archived events', function () {
         location: null,
         startsAt: Carbon::parse('2026-08-01 10:00'),
         endsAt: Carbon::parse('2026-08-01 18:00'),
+        causer: $this->user,
     ))->toThrow(DomainException::class, 'Cannot update an archived event.');
 });
 
@@ -55,6 +61,7 @@ it('can update published events', function () {
         location: null,
         startsAt: Carbon::parse('2026-08-01 10:00'),
         endsAt: Carbon::parse('2026-08-01 18:00'),
+        causer: $this->user,
     );
 
     expect($updated->name)->toBe('Updated Published');
@@ -71,6 +78,7 @@ it('appends numeric suffix when slug collides with another event', function () {
         location: null,
         startsAt: Carbon::parse('2026-08-01 10:00'),
         endsAt: Carbon::parse('2026-08-01 18:00'),
+        causer: $this->user,
     );
 
     expect($updated->slug)->toBe('same-name-2');
@@ -90,6 +98,7 @@ it('stores title image when updating event', function () {
         startsAt: $event->starts_at,
         endsAt: $event->ends_at,
         titleImage: $image,
+        causer: $this->user,
     );
 
     expect($updated->title_image_path)->not->toBeNull();
@@ -113,6 +122,7 @@ it('replaces old image when updating with new image', function () {
         startsAt: $event->starts_at,
         endsAt: $event->ends_at,
         titleImage: $newImage,
+        causer: $this->user,
     );
 
     Storage::disk('public')->assertMissing($oldPath);
@@ -128,7 +138,7 @@ it('deletes event image', function () {
     $event = Event::factory()->for($this->org)->create(['title_image_path' => $path]);
 
     $deleteAction = new DeleteEventImage;
-    $updated = $deleteAction->execute($event);
+    $updated = $deleteAction->execute($event, $this->user);
 
     expect($updated->title_image_path)->toBeNull();
     Storage::disk('public')->assertMissing($path);
@@ -144,7 +154,26 @@ it('keeps same slug when name does not change', function () {
         location: null,
         startsAt: Carbon::parse('2026-08-01 10:00'),
         endsAt: Carbon::parse('2026-08-01 18:00'),
+        causer: $this->user,
     );
 
     expect($updated->slug)->toBe('my-event');
+});
+
+it('dispatches EventUpdatedActivity event with causer', function () {
+    EventFacade::fake([EventUpdatedActivity::class]);
+
+    $event = Event::factory()->for($this->org)->create();
+
+    $this->action->execute(
+        event: $event,
+        name: 'Changed Name',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-08-01 10:00'),
+        endsAt: Carbon::parse('2026-08-01 18:00'),
+        causer: $this->user,
+    );
+
+    EventFacade::assertDispatched(EventUpdatedActivity::class, fn ($e) => $e->causer->id === $this->user->id);
 });

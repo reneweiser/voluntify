@@ -7,6 +7,7 @@ use App\Enums\EventVisibility;
 use App\Events\Activity\EventUpdated as EventUpdatedActivity;
 use App\Exceptions\DomainException;
 use App\Models\Event;
+use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -25,6 +26,7 @@ class UpdateEvent
         ?int $attendanceGraceMinutes = null,
         ?EventVisibility $visibility = null,
         ?string $notificationEmail = null,
+        ?User $causer = null,
     ): Event {
         if ($event->status === EventStatus::Archived) {
             throw new DomainException('Cannot update an archived event.');
@@ -59,8 +61,8 @@ class UpdateEvent
 
         $event->update($updateData);
 
-        if ($changed && auth()->user()) {
-            EventUpdatedActivity::dispatch($event->refresh(), auth()->user(), $changed);
+        if ($changed && $causer) {
+            EventUpdatedActivity::dispatch($event->refresh(), $causer, $changed);
         }
 
         return $event->refresh();

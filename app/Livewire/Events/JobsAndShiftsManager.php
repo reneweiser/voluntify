@@ -111,6 +111,7 @@ class JobsAndShiftsManager extends Component
                 name: $this->jobName,
                 description: $this->jobDescription ?: null,
                 instructions: $this->jobInstructions ?: null,
+                causer: auth()->user(),
             );
         } else {
             app(CreateVolunteerJob::class)->execute(
@@ -118,6 +119,7 @@ class JobsAndShiftsManager extends Component
                 name: $this->jobName,
                 description: $this->jobDescription ?: null,
                 instructions: $this->jobInstructions ?: null,
+                causer: auth()->user(),
             );
         }
 
@@ -133,7 +135,7 @@ class JobsAndShiftsManager extends Component
         $job = $this->event->volunteerJobs()->findOrFail($jobId);
 
         try {
-            app(DeleteVolunteerJob::class)->execute($job);
+            app(DeleteVolunteerJob::class)->execute($job, auth()->user());
         } catch (HasSignupsException $e) {
             $this->addError('job', $e->getMessage());
 
@@ -197,6 +199,7 @@ class JobsAndShiftsManager extends Component
                 endsAt: $endsAt,
                 capacity: $this->shiftCapacity,
                 displayText: $displayText,
+                causer: auth()->user(),
             );
         } else {
             $job = $this->event->volunteerJobs()->findOrFail($this->shiftJobId);
@@ -207,6 +210,7 @@ class JobsAndShiftsManager extends Component
                 endsAt: $endsAt,
                 capacity: $this->shiftCapacity,
                 displayText: $displayText,
+                causer: auth()->user(),
             );
         }
 
@@ -223,7 +227,7 @@ class JobsAndShiftsManager extends Component
         $shift = $this->findShift($shiftId);
 
         try {
-            app(DeleteShift::class)->execute($shift);
+            app(DeleteShift::class)->execute($shift, auth()->user());
         } catch (HasSignupsException $e) {
             $this->addError('shift', $e->getMessage());
 

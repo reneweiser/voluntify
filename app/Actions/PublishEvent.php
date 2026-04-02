@@ -8,10 +8,11 @@ use App\Exceptions\DomainException;
 use App\Exceptions\EventNotReadyException;
 use App\Jobs\SendRepublishNotificationJob;
 use App\Models\Event;
+use App\Models\User;
 
 class PublishEvent
 {
-    public function execute(Event $event, ?string $organizerNote = null): Event
+    public function execute(Event $event, ?string $organizerNote = null, ?User $causer = null): Event
     {
         if ($event->status === EventStatus::Archived) {
             throw new DomainException('Cannot publish an archived event.');
@@ -40,8 +41,8 @@ class PublishEvent
             SendRepublishNotificationJob::dispatch($event, $organizerNote);
         }
 
-        if (auth()->user()) {
-            EventPublished::dispatch($event->refresh(), auth()->user());
+        if ($causer) {
+            EventPublished::dispatch($event->refresh(), $causer);
         }
 
         return $event->refresh();

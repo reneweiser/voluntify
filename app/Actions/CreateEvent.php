@@ -7,6 +7,7 @@ use App\Events\Activity\EventCreated;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Http\UploadedFile;
 
@@ -21,6 +22,7 @@ class CreateEvent
         CarbonInterface $startsAt,
         CarbonInterface $endsAt,
         ?UploadedFile $titleImage = null,
+        ?User $causer = null,
     ): Event {
         $slug = Event::generateUniqueSlug($organization, $name);
 
@@ -41,8 +43,8 @@ class CreateEvent
             $event->update(['title_image_path' => $path]);
         }
 
-        if (auth()->user()) {
-            EventCreated::dispatch($event, auth()->user());
+        if ($causer) {
+            EventCreated::dispatch($event, $causer);
         }
 
         return $event;

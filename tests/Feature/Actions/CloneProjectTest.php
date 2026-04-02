@@ -2,6 +2,7 @@
 
 use App\Actions\CloneProject;
 use App\Enums\EventStatus;
+use App\Events\Activity\EventCloned;
 use App\Models\Event;
 use App\Models\HintText;
 use App\Models\Organization;
@@ -9,16 +10,19 @@ use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\ProjectScanner;
 use App\Models\Shift;
+use App\Models\User;
 use App\Models\VolunteerJob;
+use Illuminate\Support\Facades\Event as EventFacade;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->project = Project::factory()->for($this->org)->create(['name' => 'Summer Festival']);
+    $this->user = User::factory()->create();
 });
 
 it('clones project with copy suffix', function () {
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     expect($cloned->name)->toBe('Summer Festival (Copy)')
         ->and($cloned->organization_id)->toBe($this->org->id)
@@ -30,7 +34,7 @@ it('clones all events as draft', function () {
     Event::factory()->for($this->org)->for($this->project)->published()->create(['name' => 'Day 2']);
 
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     expect($cloned->events)->toHaveCount(2);
     $cloned->events->each(fn ($event) => expect($event->status)->toBe(EventStatus::Draft));
@@ -42,7 +46,7 @@ it('clones events with jobs and shifts', function () {
     Shift::factory()->for($job, 'volunteerJob')->count(3)->create();
 
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     $clonedEvent = $cloned->events->first();
     expect($clonedEvent->volunteerJobs)->toHaveCount(1)
@@ -53,7 +57,7 @@ it('clones gear items', function () {
     ProjectGearItem::factory()->for($this->project)->create(['name' => 'T-Shirt']);
 
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     expect($cloned->gearItems)->toHaveCount(1)
         ->and($cloned->gearItems->first()->name)->toBe('T-Shirt');
@@ -63,7 +67,7 @@ it('clones hint texts', function () {
     HintText::factory()->for($this->project)->create(['location' => 'signup_email']);
 
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     expect($cloned->hintTexts)->toHaveCount(1)
         ->and($cloned->hintTexts->first()->location->value)->toBe('signup_email');
@@ -82,7 +86,7 @@ it('applies date offset to all events and shifts', function () {
     ]);
 
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project, dateOffsetDays: 365);
+    $cloned = $action->execute($this->project, $this->user, dateOffsetDays: 365);
 
     $clonedEvent = $cloned->events->first();
     $clonedShift = $clonedEvent->volunteerJobs->first()->shifts->first();
@@ -97,7 +101,7 @@ it('does not copy volunteers or signups', function () {
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
 
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     expect($cloned->volunteers)->toHaveCount(0);
 });
@@ -110,7 +114,7 @@ it('clones scanners with event_id cleared and new token', function () {
     ]);
 
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     $clonedScanner = $cloned->scanners->first();
     expect($clonedScanner)->not->toBeNull()
@@ -122,7 +126,7 @@ it('clones scanners with event_id cleared and new token', function () {
 
 it('clones an empty project without errors', function () {
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     expect($cloned->exists)->toBeTrue()
         ->and($cloned->events)->toHaveCount(0)
@@ -134,7 +138,22 @@ it('sets website_published to false on clone', function () {
     $this->project->update(['website_published' => true]);
 
     $action = app(CloneProject::class);
-    $cloned = $action->execute($this->project);
+    $cloned = $action->execute($this->project, $this->user);
 
     expect($cloned->website_published)->toBeFalse();
+});
+
+it('dispatches EventCloned for each cloned event with causer', function () {
+    EventFacade::fake([EventCloned::class]);
+
+    Event::factory()->for($this->org)->for($this->project)->published()->create(['name' => 'Day 1']);
+    Event::factory()->for($this->org)->for($this->project)->published()->create(['name' => 'Day 2']);
+
+    $action = app(CloneProject::class);
+    $action->execute($this->project, $this->user);
+
+    EventFacade::assertDispatched(EventCloned::class, 2);
+    EventFacade::assertDispatched(EventCloned::class, function (EventCloned $event) {
+        return $event->causer->id === $this->user->id;
+    });
 });

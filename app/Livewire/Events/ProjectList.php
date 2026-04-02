@@ -79,6 +79,7 @@ class ProjectList extends Component
             name: $this->projectName,
             description: $this->projectDescription ?: null,
             titleImage: $this->projectTitleImage,
+            causer: auth()->user(),
         );
 
         $this->reset('projectName', 'projectDescription', 'projectTitleImage', 'showCreateModal');

@@ -4,11 +4,12 @@ namespace App\Actions;
 
 use App\Events\Activity\JobDeleted;
 use App\Exceptions\HasSignupsException;
+use App\Models\User;
 use App\Models\VolunteerJob;
 
 class DeleteVolunteerJob
 {
-    public function execute(VolunteerJob $job): void
+    public function execute(VolunteerJob $job, User $causer): void
     {
         $hasSignups = $job->shifts()
             ->whereHas('signups')
@@ -26,8 +27,6 @@ class DeleteVolunteerJob
         $job->shifts()->delete();
         $job->delete();
 
-        if (auth()->user()) {
-            JobDeleted::dispatch($jobName, $eventId, $eventName, auth()->user());
-        }
+        JobDeleted::dispatch($jobName, $eventId, $eventName, $causer);
     }
 }

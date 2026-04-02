@@ -1,19 +1,23 @@
 <?php
 
 use App\Actions\UpdateShift;
+use App\Events\Activity\ShiftUpdated;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event as EventFacade;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->event = Event::factory()->for($this->org)->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
+    $this->user = User::factory()->create();
     $this->action = new UpdateShift;
 });
 
@@ -26,6 +30,7 @@ it('updates shift times and capacity', function () {
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 20,
+        causer: $this->user,
     );
 
     expect($updated->capacity)->toBe(20)
@@ -48,6 +53,7 @@ it('throws DomainException when reducing capacity below current signups', functi
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 2,
+        causer: $this->user,
     ))->toThrow(DomainException::class, 'Cannot reduce capacity below current number of signups.');
 });
 
@@ -65,7 +71,25 @@ it('allows reducing capacity to exactly current signups', function () {
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 3,
+        causer: $this->user,
     );
 
     expect($updated->capacity)->toBe(3);
+});
+
+it('dispatches ShiftUpdated activity event with causer', function () {
+    EventFacade::fake([ShiftUpdated::class]);
+
+    $shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
+
+    $this->action->execute(
+        shift: $shift,
+        shiftDate: Carbon::parse('2026-07-01'),
+        startsAt: Carbon::parse('2026-07-01 14:00'),
+        endsAt: Carbon::parse('2026-07-01 18:00'),
+        capacity: 20,
+        causer: $this->user,
+    );
+
+    EventFacade::assertDispatched(ShiftUpdated::class, fn ($e) => $e->causer->id === $this->user->id);
 });

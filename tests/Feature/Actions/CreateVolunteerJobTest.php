@@ -1,12 +1,16 @@
 <?php
 
 use App\Actions\CreateVolunteerJob;
+use App\Events\Activity\JobCreated;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\User;
+use Illuminate\Support\Facades\Event as EventFacade;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->event = Event::factory()->for($this->org)->create();
+    $this->user = User::factory()->create();
     $this->action = new CreateVolunteerJob;
 });
 
@@ -16,6 +20,7 @@ it('creates a job for the event', function () {
         name: 'Ticket Scanner',
         description: 'Scan tickets at the gate',
         instructions: 'Use the app to scan QR codes',
+        causer: $this->user,
     );
 
     expect($job->exists)->toBeTrue()
@@ -31,8 +36,23 @@ it('allows nullable description and instructions', function () {
         name: 'Setup Crew',
         description: null,
         instructions: null,
+        causer: $this->user,
     );
 
     expect($job->description)->toBeNull()
         ->and($job->instructions)->toBeNull();
+});
+
+it('dispatches JobCreated activity event with causer', function () {
+    EventFacade::fake([JobCreated::class]);
+
+    $this->action->execute(
+        event: $this->event,
+        name: 'Dispatch Test',
+        description: null,
+        instructions: null,
+        causer: $this->user,
+    );
+
+    EventFacade::assertDispatched(JobCreated::class, fn ($e) => $e->causer->id === $this->user->id);
 });

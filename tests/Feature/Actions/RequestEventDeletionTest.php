@@ -10,13 +10,12 @@ beforeEach(function () {
     ['user' => $this->user, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
     $this->project = Project::factory()->for($this->org)->create();
     $this->action = new RequestEventDeletion;
-    $this->actingAs($this->user);
 });
 
 it('sets deletion_requested_at for draft event', function () {
     $event = Event::factory()->for($this->org)->for($this->project)->create();
 
-    $result = $this->action->execute($event, 'password');
+    $result = $this->action->execute($event, 'password', $this->user);
 
     expect($result->isPendingDeletion())->toBeTrue();
 });
@@ -24,7 +23,7 @@ it('sets deletion_requested_at for draft event', function () {
 it('sets deletion_requested_at for archived event', function () {
     $event = Event::factory()->for($this->org)->for($this->project)->archived()->create();
 
-    $result = $this->action->execute($event, 'password');
+    $result = $this->action->execute($event, 'password', $this->user);
 
     expect($result->isPendingDeletion())->toBeTrue();
 });
@@ -32,14 +31,14 @@ it('sets deletion_requested_at for archived event', function () {
 it('cannot delete a published event', function () {
     $event = Event::factory()->for($this->org)->for($this->project)->published()->create();
 
-    expect(fn () => $this->action->execute($event, 'password'))
+    expect(fn () => $this->action->execute($event, 'password', $this->user))
         ->toThrow(DomainException::class, 'Veröffentlichte Events müssen zuerst archiviert werden.');
 });
 
 it('throws on wrong password', function () {
     $event = Event::factory()->for($this->org)->for($this->project)->create();
 
-    expect(fn () => $this->action->execute($event, 'wrong'))
+    expect(fn () => $this->action->execute($event, 'wrong', $this->user))
         ->toThrow(DomainException::class, 'Falsches Passwort.');
 });
 
@@ -48,6 +47,6 @@ it('throws if already pending deletion', function () {
         'deletion_requested_at' => now(),
     ]);
 
-    expect(fn () => $this->action->execute($event, 'password'))
+    expect(fn () => $this->action->execute($event, 'password', $this->user))
         ->toThrow(DomainException::class, 'Event ist bereits zur Löschung vorgemerkt.');
 });

@@ -4,13 +4,14 @@ namespace App\Actions;
 
 use App\Exceptions\DomainException;
 use App\Models\Event;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class RequestEventDeletion
 {
-    public function execute(Event $event, string $password): Event
+    public function execute(Event $event, string $password, User $causer): Event
     {
-        if (! Hash::check($password, auth()->user()->password)) {
+        if (! Hash::check($password, $causer->password)) {
             throw new DomainException('Falsches Passwort.');
         }
 

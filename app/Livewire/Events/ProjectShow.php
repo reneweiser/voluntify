@@ -108,6 +108,7 @@ class ProjectShow extends Component
             startsAt: Carbon::parse($this->eventForm->startsAt),
             endsAt: Carbon::parse($this->eventForm->endsAt),
             titleImage: $this->eventForm->titleImage,
+            causer: auth()->user(),
         );
 
         $this->eventForm->reset();
@@ -145,6 +146,7 @@ class ProjectShow extends Component
             contactEmail: $this->projectForm->contactEmail ?: null,
             cancellationEnabled: $this->projectForm->cancellationEnabled,
             cancellationCutoffHours: $this->projectForm->cancellationCutoffHours !== '' ? (int) $this->projectForm->cancellationCutoffHours : null,
+            causer: auth()->user(),
         );
 
         $this->projectForm->titleImage = null;
@@ -162,6 +164,7 @@ class ProjectShow extends Component
             name: $this->project->name,
             description: $this->project->description,
             removeTitleImage: true,
+            causer: auth()->user(),
         );
     }
 
@@ -175,7 +178,7 @@ class ProjectShow extends Component
 
         try {
             $action = app(RequestProjectDeletion::class);
-            $this->project = $action->execute($this->project, $this->deletePassword);
+            $this->project = $action->execute($this->project, $this->deletePassword, auth()->user());
             $this->showDeleteModal = false;
             $this->deletePassword = '';
         } catch (DomainException $e) {
@@ -201,7 +204,7 @@ class ProjectShow extends Component
 
         $action = app(CloneProject::class);
         $offset = $this->cloneDateOffset !== '' ? (int) $this->cloneDateOffset : null;
-        $clonedProject = $action->execute($this->project, $offset);
+        $clonedProject = $action->execute($this->project, causer: auth()->user(), dateOffsetDays: $offset);
 
         $this->showCloneModal = false;
         $this->cloneDateOffset = '';

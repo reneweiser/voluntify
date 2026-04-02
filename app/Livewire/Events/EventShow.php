@@ -91,7 +91,7 @@ class EventShow extends Component
 
         try {
             $action = app(PublishEvent::class);
-            $this->event = $action->execute($this->event);
+            $this->event = $action->execute($this->event, causer: auth()->user());
             $this->dispatch('event-published');
         } catch (DomainException $e) {
             $this->addError('status', $e->getMessage());
@@ -107,6 +107,7 @@ class EventShow extends Component
             $this->event = $action->execute(
                 $this->event,
                 $this->republishNote ?: null,
+                causer: auth()->user(),
             );
             $this->showRepublishModal = false;
             $this->republishNote = '';
@@ -122,7 +123,7 @@ class EventShow extends Component
 
         try {
             $action = app(RevertEventToDraft::class);
-            $this->event = $action->execute($this->event);
+            $this->event = $action->execute($this->event, auth()->user());
             $this->dispatch('event-reverted-to-draft');
         } catch (DomainException $e) {
             $this->addError('status', $e->getMessage());
@@ -148,7 +149,7 @@ class EventShow extends Component
 
         try {
             $action = app(ArchiveEvent::class);
-            $this->event = $action->execute($this->event);
+            $this->event = $action->execute($this->event, auth()->user());
             $this->dispatch('event-archived');
         } catch (DomainException $e) {
             $this->addError('status', $e->getMessage());
@@ -170,7 +171,7 @@ class EventShow extends Component
 
         $action = app(CloneEvent::class);
         $offset = $this->cloneDateOffset !== '' ? (int) $this->cloneDateOffset : null;
-        $clonedEvent = $action->execute($this->event, dateOffsetDays: $offset);
+        $clonedEvent = $action->execute($this->event, causer: auth()->user(), dateOffsetDays: $offset);
 
         $this->showCloneModal = false;
         $this->cloneDateOffset = '';
@@ -188,7 +189,7 @@ class EventShow extends Component
 
         try {
             $action = app(RequestEventDeletion::class);
-            $this->event = $action->execute($this->event, $this->deletePassword);
+            $this->event = $action->execute($this->event, $this->deletePassword, auth()->user());
             $this->showDeleteModal = false;
             $this->deletePassword = '';
         } catch (DomainException $e) {

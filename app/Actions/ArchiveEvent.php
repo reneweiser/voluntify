@@ -6,10 +6,11 @@ use App\Enums\EventStatus;
 use App\Events\Activity\EventArchived;
 use App\Exceptions\DomainException;
 use App\Models\Event;
+use App\Models\User;
 
 class ArchiveEvent
 {
-    public function execute(Event $event): Event
+    public function execute(Event $event, User $causer): Event
     {
         if ($event->status === EventStatus::Draft) {
             throw new DomainException('Cannot archive a draft event. Publish it first.');
@@ -21,9 +22,7 @@ class ArchiveEvent
 
         $event->update(['status' => EventStatus::Archived]);
 
-        if (auth()->user()) {
-            EventArchived::dispatch($event->refresh(), auth()->user());
-        }
+        EventArchived::dispatch($event->refresh(), $causer);
 
         return $event->refresh();
     }

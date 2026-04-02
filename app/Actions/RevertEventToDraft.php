@@ -6,10 +6,11 @@ use App\Enums\EventStatus;
 use App\Events\Activity\EventRevertedToDraft;
 use App\Exceptions\DomainException;
 use App\Models\Event;
+use App\Models\User;
 
 class RevertEventToDraft
 {
-    public function execute(Event $event): Event
+    public function execute(Event $event, User $causer): Event
     {
         if ($event->status === EventStatus::Draft) {
             throw new DomainException('Event is already a draft.');
@@ -17,9 +18,7 @@ class RevertEventToDraft
 
         $event->update(['status' => EventStatus::Draft]);
 
-        if (auth()->user()) {
-            EventRevertedToDraft::dispatch($event->refresh(), auth()->user());
-        }
+        EventRevertedToDraft::dispatch($event->refresh(), $causer);
 
         return $event->refresh();
     }

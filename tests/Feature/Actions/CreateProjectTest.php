@@ -1,12 +1,16 @@
 <?php
 
 use App\Actions\CreateProject;
+use App\Events\Activity\ProjectCreated as ProjectCreatedActivity;
 use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
+    $this->user = User::factory()->create();
 });
 
 it('creates a project for the organization', function () {
@@ -16,6 +20,7 @@ it('creates a project for the organization', function () {
         organization: $this->org,
         name: 'SKHC Festival',
         description: 'A multi-part festival',
+        causer: $this->user,
     );
 
     expect($project->exists)->toBeTrue()
@@ -30,6 +35,7 @@ it('auto-generates a 32-char public_token', function () {
     $project = $action->execute(
         organization: $this->org,
         name: 'Token Project',
+        causer: $this->user,
     );
 
     expect($project->public_token)->toBeString()
@@ -42,6 +48,7 @@ it('allows nullable description', function () {
     $project = $action->execute(
         organization: $this->org,
         name: 'No Desc Project',
+        causer: $this->user,
     );
 
     expect($project->description)->toBeNull();
@@ -57,6 +64,7 @@ it('stores title image when provided', function () {
         organization: $this->org,
         name: 'Image Project',
         titleImage: $image,
+        causer: $this->user,
     );
 
     expect($project->title_image_path)->not->toBeNull();
@@ -69,7 +77,22 @@ it('creates project without image', function () {
     $project = $action->execute(
         organization: $this->org,
         name: 'No Image Project',
+        causer: $this->user,
     );
 
     expect($project->title_image_path)->toBeNull();
+});
+
+it('dispatches ProjectCreatedActivity event with causer', function () {
+    Event::fake([ProjectCreatedActivity::class]);
+
+    $action = new CreateProject;
+
+    $action->execute(
+        organization: $this->org,
+        name: 'Dispatch Test',
+        causer: $this->user,
+    );
+
+    Event::assertDispatched(ProjectCreatedActivity::class, fn ($e) => $e->causer->id === $this->user->id);
 });

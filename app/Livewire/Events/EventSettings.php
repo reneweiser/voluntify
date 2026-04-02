@@ -58,7 +58,7 @@ class EventSettings extends Component
         if ($this->selectedProjectId !== '') {
             $project = currentOrganization()->projects()->findOrFail((int) $this->selectedProjectId);
             $action = app(AssignEventsToProject::class);
-            $action->execute($project, [$this->event->id]);
+            $action->execute($project, [$this->event->id], auth()->user());
         }
 
         $this->event->refresh();
@@ -83,6 +83,7 @@ class EventSettings extends Component
                 attendanceGraceMinutes: $this->form->attendanceGraceMinutes !== '' ? (int) $this->form->attendanceGraceMinutes : null,
                 visibility: EventVisibility::from($this->form->visibility),
                 notificationEmail: $this->form->notificationEmail ?: null,
+                causer: auth()->user(),
             );
 
             $this->form->titleImage = null;
@@ -98,7 +99,7 @@ class EventSettings extends Component
         Gate::authorize('update', $this->event);
 
         $action = app(DeleteEventImage::class);
-        $this->event = $action->execute($this->event);
+        $this->event = $action->execute($this->event, auth()->user());
     }
 
     private function fillForm(): void

@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Events\Activity\JobUpdated;
+use App\Models\User;
 use App\Models\VolunteerJob;
 
 class UpdateVolunteerJob
@@ -12,6 +13,7 @@ class UpdateVolunteerJob
         string $name,
         ?string $description,
         ?string $instructions,
+        User $causer,
     ): VolunteerJob {
         $updateData = [
             'name' => $name,
@@ -26,8 +28,8 @@ class UpdateVolunteerJob
 
         $job->update($updateData);
 
-        if ($changed && auth()->user()) {
-            JobUpdated::dispatch($job->refresh(), auth()->user(), $changed);
+        if ($changed) {
+            JobUpdated::dispatch($job->refresh(), $causer, $changed);
         }
 
         return $job->refresh();
