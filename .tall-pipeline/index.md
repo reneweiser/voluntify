@@ -1,8 +1,8 @@
 ---
-pipeline_status: complete
-current_stage: complete
-current_focus: "M13 complete — all stages passed. 1449 tests, 0 unresolved crit/high security findings."
-current_milestone: m13-polish
+pipeline_status: in_progress
+current_stage: implement
+current_focus: "H3 — Tests for 8 untested Actions (destructive ops, Fortify, invitation)"
+current_milestone: m14-audit-remediation
 entry_point: plan
 stages_to_run:
   - plan
@@ -33,6 +33,7 @@ last_updated: "2026-04-01T23:45:00"
 | m11-scanner | Scanner Rewrite | Project scanners, temp auth, dual scanner types, rename volunteer tab to "Volunteers" | m8, m9 | complete |
 | m12-guest-lists | Guest Lists (#90) | Guest list CRUD, QR generation, grouped emails, scanner integration | m8, m11 | complete |
 | m13-polish | Communication & Polish | Announcements, email templates, remaining features | m8, m9, m11 | complete (all stages) |
+| m14-audit-remediation | Code Quality Audit Remediation | H0-H3: test gaps, Form Objects, auth refactor | m13 | in_progress |
 
 ## Artifacts
 
