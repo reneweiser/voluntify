@@ -37,12 +37,12 @@ it('completes full entry staff flow: create scanner, auth, fetch data, sync arri
     // Step 1: Organizer creates a scanner via management UI
     Livewire::actingAs($organizer)
         ->test(ScannerManagement::class, ['projectId' => $project->id])
-        ->set('name', 'Main Entrance')
-        ->set('type', ScannerType::EntryStaff->value)
-        ->set('modes', [ScannerMode::Checkin->value])
-        ->set('eventId', $event->id)
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', 'Main Entrance')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', [ScannerMode::Checkin->value])
+        ->set('form.eventId', $event->id)
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
         ->assertHasNoErrors();
 
@@ -114,11 +114,11 @@ it('completes full volunteer admin flow: create scanner, auth, fetch data, gear 
     // Step 1: Create VA scanner
     Livewire::actingAs($organizer)
         ->test(ScannerManagement::class, ['projectId' => $project->id])
-        ->set('name', 'Gear Station')
-        ->set('type', ScannerType::VolunteerAdmin->value)
-        ->set('modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value])
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', 'Gear Station')
+        ->set('form.type', ScannerType::VolunteerAdmin->value)
+        ->set('form.modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
         ->assertHasNoErrors();
 

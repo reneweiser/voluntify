@@ -8,6 +8,7 @@ use App\Actions\SendScannerLinks;
 use App\Actions\UpdateProjectScanner;
 use App\Events\Activity\ScannerAssigneeAdded;
 use App\Events\Activity\ScannerAssigneeRemoved;
+use App\Livewire\Forms\ScannerForm;
 use App\Models\Event;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
@@ -16,7 +17,6 @@ use App\Models\ProjectScannerAssignee;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -36,22 +36,7 @@ class ScannerManagement extends Component
 
     public ?int $deletingScannerId = null;
 
-    // Form fields
-    public string $name = '';
-
-    public string $type = 'entry_staff';
-
-    public array $modes = ['checkin'];
-
-    public ?int $eventId = null;
-
-    public array $gearItemIds = [];
-
-    public string $hintText = '';
-
-    public string $startsAt = '';
-
-    public string $endsAt = '';
+    public ScannerForm $form;
 
     public ?int $editingScannerId = null;
 
@@ -89,34 +74,17 @@ class ScannerManagement extends Component
 
     public function createScanner(): void
     {
-        $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'in:entry_staff,volunteer_admin'],
-            'modes' => ['required', 'array', 'min:1'],
-            'modes.*' => ['string', 'in:checkin,gear_pickup'],
-            'eventId' => ['nullable', Rule::exists('events', 'id')->where('project_id', $this->projectId)],
-            'startsAt' => ['required', 'date'],
-            'endsAt' => ['required', 'date', 'after:startsAt'],
-        ]);
+        $this->form->validate();
 
         $action = new CreateProjectScanner;
-        $scanner = $action->execute($this->project, [
-            'name' => $this->name,
-            'type' => $this->type,
-            'modes' => $this->modes,
-            'event_id' => $this->eventId,
-            'gear_item_ids' => ! empty($this->gearItemIds) ? $this->gearItemIds : null,
-            'hint_text' => $this->hintText ?: null,
-            'starts_at' => $this->startsAt,
-            'ends_at' => $this->endsAt,
-        ]);
+        $scanner = $action->execute($this->project, $this->form->toActionData());
 
         session()->flash('rawAuthCode', [
             'id' => $scanner->id,
             'code' => $scanner->raw_auth_code,
         ]);
 
-        $this->resetForm();
+        $this->form->reset();
         $this->showCreateModal = false;
         unset($this->scanners);
     }
@@ -126,45 +94,30 @@ class ScannerManagement extends Component
         $scanner = ProjectScanner::where('project_id', $this->projectId)->findOrFail($scannerId);
 
         $this->editingScannerId = $scannerId;
-        $this->name = $scanner->name;
-        $this->type = $scanner->type->value;
-        $this->modes = $scanner->modes ?? ['checkin'];
-        $this->eventId = $scanner->event_id;
-        $this->gearItemIds = $scanner->gear_item_ids ?? [];
-        $this->hintText = $scanner->hint_text ?? '';
-        $this->startsAt = $scanner->starts_at->format('Y-m-d\TH:i');
-        $this->endsAt = $scanner->ends_at->format('Y-m-d\TH:i');
+        $this->form->fillFromScanner([
+            'name' => $scanner->name,
+            'type' => $scanner->type->value,
+            'modes' => $scanner->modes ?? ['checkin'],
+            'eventId' => $scanner->event_id,
+            'gearItemIds' => $scanner->gear_item_ids ?? [],
+            'hintText' => $scanner->hint_text ?? '',
+            'startsAt' => $scanner->starts_at->format('Y-m-d\TH:i'),
+            'endsAt' => $scanner->ends_at->format('Y-m-d\TH:i'),
+        ]);
         $this->showCreateModal = true;
     }
 
     public function updateScanner(): void
     {
-        $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'in:entry_staff,volunteer_admin'],
-            'modes' => ['required', 'array', 'min:1'],
-            'modes.*' => ['string', 'in:checkin,gear_pickup'],
-            'eventId' => ['nullable', Rule::exists('events', 'id')->where('project_id', $this->projectId)],
-            'startsAt' => ['required', 'date'],
-            'endsAt' => ['required', 'date', 'after:startsAt'],
-        ]);
+        $this->form->validate();
 
         $scanner = ProjectScanner::where('project_id', $this->projectId)
             ->findOrFail($this->editingScannerId);
 
         $action = new UpdateProjectScanner;
-        $action->execute($scanner, [
-            'name' => $this->name,
-            'type' => $this->type,
-            'modes' => $this->modes,
-            'event_id' => $this->eventId,
-            'gear_item_ids' => ! empty($this->gearItemIds) ? $this->gearItemIds : null,
-            'hint_text' => $this->hintText ?: null,
-            'starts_at' => $this->startsAt,
-            'ends_at' => $this->endsAt,
-        ]);
+        $action->execute($scanner, $this->form->toActionData());
 
-        $this->resetForm();
+        $this->form->reset();
         $this->showCreateModal = false;
         $this->editingScannerId = null;
         unset($this->scanners);
@@ -239,17 +192,5 @@ class ScannerManagement extends Component
         ScannerAssigneeRemoved::dispatch($scanner, $email, auth()->user());
 
         unset($this->scanners);
-    }
-
-    private function resetForm(): void
-    {
-        $this->name = '';
-        $this->type = 'entry_staff';
-        $this->modes = ['checkin'];
-        $this->eventId = null;
-        $this->gearItemIds = [];
-        $this->hintText = '';
-        $this->startsAt = '';
-        $this->endsAt = '';
     }
 }

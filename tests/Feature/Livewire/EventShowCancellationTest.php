@@ -15,8 +15,8 @@ it('can enable cancellation on project', function () {
     Livewire::actingAs($this->user)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('cancellationEnabled', true)
-        ->set('cancellationCutoffHours', 48)
+        ->set('projectForm.cancellationEnabled', true)
+        ->set('projectForm.cancellationCutoffHours', 48)
         ->call('saveProject')
         ->assertHasNoErrors();
 
@@ -29,20 +29,20 @@ it('validates cutoff hours range 1-168', function () {
     Livewire::actingAs($this->user)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('cancellationEnabled', true)
-        ->set('cancellationCutoffHours', 200)
+        ->set('projectForm.cancellationEnabled', true)
+        ->set('projectForm.cancellationCutoffHours', 200)
         ->call('saveProject')
-        ->assertHasErrors(['cancellationCutoffHours']);
+        ->assertHasErrors(['projectForm.cancellationCutoffHours']);
 });
 
 it('requires cutoff hours when cancellation enabled', function () {
     Livewire::actingAs($this->user)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('cancellationEnabled', true)
-        ->set('cancellationCutoffHours', '')
+        ->set('projectForm.cancellationEnabled', true)
+        ->set('projectForm.cancellationCutoffHours', '')
         ->call('saveProject')
-        ->assertHasErrors(['cancellationCutoffHours']);
+        ->assertHasErrors(['projectForm.cancellationCutoffHours']);
 });
 
 it('can disable cancellation on project', function () {
@@ -54,7 +54,7 @@ it('can disable cancellation on project', function () {
     Livewire::actingAs($this->user)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('cancellationEnabled', false)
+        ->set('projectForm.cancellationEnabled', false)
         ->call('saveProject')
         ->assertHasNoErrors();
 
@@ -66,13 +66,13 @@ it('values persist after save', function () {
     Livewire::actingAs($this->user)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('cancellationEnabled', true)
-        ->set('cancellationCutoffHours', 24)
+        ->set('projectForm.cancellationEnabled', true)
+        ->set('projectForm.cancellationCutoffHours', 24)
         ->call('saveProject')
         ->assertHasNoErrors();
 
     Livewire::actingAs($this->user)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
-        ->assertSet('cancellationEnabled', true)
-        ->assertSet('cancellationCutoffHours', 24);
+        ->assertSet('projectForm.cancellationEnabled', true)
+        ->assertSet('projectForm.cancellationCutoffHours', 24);
 });

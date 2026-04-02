@@ -31,8 +31,8 @@ it('updates project name and description', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('name', 'Updated Project')
-        ->set('description', 'Updated description')
+        ->set('projectForm.name', 'Updated Project')
+        ->set('projectForm.description', 'Updated description')
         ->call('saveProject')
         ->assertHasNoErrors();
 
@@ -44,9 +44,9 @@ it('validates name required on update', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('name', '')
+        ->set('projectForm.name', '')
         ->call('saveProject')
-        ->assertHasErrors(['name' => 'required']);
+        ->assertHasErrors(['projectForm.name' => 'required']);
 });
 
 it('requests project deletion with password confirmation', function () {
@@ -78,8 +78,8 @@ it('can edit sender_name and contact_email', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('senderName', 'Festival Team')
-        ->set('contactEmail', 'info@festival.de')
+        ->set('projectForm.senderName', 'Festival Team')
+        ->set('projectForm.contactEmail', 'info@festival.de')
         ->call('saveProject')
         ->assertHasNoErrors();
 
@@ -92,18 +92,18 @@ it('validates contact_email format', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->set('contactEmail', 'not-an-email')
+        ->set('projectForm.contactEmail', 'not-an-email')
         ->call('saveProject')
-        ->assertHasErrors(['contactEmail' => 'email']);
+        ->assertHasErrors(['projectForm.contactEmail' => 'email']);
 });
 
 it('creates event in the current project', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->set('showCreateEventModal', true)
-        ->set('newEventName', 'Project Event')
-        ->set('newEventStartsAt', '2026-09-01 10:00')
-        ->set('newEventEndsAt', '2026-09-01 18:00')
+        ->set('eventForm.name', 'Project Event')
+        ->set('eventForm.startsAt', '2026-09-01 10:00')
+        ->set('eventForm.endsAt', '2026-09-01 18:00')
         ->call('createEvent')
         ->assertHasNoErrors()
         ->assertRedirect();
@@ -118,8 +118,8 @@ it('validates event name required when creating event', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->set('showCreateEventModal', true)
-        ->set('newEventStartsAt', '2026-09-01 10:00')
-        ->set('newEventEndsAt', '2026-09-01 18:00')
+        ->set('eventForm.startsAt', '2026-09-01 10:00')
+        ->set('eventForm.endsAt', '2026-09-01 18:00')
         ->call('createEvent')
-        ->assertHasErrors(['newEventName' => 'required']);
+        ->assertHasErrors(['eventForm.name' => 'required']);
 });

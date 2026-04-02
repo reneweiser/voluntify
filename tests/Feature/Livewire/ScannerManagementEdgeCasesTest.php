@@ -22,11 +22,11 @@ beforeEach(function () {
 it('flashes raw auth code to session after creation', function () {
     $component = Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
-        ->set('name', 'Flash Test')
-        ->set('type', ScannerType::EntryStaff->value)
-        ->set('modes', [ScannerMode::Checkin->value])
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', 'Flash Test')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', [ScannerMode::Checkin->value])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
         ->assertHasNoErrors();
 
@@ -35,7 +35,7 @@ it('flashes raw auth code to session after creation', function () {
 
     // Verify the raw auth code is NOT stored as a public Livewire property (P5 fix)
     // The code should only be in session flash, not in the component's snapshot
-    $component->assertSet('name', '');
+    $component->assertSet('form.name', '');
 });
 
 // --- Validation: create scanner ---
@@ -43,61 +43,61 @@ it('flashes raw auth code to session after creation', function () {
 it('requires name when creating a scanner', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
-        ->set('name', '')
-        ->set('type', ScannerType::EntryStaff->value)
-        ->set('modes', [ScannerMode::Checkin->value])
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', '')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', [ScannerMode::Checkin->value])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
-        ->assertHasErrors(['name' => 'required']);
+        ->assertHasErrors(['form.name' => 'required']);
 });
 
 it('requires valid type when creating a scanner', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
-        ->set('name', 'Test')
-        ->set('type', 'invalid_type')
-        ->set('modes', [ScannerMode::Checkin->value])
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', 'Test')
+        ->set('form.type', 'invalid_type')
+        ->set('form.modes', [ScannerMode::Checkin->value])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
-        ->assertHasErrors(['type' => 'in']);
+        ->assertHasErrors(['form.type' => 'in']);
 });
 
 it('requires at least one mode when creating a scanner', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
-        ->set('name', 'Test')
-        ->set('type', ScannerType::EntryStaff->value)
-        ->set('modes', [])
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', 'Test')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', [])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
-        ->assertHasErrors(['modes' => 'required']);
+        ->assertHasErrors(['form.modes' => 'required']);
 });
 
 it('requires ends_at to be after starts_at', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
-        ->set('name', 'Test')
-        ->set('type', ScannerType::EntryStaff->value)
-        ->set('modes', [ScannerMode::Checkin->value])
-        ->set('startsAt', '2026-07-01T18:00')
-        ->set('endsAt', '2026-07-01T10:00')
+        ->set('form.name', 'Test')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', [ScannerMode::Checkin->value])
+        ->set('form.startsAt', '2026-07-01T18:00')
+        ->set('form.endsAt', '2026-07-01T10:00')
         ->call('createScanner')
-        ->assertHasErrors(['endsAt' => 'after']);
+        ->assertHasErrors(['form.endsAt' => 'after']);
 });
 
 it('rejects invalid mode values', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
-        ->set('name', 'Test')
-        ->set('type', ScannerType::EntryStaff->value)
-        ->set('modes', ['invalid_mode'])
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', 'Test')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', ['invalid_mode'])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
-        ->assertHasErrors(['modes.0' => 'in']);
+        ->assertHasErrors(['form.modes.0' => 'in']);
 });
 
 // --- Validation: update scanner ---
@@ -110,9 +110,9 @@ it('validates fields when updating a scanner', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
         ->call('editScanner', $scanner->id)
-        ->set('name', '')
+        ->set('form.name', '')
         ->call('updateScanner')
-        ->assertHasErrors(['name' => 'required']);
+        ->assertHasErrors(['form.name' => 'required']);
 });
 
 // --- IDOR: editing scanner from different project ---
@@ -235,9 +235,9 @@ it('loads existing scanner data into form fields when editing', function () {
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
         ->call('editScanner', $scanner->id)
         ->assertSet('editingScannerId', $scanner->id)
-        ->assertSet('name', 'My Scanner')
-        ->assertSet('type', ScannerType::VolunteerAdmin->value)
-        ->assertSet('hintText', 'Scan here')
+        ->assertSet('form.name', 'My Scanner')
+        ->assertSet('form.type', ScannerType::VolunteerAdmin->value)
+        ->assertSet('form.hintText', 'Scan here')
         ->assertSet('showCreateModal', true);
 });
 
@@ -276,18 +276,18 @@ it('silently ignores invalid email when adding assignee', function () {
 it('resets form after scanner creation', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
-        ->set('name', 'Test Scanner')
-        ->set('type', ScannerType::VolunteerAdmin->value)
-        ->set('modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value])
-        ->set('hintText', 'Hint')
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', 'Test Scanner')
+        ->set('form.type', ScannerType::VolunteerAdmin->value)
+        ->set('form.modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value])
+        ->set('form.hintText', 'Hint')
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
-        ->assertSet('name', '')
-        ->assertSet('type', 'entry_staff')
-        ->assertSet('modes', ['checkin'])
-        ->assertSet('hintText', '')
-        ->assertSet('startsAt', '')
-        ->assertSet('endsAt', '')
+        ->assertSet('form.name', '')
+        ->assertSet('form.type', 'entry_staff')
+        ->assertSet('form.modes', ['checkin'])
+        ->assertSet('form.hintText', '')
+        ->assertSet('form.startsAt', '')
+        ->assertSet('form.endsAt', '')
         ->assertSet('showCreateModal', false);
 });

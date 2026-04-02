@@ -15,7 +15,7 @@ beforeEach(function () {
 it('saves grace minutes', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('attendanceGraceMinutes', 15)
+        ->set('form.attendanceGraceMinutes', 15)
         ->call('saveEvent')
         ->assertHasNoErrors();
 
@@ -27,7 +27,7 @@ it('clears grace minutes when empty', function () {
 
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('attendanceGraceMinutes', '')
+        ->set('form.attendanceGraceMinutes', '')
         ->call('saveEvent')
         ->assertHasNoErrors();
 
@@ -39,13 +39,13 @@ it('displays grace minutes in settings form', function () {
 
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->assertSet('attendanceGraceMinutes', 20);
+        ->assertSet('form.attendanceGraceMinutes', 20);
 });
 
 it('validates grace minutes max value', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('attendanceGraceMinutes', 999)
+        ->set('form.attendanceGraceMinutes', 999)
         ->call('saveEvent')
-        ->assertHasErrors(['attendanceGraceMinutes']);
+        ->assertHasErrors(['form.attendanceGraceMinutes']);
 });

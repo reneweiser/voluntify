@@ -11,7 +11,7 @@
 - **Tasks:**
   - [x] H3: Tests for 8 untested Actions — 48 tests, 87 assertions, 8 files
   - [x] H0: Tests for 5 untested Livewire components — 10 new tests, 4 files (JobCheatSheet already covered)
-  - [ ] H2: Form Objects for 3 complex components
+  - [x] H2: Form Objects for 3 complex components — 4 Form Objects, 3 components, -115 lines net
   - [ ] H1: Auth `$causer` refactor for 22 Actions
 
 ## Reviews

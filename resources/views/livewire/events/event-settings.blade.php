@@ -13,25 +13,25 @@
                 <div class="space-y-4">
                     <flux:field>
                         <flux:label>{{ __('Event Name') }}</flux:label>
-                        <flux:input wire:model="name" />
-                        <flux:error name="name" />
+                        <flux:input wire:model="form.name" />
+                        <flux:error name="form.name" />
                     </flux:field>
 
                     <flux:field>
                         <flux:label>{{ __('Description') }}</flux:label>
-                        <flux:textarea wire:model="description" rows="3" />
-                        <flux:error name="description" />
+                        <flux:textarea wire:model="form.description" rows="3" />
+                        <flux:error name="form.description" />
                     </flux:field>
 
                     <flux:field>
                         <flux:label>{{ __('Location') }}</flux:label>
-                        <flux:input wire:model="location" />
-                        <flux:error name="location" />
+                        <flux:input wire:model="form.location" />
+                        <flux:error name="form.location" />
                     </flux:field>
 
                     <flux:field>
                         <flux:label>{{ __('Title Image') }}</flux:label>
-                        @if ($event->titleImageUrl() && !$titleImage)
+                        @if ($event->titleImageUrl() && !$form->titleImage)
                             <div class="flex items-center gap-3 mb-2">
                                 <img src="{{ $event->titleImageUrl() }}" alt="{{ $event->name }}" class="h-20 w-32 object-cover rounded" />
                                 <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteImage" wire:confirm="{{ __('Remove this image?') }}">
@@ -39,8 +39,8 @@
                                 </flux:button>
                             </div>
                         @endif
-                        <flux:input type="file" wire:model="titleImage" accept="image/jpeg,image/png,image/webp" />
-                        <flux:error name="titleImage" />
+                        <flux:input type="file" wire:model="form.titleImage" accept="image/jpeg,image/png,image/webp" />
+                        <flux:error name="form.titleImage" />
                     </flux:field>
                 </div>
             </flux:card>
@@ -52,14 +52,14 @@
                 <div class="space-y-4">
                     <flux:field>
                         <flux:label>{{ __('Starts At') }}</flux:label>
-                        <flux:input type="datetime-local" wire:model="startsAt" />
-                        <flux:error name="startsAt" />
+                        <flux:input type="datetime-local" wire:model="form.startsAt" />
+                        <flux:error name="form.startsAt" />
                     </flux:field>
 
                     <flux:field>
                         <flux:label>{{ __('Ends At') }}</flux:label>
-                        <flux:input type="datetime-local" wire:model="endsAt" />
-                        <flux:error name="endsAt" />
+                        <flux:input type="datetime-local" wire:model="form.endsAt" />
+                        <flux:error name="form.endsAt" />
                     </flux:field>
                 </div>
             </flux:card>
@@ -71,7 +71,7 @@
                 <div class="space-y-4">
                     <flux:field>
                         <flux:label>{{ __('Visibility') }}</flux:label>
-                        <flux:select wire:model="visibility">
+                        <flux:select wire:model="form.visibility">
                             @foreach (\App\Enums\EventVisibility::cases() as $vis)
                                 <flux:select.option value="{{ $vis->value }}">{{ $vis->label() }}</flux:select.option>
                             @endforeach
@@ -100,9 +100,9 @@
                 <div class="space-y-4">
                     <flux:field>
                         <flux:label>{{ __('Attendance Grace Period (minutes)') }}</flux:label>
-                        <flux:input type="number" wire:model="attendanceGraceMinutes" min="0" max="120" placeholder="{{ __('No grace period — leave empty') }}" />
+                        <flux:input type="number" wire:model="form.attendanceGraceMinutes" min="0" max="120" placeholder="{{ __('No grace period — leave empty') }}" />
                         <flux:description>{{ __('Minutes after shift start within which a scan is still marked as on-time. Leave empty for no grace period.') }}</flux:description>
-                        <flux:error name="attendanceGraceMinutes" />
+                        <flux:error name="form.attendanceGraceMinutes" />
                     </flux:field>
                 </div>
             </flux:card>
@@ -114,9 +114,9 @@
                 <div class="space-y-4">
                     <flux:field>
                         <flux:label>{{ __('Benachrichtigungs-E-Mail') }}</flux:label>
-                        <flux:input type="email" wire:model="notificationEmail" placeholder="{{ __('organizer@example.com') }}" />
+                        <flux:input type="email" wire:model="form.notificationEmail" placeholder="{{ __('organizer@example.com') }}" />
                         <flux:description>{{ __('Empfänger für Stornierungsberichte und andere Benachrichtigungen zu diesem Event. Wenn leer, wird die Kontakt-E-Mail des Projekts verwendet.') }}</flux:description>
-                        <flux:error name="notificationEmail" />
+                        <flux:error name="form.notificationEmail" />
                     </flux:field>
                 </div>
             </flux:card>

@@ -65,14 +65,14 @@
             <form wire:submit="saveProject" class="space-y-4">
                 <flux:field>
                     <flux:label>{{ __('Project Name') }}</flux:label>
-                    <flux:input wire:model="name" />
-                    <flux:error name="name" />
+                    <flux:input wire:model="projectForm.name" />
+                    <flux:error name="projectForm.name" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>{{ __('Description') }}</flux:label>
-                    <flux:textarea wire:model="description" rows="3" />
-                    <flux:error name="description" />
+                    <flux:textarea wire:model="projectForm.description" rows="3" />
+                    <flux:error name="projectForm.description" />
                 </flux:field>
 
                 <flux:separator class="my-2" />
@@ -81,14 +81,14 @@
 
                 <flux:field>
                     <flux:label>{{ __('Absendername') }}</flux:label>
-                    <flux:input wire:model="senderName" placeholder="{{ __('Name der in E-Mails als Absender angezeigt wird') }}" />
-                    <flux:error name="senderName" />
+                    <flux:input wire:model="projectForm.senderName" placeholder="{{ __('Name der in E-Mails als Absender angezeigt wird') }}" />
+                    <flux:error name="projectForm.senderName" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>{{ __('Kontakt-E-Mail') }}</flux:label>
-                    <flux:input type="email" wire:model="contactEmail" placeholder="{{ __('Antwort-Adresse für Freiwillige') }}" />
-                    <flux:error name="contactEmail" />
+                    <flux:input type="email" wire:model="projectForm.contactEmail" placeholder="{{ __('Antwort-Adresse für Freiwillige') }}" />
+                    <flux:error name="projectForm.contactEmail" />
                 </flux:field>
 
                 <flux:separator class="my-2" />
@@ -96,16 +96,16 @@
                 <flux:heading size="sm" class="mb-2">{{ __('Stornierung') }}</flux:heading>
 
                 <flux:field>
-                    <flux:checkbox wire:model.live="cancellationEnabled" label="{{ __('Stornierung aktivieren') }}" />
+                    <flux:checkbox wire:model.live="projectForm.cancellationEnabled" label="{{ __('Stornierung aktivieren') }}" />
                     <flux:description>{{ __('Erlaubt Freiwilligen, ihre Anmeldungen bis zur Vorlaufzeit selbst zu stornieren.') }}</flux:description>
                 </flux:field>
 
-                @if ($cancellationEnabled)
+                @if ($projectForm->cancellationEnabled)
                     <flux:field>
                         <flux:label>{{ __('Vorlaufzeit in Stunden') }}</flux:label>
-                        <flux:input type="number" wire:model="cancellationCutoffHours" min="1" max="168" />
+                        <flux:input type="number" wire:model="projectForm.cancellationCutoffHours" min="1" max="168" />
                         <flux:description>{{ __('Bis wie viele Stunden vor Schichtbeginn eine Stornierung möglich ist.') }}</flux:description>
-                        <flux:error name="cancellationCutoffHours" />
+                        <flux:error name="projectForm.cancellationCutoffHours" />
                     </flux:field>
                 @endif
 
@@ -113,7 +113,7 @@
 
                 <flux:field>
                     <flux:label>{{ __('Title Image') }}</flux:label>
-                    @if ($project->titleImageUrl() && !$titleImage)
+                    @if ($project->titleImageUrl() && !$projectForm->titleImage)
                         <div class="flex items-center gap-3 mb-2">
                             <img src="{{ $project->titleImageUrl() }}" alt="{{ $project->name }}" class="h-20 w-32 object-cover rounded" />
                             <flux:button variant="danger" size="sm" icon="trash" wire:click="deleteImage" wire:confirm="{{ __('Remove this image?') }}">
@@ -121,8 +121,8 @@
                             </flux:button>
                         </div>
                     @endif
-                    <flux:input type="file" wire:model="titleImage" accept="image/jpeg,image/png,image/webp" />
-                    <flux:error name="titleImage" />
+                    <flux:input type="file" wire:model="projectForm.titleImage" accept="image/jpeg,image/png,image/webp" />
+                    <flux:error name="projectForm.titleImage" />
                 </flux:field>
 
                 <div class="flex gap-2">
@@ -272,38 +272,38 @@
 
             <flux:field>
                 <flux:label>{{ __('Event Name') }}</flux:label>
-                <flux:input wire:model="newEventName" placeholder="{{ __('e.g. Summer Carnival') }}" />
-                <flux:error name="newEventName" />
+                <flux:input wire:model="eventForm.name" placeholder="{{ __('e.g. Summer Carnival') }}" />
+                <flux:error name="eventForm.name" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Description') }}</flux:label>
-                <flux:textarea wire:model="newEventDescription" rows="3" />
-                <flux:error name="newEventDescription" />
+                <flux:textarea wire:model="eventForm.description" rows="3" />
+                <flux:error name="eventForm.description" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Location') }}</flux:label>
-                <flux:input wire:model="newEventLocation" placeholder="{{ __('e.g. Central Park') }}" />
-                <flux:error name="newEventLocation" />
+                <flux:input wire:model="eventForm.location" placeholder="{{ __('e.g. Central Park') }}" />
+                <flux:error name="eventForm.location" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Starts At') }}</flux:label>
-                <flux:input type="datetime-local" wire:model="newEventStartsAt" />
-                <flux:error name="newEventStartsAt" />
+                <flux:input type="datetime-local" wire:model="eventForm.startsAt" />
+                <flux:error name="eventForm.startsAt" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Ends At') }}</flux:label>
-                <flux:input type="datetime-local" wire:model="newEventEndsAt" />
-                <flux:error name="newEventEndsAt" />
+                <flux:input type="datetime-local" wire:model="eventForm.endsAt" />
+                <flux:error name="eventForm.endsAt" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Title Image') }} <span class="text-zinc-400 font-normal">({{ __('optional') }})</span></flux:label>
-                <flux:input type="file" wire:model="newEventTitleImage" accept="image/jpeg,image/png,image/webp" />
-                <flux:error name="newEventTitleImage" />
+                <flux:input type="file" wire:model="eventForm.titleImage" accept="image/jpeg,image/png,image/webp" />
+                <flux:error name="eventForm.titleImage" />
             </flux:field>
 
             <div class="flex">

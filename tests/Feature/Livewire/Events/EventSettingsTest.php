@@ -44,18 +44,18 @@ it('denies access to non-organizer', function () {
 it('shows current event values on load', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->assertSet('name', 'Test Event')
-        ->assertSet('description', 'A test description')
-        ->assertSet('location', 'Berlin')
-        ->assertSet('visibility', 'public');
+        ->assertSet('form.name', 'Test Event')
+        ->assertSet('form.description', 'A test description')
+        ->assertSet('form.location', 'Berlin')
+        ->assertSet('form.visibility', 'public');
 });
 
 it('can update general settings', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('name', 'Updated Event')
-        ->set('description', 'New description')
-        ->set('location', 'Munich')
+        ->set('form.name', 'Updated Event')
+        ->set('form.description', 'New description')
+        ->set('form.location', 'Munich')
         ->call('saveEvent')
         ->assertHasNoErrors();
 
@@ -68,8 +68,8 @@ it('can update general settings', function () {
 it('can update dates', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('startsAt', '2026-10-15T09:00')
-        ->set('endsAt', '2026-10-15T20:00')
+        ->set('form.startsAt', '2026-10-15T09:00')
+        ->set('form.endsAt', '2026-10-15T20:00')
         ->call('saveEvent')
         ->assertHasNoErrors();
 
@@ -81,7 +81,7 @@ it('can update dates', function () {
 it('can update signup settings', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('visibility', 'private')
+        ->set('form.visibility', 'private')
         ->call('saveEvent')
         ->assertHasNoErrors();
 
@@ -92,7 +92,7 @@ it('can update signup settings', function () {
 it('can set notification email', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('notificationEmail', 'alerts@example.com')
+        ->set('form.notificationEmail', 'alerts@example.com')
         ->call('saveEvent')
         ->assertHasNoErrors();
 
@@ -102,9 +102,9 @@ it('can set notification email', function () {
 it('validates notification email format', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('notificationEmail', 'not-an-email')
+        ->set('form.notificationEmail', 'not-an-email')
         ->call('saveEvent')
-        ->assertHasErrors(['notificationEmail']);
+        ->assertHasErrors(['form.notificationEmail']);
 });
 
 it('accepts empty notification email', function () {
@@ -112,7 +112,7 @@ it('accepts empty notification email', function () {
 
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('notificationEmail', '')
+        ->set('form.notificationEmail', '')
         ->call('saveEvent')
         ->assertHasNoErrors();
 
@@ -122,7 +122,7 @@ it('accepts empty notification email', function () {
 it('can update attendance settings', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('attendanceGraceMinutes', 15)
+        ->set('form.attendanceGraceMinutes', 15)
         ->call('saveEvent')
         ->assertHasNoErrors();
 
@@ -132,20 +132,20 @@ it('can update attendance settings', function () {
 it('validates required fields', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('name', '')
-        ->set('startsAt', '')
-        ->set('endsAt', '')
+        ->set('form.name', '')
+        ->set('form.startsAt', '')
+        ->set('form.endsAt', '')
         ->call('saveEvent')
-        ->assertHasErrors(['name', 'startsAt', 'endsAt']);
+        ->assertHasErrors(['form.name', 'form.startsAt', 'form.endsAt']);
 });
 
 it('validates ends_at must be after starts_at', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('startsAt', '2026-10-15T18:00')
-        ->set('endsAt', '2026-10-15T09:00')
+        ->set('form.startsAt', '2026-10-15T18:00')
+        ->set('form.endsAt', '2026-10-15T09:00')
         ->call('saveEvent')
-        ->assertHasErrors(['endsAt']);
+        ->assertHasErrors(['form.endsAt']);
 });
 
 it('can upload title image', function () {
@@ -155,7 +155,7 @@ it('can upload title image', function () {
 
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
-        ->set('titleImage', $image)
+        ->set('form.titleImage', $image)
         ->call('saveEvent')
         ->assertHasNoErrors();
 

@@ -7,11 +7,11 @@ use App\Actions\DeleteEventImage;
 use App\Actions\UpdateEvent;
 use App\Enums\EventVisibility;
 use App\Exceptions\DomainException;
+use App\Livewire\Forms\EventSettingsForm;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -26,23 +26,7 @@ class EventSettings extends Component
     #[Locked]
     public Event $event;
 
-    public string $name = '';
-
-    public string $description = '';
-
-    public string $location = '';
-
-    public string $startsAt = '';
-
-    public string $endsAt = '';
-
-    public $titleImage;
-
-    public $attendanceGraceMinutes = '';
-
-    public string $notificationEmail = '';
-
-    public string $visibility = 'public';
+    public EventSettingsForm $form;
 
     public string $selectedProjectId = '';
 
@@ -84,38 +68,28 @@ class EventSettings extends Component
     {
         Gate::authorize('update', $this->event);
 
-        $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'startsAt' => ['required', 'date'],
-            'endsAt' => ['required', 'date', 'after:startsAt'],
-            'titleImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'attendanceGraceMinutes' => ['nullable', 'integer', 'min:0', 'max:120'],
-            'visibility' => ['required', Rule::in(array_column(EventVisibility::cases(), 'value'))],
-            'notificationEmail' => ['nullable', 'email', 'max:255'],
-        ]);
+        $this->form->validate();
 
         try {
             $action = app(UpdateEvent::class);
             $this->event = $action->execute(
                 event: $this->event,
-                name: $this->name,
-                description: $this->description ?: null,
-                location: $this->location ?: null,
-                startsAt: Carbon::parse($this->startsAt),
-                endsAt: Carbon::parse($this->endsAt),
-                titleImage: $this->titleImage,
-                attendanceGraceMinutes: $this->attendanceGraceMinutes !== '' ? (int) $this->attendanceGraceMinutes : null,
-                visibility: EventVisibility::from($this->visibility),
-                notificationEmail: $this->notificationEmail ?: null,
+                name: $this->form->name,
+                description: $this->form->description ?: null,
+                location: $this->form->location ?: null,
+                startsAt: Carbon::parse($this->form->startsAt),
+                endsAt: Carbon::parse($this->form->endsAt),
+                titleImage: $this->form->titleImage,
+                attendanceGraceMinutes: $this->form->attendanceGraceMinutes !== '' ? (int) $this->form->attendanceGraceMinutes : null,
+                visibility: EventVisibility::from($this->form->visibility),
+                notificationEmail: $this->form->notificationEmail ?: null,
             );
 
-            $this->titleImage = null;
+            $this->form->titleImage = null;
 
             $this->redirect(route('events.show', $this->event), navigate: true);
         } catch (DomainException $e) {
-            $this->addError('name', $e->getMessage());
+            $this->addError('form.name', $e->getMessage());
         }
     }
 
@@ -129,14 +103,16 @@ class EventSettings extends Component
 
     private function fillForm(): void
     {
-        $this->name = $this->event->name;
-        $this->description = $this->event->description ?? '';
-        $this->location = $this->event->location ?? '';
-        $this->startsAt = $this->event->starts_at->format('Y-m-d\TH:i');
-        $this->endsAt = $this->event->ends_at->format('Y-m-d\TH:i');
-        $this->attendanceGraceMinutes = $this->event->attendance_grace_minutes ?? '';
+        $this->form->fillFromEvent([
+            'name' => $this->event->name,
+            'description' => $this->event->description ?? '',
+            'location' => $this->event->location ?? '',
+            'startsAt' => $this->event->starts_at->format('Y-m-d\TH:i'),
+            'endsAt' => $this->event->ends_at->format('Y-m-d\TH:i'),
+            'attendanceGraceMinutes' => $this->event->attendance_grace_minutes ?? '',
+            'visibility' => $this->event->visibility?->value ?? 'public',
+            'notificationEmail' => $this->event->notification_email ?? '',
+        ]);
         $this->selectedProjectId = $this->event->project_id ? (string) $this->event->project_id : '';
-        $this->visibility = $this->event->visibility?->value ?? 'public';
-        $this->notificationEmail = $this->event->notification_email ?? '';
     }
 }

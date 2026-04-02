@@ -125,31 +125,31 @@
         <div class="mt-4 space-y-4">
             <flux:field>
                 <flux:label>{{ __('Name') }}</flux:label>
-                <flux:input wire:model="name" placeholder="e.g. Eingang Nord" />
-                <flux:error name="name" />
+                <flux:input wire:model="form.name" placeholder="e.g. Eingang Nord" />
+                <flux:error name="form.name" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Type') }}</flux:label>
-                <flux:select wire:model="type">
+                <flux:select wire:model="form.type">
                     <flux:select.option value="entry_staff">{{ __('Entry Staff') }}</flux:select.option>
                     <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>
                 </flux:select>
-                <flux:error name="type" />
+                <flux:error name="form.type" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Modes') }}</flux:label>
                 <div class="flex gap-4">
-                    <flux:checkbox wire:model="modes" value="checkin" label="{{ __('Check-in') }}" />
-                    <flux:checkbox wire:model="modes" value="gear_pickup" label="{{ __('Gear Pickup') }}" />
+                    <flux:checkbox wire:model="form.modes" value="checkin" label="{{ __('Check-in') }}" />
+                    <flux:checkbox wire:model="form.modes" value="gear_pickup" label="{{ __('Gear Pickup') }}" />
                 </div>
-                <flux:error name="modes" />
+                <flux:error name="form.modes" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Scope to Event (optional)') }}</flux:label>
-                <flux:select wire:model="eventId">
+                <flux:select wire:model="form.eventId">
                     <flux:select.option value="">{{ __('Project-wide') }}</flux:select.option>
                     @foreach ($this->events as $event)
                         <flux:select.option :value="$event->id">{{ $event->name }}</flux:select.option>
@@ -160,20 +160,20 @@
             <div class="grid grid-cols-2 gap-4">
                 <flux:field>
                     <flux:label>{{ __('Starts at') }}</flux:label>
-                    <flux:input type="datetime-local" wire:model="startsAt" />
-                    <flux:error name="startsAt" />
+                    <flux:input type="datetime-local" wire:model="form.startsAt" />
+                    <flux:error name="form.startsAt" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>{{ __('Ends at') }}</flux:label>
-                    <flux:input type="datetime-local" wire:model="endsAt" />
-                    <flux:error name="endsAt" />
+                    <flux:input type="datetime-local" wire:model="form.endsAt" />
+                    <flux:error name="form.endsAt" />
                 </flux:field>
             </div>
 
             <flux:field>
                 <flux:label>{{ __('Hint Text (optional)') }}</flux:label>
-                <flux:textarea wire:model="hintText" rows="2" placeholder="{{ __('Instructions for scanner operators...') }}" />
+                <flux:textarea wire:model="form.hintText" rows="2" placeholder="{{ __('Instructions for scanner operators...') }}" />
             </flux:field>
         </div>
 

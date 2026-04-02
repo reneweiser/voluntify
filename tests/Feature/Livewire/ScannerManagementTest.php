@@ -46,11 +46,11 @@ it('denies access to non-member', function () {
 it('creates a scanner and shows raw auth code', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
-        ->set('name', 'Eingang Süd')
-        ->set('type', ScannerType::EntryStaff->value)
-        ->set('modes', [ScannerMode::Checkin->value])
-        ->set('startsAt', '2026-07-01T10:00')
-        ->set('endsAt', '2026-07-01T18:00')
+        ->set('form.name', 'Eingang Süd')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', [ScannerMode::Checkin->value])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
         ->assertHasNoErrors();
 
@@ -70,7 +70,7 @@ it('updates an existing scanner', function () {
     Livewire::actingAs($this->organizer)
         ->test(ScannerManagement::class, ['projectId' => $this->project->id])
         ->call('editScanner', $scanner->id)
-        ->set('name', 'New Name')
+        ->set('form.name', 'New Name')
         ->call('updateScanner')
         ->assertHasNoErrors();
 
