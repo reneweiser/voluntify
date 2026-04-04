@@ -75,7 +75,7 @@
                     </flux:text>
                     @if ($selectedType === 'signup_confirmation')
                         <flux:text size="sm" class="mt-2 text-zinc-500">
-                            Hinweis: @{{ '{' . '{shifts_summary}' . '}' }} listet alle gewählten Schichten auf. @{{ '{' . '{job_name}' . '}' }}, @{{ '{' . '{shift_date}' . '}' }} und @{{ '{' . '{shift_time}' . '}' }} beziehen sich nur auf die erste Schicht.
+                            Hinweis: {{ '{' . '{shifts_summary}' . '}' }} listet alle gewählten Schichten auf. {{ '{' . '{job_name}' . '}' }}, {{ '{' . '{shift_date}' . '}' }} und {{ '{' . '{shift_time}' . '}' }} beziehen sich nur auf die erste Schicht.
                         </flux:text>
                     @endif
                 </flux:card>
