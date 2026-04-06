@@ -150,7 +150,8 @@ class EventSignup extends Component
                 $a = $selected[$i];
                 $b = $selected[$j];
 
-                if ($a->starts_at < $b->ends_at && $a->ends_at > $b->starts_at) {
+                if ($a->shift_date->isSameDay($b->shift_date)
+                    && $a->starts_at < $b->ends_at && $a->ends_at > $b->starts_at) {
                     $conflicting[] = $a->id;
                     $conflicting[] = $b->id;
                 }

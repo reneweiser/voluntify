@@ -99,10 +99,12 @@ class DatabaseSeeder extends Seeder
                 ->for($job)
                 ->sequence(
                     [
+                        'shift_date' => $event->starts_at->toDateString(),
                         'starts_at' => $event->starts_at,
                         'ends_at' => $event->starts_at->copy()->addHours(4),
                     ],
                     [
+                        'shift_date' => $event->starts_at->copy()->addHours(4)->toDateString(),
                         'starts_at' => $event->starts_at->copy()->addHours(4),
                         'ends_at' => $event->ends_at,
                     ],

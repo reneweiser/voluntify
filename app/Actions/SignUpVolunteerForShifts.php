@@ -65,7 +65,7 @@ class SignUpVolunteerForShifts
                     ->whereNull('cancelled_at')
                     ->whereHas('shift.volunteerJob', fn ($q) => $q->where('event_id', $event->id))
                     ->lockForUpdate()
-                    ->with('shift:id,starts_at,ends_at')
+                    ->with('shift:id,shift_date,starts_at,ends_at')
                     ->get()
                     ->pluck('shift')
                     ->filter()
@@ -93,6 +93,7 @@ class SignUpVolunteerForShifts
                     $hasOverlap = $committedShifts->contains(
                         fn ($committed) => $committed->starts_at !== null
                             && $committed->ends_at !== null
+                            && $shift->shift_date->isSameDay($committed->shift_date)
                             && $shift->starts_at < $committed->ends_at
                             && $shift->ends_at > $committed->starts_at
                     );

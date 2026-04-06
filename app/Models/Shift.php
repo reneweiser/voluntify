@@ -34,6 +34,15 @@ class Shift extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (Shift $shift) {
+            if ($shift->starts_at !== null) {
+                $shift->shift_date = $shift->starts_at->toDateString();
+            }
+        });
+    }
+
     public function volunteerJob(): BelongsTo
     {
         return $this->belongsTo(VolunteerJob::class);
