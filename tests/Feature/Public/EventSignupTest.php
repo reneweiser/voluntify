@@ -428,7 +428,13 @@ it('shows error when all selected shifts are full at submit time for verified vo
 });
 
 it('submits multi-shift signup and creates all records for verified volunteer', function () {
-    $shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
+    // Use explicit non-overlapping dates to prevent random overlap detection from blocking reservation.
+    $this->shift->update(['starts_at' => Carbon::parse('2026-07-01 09:00:00'), 'ends_at' => Carbon::parse('2026-07-01 12:00:00')]);
+    $shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'capacity' => 10,
+        'starts_at' => Carbon::parse('2026-07-02 09:00:00'),
+        'ends_at' => Carbon::parse('2026-07-02 12:00:00'),
+    ]);
 
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'multi@example.com', 'first_name' => 'Multi', 'last_name' => 'Shift']);
 
@@ -453,8 +459,14 @@ it('submits multi-shift signup and creates all records for verified volunteer', 
 });
 
 it('shows warning when some shifts are skipped during submit for verified volunteer', function () {
-    // Both shifts have capacity to reserve, but one gets filled between reserve and submit
-    $shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
+    // Both shifts have capacity to reserve, but one gets filled between reserve and submit.
+    // Use explicit non-overlapping dates to prevent random overlap detection from blocking reservation.
+    $this->shift->update(['starts_at' => Carbon::parse('2026-07-01 09:00:00'), 'ends_at' => Carbon::parse('2026-07-01 12:00:00')]);
+    $shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'capacity' => 10,
+        'starts_at' => Carbon::parse('2026-07-02 09:00:00'),
+        'ends_at' => Carbon::parse('2026-07-02 12:00:00'),
+    ]);
 
     $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['email' => 'partial@example.com', 'first_name' => 'Partial', 'last_name' => 'Person']);
 
