@@ -1,37 +1,42 @@
 <div>
     @if ($expired)
         <div class="text-center py-12">
-            <flux:icon name="clock" class="mx-auto size-12 text-zinc-400 dark:text-zinc-500 mb-4" />
-            <flux:heading size="lg">{{ __('Link Expired') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('This magic link has expired. Please request a new one from the event organizer.') }}</flux:text>
+            <flux:icon name="clock" class="mx-auto size-12 mb-4" style="color: #9a9a9a;" />
+            <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;">{{ __('Link Expired') }}</h2>
+            <p class="mt-2" style="color: #a1a1aa;">{{ __('This magic link has expired. Please request a new one from the event organizer.') }}</p>
         </div>
     @elseif ($volunteer)
         {{-- Identity banner --}}
         <div class="mb-8">
-            <flux:heading size="xl">{{ __('Your Portal') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Welcome back, :name', ['name' => $volunteer->full_name]) }}</flux:text>
+            <h1 class="font-bebas text-white leading-none" style="font-size: clamp(2rem, 5vw, 2.8rem); letter-spacing: 0.04em;">{{ __('Your Portal') }}</h1>
+            <div class="accent-bar mt-3"><span></span><span></span><span></span></div>
+            <p class="mt-3" style="color: #a1a1aa;">{{ __('Welcome back, :name', ['name' => $volunteer->full_name]) }}</p>
         </div>
 
         {{-- Success banner --}}
         @if ($successMessage)
-            <flux:callout variant="success" class="mb-6">{{ $successMessage }}</flux:callout>
+            <div class="rounded-lg p-3 mb-6 text-sm" style="background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.2); color: #6ee7b7;">
+                {{ $successMessage }}
+            </div>
         @endif
 
         {{-- Portal top banner hint --}}
         @if ($this->hintPortalTopBanner)
-            <flux:callout variant="info" class="mb-6">{{ $this->hintPortalTopBanner }}</flux:callout>
+            <div class="rounded-lg p-3 mb-6 text-sm" style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: #93c5fd;">
+                {{ $this->hintPortalTopBanner }}
+            </div>
         @endif
 
         {{-- Upcoming Shifts --}}
         <div class="mb-8">
-            <flux:heading size="lg" class="mb-3">{{ __('Upcoming Shifts') }}</flux:heading>
+            <h2 class="font-bebas text-white text-lg mb-3" style="letter-spacing: 0.04em;">{{ __('Upcoming Shifts') }}</h2>
 
             @if ($this->hintPortalShiftsSection)
-                <flux:text size="sm" class="mb-3 text-zinc-500 dark:text-zinc-400">{{ $this->hintPortalShiftsSection }}</flux:text>
+                <p class="mb-3 text-sm" style="color: #9a9a9a;">{{ $this->hintPortalShiftsSection }}</p>
             @endif
 
             @if ($this->upcomingSignups->isEmpty())
-                <flux:text class="text-zinc-500 dark:text-zinc-400">{{ __('No upcoming shifts.') }}</flux:text>
+                <p style="color: #9a9a9a;">{{ __('No upcoming shifts.') }}</p>
             @else
                 <div class="space-y-3">
                     @foreach ($this->upcomingSignups as $signup)
@@ -40,26 +45,26 @@
                             $project = $event->project;
                             $canCancel = $project->isCancellationAllowed() && $signup->isCancellable($project->cancellation_cutoff_hours);
                         @endphp
-                        <div wire:key="upcoming-{{ $signup->id }}" class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4">
+                        <div wire:key="upcoming-{{ $signup->id }}" class="rounded-lg p-4" style="background: rgba(255,255,255,0.05); border-left: 4px solid var(--brand);">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $signup->shift->volunteerJob->name }}</div>
-                                    <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                    <div class="font-medium text-white">{{ $signup->shift->volunteerJob->name }}</div>
+                                    <div class="mt-1 text-sm" style="color: #a1a1aa;">
                                         {{ $event->name }}
                                     </div>
-                                    <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                    <div class="mt-1 text-sm" style="color: #a1a1aa;">
                                         {{ $signup->shift->shift_date->format('M d, Y') }} — {{ $signup->shift->displayTimeRange() }}
                                     </div>
                                     @if ($project->isCancellationAllowed())
-                                        <div class="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                                        <div class="mt-2 text-xs" style="color: #9a9a9a;">
                                             {{ __('Cancellation allowed up to :hours hours before the shift', ['hours' => $project->cancellation_cutoff_hours]) }}
                                         </div>
                                     @endif
                                 </div>
                                 @if ($canCancel)
-                                    <flux:button variant="danger" size="sm" wire:click="confirmCancel({{ $signup->id }})">
+                                    <button wire:click="confirmCancel({{ $signup->id }})" class="shrink-0 text-sm font-medium px-3 py-1.5 rounded" style="background: rgba(230,57,70,0.15); color: #fca5a5; border: none; cursor: pointer; transition: background 0.2s;">
                                         {{ __('Cancel') }}
-                                    </flux:button>
+                                    </button>
                                 @endif
                             </div>
                         </div>
@@ -71,13 +76,13 @@
         {{-- Event Gear --}}
         @if ($this->gearAssignments->isNotEmpty())
             <div class="mb-8">
-                <flux:heading size="lg" class="mb-3">{{ __('Event Gear') }}</flux:heading>
+                <h2 class="font-bebas text-white text-lg mb-3" style="letter-spacing: 0.04em;">{{ __('Event Gear') }}</h2>
                 <div class="space-y-3">
                     @foreach ($this->gearAssignments as $gear)
-                        <div wire:key="gear-{{ $gear->id }}" class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4">
+                        <div wire:key="gear-{{ $gear->id }}" class="flex items-center justify-between rounded-lg p-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
                             <div>
-                                <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $gear->gearItem->name }}</div>
-                                <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                <div class="font-medium text-white">{{ $gear->gearItem->name }}</div>
+                                <div class="mt-1 text-sm" style="color: #a1a1aa;">
                                     {{ $gear->gearItem->project->name }}
                                     @if ($gear->size)
                                         &middot; {{ __('Size:') }} {{ $gear->size }}
@@ -85,9 +90,9 @@
                                 </div>
                             </div>
                             @if ($gear->isPickedUp())
-                                <flux:badge size="sm" color="emerald">{{ __('Picked Up') }}</flux:badge>
+                                <span class="text-xs font-semibold px-2.5 py-1 rounded" style="background: rgba(5,150,105,0.15); color: #6ee7b7;">{{ __('Picked Up') }}</span>
                             @else
-                                <flux:badge size="sm" color="zinc">{{ __('Not Picked Up') }}</flux:badge>
+                                <span class="text-xs font-semibold px-2.5 py-1 rounded" style="background: rgba(255,255,255,0.08); color: #9a9a9a;">{{ __('Not Picked Up') }}</span>
                             @endif
                         </div>
                     @endforeach
@@ -98,15 +103,15 @@
         {{-- Registration Info --}}
         @if ($this->customFieldResponses->isNotEmpty())
             <div class="mb-8">
-                <flux:heading size="lg" class="mb-3">{{ __('Registration Info') }}</flux:heading>
+                <h2 class="font-bebas text-white text-lg mb-3" style="letter-spacing: 0.04em;">{{ __('Registration Info') }}</h2>
                 @foreach ($this->customFieldResponses->groupBy(fn ($r) => $r->field->event?->name ?? $r->field->project?->name ?? __('General')) as $eventName => $responses)
                     <div class="mb-4">
-                        <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400 mb-2">{{ $eventName }}</flux:text>
+                        <p class="text-sm mb-2" style="color: #9a9a9a;">{{ $eventName }}</p>
                         <div class="space-y-2">
                             @foreach ($responses as $response)
-                                <div class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3">
-                                    <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">{{ $response->field->label }}</flux:text>
-                                    <flux:text>{{ $response->field->type->displayValue($response->value) }}</flux:text>
+                                <div class="flex items-center justify-between rounded-lg p-3" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
+                                    <span class="text-sm" style="color: #9a9a9a;">{{ $response->field->label }}</span>
+                                    <span class="text-sm text-white">{{ $response->field->type->displayValue($response->value) }}</span>
                                 </div>
                             @endforeach
                         </div>
@@ -117,17 +122,17 @@
 
         {{-- Announcements --}}
         <div class="mb-8">
-            <flux:heading size="lg" class="mb-3">{{ __('Announcements') }}</flux:heading>
+            <h2 class="font-bebas text-white text-lg mb-3" style="letter-spacing: 0.04em;">{{ __('Announcements') }}</h2>
 
             @if ($this->announcements->isEmpty())
-                <flux:text class="text-zinc-500 dark:text-zinc-400">{{ __('No announcements.') }}</flux:text>
+                <p style="color: #9a9a9a;">{{ __('No announcements.') }}</p>
             @else
                 <div class="space-y-3">
                     @foreach ($this->announcements as $announcement)
-                        <div wire:key="announcement-{{ $announcement->id }}" class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4">
-                            <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $announcement->subject }}</div>
-                            <flux:text class="mt-2">{{ $announcement->body }}</flux:text>
-                            <div class="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                        <div wire:key="announcement-{{ $announcement->id }}" class="rounded-lg p-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
+                            <div class="font-medium text-white">{{ $announcement->subject }}</div>
+                            <p class="mt-2 text-sm" style="color: #a1a1aa;">{{ $announcement->body }}</p>
+                            <div class="mt-2 text-xs" style="color: #9a9a9a;">
                                 {{ $announcement->event->name }} &middot; {{ $announcement->sent_at->diffForHumans() }}
                             </div>
                         </div>
@@ -139,15 +144,15 @@
         {{-- Past Shifts --}}
         @if ($this->pastSignups->isNotEmpty())
             <div class="mb-8">
-                <flux:heading size="lg" class="mb-3">{{ __('Past Shifts') }}</flux:heading>
+                <h2 class="font-bebas text-white text-lg mb-3" style="letter-spacing: 0.04em;">{{ __('Past Shifts') }}</h2>
                 <div class="space-y-3">
                     @foreach ($this->pastSignups as $signup)
-                        <div wire:key="past-{{ $signup->id }}" class="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/50 p-4 opacity-75">
-                            <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $signup->shift->volunteerJob->name }}</div>
-                            <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        <div wire:key="past-{{ $signup->id }}" class="rounded-lg p-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); opacity: 0.6;">
+                            <div class="font-medium text-white">{{ $signup->shift->volunteerJob->name }}</div>
+                            <div class="mt-1 text-sm" style="color: #a1a1aa;">
                                 {{ $signup->shift->volunteerJob->event->name }}
                             </div>
-                            <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                            <div class="mt-1 text-sm" style="color: #a1a1aa;">
                                 {{ $signup->shift->shift_date->format('M d, Y') }} — {{ $signup->shift->displayTimeRange() }}
                             </div>
                         </div>
@@ -160,14 +165,16 @@
         @if ($cancellingSignupId)
             <flux:modal wire:model="cancellingSignupId" class="max-w-sm">
                 <div class="space-y-4">
-                    <flux:heading size="lg">{{ __('Cancel Signup?') }}</flux:heading>
-                    <flux:text>{{ __('Are you sure you want to cancel this shift signup? Your spot will be freed for other volunteers.') }}</flux:text>
+                    <h3 class="font-bebas text-white text-xl" style="letter-spacing: 0.04em;">{{ __('Cancel Signup?') }}</h3>
+                    <p style="color: #a1a1aa;">{{ __('Are you sure you want to cancel this shift signup? Your spot will be freed for other volunteers.') }}</p>
                     <div class="flex gap-2 justify-end">
-                        <flux:button variant="ghost" wire:click="dismissCancel">{{ __('Keep') }}</flux:button>
-                        <flux:button variant="danger" wire:click="cancelSignup" wire:loading.attr="disabled">
+                        <button wire:click="dismissCancel" style="padding: 0.5rem 1rem; background: transparent; color: rgba(255,255,255,0.7); border: 2px solid rgba(255,255,255,0.2); border-radius: 4px; font-size: 0.875rem; font-weight: 600; cursor: pointer;">
+                            {{ __('Keep') }}
+                        </button>
+                        <button wire:click="cancelSignup" wire:loading.attr="disabled" style="padding: 0.5rem 1rem; background: var(--red); color: white; border-radius: 4px; font-size: 0.875rem; font-weight: 600; border: none; cursor: pointer; transition: opacity 0.2s;">
                             <span wire:loading.remove wire:target="cancelSignup">{{ __('Yes, Cancel Signup') }}</span>
                             <span wire:loading wire:target="cancelSignup">{{ __('Cancelling...') }}</span>
-                        </flux:button>
+                        </button>
                     </div>
                 </div>
             </flux:modal>
@@ -175,9 +182,9 @@
 
         {{-- Privacy notice --}}
         <div class="mt-8 text-center">
-            <flux:text size="sm" class="text-zinc-400 dark:text-zinc-500">
+            <p class="text-sm" style="color: #9a9a9a;">
                 {{ __('This portal is linked to your volunteer profile. Do not share this URL.') }}
-            </flux:text>
+            </p>
         </div>
     @endif
 </div>

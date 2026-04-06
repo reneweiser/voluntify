@@ -9,81 +9,133 @@
         @endif
     @endsection
 
-    {{-- Title image with hero treatment --}}
+    {{-- Hero image --}}
     @if ($project->titleImageUrl())
-        <div class="mb-8 -mx-6 sm:mx-0 relative">
-            <img src="{{ $project->titleImageUrl() }}" alt="{{ $project->name }}" class="w-full max-h-72 object-cover sm:rounded-xl" />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent sm:rounded-xl"></div>
+        <div class="mb-10 -mx-6 sm:mx-0 relative overflow-hidden sm:rounded-lg">
+            <img src="{{ $project->titleImageUrl() }}" alt="{{ $project->name }}" class="w-full max-h-96 object-cover" loading="eager" />
+            <div class="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/70 via-[#1A1A1A]/30 to-transparent sm:rounded-lg"></div>
         </div>
     @endif
 
     {{-- Project header --}}
-    <div class="mb-8">
-        <flux:heading size="xl">{{ $project->name }}</flux:heading>
+    <div class="mb-10">
+        <h1 class="font-bebas text-white leading-none" style="font-size: clamp(2.2rem, 5vw, 3.2rem); letter-spacing: 0.04em;">
+            {{ $project->name }}
+        </h1>
+        <div class="accent-bar mt-3"><span></span><span></span><span></span></div>
+
         @if ($renderedDescription)
-            <div class="prose dark:prose-invert mt-4 max-w-none">
+            <div class="public-prose mt-8">
                 {!! $renderedDescription !!}
             </div>
         @elseif ($project->description)
-            <flux:text class="mt-2">{{ $project->description }}</flux:text>
+            <p class="mt-4" style="color: #a1a1aa; font-size: 1.1rem; line-height: 1.6;">{{ $project->description }}</p>
         @endif
     </div>
 
     {{-- Contact info --}}
     @if ($project->website_contact_info)
-        <div class="mb-8 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4">
+        <div class="mb-10 rounded-lg p-5" style="background: rgba(255,255,255,0.05); border-left: 4px solid var(--brand);">
             <div class="flex items-center gap-2 mb-2">
-                <flux:icon name="envelope" variant="mini" class="size-4 text-zinc-500" />
-                <flux:text size="sm" class="font-medium">{{ __('Kontakt') }}</flux:text>
+                <flux:icon name="envelope" variant="mini" class="size-4" style="color: var(--brand);" />
+                <span class="text-sm font-semibold text-white">{{ __('Kontakt') }}</span>
             </div>
-            <flux:text>{{ $project->website_contact_info }}</flux:text>
+            <p style="color: #a1a1aa;">{{ $project->website_contact_info }}</p>
         </div>
     @endif
 
-    {{-- Events list --}}
+    {{-- Events section --}}
+    @if ($events->isNotEmpty())
+        <div class="mb-6 flex items-end justify-between">
+            <div>
+                <h2 class="font-bebas text-white" style="font-size: 1.8rem; letter-spacing: 0.06em;">EVENTS</h2>
+                <div class="accent-bar mt-1"><span></span><span></span><span></span></div>
+            </div>
+            <span class="text-sm" style="color: #a1a1aa;">
+                {{ $events->count() }} {{ trans_choice('Event|Events', $events->count()) }}
+            </span>
+        </div>
+    @endif
+
     @if ($events->isEmpty())
-        <div class="rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 p-12 text-center">
-            <flux:heading size="sm">{{ __('Aktuell keine Events verfügbar') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Schau später noch einmal vorbei.') }}</flux:text>
+        <div class="rounded-lg p-16 text-center" style="border: 2px dashed rgba(255,255,255,0.15);">
+            <div class="mx-auto flex size-14 items-center justify-center rounded-full mb-4" style="background: rgba(255,255,255,0.05);">
+                <flux:icon name="calendar" class="size-7" style="color: rgba(255,255,255,0.3);" />
+            </div>
+            <h3 class="font-bebas text-white text-xl" style="letter-spacing: 0.04em;">{{ __('Aktuell keine Events verfügbar') }}</h3>
+            <p class="mt-2 max-w-sm mx-auto" style="color: #a1a1aa;">
+                {{ __('Es werden bald neue Events veröffentlicht. Schau später noch einmal vorbei!') }}
+            </p>
         </div>
     @else
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-5">
             @foreach ($events as $event)
-                <a href="{{ route('events.public', $event->public_token) }}" wire:key="event-{{ $event->id }}" aria-label="{{ $event->name }}">
-                    <flux:card size="sm" class="hover:bg-zinc-50 dark:hover:bg-white/20">
-                        <div class="flex items-start gap-3">
-                            <span class="mt-1.5 size-2.5 shrink-0 rounded-full {{ $event->status === \App\Enums\EventStatus::PublishedOpen ? 'bg-emerald-500' : 'bg-zinc-400' }}"></span>
-                            @if ($event->titleImageUrl())
-                                <img src="{{ $event->titleImageUrl() }}" alt="" class="size-14 shrink-0 rounded-lg object-cover" />
-                            @endif
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center justify-between gap-3">
-                                    <flux:heading size="sm" class="truncate">{{ $event->name }}</flux:heading>
-                                    @if ($event->status === \App\Enums\EventStatus::PublishedOpen)
-                                        <flux:badge size="sm" class="shrink-0" color="emerald">{{ __('Anmelden') }}</flux:badge>
-                                    @else
-                                        <flux:badge size="sm" class="shrink-0" color="zinc">{{ __('Registrierung geschlossen') }}</flux:badge>
-                                    @endif
+                <a href="{{ route('events.public', $event->public_token) }}"
+                   wire:key="event-{{ $event->id }}"
+                   aria-label="{{ $event->name }}"
+                   class="group block rounded-lg overflow-hidden public-card-hover"
+                   style="background: rgba(255,255,255,0.05); box-shadow: 0 1px 3px rgba(0,0,0,0.3);">
+
+                    {{-- Event image --}}
+                    @if ($event->titleImageUrl())
+                        <div class="relative h-40 overflow-hidden">
+                            <img src="{{ $event->titleImageUrl() }}" alt=""
+                                 class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
+                            <div class="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/80 to-transparent"></div>
+                            {{-- Status overlay on image --}}
+                            @if ($event->status === \App\Enums\EventStatus::PublishedOpen)
+                                <div class="absolute bottom-3 left-5">
+                                    <span style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.9rem; background: var(--brand); color: white; border-radius: 4px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(5,150,105,0.3);">
+                                        <span style="width: 6px; height: 6px; border-radius: 50%; background: white; animation: urgency-pulse 2s ease-in-out infinite;"></span>
+                                        {{ __('Anmelden') }}
+                                    </span>
                                 </div>
-                                <div class="mt-1 flex flex-col gap-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                    <span class="inline-flex items-center gap-1">
-                                        <flux:icon name="calendar" variant="mini" class="size-4 shrink-0" />
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="p-5">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-base font-semibold text-white group-hover:text-emerald-400 transition-colors truncate">
+                                    {{ $event->name }}
+                                </h3>
+                                <div class="mt-2 flex flex-col gap-1.5 text-sm" style="color: #a1a1aa;">
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <flux:icon name="calendar" variant="mini" class="size-4 shrink-0" style="color: #9a9a9a;" />
                                         {{ $event->starts_at->format('d.m.Y H:i') }} &mdash; {{ $event->ends_at->format('H:i') }}
                                     </span>
                                     @if ($event->location)
-                                        <span class="inline-flex items-center gap-1">
-                                            <flux:icon name="map-pin" variant="mini" class="size-4 shrink-0" />
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <flux:icon name="map-pin" variant="mini" class="size-4 shrink-0" style="color: #9a9a9a;" />
                                             {{ $event->location }}
                                         </span>
                                     @endif
-                                    <span class="inline-flex items-center gap-1">
-                                        <flux:icon name="users" variant="mini" class="size-4 shrink-0" />
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <flux:icon name="users" variant="mini" class="size-4 shrink-0" style="color: #9a9a9a;" />
                                         {{ $event->volunteer_count }} {{ __('Helfer:innen') }}
                                     </span>
                                 </div>
                             </div>
+
+                            @if (!$event->titleImageUrl())
+                                {{-- CTA for cards without image --}}
+                                @if ($event->status === \App\Enums\EventStatus::PublishedOpen)
+                                    <span class="shrink-0" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 1rem; background: var(--brand); color: white; border-radius: 4px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; transition: opacity 0.2s;">
+                                        {{ __('Anmelden') }}
+                                        <flux:icon name="arrow-right" variant="mini" class="size-3.5" />
+                                    </span>
+                                @else
+                                    <span class="shrink-0 text-xs font-medium px-2.5 py-1 rounded" style="background: rgba(255,255,255,0.08); color: #9a9a9a;">
+                                        {{ __('Registrierung geschlossen') }}
+                                    </span>
+                                @endif
+                            @else
+                                {{-- Arrow hint for image cards --}}
+                                <flux:icon name="arrow-right" variant="mini" class="size-5 shrink-0 mt-1 group-hover:translate-x-0.5 transition-all" style="color: #9a9a9a;" />
+                            @endif
                         </div>
-                    </flux:card>
+                    </div>
                 </a>
             @endforeach
         </div>

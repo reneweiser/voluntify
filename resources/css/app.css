@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '../../vendor/livewire/flux/dist/flux.css';
+@plugin '@tailwindcss/typography';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -94,4 +95,179 @@ select:focus[data-flux-control] {
 [data-flux-modal] > dialog::backdrop {
     background-color: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(4px);
+}
+
+/* ──────────────────────────────────────────────────────
+   Public pages — match landing page hero aesthetic
+   ────────────────────────────────────────────────────── */
+
+.public-page {
+    --brand: #059669;
+    --red: #E63946;
+    --yellow: #F4D03F;
+    --blue: #264653;
+    --dark: #1A1A1A;
+}
+
+.font-bebas {
+    font-family: 'Bebas Neue', sans-serif;
+    text-transform: uppercase;
+}
+
+/* Prose styling for Markdown content (fixes Issue #100) */
+.public-prose {
+    @apply prose prose-lg prose-invert max-w-none;
+
+    & :is(h1, h2, h3, h4) {
+        font-family: 'Bebas Neue', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    & h2 {
+        @apply text-2xl font-bold mt-10 mb-4;
+        color: white;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    & h3 {
+        @apply text-xl font-semibold mt-8 mb-3;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    & hr {
+        @apply my-10;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    & p {
+        @apply leading-relaxed;
+        color: #a1a1aa;
+    }
+
+    & a {
+        color: var(--brand);
+        text-decoration: underline;
+        text-decoration-color: rgba(5, 150, 105, 0.3);
+        text-underline-offset: 2px;
+        transition: text-decoration-color 0.2s;
+    }
+    & a:hover {
+        text-decoration-color: var(--brand);
+    }
+
+    & :is(ul, ol) {
+        @apply my-4 space-y-2;
+    }
+
+    & li {
+        color: #a1a1aa;
+    }
+
+    & strong {
+        color: white;
+        font-weight: 600;
+    }
+
+    & blockquote {
+        border-left-color: var(--brand);
+        background: rgba(5, 150, 105, 0.08);
+        border-radius: 0 8px 8px 0;
+        padding: 0.75rem 1rem;
+        color: #a1a1aa;
+        font-style: normal;
+    }
+}
+
+/* 3-color accent bar (red | yellow | emerald) */
+.accent-bar {
+    display: flex;
+    width: 120px;
+    height: 3px;
+    gap: 0;
+}
+.accent-bar > span:nth-child(1) { flex: 1; background: var(--red); }
+.accent-bar > span:nth-child(2) { flex: 1; background: var(--yellow); }
+.accent-bar > span:nth-child(3) { flex: 1; background: var(--brand); }
+
+/* Focus styles for custom buttons */
+.public-page button:focus-visible,
+.public-page a:focus-visible {
+    outline: 2px solid #6ee7b7;
+    outline-offset: 2px;
+}
+
+/* Primary button (matches landing page CTA) */
+.public-btn-primary {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: var(--brand);
+    color: white;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.public-btn-primary:hover {
+    opacity: 0.9;
+}
+
+/* Ghost/outline button */
+.public-btn-ghost {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.public-btn-ghost:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Larger final CTA variant */
+.public-btn-cta {
+    padding: 0.85rem 2rem;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    box-shadow: 0 4px 16px rgba(5, 150, 105, 0.3);
+}
+
+/* Hover lift for interactive cards */
+.public-card-hover {
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+.public-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Urgency pulse for low-spot badges */
+@keyframes urgency-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+.urgency-pulse {
+    animation: urgency-pulse 2s ease-in-out infinite;
+}
+
+/* Subtle entrance animation */
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out both;
 }
