@@ -93,7 +93,7 @@ class SignUpVolunteerForShifts
                     $hasOverlap = $committedShifts->contains(
                         fn ($committed) => $committed->starts_at !== null
                             && $committed->ends_at !== null
-                            && $shift->shift_date->isSameDay($committed->shift_date)
+                            // No date guard — full datetime comparison handles cross-midnight shifts correctly.
                             && $shift->starts_at < $committed->ends_at
                             && $shift->ends_at > $committed->starts_at
                     );

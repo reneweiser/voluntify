@@ -216,20 +216,17 @@ it('allows reserveAndAdvance after deselecting one conflicting shift', function 
     expect(ShiftReservation::where('shift_id', $shiftA->id)->count())->toBe(1);
 });
 
-it('allows selecting shifts with overlapping times on different dates', function () {
-    // Intentional mismatch: different shift_date, identical starts_at/ends_at.
-    $shiftA = Shift::withoutEvents(fn () => Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'shift_date' => '2026-06-01',
-        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
-        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+it('allows selecting adjacent shifts that meet exactly at midnight', function () {
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 22:00:00'),
+        'ends_at' => Carbon::parse('2026-06-02 00:00:00'),
         'capacity' => 10,
-    ]));
-    $shiftB = Shift::withoutEvents(fn () => Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'shift_date' => '2026-06-02',
-        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
-        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-02 00:00:00'),
+        'ends_at' => Carbon::parse('2026-06-02 02:00:00'),
         'capacity' => 10,
-    ]));
+    ]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('selectedShiftIds', [$shiftA->id, $shiftB->id])
@@ -239,6 +236,52 @@ it('allows selecting shifts with overlapping times on different dates', function
         ->assertSet('state', WizardState::PersonalInfo);
 
     expect(ShiftReservation::count())->toBe(2);
+});
+
+it('blocks reserveAndAdvance when overnight shift overlaps next-day shift', function () {
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-01 23:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 02:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-02 01:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 04:00:00'),
+        'capacity' => 10,
+    ]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$shiftA->id, $shiftB->id])
+        ->assertSee(__('Conflict'))
+        ->assertSee(__('Some selected shifts overlap in time'))
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::SelectingShifts);
+
+    expect(ShiftReservation::count())->toBe(0);
+});
+
+it('allows reserveAndAdvance after deselecting one conflicting cross-midnight shift', function () {
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-01 23:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 02:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-02 01:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 04:00:00'),
+        'capacity' => 10,
+    ]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$shiftA->id, $shiftB->id])
+        ->assertSee(__('Conflict'))
+        ->set('selectedShiftIds', [$shiftA->id])
+        ->assertDontSee(__('Conflict'))
+        ->call('reserveAndAdvance')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::PersonalInfo);
+
+    expect(ShiftReservation::where('shift_id', $shiftA->id)->count())->toBe(1);
 });
 
 // --- Step 2: Gear & Custom Fields ---

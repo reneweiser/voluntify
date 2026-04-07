@@ -395,23 +395,19 @@ it('skips a reactivated shift that now overlaps a newer signup', function () {
 
 // --- Cross-day overlap tests ---
 
-it('allows shifts on different shift_date even when starts_at datetimes collide', function () {
+it('allows adjacent shifts that meet exactly at midnight against existing signup', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
 
-    // Intentional mismatch: shift_date differs but starts_at/ends_at are identical.
-    // Bypasses model boot event that would auto-sync shift_date from starts_at.
-    $shiftA = Shift::withoutEvents(fn () => Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'shift_date' => '2026-06-01',
-        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
-        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 22:00:00'),
+        'ends_at' => Carbon::parse('2026-06-02 00:00:00'),
         'capacity' => 5,
-    ]));
-    $shiftB = Shift::withoutEvents(fn () => Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'shift_date' => '2026-06-02',
-        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
-        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-02 00:00:00'),
+        'ends_at' => Carbon::parse('2026-06-02 02:00:00'),
         'capacity' => 5,
-    ]));
+    ]);
 
     ShiftSignup::factory()->create(['shift_id' => $shiftA->id, 'volunteer_id' => $volunteer->id]);
 
@@ -426,21 +422,19 @@ it('allows shifts on different shift_date even when starts_at datetimes collide'
         ->and($result->skippedOverlap)->toBeEmpty();
 });
 
-it('allows intra-batch shifts on different shift_date even when starts_at datetimes collide', function () {
+it('allows intra-batch adjacent shifts that meet exactly at midnight', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
 
-    $shiftA = Shift::withoutEvents(fn () => Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'shift_date' => '2026-06-01',
-        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
-        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-01 22:00:00'),
+        'ends_at' => Carbon::parse('2026-06-02 00:00:00'),
         'capacity' => 5,
-    ]));
-    $shiftB = Shift::withoutEvents(fn () => Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'shift_date' => '2026-06-02',
-        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
-        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-06-02 00:00:00'),
+        'ends_at' => Carbon::parse('2026-06-02 02:00:00'),
         'capacity' => 5,
-    ]));
+    ]);
 
     $result = $this->action->execute(
         volunteer: $volunteer,
@@ -450,4 +444,61 @@ it('allows intra-batch shifts on different shift_date even when starts_at dateti
 
     expect($result->newSignups)->toHaveCount(2)
         ->and($result->skippedOverlap)->toBeEmpty();
+});
+
+it('skips a shift that overlaps a cross-midnight existing signup', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+
+    $overnight = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-01 23:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 02:00:00'),
+        'capacity' => 5,
+    ]);
+    $nextDay = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-02 01:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 04:00:00'),
+        'capacity' => 5,
+    ]);
+
+    ShiftSignup::factory()->create(['shift_id' => $overnight->id, 'volunteer_id' => $volunteer->id]);
+
+    $result = $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$nextDay->id],
+    );
+
+    expect($result->hasNewSignups())->toBeFalse()
+        ->and($result->skippedOverlap)->toHaveCount(1)
+        ->and($result->skippedOverlap[0]->id)->toBe($nextDay->id);
+});
+
+it('skips an intra-batch shift that overlaps a cross-midnight shift', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+
+    $overnight = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-01 23:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 02:00:00'),
+        'capacity' => 5,
+    ]);
+    $overlapping = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-02 01:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 04:00:00'),
+        'capacity' => 5,
+    ]);
+    $noOverlap = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => Carbon::parse('2026-05-02 06:00:00'),
+        'ends_at' => Carbon::parse('2026-05-02 08:00:00'),
+        'capacity' => 5,
+    ]);
+
+    $result = $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$overnight->id, $overlapping->id, $noOverlap->id],
+    );
+
+    expect($result->newSignups)->toHaveCount(2)
+        ->and($result->skippedOverlap)->toHaveCount(1)
+        ->and($result->skippedOverlap[0]->id)->toBe($overlapping->id);
 });

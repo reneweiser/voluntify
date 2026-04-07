@@ -119,8 +119,9 @@ class EventSignup extends Component
 
     /**
      * Returns the IDs of selected shifts that overlap with at least one other
-     * selected shift. Uses the same half-open interval rule as the backend:
-     * A.start < B.end && A.end > B.start.
+     * selected shift. Uses the half-open interval rule on full datetime columns:
+     * A.start < B.end && A.end > B.start. No shift_date guard — this correctly
+     * handles cross-midnight shifts (shift_date is used only for display/ordering).
      *
      * Shifts with null times are excluded — organizers should set explicit
      * times on all shifts if overlap prevention is desired.
@@ -150,8 +151,8 @@ class EventSignup extends Component
                 $a = $selected[$i];
                 $b = $selected[$j];
 
-                if ($a->shift_date->isSameDay($b->shift_date)
-                    && $a->starts_at < $b->ends_at && $a->ends_at > $b->starts_at) {
+                // No date guard — full datetime comparison handles cross-midnight shifts correctly.
+                if ($a->starts_at < $b->ends_at && $a->ends_at > $b->starts_at) {
                     $conflicting[] = $a->id;
                     $conflicting[] = $b->id;
                 }
