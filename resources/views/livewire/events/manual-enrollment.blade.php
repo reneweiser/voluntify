@@ -92,7 +92,7 @@
                         <div>
                             <flux:heading size="lg">{{ __('Select Shifts') }}</flux:heading>
                             <flux:text size="sm" class="text-zinc-500">
-                                {{ __('Enrolling: :name', ['name' => $this->selectedVolunteer->name]) }}
+                                {{ __('Enrolling: :name', ['name' => $this->selectedVolunteer->full_name]) }}
                             </flux:text>
                         </div>
                         <flux:button variant="ghost" size="sm" wire:click="clearSelection">{{ __('Change') }}</flux:button>
@@ -111,7 +111,7 @@
                                         <label class="flex items-center gap-3 rounded-lg border p-3
                                             {{ $isFull ? 'border-zinc-200 opacity-50 dark:border-zinc-700' : 'border-zinc-200 dark:border-zinc-700' }}">
                                             <flux:checkbox
-                                                wire:model="selectedShifts"
+                                                wire:model.live="selectedShifts"
                                                 value="{{ $shift->id }}"
                                                 :disabled="$isFull"
                                             />
