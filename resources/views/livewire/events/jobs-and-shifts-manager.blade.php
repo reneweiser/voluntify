@@ -53,6 +53,10 @@
                             @if ($this->canManage)
                                 <div class="flex items-center gap-2">
                                     <flux:button variant="ghost" size="sm" icon="pencil" wire:click="openEditJob({{ $job->id }})" />
+                                    <flux:button variant="ghost" size="sm" icon="square-2-stack"
+                                        wire:click="cloneJob({{ $job->id }})"
+                                        wire:confirm="{{ __('Duplicate this job and all its shifts?') }}"
+                                        wire:loading.attr="disabled" />
                                     <flux:button variant="ghost" size="sm" icon="trash" wire:click="deleteJob({{ $job->id }})"
                                         wire:confirm="{{ __('Delete this job and all its shifts?') }}" />
                                 </div>

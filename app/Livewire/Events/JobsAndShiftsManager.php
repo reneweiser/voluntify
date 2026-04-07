@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Events;
 
+use App\Actions\CloneVolunteerJob;
 use App\Actions\CreateShift;
 use App\Actions\CreateVolunteerJob;
 use App\Actions\DeleteShift;
@@ -125,6 +126,23 @@ class JobsAndShiftsManager extends Component
 
         $this->showJobModal = false;
         $this->reset('editingJobId', 'jobName', 'jobDescription', 'jobInstructions');
+        unset($this->jobs);
+    }
+
+    public function cloneJob(int $jobId): void
+    {
+        Gate::authorize('manageJobs', $this->event);
+
+        $job = $this->event->volunteerJobs()->findOrFail($jobId);
+
+        try {
+            app(CloneVolunteerJob::class)->execute($job);
+        } catch (\Throwable $e) {
+            $this->addError('job', __('Failed to duplicate job. Please try again.'));
+
+            return;
+        }
+
         unset($this->jobs);
     }
 

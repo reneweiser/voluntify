@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\StaffRole;
 use App\Livewire\Events\JobsAndShiftsManager;
 use App\Models\Event;
 use App\Models\Organization;
@@ -169,4 +170,30 @@ it('returns 404 for events from other organizations', function () {
     $this->actingAs($this->user)
         ->get(route('events.jobs', $otherEvent))
         ->assertNotFound();
+});
+
+it('allows organizer to clone a job', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Ticket Scanner']);
+    Shift::factory()->for($job, 'volunteerJob')->count(2)->create();
+
+    Livewire::actingAs($this->user)
+        ->test(JobsAndShiftsManager::class, ['eventId' => $this->event->id])
+        ->call('cloneJob', $job->id)
+        ->assertHasNoErrors();
+
+    $cloned = VolunteerJob::where('name', 'Ticket Scanner (Copy)')->first();
+
+    expect($cloned)->not->toBeNull()
+        ->and($cloned->event_id)->toBe($this->event->id)
+        ->and($cloned->shifts)->toHaveCount(2);
+});
+
+it('denies non-organizer from cloning a job', function () {
+    $viewer = User::factory()->create();
+    $this->event->project->users()->attach($viewer, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($viewer)
+        ->test(JobsAndShiftsManager::class, ['eventId' => $this->event->id])
+        ->call('cloneJob', VolunteerJob::factory()->for($this->event)->create()->id)
+        ->assertForbidden();
 });
