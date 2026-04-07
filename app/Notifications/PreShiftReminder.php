@@ -52,8 +52,8 @@ class PreShiftReminder extends Notification implements ShouldQueue
                 'volunteer_name' => $notifiable->full_name,
                 'event_name' => $this->event->name,
                 'job_name' => $job->name,
-                'shift_date' => $this->shift->shift_date->format('d.m.Y'),
-                'shift_time' => $this->shift->displayTimeRange(),
+                'shift_date' => $this->shift->shift_date->setTimezone($this->event->project->timezone ?? 'UTC')->format('d.m.Y'),
+                'shift_time' => $this->shift->displayTimeRange($this->event->project->timezone ?? 'UTC'),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
                 'cheat_sheet_url' => $cheatSheetUrl ? "[Aufgaben-Infos anzeigen]({$cheatSheetUrl})" : '',
                 'portal_link' => '', // Will be set when portal URL is available

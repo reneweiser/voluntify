@@ -45,9 +45,10 @@ class CancellationDigestNotification extends Notification implements ShouldQueue
             $job = $shift->volunteerJob;
             $event = $job->event;
 
+            $tz = $this->project->timezone ?? 'UTC';
             $timeInfo = $shift->hasDefinedTimes()
-                ? $shift->shift_date->format('d.m.Y').' '.$shift->displayTimeRange()
-                : $shift->shift_date->format('d.m.Y').($shift->display_text ? " ({$shift->display_text})" : '');
+                ? $shift->shift_date->setTimezone($tz)->format('d.m.Y').' '.$shift->displayTimeRange($tz)
+                : $shift->shift_date->setTimezone($tz)->format('d.m.Y').($shift->display_text ? " ({$shift->display_text})" : '');
 
             $mail->line("- **{$volunteer->full_name}**: {$event->name} / {$job->name} — {$timeInfo}");
         }

@@ -41,10 +41,11 @@ class SignupConfirmation extends Notification implements ShouldQueue
         $firstShift = $shifts->first();
         $firstJob = $firstShift->volunteerJob;
 
-        $shiftsSummary = $shifts->map(function (Shift $shift) {
+        $tz = $this->event->project->timezone ?? 'UTC';
+        $shiftsSummary = $shifts->map(function (Shift $shift) use ($tz) {
             $job = $shift->volunteerJob;
 
-            return "- {$job->name}: {$shift->shift_date->format('d.m.Y')} {$shift->displayTimeRange()}";
+            return "- {$job->name}: {$shift->shift_date->setTimezone($tz)->format('d.m.Y')} {$shift->displayTimeRange($tz)}";
         })->implode("\n");
 
         $renderer = app(EmailTemplateRenderer::class);
@@ -61,8 +62,8 @@ class SignupConfirmation extends Notification implements ShouldQueue
                 'event_name' => $this->event->name,
                 'shifts_summary' => $shiftsSummary,
                 'job_name' => $firstJob->name,
-                'shift_date' => $firstShift->shift_date->format('d.m.Y'),
-                'shift_time' => $firstShift->displayTimeRange(),
+                'shift_date' => $firstShift->shift_date->setTimezone($tz)->format('d.m.Y'),
+                'shift_time' => $firstShift->displayTimeRange($tz),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
                 'portal_link' => route('volunteer.ticket', $this->magicLinkToken),
                 'project_name' => $this->event->project?->name ?? '',

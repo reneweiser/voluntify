@@ -157,20 +157,24 @@ class EmailTemplateEditor extends Component
             'portal_link' => 'https://example.com/portal/vorschau',
         ];
 
+        $tz = $this->event->project->timezone ?? 'UTC';
+        $sa = $this->event->starts_at->setTimezone($tz);
+        $ea = $this->event->ends_at->setTimezone($tz);
+
         return match ($type) {
             EmailTemplateType::SignupConfirmation => array_merge($common, [
                 'job_name' => 'Aufbau-Team',
-                'shift_date' => $this->event->starts_at->format('d.m.Y'),
-                'shift_time' => $this->event->starts_at->format('H:i').' — '.$this->event->ends_at->format('H:i'),
-                'shifts_summary' => "- Aufbau-Team: {$this->event->starts_at->format('d.m.Y H:i')} — {$this->event->ends_at->format('H:i')}",
+                'shift_date' => $sa->format('d.m.Y'),
+                'shift_time' => $sa->format('H:i').' — '.$ea->format('H:i'),
+                'shifts_summary' => "- Aufbau-Team: {$sa->format('d.m.Y H:i')} — {$ea->format('H:i')}",
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
                 'gear_zusammenfassung' => 'T-Shirt (Größe M), Funkgerät',
             ]),
             EmailTemplateType::PreShiftReminder24h,
             EmailTemplateType::PreShiftReminder4h => array_merge($common, [
                 'job_name' => 'Aufbau-Team',
-                'shift_date' => $this->event->starts_at->format('d.m.Y'),
-                'shift_time' => $this->event->starts_at->format('H:i').' — '.$this->event->ends_at->format('H:i'),
+                'shift_date' => $sa->format('d.m.Y'),
+                'shift_time' => $sa->format('H:i').' — '.$ea->format('H:i'),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
                 'cheat_sheet_url' => '[Aufgaben-Infos anzeigen](https://example.com/cheat-sheet)',
             ]),
@@ -202,8 +206,8 @@ class EmailTemplateEditor extends Component
                 'organizer_note' => 'Die Startzeit hat sich um 30 Minuten nach hinten verschoben.',
             ]),
             EmailTemplateType::CancellationConfirmation => array_merge($common, [
-                'cancelled_shift_summary' => "- Aufbau-Team: {$this->event->starts_at->format('d.m.Y')} {$this->event->starts_at->format('H:i')} — {$this->event->ends_at->format('H:i')}",
-                'remaining_shifts_section' => "**Deine verbleibenden Schichten:**\n- Abbau-Team: {$this->event->starts_at->format('d.m.Y')} 18:00 — 20:00",
+                'cancelled_shift_summary' => "- Aufbau-Team: {$sa->format('d.m.Y')} {$sa->format('H:i')} — {$ea->format('H:i')}",
+                'remaining_shifts_section' => "**Deine verbleibenden Schichten:**\n- Abbau-Team: {$sa->format('d.m.Y')} 18:00 — 20:00",
             ]),
         };
     }

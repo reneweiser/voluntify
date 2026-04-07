@@ -36,14 +36,15 @@ class ExportVolunteersCsv
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->cursor()
-            ->map(function (Volunteer $volunteer) use ($customFields) {
+            ->map(function (Volunteer $volunteer) use ($event, $customFields) {
+                $tz = $event->project->timezone ?? 'UTC';
                 $row = [
                     'first_name' => $volunteer->first_name,
                     'last_name' => $volunteer->last_name,
                     'email' => $volunteer->email,
                     'phone' => $volunteer->phone ?? '',
                     'shifts' => $volunteer->shiftSignups
-                        ->map(fn ($s) => $s->shift->volunteerJob->name.': '.$s->shift->shift_date->format('d.m.Y').' '.$s->shift->displayTimeRange())
+                        ->map(fn ($s) => $s->shift->volunteerJob->name.': '.$s->shift->shift_date->setTimezone($tz)->format('d.m.Y').' '.$s->shift->displayTimeRange($tz))
                         ->implode('; '),
                     'arrived' => $volunteer->eventArrivals->isNotEmpty() ? 'Yes' : 'No',
                     'attendance' => $this->attendanceStatus($volunteer),

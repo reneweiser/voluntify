@@ -42,7 +42,8 @@ class CancellationConfirmation extends Notification implements ShouldQueue
         $cancelledShift = $this->cancelledSignup->shift;
         $cancelledJob = $cancelledShift->volunteerJob;
 
-        $cancelledSummary = "- {$cancelledJob->name}: {$cancelledShift->shift_date->format('d.m.Y')} {$cancelledShift->displayTimeRange()}";
+        $tz = $this->event->project->timezone ?? 'UTC';
+        $cancelledSummary = "- {$cancelledJob->name}: {$cancelledShift->shift_date->setTimezone($tz)->format('d.m.Y')} {$cancelledShift->displayTimeRange($tz)}";
 
         $remainingSection = '';
         if (! empty($this->remainingShiftIds)) {
@@ -50,10 +51,10 @@ class CancellationConfirmation extends Notification implements ShouldQueue
                 ->whereIn('id', $this->remainingShiftIds)
                 ->get();
 
-            $remainingSummary = $remainingShifts->map(function (Shift $shift) {
+            $remainingSummary = $remainingShifts->map(function (Shift $shift) use ($tz) {
                 $job = $shift->volunteerJob;
 
-                return "- {$job->name}: {$shift->shift_date->format('d.m.Y')} {$shift->displayTimeRange()}";
+                return "- {$job->name}: {$shift->shift_date->setTimezone($tz)->format('d.m.Y')} {$shift->displayTimeRange($tz)}";
             })->implode("\n");
 
             $remainingSection = "**Deine verbleibenden Schichten:**\n{$remainingSummary}";
