@@ -25,7 +25,7 @@ import {
 import { validateJwt } from './jwt-validator';
 import { classifyShifts, type ClassifiedShift } from './shift-context';
 import { syncOutbox } from './sync';
-import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear, GuestEntry } from './types';
+import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear, VolunteerGearPickup, GuestEntry } from './types';
 
 type ScannerState = 'idle' | 'loading' | 'scanning' | 'result' | 'duplicate' | 'invalid' | 'confirmed';
 
@@ -389,7 +389,16 @@ export function scannerApp(config: ScannerAppConfig) {
                     }),
                 });
 
-                if (!response.ok) {
+                if (response.ok) {
+                    for (const [, gearList] of Object.entries(this._volunteerGear)) {
+                        const gear = (gearList as VolunteerGear[]).find((g) => g.id === volunteerGearId);
+                        if (gear) {
+                            gear.picked_up = true;
+                            gear.pickups.push({ state, quantity: 1, picked_up_at: new Date().toISOString() });
+                            break;
+                        }
+                    }
+                } else {
                     console.error('Gear pickup failed:', await response.text());
                 }
             } catch (error) {
@@ -399,6 +408,14 @@ export function scannerApp(config: ScannerAppConfig) {
 
         isAttendanceRecorded(shiftSignupId: number): boolean {
             return this._attendanceRecords.some((r) => r.shift_signup_id === shiftSignupId);
+        },
+
+        getVolunteerGear(volunteerId: number): VolunteerGear[] {
+            return this._volunteerGear[volunteerId] ?? [];
+        },
+
+        getGearItemName(projectGearItemId: number): string {
+            return this._gearItems.find((g) => g.id === projectGearItemId)?.name ?? '';
         },
 
         async _sync() {

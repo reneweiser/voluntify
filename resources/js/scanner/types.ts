@@ -43,15 +43,22 @@ export interface GearItem {
     id: number;
     name: string;
     type: 'size_selection' | 'quantity';
-    states: string[] | null;
+    available_sizes: string[] | null;
+    available_states: string[] | null;
+}
+
+export interface VolunteerGearPickup {
+    state: string | null;
+    quantity: number;
+    picked_up_at: string | null;
 }
 
 export interface VolunteerGear {
     id: number;
     project_gear_item_id: number;
-    state: string | null;
-    quantity: number;
-    picked_up_at: string | null;
+    size: string | null;
+    picked_up: boolean;
+    pickups: VolunteerGearPickup[];
 }
 
 export interface ArrivalRecord {
