@@ -1,11 +1,13 @@
 <div class="mx-auto max-w-7xl p-6">
-    <div class="flex items-center gap-3 mb-6">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('guest-lists.index', ['projectId' => $projectId])" wire:navigate aria-label="{{ __('Back to guest lists') }}" />
-        <flux:heading size="xl">{{ $this->guestList->name }}</flux:heading>
-        <flux:badge size="sm" :color="$this->guestList->status === \App\Enums\GuestListStatus::Confirmed ? 'emerald' : 'zinc'">
-            {{ $this->guestList->status->label() }}
-        </flux:badge>
-        <div class="ml-auto flex gap-2">
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+            <flux:button variant="ghost" icon="arrow-left" :href="route('guest-lists.index', ['projectId' => $projectId])" wire:navigate aria-label="{{ __('Back to guest lists') }}" />
+            <flux:heading size="xl">{{ $this->guestList->name }}</flux:heading>
+            <flux:badge size="sm" :color="$this->guestList->status === \App\Enums\GuestListStatus::Confirmed ? 'emerald' : 'zinc'">
+                {{ $this->guestList->status->label() }}
+            </flux:badge>
+        </div>
+        <div class="flex gap-2">
             @if ($this->guestList->isDraft())
                 <flux:button variant="primary" wire:click="confirmGuestList" wire:confirm="{{ __('Confirm this guest list? QR codes will be generated for all entries.') }}">
                     {{ __('Confirm') }}
@@ -16,6 +18,8 @@
             </flux:button>
         </div>
     </div>
+
+    <x-projects.layout :project="$project">
 
     @if (session('message'))
         <flux:callout variant="success" class="mb-4">{{ session('message') }}</flux:callout>
@@ -165,6 +169,8 @@
             @endforeach
         </div>
     @endif
+
+    </x-projects.layout>
 
     {{-- Edit Modal --}}
     <flux:modal wire:model="showEditModal">

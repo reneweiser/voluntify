@@ -1,13 +1,15 @@
 <div class="mx-auto max-w-7xl p-6">
-    <div class="flex items-center gap-3 mb-6">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('projects.show', $project)" wire:navigate aria-label="{{ __('Back to project') }}" />
-        <flux:heading size="xl">{{ __('Guest Lists') }} &mdash; {{ $project->name }}</flux:heading>
-        <div class="ml-auto">
-            <flux:button variant="primary" icon="plus" wire:click="$set('showCreateModal', true)">
-                {{ __('New Guest List') }}
-            </flux:button>
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+            <flux:button variant="ghost" icon="arrow-left" :href="route('projects.index')" wire:navigate aria-label="{{ __('Back to projects') }}" />
+            <flux:heading size="xl">{{ $project->name }}</flux:heading>
         </div>
+        <flux:button variant="primary" icon="plus" wire:click="$set('showCreateModal', true)">
+            {{ __('New Guest List') }}
+        </flux:button>
     </div>
+
+    <x-projects.layout :project="$project">
 
     @if (session('message'))
         <flux:callout variant="success" class="mb-4">{{ session('message') }}</flux:callout>
@@ -53,6 +55,8 @@
             @endforeach
         </div>
     @endif
+
+    </x-projects.layout>
 
     {{-- Create Modal --}}
     <flux:modal wire:model="showCreateModal">
