@@ -9,6 +9,7 @@ use App\Exceptions\InvalidMagicLinkException;
 use App\Models\Announcement;
 use App\Models\CustomFieldResponse;
 use App\Models\ShiftSignup;
+use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use App\Services\HintTextResolver;
@@ -27,14 +28,23 @@ class VolunteerPortal extends Component
 
     public bool $expired = false;
 
+    public string $magicToken = '';
+
+    public bool $hasTicket = false;
+
     public ?int $cancellingSignupId = null;
 
     public string $successMessage = '';
 
     public function mount(string $magicToken): void
     {
+        $this->magicToken = $magicToken;
+
         try {
             $this->volunteer = app(VerifyMagicLink::class)->execute($magicToken);
+            $this->hasTicket = Ticket::where('volunteer_id', $this->volunteer->id)
+                ->where('project_id', $this->volunteer->project_id)
+                ->exists();
         } catch (InvalidMagicLinkException $e) {
             if (str_contains($e->getMessage(), 'expired')) {
                 $this->expired = true;

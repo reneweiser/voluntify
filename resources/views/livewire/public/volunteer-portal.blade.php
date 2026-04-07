@@ -13,6 +13,16 @@
             <p class="mt-3" style="color: #a1a1aa;">{{ __('Welcome back, :name', ['name' => $volunteer->full_name]) }}</p>
         </div>
 
+        {{-- Back to ticket --}}
+        @if ($hasTicket)
+            <div class="mb-6">
+                <a href="{{ route('volunteer.ticket', $magicToken) }}" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; border: 2px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); border-radius: 4px; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; text-decoration: none; transition: border-color 0.2s, color 0.2s;">
+                    <flux:icon name="ticket" variant="mini" class="size-4" />
+                    {{ __('View Your Ticket') }}
+                </a>
+            </div>
+        @endif
+
         {{-- Success banner --}}
         @if ($successMessage)
             <div class="rounded-lg p-3 mb-6 text-sm" style="background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.2); color: #6ee7b7;">

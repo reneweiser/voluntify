@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
@@ -305,4 +306,42 @@ it('shows cancellation policy text inline', function () {
 
     Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
         ->assertSee('24 hours before');
+});
+
+it('shows back link to ticket page when volunteer has a ticket', function () {
+    Ticket::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'project_id' => $this->project->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSeeHtml(route('volunteer.ticket', 'token'))
+        ->assertSee('View Your Ticket');
+});
+
+it('does not show ticket link when volunteer has no ticket', function () {
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('View Your Ticket');
+});
+
+it('includes correct magic token in ticket link href', function () {
+    Ticket::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'project_id' => $this->project->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'my-secret-token'])
+        ->assertSeeHtml(route('volunteer.ticket', 'my-secret-token'));
 });
