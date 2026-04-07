@@ -80,7 +80,7 @@
                                 <flux:text size="sm">{{ $announcement->recipient_count }} {{ __('Empfänger') }}</flux:text>
                             @elseif ($announcement->isScheduled())
                                 <flux:badge size="sm" color="amber">{{ __('Geplant') }}</flux:badge>
-                                <flux:text size="sm">{{ $announcement->send_at->format('d.m.Y H:i') }}</flux:text>
+                                <flux:text size="sm">{{ $announcement->send_at->setTimezone($project->timezone ?? 'UTC')->format('d.m.Y H:i') }}</flux:text>
                             @else
                                 <flux:badge size="sm" color="sky">{{ __('In Warteschlange') }}</flux:badge>
                             @endif

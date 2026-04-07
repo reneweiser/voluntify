@@ -3,6 +3,7 @@
 namespace App\Livewire\Projects;
 
 use App\Actions\CreateAnnouncement;
+use App\Concerns\ConvertsTimezone;
 use App\Models\Project;
 use App\Models\Shift;
 use App\Models\Volunteer;
@@ -17,6 +18,8 @@ use Livewire\Component;
 #[Title('Ankündigungen')]
 class AnnouncementComposer extends Component
 {
+    use ConvertsTimezone;
+
     #[Locked]
     public Project $project;
 
@@ -133,7 +136,11 @@ class AnnouncementComposer extends Component
         $this->validate([
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:10000'],
-            'sendAt' => ['nullable', 'date', 'after:now'],
+            'sendAt' => ['nullable', 'date', function ($attr, $value, $fail) {
+                if ($value && $this->toUtc($value, $this->project->timezone ?? 'UTC')->isPast()) {
+                    $fail('Der Zeitpunkt muss in der Zukunft liegen.');
+                }
+            }],
         ]);
 
         $this->showConfirmModal = true;
@@ -146,7 +153,11 @@ class AnnouncementComposer extends Component
         $this->validate([
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:10000'],
-            'sendAt' => ['nullable', 'date', 'after:now'],
+            'sendAt' => ['nullable', 'date', function ($attr, $value, $fail) {
+                if ($value && $this->toUtc($value, $this->project->timezone ?? 'UTC')->isPast()) {
+                    $fail('Der Zeitpunkt muss in der Zukunft liegen.');
+                }
+            }],
         ]);
 
         $eventId = $this->selectedEventId ? (int) $this->selectedEventId : null;
@@ -176,7 +187,7 @@ class AnnouncementComposer extends Component
             'event_id' => $eventId,
             'job_id' => $jobId,
             'shift_id' => $shiftId,
-            'send_at' => $this->sendAt ?: null,
+            'send_at' => $this->sendAt ? $this->toUtc($this->sendAt, $this->project->timezone ?? 'UTC') : null,
         ], auth()->user());
 
         $this->reset(['subject', 'body', 'selectedEventId', 'selectedJobId', 'selectedShiftId', 'sendAt', 'showConfirmModal']);
