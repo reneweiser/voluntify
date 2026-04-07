@@ -50,6 +50,10 @@ class EmailTemplateRenderer
             'subject' => 'Aktualisierung zu {{event_name}}',
             'body' => "Hallo {{vorname}}!\n\nEs gibt Neuigkeiten zu **{{event_name}}**:\n\n{{organizer_note}}\n\nBesuche dein Portal für weitere Details: {{portal_link}}",
         ],
+        'cancellation_confirmation' => [
+            'subject' => 'Stornierungsbestätigung für {{event_name}}',
+            'body' => "Hallo {{vorname}}!\n\nDeine folgende Schicht bei **{{event_name}}** wurde storniert:\n{{cancelled_shift_summary}}\n\n{{remaining_shifts_section}}\n\nDu kannst dein Ticket jederzeit über den folgenden Link einsehen: {{portal_link}}\n\nVielen Dank!",
+        ],
     ];
 
     /**
@@ -159,6 +163,16 @@ class EmailTemplateRenderer
                 'event_name',
                 'organizer_note',
                 'portal_link',
+            ],
+            EmailTemplateType::CancellationConfirmation => [
+                'vorname',
+                'nachname',
+                'event_name',
+                'cancelled_shift_summary',
+                'remaining_shifts_section',
+                'portal_link',
+                'kontakt_email',
+                'project_name',
             ],
         };
     }

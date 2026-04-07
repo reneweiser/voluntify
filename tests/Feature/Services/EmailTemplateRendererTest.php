@@ -187,7 +187,7 @@ it('has German default for event updated [#81]', function () {
         ->and($defaults['body'])->toContain('{{organizer_note}}');
 });
 
-it('has defaults for all 9 template types [#81]', function () {
+it('has defaults for all 10 template types [#81]', function () {
     foreach (EmailTemplateType::cases() as $type) {
         $defaults = $this->renderer->getDefaults($type);
         expect($defaults)->toHaveKeys(['subject', 'body']);
@@ -297,4 +297,53 @@ it('returns placeholders for event updated [#81]', function () {
         ->and($placeholders)->toContain('event_name')
         ->and($placeholders)->toContain('organizer_note')
         ->and($placeholders)->toContain('portal_link');
+});
+
+// ============================================================================
+// #104 Cancellation Confirmation
+// ============================================================================
+
+it('has German default for cancellation confirmation [#104]', function () {
+    $defaults = $this->renderer->getDefaults(EmailTemplateType::CancellationConfirmation);
+
+    expect($defaults['subject'])->toContain('Stornierungsbestätigung')
+        ->and($defaults['body'])->toContain('Hallo {{vorname}}')
+        ->and($defaults['body'])->toContain('{{cancelled_shift_summary}}')
+        ->and($defaults['body'])->toContain('{{remaining_shifts_section}}');
+});
+
+it('returns placeholders for cancellation confirmation [#104]', function () {
+    $placeholders = $this->renderer->availablePlaceholders(EmailTemplateType::CancellationConfirmation);
+
+    expect($placeholders)->toContain('vorname')
+        ->and($placeholders)->toContain('nachname')
+        ->and($placeholders)->toContain('event_name')
+        ->and($placeholders)->toContain('cancelled_shift_summary')
+        ->and($placeholders)->toContain('remaining_shifts_section')
+        ->and($placeholders)->toContain('portal_link')
+        ->and($placeholders)->toContain('kontakt_email')
+        ->and($placeholders)->toContain('project_name');
+});
+
+it('renders cancellation confirmation template with variables [#104]', function () {
+    $rendered = $this->renderer->render(
+        EmailTemplateType::CancellationConfirmation,
+        $this->event,
+        [
+            'vorname' => 'Anna',
+            'nachname' => 'Schmidt',
+            'event_name' => 'Summer Fest',
+            'cancelled_shift_summary' => '- Einlass: 01.07.2026 10:00 — 14:00',
+            'remaining_shifts_section' => "**Deine verbleibenden Schichten:**\n- Aufbau: 01.07.2026 08:00 — 10:00",
+            'portal_link' => 'https://example.com/my-ticket/abc123',
+            'kontakt_email' => 'kontakt@example.com',
+            'project_name' => 'Sommerfest 2026',
+        ],
+    );
+
+    expect($rendered['subject'])->toBe('Stornierungsbestätigung für Summer Fest')
+        ->and($rendered['body'])->toContain('Hallo Anna')
+        ->and($rendered['body'])->toContain('Einlass: 01.07.2026 10:00 — 14:00')
+        ->and($rendered['body'])->toContain('verbleibenden Schichten')
+        ->and($rendered['body'])->toContain('https://example.com/my-ticket/abc123');
 });

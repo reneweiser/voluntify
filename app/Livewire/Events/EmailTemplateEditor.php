@@ -201,6 +201,10 @@ class EmailTemplateEditor extends Component
             EmailTemplateType::EventUpdated => array_merge($common, [
                 'organizer_note' => 'Die Startzeit hat sich um 30 Minuten nach hinten verschoben.',
             ]),
+            EmailTemplateType::CancellationConfirmation => array_merge($common, [
+                'cancelled_shift_summary' => "- Aufbau-Team: {$this->event->starts_at->format('d.m.Y')} {$this->event->starts_at->format('H:i')} — {$this->event->ends_at->format('H:i')}",
+                'remaining_shifts_section' => "**Deine verbleibenden Schichten:**\n- Abbau-Team: {$this->event->starts_at->format('d.m.Y')} 18:00 — 20:00",
+            ]),
         };
     }
 }

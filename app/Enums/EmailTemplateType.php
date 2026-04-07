@@ -15,6 +15,7 @@ enum EmailTemplateType: string
     case AddedToOrganization = 'added_to_organization';
     case EventAnnouncement = 'event_announcement';
     case EventUpdated = 'event_updated';
+    case CancellationConfirmation = 'cancellation_confirmation';
 
     /**
      * Human-readable German label for the template type.
@@ -31,6 +32,7 @@ enum EmailTemplateType: string
             self::AddedToOrganization => 'Zur Organisation hinzugefügt',
             self::EventAnnouncement => 'Event-Ankündigung',
             self::EventUpdated => 'Event-Aktualisierung',
+            self::CancellationConfirmation => 'Stornierungsbestätigung',
         };
     }
 }
