@@ -88,3 +88,18 @@ it('excludes Draft and Archived events from publishedEvents', function () {
 
     expect($project->publishedEvents)->toHaveCount(0);
 });
+
+it('defaults timezone to UTC for new projects', function () {
+    $project = Project::factory()->create();
+
+    expect($project->fresh()->timezone)->toBe('UTC');
+});
+
+it('stores custom timezone on project', function () {
+    $project = Project::factory()->create(['timezone' => 'Europe/Berlin']);
+
+    expect($project->timezone)->toBe('Europe/Berlin');
+
+    $project->refresh();
+    expect($project->timezone)->toBe('Europe/Berlin');
+});

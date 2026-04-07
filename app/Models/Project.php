@@ -23,6 +23,7 @@ class Project extends Model
         'organization_id',
         'name',
         'description',
+        'timezone',
         'sender_name',
         'contact_email',
         'cancellation_enabled',
