@@ -232,3 +232,27 @@ it('can create volunteer and then enroll them into shifts', function () {
     $volunteer = Volunteer::where('email', 'enrollme@test.com')->first();
     expect(ShiftSignup::where('volunteer_id', $volunteer->id)->where('shift_id', $shift->id)->exists())->toBeTrue();
 });
+
+it('displays the selected volunteer full name in the shift selection heading', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create([
+        'first_name' => 'Alice',
+        'last_name' => 'Tester',
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ManualEnrollment::class, ['eventId' => $this->event->id])
+        ->call('selectVolunteer', $volunteer->id)
+        ->assertSee('Enrolling: Alice Tester');
+});
+
+it('renders shift checkboxes with live wire:model binding', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 5]);
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $shift->id]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ManualEnrollment::class, ['eventId' => $this->event->id])
+        ->call('selectVolunteer', $volunteer->id)
+        ->assertSeeHtml('wire:model.live="selectedShifts"');
+});
