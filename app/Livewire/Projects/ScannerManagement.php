@@ -6,6 +6,7 @@ use App\Actions\CreateProjectScanner;
 use App\Actions\DeleteProjectScanner;
 use App\Actions\SendScannerLinks;
 use App\Actions\UpdateProjectScanner;
+use App\Concerns\ConvertsTimezone;
 use App\Events\Activity\ScannerAssigneeAdded;
 use App\Events\Activity\ScannerAssigneeRemoved;
 use App\Livewire\Forms\ScannerForm;
@@ -25,6 +26,8 @@ use Livewire\Component;
 #[Title('Scanner Management')]
 class ScannerManagement extends Component
 {
+    use ConvertsTimezone;
+
     #[Locked]
     public int $projectId;
 
@@ -76,8 +79,13 @@ class ScannerManagement extends Component
     {
         $this->form->validate();
 
+        $tz = $this->project->timezone ?? 'UTC';
+        $data = $this->form->toActionData();
+        $data['starts_at'] = $this->toUtc($data['starts_at'], $tz);
+        $data['ends_at'] = $this->toUtc($data['ends_at'], $tz);
+
         $action = new CreateProjectScanner;
-        $scanner = $action->execute($this->project, $this->form->toActionData());
+        $scanner = $action->execute($this->project, $data);
 
         session()->flash('rawAuthCode', [
             'id' => $scanner->id,
@@ -94,6 +102,7 @@ class ScannerManagement extends Component
         $scanner = ProjectScanner::where('project_id', $this->projectId)->findOrFail($scannerId);
 
         $this->editingScannerId = $scannerId;
+        $tz = $this->project->timezone ?? 'UTC';
         $this->form->fillFromScanner([
             'name' => $scanner->name,
             'type' => $scanner->type->value,
@@ -101,8 +110,8 @@ class ScannerManagement extends Component
             'eventId' => $scanner->event_id,
             'gearItemIds' => $scanner->gear_item_ids ?? [],
             'hintText' => $scanner->hint_text ?? '',
-            'startsAt' => $scanner->starts_at->format('Y-m-d\TH:i'),
-            'endsAt' => $scanner->ends_at->format('Y-m-d\TH:i'),
+            'startsAt' => $this->toLocal($scanner->starts_at, $tz),
+            'endsAt' => $this->toLocal($scanner->ends_at, $tz),
         ]);
         $this->showCreateModal = true;
     }
@@ -114,8 +123,13 @@ class ScannerManagement extends Component
         $scanner = ProjectScanner::where('project_id', $this->projectId)
             ->findOrFail($this->editingScannerId);
 
+        $tz = $this->project->timezone ?? 'UTC';
+        $data = $this->form->toActionData();
+        $data['starts_at'] = $this->toUtc($data['starts_at'], $tz);
+        $data['ends_at'] = $this->toUtc($data['ends_at'], $tz);
+
         $action = new UpdateProjectScanner;
-        $action->execute($scanner, $this->form->toActionData());
+        $action->execute($scanner, $data);
 
         $this->form->reset();
         $this->showCreateModal = false;

@@ -32,8 +32,8 @@ class ScannerLinkMail extends Mailable
             with: [
                 'scannerName' => $this->scanner->name,
                 'url' => $this->url,
-                'startsAt' => $this->scanner->starts_at->format('M d, Y H:i'),
-                'endsAt' => $this->scanner->ends_at->format('M d, Y H:i'),
+                'startsAt' => $this->scanner->starts_at->setTimezone($this->scanner->project->timezone ?? 'UTC')->format('M d, Y H:i'),
+                'endsAt' => $this->scanner->ends_at->setTimezone($this->scanner->project->timezone ?? 'UTC')->format('M d, Y H:i'),
             ],
         );
     }

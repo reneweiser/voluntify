@@ -34,12 +34,13 @@ class ScannerAuth extends Component
 
     public function mount(string $scannerToken): void
     {
-        $scanner = ProjectScanner::where('scanner_token', $scannerToken)->firstOrFail();
+        $scanner = ProjectScanner::with('project')->where('scanner_token', $scannerToken)->firstOrFail();
 
+        $tz = $scanner->project->timezone ?? 'UTC';
         $this->scannerToken = $scannerToken;
         $this->scannerName = $scanner->name;
-        $this->startsAt = $scanner->starts_at->format('H:i');
-        $this->endsAt = $scanner->ends_at->format('H:i');
+        $this->startsAt = $scanner->starts_at->setTimezone($tz)->format('H:i');
+        $this->endsAt = $scanner->ends_at->setTimezone($tz)->format('H:i');
 
         if ($scanner->isExpired()) {
             $this->errorMessage = 'Das Scanner-Fenster ist abgelaufen.';

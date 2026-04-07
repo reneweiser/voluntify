@@ -49,7 +49,8 @@
                                 </flux:badge>
                             </div>
                             <flux:text size="sm" class="text-zinc-500">
-                                {{ $scanner->starts_at->format('M d, Y H:i') }} &mdash; {{ $scanner->ends_at->format('M d, Y H:i') }}
+                                @php $tz = $project->timezone ?? 'UTC'; @endphp
+                                {{ $scanner->starts_at->setTimezone($tz)->format('M d, Y H:i') }} &mdash; {{ $scanner->ends_at->setTimezone($tz)->format('M d, Y H:i') }}
                             </flux:text>
                             @if ($scanner->hint_text)
                                 <flux:text size="sm" class="mt-1">{{ $scanner->hint_text }}</flux:text>
