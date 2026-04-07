@@ -29,6 +29,16 @@
             {{ __('Scanners') }}
         </flux:navlist.item>
     @endcan
+    @can('manageGuestLists', $project)
+        <flux:navlist.item
+            :href="route('guest-lists.index', $project)"
+            :current="request()->routeIs('guest-lists.*')"
+            icon="clipboard-document-list"
+            wire:navigate
+        >
+            {{ __('Gästelisten') }}
+        </flux:navlist.item>
+    @endcan
     @can('view', $project)
         <flux:navlist.item
             :href="route('projects.gear-summary', $project)"
