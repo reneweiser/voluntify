@@ -231,7 +231,7 @@
                             <flux:icon name="calendar" variant="mini" class="size-5 text-zinc-400" />
                             <div>
                                 <flux:heading size="sm">{{ $event->name }}</flux:heading>
-                                <flux:text size="sm">{{ $event->starts_at->format('M d, Y g:i A') }}</flux:text>
+                                <flux:text size="sm">{{ $event->starts_at->setTimezone($project->timezone ?? 'UTC')->format('M d, Y g:i A') }}</flux:text>
                             </div>
                         </a>
                         <div class="flex items-center gap-2">

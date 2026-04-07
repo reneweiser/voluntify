@@ -103,7 +103,8 @@
                                 <div class="mt-2 flex flex-col gap-1.5 text-sm" style="color: #a1a1aa;">
                                     <span class="inline-flex items-center gap-1.5">
                                         <flux:icon name="calendar" variant="mini" class="size-4 shrink-0" style="color: #9a9a9a;" />
-                                        {{ $event->starts_at->format('d.m.Y H:i') }} &mdash; {{ $event->ends_at->format('H:i') }}
+                                        @php $tz = $project->timezone ?? 'UTC'; @endphp
+                                        {{ $event->starts_at->setTimezone($tz)->format('d.m.Y H:i') }} &mdash; {{ $event->ends_at->setTimezone($tz)->format('H:i') }}
                                     </span>
                                     @if ($event->location)
                                         <span class="inline-flex items-center gap-1.5">

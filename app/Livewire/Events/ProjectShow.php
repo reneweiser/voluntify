@@ -7,6 +7,7 @@ use App\Actions\CreateEvent;
 use App\Actions\RequestProjectDeletion;
 use App\Actions\RestoreProject;
 use App\Actions\UpdateProject;
+use App\Concerns\ConvertsTimezone;
 use App\Exceptions\DomainException;
 use App\Livewire\Forms\CreateEventInProjectForm;
 use App\Livewire\Forms\ProjectDetailsForm;
@@ -14,7 +15,6 @@ use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -25,6 +25,7 @@ use Livewire\WithFileUploads;
 #[Title('Project')]
 class ProjectShow extends Component
 {
+    use ConvertsTimezone;
     use WithFileUploads;
 
     #[Locked]
@@ -99,14 +100,15 @@ class ProjectShow extends Component
 
         $action = app(CreateEvent::class);
 
+        $tz = $this->project->timezone ?? 'UTC';
         $event = $action->execute(
             organization: $this->organization,
             project: $this->project,
             name: $this->eventForm->name,
             description: $this->eventForm->description ?: null,
             location: $this->eventForm->location ?: null,
-            startsAt: Carbon::parse($this->eventForm->startsAt),
-            endsAt: Carbon::parse($this->eventForm->endsAt),
+            startsAt: $this->toUtc($this->eventForm->startsAt, $tz),
+            endsAt: $this->toUtc($this->eventForm->endsAt, $tz),
             titleImage: $this->eventForm->titleImage,
             causer: auth()->user(),
         );

@@ -225,7 +225,8 @@
                 <div>
                     <flux:text size="sm" class="font-medium">{{ __('Date & Time') }}</flux:text>
                     <flux:text class="mt-1">
-                        {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('M d, Y g:i A') }}
+                        @php $tz = $event->project->timezone ?? 'UTC'; @endphp
+                        {{ $event->starts_at->setTimezone($tz)->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->setTimezone($tz)->format('M d, Y g:i A') }}
                     </flux:text>
                 </div>
 

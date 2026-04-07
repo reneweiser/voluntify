@@ -197,3 +197,33 @@ it('redirects back to event overview after save', function () {
         ->assertHasNoErrors()
         ->assertRedirect(route('events.show', $this->event));
 });
+
+it('stores event starts_at in UTC when project has non-UTC timezone', function () {
+    $this->project->update(['timezone' => 'Europe/Berlin']);
+
+    Livewire::actingAs($this->organizer)
+        ->test(EventSettings::class, ['eventId' => $this->event->id])
+        ->set('form.startsAt', '2026-07-01T11:43')
+        ->set('form.endsAt', '2026-07-01T20:00')
+        ->call('saveEvent')
+        ->assertHasNoErrors();
+
+    $this->event->refresh();
+    // 11:43 CEST (UTC+2) = 09:43 UTC
+    expect($this->event->starts_at->format('Y-m-d H:i'))->toBe('2026-07-01 09:43')
+        ->and($this->event->ends_at->format('Y-m-d H:i'))->toBe('2026-07-01 18:00');
+});
+
+it('displays event times in project timezone in edit form', function () {
+    $this->project->update(['timezone' => 'Europe/Berlin']);
+    // Store as 09:43 UTC (= 11:43 CEST)
+    $this->event->update([
+        'starts_at' => '2026-07-01 09:43:00',
+        'ends_at' => '2026-07-01 18:00:00',
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(EventSettings::class, ['eventId' => $this->event->id])
+        ->assertSet('form.startsAt', '2026-07-01T11:43')
+        ->assertSet('form.endsAt', '2026-07-01T20:00');
+});

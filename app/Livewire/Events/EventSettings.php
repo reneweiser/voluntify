@@ -5,12 +5,12 @@ namespace App\Livewire\Events;
 use App\Actions\AssignEventsToProject;
 use App\Actions\DeleteEventImage;
 use App\Actions\UpdateEvent;
+use App\Concerns\ConvertsTimezone;
 use App\Enums\EventVisibility;
 use App\Exceptions\DomainException;
 use App\Livewire\Forms\EventSettingsForm;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -21,6 +21,7 @@ use Livewire\WithFileUploads;
 #[Title('Event Settings')]
 class EventSettings extends Component
 {
+    use ConvertsTimezone;
     use WithFileUploads;
 
     #[Locked]
@@ -72,13 +73,14 @@ class EventSettings extends Component
 
         try {
             $action = app(UpdateEvent::class);
+            $tz = $this->event->project->timezone ?? 'UTC';
             $this->event = $action->execute(
                 event: $this->event,
                 name: $this->form->name,
                 description: $this->form->description ?: null,
                 location: $this->form->location ?: null,
-                startsAt: Carbon::parse($this->form->startsAt),
-                endsAt: Carbon::parse($this->form->endsAt),
+                startsAt: $this->toUtc($this->form->startsAt, $tz),
+                endsAt: $this->toUtc($this->form->endsAt, $tz),
                 titleImage: $this->form->titleImage,
                 attendanceGraceMinutes: $this->form->attendanceGraceMinutes !== '' ? (int) $this->form->attendanceGraceMinutes : null,
                 visibility: EventVisibility::from($this->form->visibility),
@@ -104,12 +106,13 @@ class EventSettings extends Component
 
     private function fillForm(): void
     {
+        $tz = $this->event->project->timezone ?? 'UTC';
         $this->form->fillFromEvent([
             'name' => $this->event->name,
             'description' => $this->event->description ?? '',
             'location' => $this->event->location ?? '',
-            'startsAt' => $this->event->starts_at->format('Y-m-d\TH:i'),
-            'endsAt' => $this->event->ends_at->format('Y-m-d\TH:i'),
+            'startsAt' => $this->toLocal($this->event->starts_at, $tz),
+            'endsAt' => $this->toLocal($this->event->ends_at, $tz),
             'attendanceGraceMinutes' => $this->event->attendance_grace_minutes ?? '',
             'visibility' => $this->event->visibility?->value ?? 'public',
             'notificationEmail' => $this->event->notification_email ?? '',

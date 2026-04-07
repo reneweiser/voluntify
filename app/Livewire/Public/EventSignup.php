@@ -53,7 +53,8 @@ class EventSignup extends Component
 
     public function mount(string $publicToken): void
     {
-        $this->event = Event::where('public_token', $publicToken)
+        $this->event = Event::with('project')
+            ->where('public_token', $publicToken)
             ->where('status', EventStatus::PublishedOpen)
             ->firstOrFail();
     }

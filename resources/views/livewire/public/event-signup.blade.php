@@ -46,7 +46,8 @@
         <div class="mt-5 flex flex-wrap gap-2.5">
             <span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; background: rgba(5,150,105,0.15); color: #6ee7b7; border-radius: 4px; font-size: 0.875rem;">
                 <flux:icon name="calendar" variant="mini" class="size-4" />
-                {{ $event->starts_at->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->format('g:i A') }}
+                @php $tz = $event->project->timezone ?? 'UTC'; @endphp
+                {{ $event->starts_at->setTimezone($tz)->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->setTimezone($tz)->format('g:i A') }}
             </span>
             @if ($event->location)
                 <span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; background: rgba(5,150,105,0.15); color: #6ee7b7; border-radius: 4px; font-size: 0.875rem;">
