@@ -102,8 +102,8 @@ it('creates event in the current project', function () {
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->set('showCreateEventModal', true)
         ->set('eventForm.name', 'Project Event')
-        ->set('eventForm.startsAt', '2026-09-01 10:00')
-        ->set('eventForm.endsAt', '2026-09-01 18:00')
+        ->set('eventForm.startsAt', '2026-09-01T10:00')
+        ->set('eventForm.endsAt', '2026-09-01T18:00')
         ->call('createEvent')
         ->assertHasNoErrors()
         ->assertRedirect();
@@ -146,8 +146,8 @@ it('validates event name required when creating event', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->set('showCreateEventModal', true)
-        ->set('eventForm.startsAt', '2026-09-01 10:00')
-        ->set('eventForm.endsAt', '2026-09-01 18:00')
+        ->set('eventForm.startsAt', '2026-09-01T10:00')
+        ->set('eventForm.endsAt', '2026-09-01T18:00')
         ->call('createEvent')
         ->assertHasErrors(['eventForm.name' => 'required']);
 });

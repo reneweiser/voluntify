@@ -16,8 +16,8 @@ it('requires project selection when creating an event', function () {
         ->test(EventList::class)
         ->set('showCreateModal', true)
         ->set('eventName', 'Test Event')
-        ->set('eventStartsAt', '2026-09-01 10:00')
-        ->set('eventEndsAt', '2026-09-01 18:00')
+        ->set('eventStartsAt', '2026-09-01T10:00')
+        ->set('eventEndsAt', '2026-09-01T18:00')
         ->call('createEvent')
         ->assertHasErrors(['eventProjectId' => 'required']);
 });
@@ -30,8 +30,8 @@ it('creates event under the selected project', function () {
         ->set('showCreateModal', true)
         ->set('eventProjectId', $project->id)
         ->set('eventName', 'New Event')
-        ->set('eventStartsAt', '2026-09-01 10:00')
-        ->set('eventEndsAt', '2026-09-01 18:00')
+        ->set('eventStartsAt', '2026-09-01T10:00')
+        ->set('eventEndsAt', '2026-09-01T18:00')
         ->call('createEvent')
         ->assertHasNoErrors()
         ->assertRedirect();
@@ -51,8 +51,8 @@ it('rejects project from another organization', function () {
         ->set('showCreateModal', true)
         ->set('eventProjectId', $otherProject->id)
         ->set('eventName', 'Sneaky Event')
-        ->set('eventStartsAt', '2026-09-01 10:00')
-        ->set('eventEndsAt', '2026-09-01 18:00')
+        ->set('eventStartsAt', '2026-09-01T10:00')
+        ->set('eventEndsAt', '2026-09-01T18:00')
         ->call('createEvent')
         ->assertHasErrors(['eventProjectId']);
 });

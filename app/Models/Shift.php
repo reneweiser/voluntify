@@ -89,14 +89,17 @@ class Shift extends Model
         return $this->starts_at !== null;
     }
 
-    public function displayTimeRange(): string
+    public function displayTimeRange(?string $timezone = null): string
     {
         if ($this->display_text) {
             return $this->display_text;
         }
 
         if ($this->hasDefinedTimes()) {
-            return $this->starts_at->format('H:i').' – '.$this->ends_at->format('H:i');
+            $start = $timezone ? $this->starts_at->setTimezone($timezone) : $this->starts_at;
+            $end = $timezone ? $this->ends_at->setTimezone($timezone) : $this->ends_at;
+
+            return $start->format('H:i').' – '.$end->format('H:i');
         }
 
         return $this->display_text ?? '';

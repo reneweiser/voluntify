@@ -90,7 +90,8 @@
                     @foreach ($this->shiftSignups as $signup)
                         <flux:table.row :key="'signup-'.$signup->id">
                             <flux:table.cell>{{ $signup->shift->volunteerJob->name }}</flux:table.cell>
-                            <flux:table.cell>{{ $signup->shift->shift_date->format('M d') }} — {{ $signup->shift->displayTimeRange() }}</flux:table.cell>
+                            @php $tz = $event->project->timezone ?? 'UTC'; @endphp
+                            <flux:table.cell>{{ $signup->shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $signup->shift->displayTimeRange($tz) }}</flux:table.cell>
                             <flux:table.cell>{{ $signup->signed_up_at->format('M d, Y') }}</flux:table.cell>
                             <flux:table.cell>
                                 @if ($signup->attendanceRecord)

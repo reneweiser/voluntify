@@ -37,7 +37,8 @@
                         <flux:select.option value="">{{ __('Alle Schichten') }}</flux:select.option>
                         @foreach ($this->shifts as $shift)
                             <flux:select.option :value="$shift->id">
-                                {{ $shift->shift_date->format('d.m.Y') }} {{ $shift->displayTimeRange() }}
+                                @php $tz = $project->timezone ?? 'UTC'; @endphp
+                                {{ $shift->shift_date->setTimezone($tz)->format('d.m.Y') }} {{ $shift->displayTimeRange($tz) }}
                             </flux:select.option>
                         @endforeach
                     </flux:select>

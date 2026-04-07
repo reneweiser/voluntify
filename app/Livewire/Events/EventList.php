@@ -3,11 +3,11 @@
 namespace App\Livewire\Events;
 
 use App\Actions\CreateEvent;
+use App\Concerns\ConvertsTimezone;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -18,6 +18,7 @@ use Livewire\WithFileUploads;
 #[Title('Events')]
 class EventList extends Component
 {
+    use ConvertsTimezone;
     use WithFileUploads;
 
     public string $statusFilter = '';
@@ -122,8 +123,8 @@ class EventList extends Component
             name: $this->eventName,
             description: $this->eventDescription ?: null,
             location: $this->eventLocation ?: null,
-            startsAt: Carbon::parse($this->eventStartsAt),
-            endsAt: Carbon::parse($this->eventEndsAt),
+            startsAt: $this->toUtc($this->eventStartsAt, $project->timezone ?? 'UTC'),
+            endsAt: $this->toUtc($this->eventEndsAt, $project->timezone ?? 'UTC'),
             titleImage: $this->eventTitleImage,
             causer: auth()->user(),
         );

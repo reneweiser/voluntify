@@ -9,6 +9,7 @@ use App\Actions\DeleteShift;
 use App\Actions\DeleteVolunteerJob;
 use App\Actions\UpdateShift;
 use App\Actions\UpdateVolunteerJob;
+use App\Concerns\ConvertsTimezone;
 use App\Exceptions\HasSignupsException;
 use App\Models\Event;
 use App\Models\Shift;
@@ -22,6 +23,8 @@ use Livewire\Component;
 #[Title('Jobs & Shifts')]
 class JobsAndShiftsManager extends Component
 {
+    use ConvertsTimezone;
+
     public Event $event;
 
     // Job form
@@ -180,11 +183,12 @@ class JobsAndShiftsManager extends Component
         Gate::authorize('manageJobs', $this->event);
 
         $shift = $this->findShift($shiftId);
+        $tz = $this->event->project->timezone ?? 'UTC';
         $this->editingShiftId = $shift->id;
         $this->shiftJobId = $shift->volunteer_job_id;
-        $this->shiftDate = $shift->shift_date->format('Y-m-d');
-        $this->shiftStartsAt = $shift->starts_at?->format('Y-m-d\TH:i') ?? '';
-        $this->shiftEndsAt = $shift->ends_at?->format('Y-m-d\TH:i') ?? '';
+        $this->shiftDate = $shift->shift_date->setTimezone($tz)->format('Y-m-d');
+        $this->shiftStartsAt = $shift->starts_at ? $this->toLocal($shift->starts_at, $tz) : '';
+        $this->shiftEndsAt = $shift->ends_at ? $this->toLocal($shift->ends_at, $tz) : '';
         $this->shiftDisplayText = $shift->display_text ?? '';
         $this->shiftCapacity = $shift->capacity;
         $this->showShiftModal = true;
@@ -204,8 +208,9 @@ class JobsAndShiftsManager extends Component
 
         $this->validate($rules);
 
-        $startsAt = $this->shiftStartsAt ? Carbon::parse($this->shiftStartsAt) : null;
-        $endsAt = $this->shiftEndsAt ? Carbon::parse($this->shiftEndsAt) : null;
+        $tz = $this->event->project->timezone ?? 'UTC';
+        $startsAt = $this->shiftStartsAt ? $this->toUtc($this->shiftStartsAt, $tz) : null;
+        $endsAt = $this->shiftEndsAt ? $this->toUtc($this->shiftEndsAt, $tz) : null;
         $displayText = $this->shiftDisplayText ?: null;
 
         if ($this->editingShiftId) {

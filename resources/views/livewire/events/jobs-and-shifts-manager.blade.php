@@ -82,7 +82,8 @@
                                         @foreach ($job->shifts as $shift)
                                             <flux:table.row :key="'shift-'.$shift->id">
                                                 <flux:table.cell>
-                                                    {{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}
+                                                    @php $tz = $event->project->timezone ?? 'UTC'; @endphp
+                                                    {{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}
                                                 </flux:table.cell>
                                                 <flux:table.cell>
                                                     {{ $shift->signups_count }} / {{ $shift->capacity }}

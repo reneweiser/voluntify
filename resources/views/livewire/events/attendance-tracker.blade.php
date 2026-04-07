@@ -18,7 +18,8 @@
             <flux:select wire:model.live="selectedShiftId" placeholder="{{ __('Select a shift...') }}">
                 @foreach ($this->shifts as $shift)
                     <flux:select.option :value="$shift->id" wire:key="shift-option-{{ $shift->id }}">
-                        {{ $shift->job_name }}: {{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}
+                        @php $tz = $event->project->timezone ?? 'UTC'; @endphp
+                        {{ $shift->job_name }}: {{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}
                         ({{ $shift->attended_count }}/{{ $shift->signups_count }} {{ __('marked') }})
                     </flux:select.option>
                 @endforeach

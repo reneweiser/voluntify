@@ -214,7 +214,7 @@
                                     $isFull = $spotsLeft === 0;
                                     $isSelected = in_array($shift->id, $selectedShiftIds);
                                     $isConflicting = in_array($shift->id, $this->overlappingShiftIds);
-                                    $shiftTimeLabel = $job->name.' — '.$shift->shift_date->format('M d').' '.$shift->displayTimeRange();
+                                    $shiftTimeLabel = $job->name.' — '.$shift->shift_date->setTimezone($tz)->format('M d').' '.$shift->displayTimeRange($tz);
                                 @endphp
                                 <label
                                     class="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200"
@@ -232,7 +232,7 @@
                                         />
                                         <div>
                                             <span class="text-sm font-medium text-white">
-                                                {{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}
+                                                {{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}
                                             </span>
                                             @if ($spotsLeft <= 3 && $spotsLeft > 0)
                                                 <span class="block text-sm font-semibold urgency-pulse" style="color: var(--yellow);">
@@ -417,7 +417,7 @@
                                     <div class="flex items-center gap-2 text-sm" wire:key="confirm-shift-{{ $shift->id }}">
                                         <flux:icon name="check" variant="mini" class="size-4" style="color: var(--brand);" />
                                         <span class="font-medium text-white">{{ $job->name }}:</span>
-                                        <span style="color: #a1a1aa;">{{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}</span>
+                                        <span style="color: #a1a1aa;">{{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}</span>
                                     </div>
                                 @endif
                             @endforeach

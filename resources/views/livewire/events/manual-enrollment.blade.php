@@ -117,7 +117,8 @@
                                             />
                                             <div class="flex-1">
                                                 <flux:text size="sm">
-                                                    {{ $shift->shift_date->format('M d') }} — {{ $shift->displayTimeRange() }}
+                                                    @php $tz = $event->project->timezone ?? 'UTC'; @endphp
+                                                    {{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}
                                                 </flux:text>
                                             </div>
                                             <flux:badge size="sm" :color="$isFull ? 'red' : 'emerald'">

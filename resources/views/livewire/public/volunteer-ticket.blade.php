@@ -45,7 +45,8 @@
                         <div wire:key="signup-{{ $signup->id }}" class="rounded-lg p-4" style="background: rgba(255,255,255,0.05); border-left: 4px solid var(--brand);">
                             <div class="font-medium text-white">{{ $signup->shift->volunteerJob->name }}</div>
                             <div class="mt-1 text-sm" style="color: #a1a1aa;">
-                                {{ $signup->shift->shift_date->format('M d, Y') }} — {{ $signup->shift->displayTimeRange() }}
+                                @php $tz = $signup->shift->volunteerJob->event->project->timezone ?? 'UTC'; @endphp
+                                {{ $signup->shift->shift_date->setTimezone($tz)->format('M d, Y') }} — {{ $signup->shift->displayTimeRange($tz) }}
                             </div>
                         </div>
                     @endforeach

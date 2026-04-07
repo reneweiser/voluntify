@@ -63,7 +63,7 @@
                                         {{ $event->name }}
                                     </div>
                                     <div class="mt-1 text-sm" style="color: #a1a1aa;">
-                                        {{ $signup->shift->shift_date->format('M d, Y') }} — {{ $signup->shift->displayTimeRange() }}
+                                        {{ $signup->shift->shift_date->setTimezone($project->timezone ?? 'UTC')->format('M d, Y') }} — {{ $signup->shift->displayTimeRange($project->timezone ?? 'UTC') }}
                                     </div>
                                     @if ($project->isCancellationAllowed())
                                         <div class="mt-2 text-xs" style="color: #9a9a9a;">
@@ -163,7 +163,7 @@
                                 {{ $signup->shift->volunteerJob->event->name }}
                             </div>
                             <div class="mt-1 text-sm" style="color: #a1a1aa;">
-                                {{ $signup->shift->shift_date->format('M d, Y') }} — {{ $signup->shift->displayTimeRange() }}
+                                {{ $signup->shift->shift_date->setTimezone($project->timezone ?? 'UTC')->format('M d, Y') }} — {{ $signup->shift->displayTimeRange($project->timezone ?? 'UTC') }}
                             </div>
                         </div>
                     @endforeach
