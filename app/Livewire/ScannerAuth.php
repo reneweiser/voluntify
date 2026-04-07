@@ -67,9 +67,20 @@ class ScannerAuth extends Component
             'authCode' => ['required', 'digits:6'],
         ]);
 
-        $rateLimitKey = 'scanner_auth:'.$this->scannerToken;
+        $sessionKey = 'scanner_auth:'.$this->scannerToken.':'.session()->getId();
+        $globalKey = 'scanner_auth_global:'.$this->scannerToken;
 
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+        // Check global lockout first (prevents brute-force across sessions)
+        if (RateLimiter::tooManyAttempts($globalKey, 15)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($globalKey) / 60);
+            $this->errorMessage = "Zu viele Versuche. Bitte warte {$minutes} Minuten.";
+            $this->authCode = '';
+
+            return;
+        }
+
+        // Check per-session lockout
+        if (RateLimiter::tooManyAttempts($sessionKey, 5)) {
             $scanner = ProjectScanner::where('scanner_token', $this->scannerToken)->firstOrFail();
 
             if ($scanner->isExpired() || $scanner->isScheduled()) {
@@ -81,7 +92,7 @@ class ScannerAuth extends Component
                 return;
             }
 
-            $minutes = (int) ceil(RateLimiter::availableIn($rateLimitKey) / 60);
+            $minutes = (int) ceil(RateLimiter::availableIn($sessionKey) / 60);
             $this->errorMessage = "Zu viele Versuche. Bitte warte {$minutes} Minuten.";
             $this->authCode = '';
 
@@ -94,7 +105,8 @@ class ScannerAuth extends Component
         $result = $action->execute($scanner, $this->authCode);
 
         if ($result !== AuthenticationResult::Success) {
-            RateLimiter::hit($rateLimitKey, 1800);
+            RateLimiter::hit($sessionKey, 1800);
+            RateLimiter::hit($globalKey, 3600);
             $this->authCode = '';
 
             match ($result) {
@@ -108,14 +120,14 @@ class ScannerAuth extends Component
                 $this->formDisabled = true;
             }
 
-            if ($result === AuthenticationResult::InvalidCode && RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            if ($result === AuthenticationResult::InvalidCode && RateLimiter::tooManyAttempts($sessionKey, 5)) {
                 ScannerLockout::dispatch($scanner);
             }
 
             return;
         }
 
-        RateLimiter::clear($rateLimitKey);
+        RateLimiter::clear($sessionKey);
 
         session()->regenerate();
 
