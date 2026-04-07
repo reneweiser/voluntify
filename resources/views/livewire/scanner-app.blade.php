@@ -189,20 +189,124 @@
             </div>
         @else
             {{-- Volunteer Admin: QR viewfinder + volunteer panel + gear pickup --}}
-            <div class="flex flex-1 flex-col items-center justify-center space-y-4">
+            <div class="flex flex-1 flex-col items-center space-y-4">
                 <div id="scanner-viewfinder" class="aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black">
                     <video id="scanner-video" class="h-full w-full object-cover" aria-label="{{ __('QR code camera viewfinder') }}" playsinline></video>
                 </div>
 
-                {{-- Volunteer info panel --}}
+                {{-- Status message --}}
+                <div
+                    x-show="state === 'confirmed' || state === 'duplicate' || state === 'invalid'"
+                    x-transition
+                    role="alert"
+                    aria-live="assertive"
+                    class="w-full max-w-sm rounded-xl p-4"
+                    :class="{
+                        'bg-emerald-500/10 border border-emerald-500/30': state === 'confirmed',
+                        'bg-amber-500/10 border border-amber-500/30': state === 'duplicate',
+                        'bg-red-500/10 border border-red-500/30': state === 'invalid',
+                    }"
+                    x-cloak
+                >
+                    <p class="text-center text-sm text-white" x-text="state === 'invalid' ? errorMessage : resultMessage"></p>
+                </div>
+
+                {{-- Volunteer detail panel --}}
                 <div
                     x-show="selectedVolunteer"
                     x-transition
-                    class="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-800 p-4"
+                    class="w-full max-w-sm space-y-4"
                     x-cloak
                 >
-                    <p class="text-lg font-semibold text-white" x-text="selectedVolunteer?.name"></p>
-                    <p class="text-sm text-zinc-400" x-text="selectedVolunteer?.email"></p>
+                    {{-- Name & email --}}
+                    <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
+                        <p class="text-lg font-semibold text-white" x-text="selectedVolunteer?.name"></p>
+                        <p class="text-sm text-zinc-400" x-text="selectedVolunteer?.email"></p>
+
+                        {{-- Check-in button --}}
+                        <template x-if="canConfirmArrival && state === 'result'">
+                            <button
+                                type="button"
+                                class="mt-3 min-h-12 w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-medium text-white hover:bg-emerald-500 active:bg-emerald-700"
+                                @click="confirmArrival()"
+                            >
+                                {{ __('Check In') }}
+                            </button>
+                        </template>
+                    </div>
+
+                    {{-- Shift signups --}}
+                    <template x-if="selectedVolunteer?.shift_signups?.length > 0">
+                        <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
+                            <h3 class="mb-3 text-sm font-semibold text-zinc-300">{{ __('Shifts') }}</h3>
+                            <div class="space-y-2">
+                                <template x-for="signup in selectedVolunteer.shift_signups" :key="signup.id">
+                                    <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-medium text-white" x-text="signup.shift.volunteer_job.name"></p>
+                                            <p class="text-xs text-zinc-400" x-text="signup.shift.display_text"></p>
+                                        </div>
+                                        <div class="ml-3 shrink-0">
+                                            <template x-if="isAttendanceRecorded(signup.id)">
+                                                <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">{{ __('Recorded') }}</span>
+                                            </template>
+                                            <template x-if="!isAttendanceRecorded(signup.id) && canMarkAttendance && isOnline">
+                                                <button
+                                                    type="button"
+                                                    class="min-h-10 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 active:bg-blue-700"
+                                                    @click="confirmAttendance(signup.id)"
+                                                    :aria-label="'{{ __('Record attendance for') }} ' + signup.shift.volunteer_job.name"
+                                                >
+                                                    {{ __('Attendance') }}
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Gear assignments --}}
+                    <template x-if="canPickupGear && selectedVolunteer && getVolunteerGear(selectedVolunteer.id).length > 0">
+                        <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
+                            <h3 class="mb-3 text-sm font-semibold text-zinc-300">{{ __('Gear') }}</h3>
+                            <div class="space-y-2">
+                                <template x-for="gear in getVolunteerGear(selectedVolunteer.id)" :key="gear.id">
+                                    <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-medium text-white" x-text="getGearItemName(gear.project_gear_item_id)"></p>
+                                            <p x-show="gear.size" class="text-xs text-zinc-400" x-text="'{{ __('Size') }}: ' + gear.size"></p>
+                                        </div>
+                                        <div class="ml-3 shrink-0">
+                                            <template x-if="gear.picked_up">
+                                                <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">{{ __('Picked up') }}</span>
+                                            </template>
+                                            <template x-if="!gear.picked_up && isOnline">
+                                                <button
+                                                    type="button"
+                                                    class="min-h-10 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-500 active:bg-purple-700"
+                                                    @click="selectGearState(gear.id, 'picked_up')"
+                                                    :aria-label="'{{ __('Pick up') }} ' + getGearItemName(gear.project_gear_item_id)"
+                                                >
+                                                    {{ __('Pick Up') }}
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Dismiss button --}}
+                    <button
+                        type="button"
+                        class="min-h-12 w-full rounded-lg border border-zinc-600 px-4 py-3 text-base font-medium text-zinc-300 hover:bg-zinc-700 active:bg-zinc-600"
+                        @click="dismiss()"
+                    >
+                        {{ __('Done') }}
+                    </button>
                 </div>
             </div>
         @endif

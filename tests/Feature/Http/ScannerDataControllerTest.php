@@ -8,6 +8,7 @@ use App\Models\ProjectScanner;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
+use App\Models\VolunteerGearPickup;
 use Carbon\Carbon;
 
 beforeEach(function () {
@@ -160,4 +161,100 @@ it('returns 403 when entry staff scanner tries gear pickup', function () {
     ], [
         'X-Scanner-Token' => $scanner->scanner_token,
     ])->assertForbidden();
+});
+
+it('returns gear_items for volunteer admin scanner', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+    ]);
+    $gearItem = ProjectGearItem::factory()->sized(['S', 'M', 'L'])->create([
+        'project_id' => $this->project->id,
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonCount(1, 'gear_items')
+        ->assertJsonPath('gear_items.0.id', $gearItem->id)
+        ->assertJsonPath('gear_items.0.name', $gearItem->name)
+        ->assertJsonPath('gear_items.0.available_sizes', ['S', 'M', 'L']);
+});
+
+it('returns volunteer_gear keyed by volunteer id for VA scanner', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
+        'project_id' => $this->project->id,
+        'event_id' => null,
+    ]);
+    $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
+    Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+    $gearItem = ProjectGearItem::factory()->create(['project_id' => $this->project->id]);
+    $gear = VolunteerGear::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'project_gear_item_id' => $gearItem->id,
+        'size' => 'M',
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk();
+    $volunteerGear = $response->json('volunteer_gear.'.$volunteer->id);
+    expect($volunteerGear)->toHaveCount(1)
+        ->and($volunteerGear[0]['id'])->toBe($gear->id)
+        ->and($volunteerGear[0]['size'])->toBe('M');
+});
+
+it('returns empty gear data for entry staff scanner', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+        'type' => ScannerType::EntryStaff,
+    ]);
+    ProjectGearItem::factory()->create(['project_id' => $this->project->id]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk();
+    expect($response->json('gear_items'))->toBeEmpty()
+        ->and($response->json('volunteer_gear'))->toBeEmpty();
+});
+
+it('returns volunteer gear with pickup information', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
+        'project_id' => $this->project->id,
+        'event_id' => null,
+    ]);
+    $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
+    Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+    $gearItem = ProjectGearItem::factory()->create(['project_id' => $this->project->id]);
+    $gear = VolunteerGear::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'project_gear_item_id' => $gearItem->id,
+    ]);
+    VolunteerGearPickup::factory()->create([
+        'volunteer_gear_id' => $gear->id,
+        'state' => 'M',
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk();
+    $volunteerGear = $response->json('volunteer_gear.'.$volunteer->id);
+    expect($volunteerGear[0]['picked_up'])->toBeTrue()
+        ->and($volunteerGear[0]['pickups'])->toHaveCount(1)
+        ->and($volunteerGear[0]['pickups'][0]['state'])->toBe('M');
 });

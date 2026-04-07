@@ -73,9 +73,9 @@ it('clears rate limiter on successful auth', function () {
         ->call('authenticate')
         ->assertRedirect(route('scanner.app', $scanner->scanner_token));
 
-    // Rate limiter should be cleared, so new attempts are allowed
-    $rateLimitKey = 'scanner_auth:'.$scanner->scanner_token;
-    expect(RateLimiter::tooManyAttempts($rateLimitKey, 5))->toBeFalse();
+    // Per-session rate limiter should be cleared after successful auth
+    $sessionKey = 'scanner_auth:'.$scanner->scanner_token.':'.session()->getId();
+    expect(RateLimiter::tooManyAttempts($sessionKey, 5))->toBeFalse();
 });
 
 it('clears auth code field on failed attempt', function () {
@@ -174,8 +174,8 @@ it('does not bypass rate limit when scanner is not active', function () {
         ->set('authCode', '000000')
         ->call('authenticate');
 
-    $rateLimitKey = 'scanner_auth:'.$scanner->scanner_token;
-    expect(RateLimiter::attempts($rateLimitKey))->toBeGreaterThan(0);
+    $globalKey = 'scanner_auth_global:'.$scanner->scanner_token;
+    expect(RateLimiter::attempts($globalKey))->toBeGreaterThan(0);
 });
 
 it('succeeds after scanner transitions from scheduled to active', function () {

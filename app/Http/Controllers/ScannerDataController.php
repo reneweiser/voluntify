@@ -14,6 +14,7 @@ use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\GuestEntry;
 use App\Models\GuestEntryGear;
+use App\Models\ProjectGearItem;
 use App\Models\ProjectScanner;
 use App\Models\Ticket;
 use App\Models\Volunteer;
@@ -42,20 +43,26 @@ class ScannerDataController extends Controller
             ? Volunteer::forEvent($eventId)
             : Volunteer::where('project_id', $projectId);
 
-        $volunteers = $volunteerQuery
-            ->with([
-                'tickets' => fn ($q) => $q->where('project_id', $projectId),
-                'shiftSignups' => function ($q) use ($eventId, $projectId) {
-                    if ($eventId) {
-                        $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->where('event_id', $eventId));
-                    } else {
-                        $q->whereHas('shift.volunteerJob.event', fn ($sq) => $sq->where('project_id', $projectId));
-                    }
-                },
-                'shiftSignups.shift.volunteerJob',
-                'shiftSignups.attendanceRecord',
-            ])
-            ->get();
+        $eagerLoads = [
+            'tickets' => fn ($q) => $q->where('project_id', $projectId),
+            'shiftSignups' => function ($q) use ($eventId, $projectId) {
+                if ($eventId) {
+                    $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->where('event_id', $eventId));
+                } else {
+                    $q->whereHas('shift.volunteerJob.event', fn ($sq) => $sq->where('project_id', $projectId));
+                }
+            },
+            'shiftSignups.shift.volunteerJob',
+            'shiftSignups.attendanceRecord',
+        ];
+
+        if ($scanner->type === ScannerType::VolunteerAdmin) {
+            $eagerLoads['volunteerGear'] = fn ($q) => $q->whereHas('gearItem', fn ($sq) => $sq->where('project_id', $projectId));
+            $eagerLoads['volunteerGear.gearItem'] = fn ($q) => $q;
+            $eagerLoads['volunteerGear.pickups'] = fn ($q) => $q;
+        }
+
+        $volunteers = $volunteerQuery->with($eagerLoads)->get();
 
         $events = $eventId
             ? Event::where('id', $eventId)->get()
@@ -68,6 +75,36 @@ class ScannerDataController extends Controller
         $attendanceRecords = AttendanceRecord::whereIn('shift_signup_id', $shiftSignupIds)->get();
 
         $guestEntries = $this->loadGuestEntries($scanner);
+
+        $gearItems = [];
+        $volunteerGearMap = (object) [];
+
+        if ($scanner->type === ScannerType::VolunteerAdmin) {
+            $gearItems = ProjectGearItem::where('project_id', $projectId)
+                ->orderBy('sort_order')
+                ->get()
+                ->map(fn ($item) => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'type' => $item->type->value,
+                    'available_sizes' => $item->available_sizes,
+                    'available_states' => $item->available_states,
+                ]);
+
+            $volunteerGearMap = $volunteers->mapWithKeys(fn ($v) => [
+                $v->id => $v->volunteerGear->map(fn ($g) => [
+                    'id' => $g->id,
+                    'project_gear_item_id' => $g->project_gear_item_id,
+                    'size' => $g->size,
+                    'picked_up' => $g->isPickedUp(),
+                    'pickups' => $g->pickups->map(fn ($p) => [
+                        'state' => $p->state,
+                        'quantity' => $p->quantity,
+                        'picked_up_at' => $p->picked_up_at?->toISOString(),
+                    ]),
+                ]),
+            ])->filter(fn ($gear) => $gear->isNotEmpty());
+        }
 
         return response()->json([
             'scanner' => [
@@ -111,6 +148,8 @@ class ScannerDataController extends Controller
             'attendance_records' => $attendanceRecords,
             'keys' => $jwtKeyService->publicKeys($projectId),
             'guest_entries' => $guestEntries,
+            'gear_items' => $gearItems,
+            'volunteer_gear' => $volunteerGearMap,
         ]);
     }
 
