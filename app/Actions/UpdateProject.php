@@ -18,6 +18,7 @@ class UpdateProject
         bool $removeTitleImage = false,
         ?string $senderName = null,
         ?string $contactEmail = null,
+        ?string $timezone = null,
         ?bool $cancellationEnabled = null,
         ?int $cancellationCutoffHours = null,
         ?User $causer = null,
@@ -28,6 +29,7 @@ class UpdateProject
             'title_image_path' => $project->title_image_path,
             'sender_name' => $project->sender_name,
             'contact_email' => $project->contact_email,
+            'timezone' => $project->timezone,
             'cancellation_enabled' => $project->cancellation_enabled,
             'cancellation_cutoff_hours' => $project->cancellation_cutoff_hours,
         ];
@@ -38,6 +40,10 @@ class UpdateProject
             'sender_name' => $senderName,
             'contact_email' => $contactEmail,
         ];
+
+        if ($timezone !== null) {
+            $updateData['timezone'] = $timezone;
+        }
 
         if ($cancellationEnabled !== null) {
             $updateData['cancellation_enabled'] = $cancellationEnabled;

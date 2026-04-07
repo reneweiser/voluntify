@@ -114,6 +114,34 @@ it('creates event in the current project', function () {
         ->and($event->project_id)->toBe($this->project->id);
 });
 
+it('saves timezone to project via settings form', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->call('startEditing')
+        ->set('projectForm.timezone', 'Europe/Berlin')
+        ->call('saveProject')
+        ->assertHasNoErrors();
+
+    expect($this->project->fresh()->timezone)->toBe('Europe/Berlin');
+});
+
+it('validates timezone is a valid timezone identifier', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->call('startEditing')
+        ->set('projectForm.timezone', 'Invalid/Timezone')
+        ->call('saveProject')
+        ->assertHasErrors(['projectForm.timezone']);
+});
+
+it('loads current timezone into form when editing', function () {
+    $this->project->update(['timezone' => 'America/New_York']);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->assertSet('projectForm.timezone', 'America/New_York');
+});
+
 it('validates event name required when creating event', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])

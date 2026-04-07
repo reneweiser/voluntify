@@ -22,6 +22,9 @@ class ProjectDetailsForm extends Form
     #[Validate('nullable|email|max:255')]
     public string $contactEmail = '';
 
+    #[Validate('required|timezone:all')]
+    public string $timezone = 'UTC';
+
     #[Validate('boolean')]
     public bool $cancellationEnabled = false;
 
@@ -50,6 +53,7 @@ class ProjectDetailsForm extends Form
         $this->description = $data['description'];
         $this->senderName = $data['senderName'];
         $this->contactEmail = $data['contactEmail'];
+        $this->timezone = $data['timezone'];
         $this->cancellationEnabled = $data['cancellationEnabled'];
         $this->cancellationCutoffHours = $data['cancellationCutoffHours'];
     }

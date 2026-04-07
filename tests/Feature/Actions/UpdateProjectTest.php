@@ -109,6 +109,33 @@ it('allows sender_name and contact_email to be nullable', function () {
         ->and($project->contact_email)->toBeNull();
 });
 
+it('updates timezone on project', function () {
+    $action = new UpdateProject;
+
+    $project = $action->execute(
+        project: $this->project,
+        name: $this->project->name,
+        timezone: 'Europe/Berlin',
+        causer: $this->user,
+    );
+
+    expect($project->timezone)->toBe('Europe/Berlin');
+});
+
+it('keeps existing timezone when timezone param is null', function () {
+    $this->project->update(['timezone' => 'America/New_York']);
+
+    $action = new UpdateProject;
+
+    $project = $action->execute(
+        project: $this->project,
+        name: 'New Name',
+        causer: $this->user,
+    );
+
+    expect($project->timezone)->toBe('America/New_York');
+});
+
 it('dispatches ProjectUpdatedActivity event with causer', function () {
     Event::fake([ProjectUpdatedActivity::class]);
 

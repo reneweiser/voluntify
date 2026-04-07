@@ -144,6 +144,7 @@ class ProjectShow extends Component
             titleImage: $this->projectForm->titleImage,
             senderName: $this->projectForm->senderName ?: null,
             contactEmail: $this->projectForm->contactEmail ?: null,
+            timezone: $this->projectForm->timezone,
             cancellationEnabled: $this->projectForm->cancellationEnabled,
             cancellationCutoffHours: $this->projectForm->cancellationCutoffHours !== '' ? (int) $this->projectForm->cancellationCutoffHours : null,
             causer: auth()->user(),
@@ -219,6 +220,7 @@ class ProjectShow extends Component
             'description' => $this->project->description ?? '',
             'senderName' => $this->project->sender_name ?? '',
             'contactEmail' => $this->project->contact_email ?? '',
+            'timezone' => $this->project->timezone ?? 'UTC',
             'cancellationEnabled' => $this->project->cancellation_enabled,
             'cancellationCutoffHours' => $this->project->cancellation_cutoff_hours ?? '',
         ]);

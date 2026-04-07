@@ -93,6 +93,40 @@
 
                 <flux:separator class="my-2" />
 
+                <flux:heading size="sm" class="mb-2">{{ __('Zeitzone') }}</flux:heading>
+
+                <flux:field>
+                    <flux:label>{{ __('Projekt-Zeitzone') }}</flux:label>
+                    <flux:select wire:model="projectForm.timezone">
+                        @php
+                            $regions = [
+                                'Europe' => DateTimeZone::EUROPE,
+                                'America' => DateTimeZone::AMERICA,
+                                'Asia' => DateTimeZone::ASIA,
+                                'Africa' => DateTimeZone::AFRICA,
+                                'Pacific' => DateTimeZone::PACIFIC,
+                                'Atlantic' => DateTimeZone::ATLANTIC,
+                                'Australia' => DateTimeZone::AUSTRALIA,
+                                'Arctic' => DateTimeZone::ARCTIC,
+                                'Antarctica' => DateTimeZone::ANTARCTICA,
+                                'Indian' => DateTimeZone::INDIAN,
+                            ];
+                        @endphp
+                        <flux:select.option value="UTC">UTC</flux:select.option>
+                        @foreach ($regions as $label => $region)
+                            <optgroup label="{{ $label }}">
+                                @foreach (DateTimeZone::listIdentifiers($region) as $tz)
+                                    <flux:select.option :value="$tz">{{ str_replace('_', ' ', $tz) }}</flux:select.option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </flux:select>
+                    <flux:description>{{ __('Alle Zeiten in Events, Schichten und Scannern werden in dieser Zeitzone angezeigt.') }}</flux:description>
+                    <flux:error name="projectForm.timezone" />
+                </flux:field>
+
+                <flux:separator class="my-2" />
+
                 <flux:heading size="sm" class="mb-2">{{ __('Stornierung') }}</flux:heading>
 
                 <flux:field>
