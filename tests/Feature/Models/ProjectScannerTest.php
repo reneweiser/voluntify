@@ -64,6 +64,32 @@ it('returns scheduled status before window starts', function () {
     Carbon::setTestNow();
 });
 
+it('isScheduled returns true before starts_at', function () {
+    Carbon::setTestNow('2026-07-01 08:00:00');
+
+    $scanner = ProjectScanner::factory()->create([
+        'starts_at' => Carbon::parse('2026-07-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-07-01 14:00:00'),
+    ]);
+
+    expect($scanner->isScheduled())->toBeTrue();
+
+    Carbon::setTestNow();
+});
+
+it('isScheduled returns false when active', function () {
+    Carbon::setTestNow('2026-07-01 12:00:00');
+
+    $scanner = ProjectScanner::factory()->create([
+        'starts_at' => Carbon::parse('2026-07-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-07-01 14:00:00'),
+    ]);
+
+    expect($scanner->isScheduled())->toBeFalse();
+
+    Carbon::setTestNow();
+});
+
 it('returns expired status after window ends', function () {
     Carbon::setTestNow('2026-07-01 16:00:00');
 

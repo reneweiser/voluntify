@@ -3,6 +3,7 @@
 use App\Livewire\ScannerAuth;
 use App\Models\ProjectScanner;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 
@@ -73,7 +74,7 @@ it('clears rate limiter on successful auth', function () {
         ->assertRedirect(route('scanner.app', $scanner->scanner_token));
 
     // Rate limiter should be cleared, so new attempts are allowed
-    $rateLimitKey = 'scanner_auth:'.$scanner->scanner_token.':127.0.0.1';
+    $rateLimitKey = 'scanner_auth:'.$scanner->scanner_token;
     expect(RateLimiter::tooManyAttempts($rateLimitKey, 5))->toBeFalse();
 });
 
@@ -125,14 +126,101 @@ it('does not redirect when session has different scanner id', function () {
 
 // --- Scheduled scanner ---
 
-it('shows scanner info for scheduled scanner without error', function () {
+it('shows not-yet-active message and disables form for scheduled scanner', function () {
     $scanner = ProjectScanner::factory()->scheduled()->create([
         'name' => 'Entrance A',
     ]);
 
     Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
         ->assertSet('scannerName', 'Entrance A')
-        ->assertSet('errorMessage', '');
+        ->assertSet('formDisabled', true)
+        ->assertSee('noch nicht aktiv');
+});
+
+it('shows not-yet-active message with start time', function () {
+    $scanner = ProjectScanner::factory()->create([
+        'starts_at' => Carbon::parse('2026-07-01 14:30:00'),
+        'ends_at' => Carbon::parse('2026-07-01 18:00:00'),
+    ]);
+
+    Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSet('formDisabled', true)
+        ->assertSee('14:30');
+});
+
+it('shows distinct error when scanner expires during auth attempt', function () {
+    $scanner = ProjectScanner::factory()->active()->withAuthCode('123456')->create([
+        'ends_at' => Carbon::parse('2026-07-01 12:05:00'),
+    ]);
+
+    $component = Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSet('formDisabled', false);
+
+    // Advance time past window end
+    Carbon::setTestNow('2026-07-01 12:10:00');
+
+    $component
+        ->set('authCode', '123456')
+        ->call('authenticate')
+        ->assertSet('formDisabled', true);
+
+    expect($component->get('errorMessage'))->toContain('abgelaufen');
+});
+
+it('does not bypass rate limit when scanner is not active', function () {
+    $scanner = ProjectScanner::factory()->scheduled()->withAuthCode('123456')->create();
+
+    Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
+        ->set('authCode', '000000')
+        ->call('authenticate');
+
+    $rateLimitKey = 'scanner_auth:'.$scanner->scanner_token;
+    expect(RateLimiter::attempts($rateLimitKey))->toBeGreaterThan(0);
+});
+
+it('succeeds after scanner transitions from scheduled to active', function () {
+    $scanner = ProjectScanner::factory()->create([
+        'auth_code' => Hash::make('123456'),
+        'starts_at' => Carbon::parse('2026-07-01 13:00:00'),
+        'ends_at' => Carbon::parse('2026-07-01 17:00:00'),
+    ]);
+
+    $component = Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSet('formDisabled', true);
+
+    // Advance time into active window
+    Carbon::setTestNow('2026-07-01 13:30:00');
+
+    $component
+        ->set('authCode', '123456')
+        ->call('authenticate')
+        ->assertRedirect(route('scanner.app', $scanner->scanner_token));
+});
+
+it('shows timing message instead of rate limit message when scanner is not active', function () {
+    $scanner = ProjectScanner::factory()->active()->withAuthCode('123456')->create([
+        'ends_at' => Carbon::parse('2026-07-01 12:30:00'),
+    ]);
+
+    $component = Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token]);
+
+    // Exhaust rate limiter with wrong codes
+    for ($i = 0; $i < 5; $i++) {
+        $component
+            ->set('authCode', '000000')
+            ->call('authenticate');
+    }
+
+    // Scanner expires
+    Carbon::setTestNow('2026-07-01 13:00:00');
+
+    $component
+        ->set('authCode', '123456')
+        ->call('authenticate')
+        ->assertSet('formDisabled', true);
+
+    expect($component->get('errorMessage'))->toContain('abgelaufen');
+    expect($component->get('errorMessage'))->not->toContain('Zu viele Versuche');
 });
 
 // --- Validation ---

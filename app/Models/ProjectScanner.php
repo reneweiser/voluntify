@@ -91,6 +91,11 @@ class ProjectScanner extends Model
         return now()->gt($this->ends_at);
     }
 
+    public function isScheduled(): bool
+    {
+        return now()->lt($this->starts_at);
+    }
+
     /**
      * Check if this scanner has the given mode enabled.
      */

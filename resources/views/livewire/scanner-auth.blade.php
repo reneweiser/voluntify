@@ -1,4 +1,7 @@
-<div class="flex flex-1 items-center justify-center p-6">
+<div
+    class="flex flex-1 items-center justify-center p-6"
+    @if ($formDisabled) wire:poll.30s="$refresh" @endif
+>
     <div class="w-full max-w-sm space-y-6 text-center">
         <div>
             <h1 class="text-2xl font-bold text-white">{{ $scannerName }}</h1>
@@ -13,7 +16,7 @@
             </div>
         @endif
 
-        @if ($errorMessage !== 'Scanner window has closed.')
+        @if (! $formDisabled)
             <form wire:submit="authenticate" class="space-y-4">
                 <div>
                     <label for="authCode" class="mb-1 block text-sm font-medium text-zinc-300">

@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Actions\AuthenticateScanner;
+use App\Enums\AuthenticationResult;
 use App\Events\Activity\ScannerLockout;
 use App\Models\ProjectScanner;
 use Illuminate\Support\Facades\RateLimiter;
@@ -28,6 +29,9 @@ class ScannerAuth extends Component
 
     public ?string $endsAt = null;
 
+    #[Locked]
+    public bool $formDisabled = false;
+
     public function mount(string $scannerToken): void
     {
         $scanner = ProjectScanner::where('scanner_token', $scannerToken)->firstOrFail();
@@ -38,7 +42,15 @@ class ScannerAuth extends Component
         $this->endsAt = $scanner->ends_at->format('H:i');
 
         if ($scanner->isExpired()) {
-            $this->errorMessage = 'Scanner window has closed.';
+            $this->errorMessage = 'Das Scanner-Fenster ist abgelaufen.';
+            $this->formDisabled = true;
+
+            return;
+        }
+
+        if ($scanner->isScheduled()) {
+            $this->errorMessage = 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$scanner->starts_at->format('H:i').'.';
+            $this->formDisabled = true;
 
             return;
         }
@@ -57,6 +69,17 @@ class ScannerAuth extends Component
         $rateLimitKey = 'scanner_auth:'.$this->scannerToken;
 
         if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            $scanner = ProjectScanner::where('scanner_token', $this->scannerToken)->firstOrFail();
+
+            if ($scanner->isExpired() || $scanner->isScheduled()) {
+                $this->errorMessage = $scanner->isExpired()
+                    ? 'Das Scanner-Fenster ist abgelaufen.'
+                    : 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$scanner->starts_at->format('H:i').'.';
+                $this->formDisabled = true;
+
+                return;
+            }
+
             $minutes = (int) ceil(RateLimiter::availableIn($rateLimitKey) / 60);
             $this->errorMessage = "Zu viele Versuche. Bitte warte {$minutes} Minuten.";
             $this->authCode = '';
@@ -69,12 +92,22 @@ class ScannerAuth extends Component
         $action = new AuthenticateScanner;
         $result = $action->execute($scanner, $this->authCode);
 
-        if (! $result) {
+        if ($result !== AuthenticationResult::Success) {
             RateLimiter::hit($rateLimitKey, 1800);
-            $this->errorMessage = 'Ungültiger Code. Bitte versuche es erneut.';
             $this->authCode = '';
 
-            if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            match ($result) {
+                AuthenticationResult::Expired => $this->errorMessage = 'Das Scanner-Fenster ist abgelaufen.',
+                AuthenticationResult::NotYetActive => $this->errorMessage = 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$scanner->starts_at->format('H:i').'.',
+                AuthenticationResult::InvalidCode => $this->errorMessage = 'Ungültiger Code. Bitte versuche es erneut.',
+                default => null,
+            };
+
+            if ($result === AuthenticationResult::Expired || $result === AuthenticationResult::NotYetActive) {
+                $this->formDisabled = true;
+            }
+
+            if ($result === AuthenticationResult::InvalidCode && RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
                 ScannerLockout::dispatch($scanner);
             }
 

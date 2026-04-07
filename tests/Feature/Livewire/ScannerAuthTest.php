@@ -35,8 +35,8 @@ it('shows window closed message when scanner is expired', function () {
     ]);
 
     Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
-        ->assertSee('window')
-        ->assertSet('errorMessage', 'Scanner window has closed.');
+        ->assertSet('errorMessage', 'Das Scanner-Fenster ist abgelaufen.')
+        ->assertSet('formDisabled', true);
 
     Carbon::setTestNow();
 });
