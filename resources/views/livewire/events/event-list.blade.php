@@ -113,7 +113,7 @@
                         <a href="{{ route('projects.index') }}" wire:navigate class="text-emerald-600 dark:text-emerald-400 underline">{{ __('Create a project first') }}</a>.
                     </flux:text>
                 @else
-                    <flux:select wire:model="eventProjectId" placeholder="{{ __('Select a project...') }}">
+                    <flux:select wire:model.live="eventProjectId" placeholder="{{ __('Select a project...') }}">
                         @foreach ($this->projects as $project)
                             <flux:select.option :value="$project->id" wire:key="project-option-{{ $project->id }}">
                                 {{ $project->name }}
