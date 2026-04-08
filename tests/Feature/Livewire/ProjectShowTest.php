@@ -142,6 +142,15 @@ it('loads current timezone into form when editing', function () {
         ->assertSet('projectForm.timezone', 'America/New_York');
 });
 
+it('renders timezone select with optgroup elements in edit mode', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->call('startEditing')
+        ->assertSeeHtml('<optgroup label="Europe">')
+        ->assertSeeHtml('<optgroup label="America">')
+        ->assertSeeHtml('<optgroup label="Asia">');
+});
+
 it('validates event name required when creating event', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])

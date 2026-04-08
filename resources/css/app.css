@@ -70,6 +70,19 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+/* Fix dark-mode dropdown popup for <optgroup> in native selects (#121).
+   Flux's dark:[&>option] only targets direct children; options inside
+   <optgroup> are grandchildren and need explicit styling.
+   Note: Mixing <optgroup> with <flux:select.option> is not a documented
+   Flux pattern — monitor on Flux upgrades. */
+select[data-flux-control] optgroup {
+    @apply dark:bg-zinc-700 dark:text-zinc-300;
+}
+
+select[data-flux-control] optgroup option {
+    @apply dark:bg-zinc-700 dark:text-white;
+}
+
 /* Card utility classes */
 .card-accent-emerald {
     @apply border-l-4 border-l-emerald-500;
