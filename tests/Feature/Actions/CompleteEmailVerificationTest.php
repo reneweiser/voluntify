@@ -132,7 +132,7 @@ it('creates gear records from token gear selections on verification', function (
         'volunteer_id' => $this->volunteer->id,
         'event_id' => $this->event->id,
         'shift_ids' => [$this->shift->id],
-        'gear_selections' => [$tshirt->id => 'L'],
+        'gear_selections' => [$tshirt->id => 'L', $badge->id => null],
         'token_hash' => HashedToken::fromPlaintext($plainToken)->hash,
         'expires_at' => now()->addHours(24),
     ]);
@@ -182,4 +182,27 @@ it('throws DomainException for archived event', function () {
     $action = app(CompleteEmailVerification::class);
 
     expect(fn () => $action->execute($plainToken))->toThrow(DomainException::class);
+});
+
+it('auto-assigns Typ 2 gear on verification without gear_selections on token', function () {
+    $drinks = ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Drinks']);
+
+    $plainToken = Str::random(64);
+    EmailVerificationToken::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'event_id' => $this->event->id,
+        'shift_ids' => [$this->shift->id],
+        'gear_selections' => null,
+        'token_hash' => HashedToken::fromPlaintext($plainToken)->hash,
+        'expires_at' => now()->addHours(24),
+    ]);
+
+    $action = app(CompleteEmailVerification::class);
+    $action->execute($plainToken);
+
+    expect(VolunteerGear::count())->toBe(1);
+
+    $gear = VolunteerGear::first();
+    expect($gear->project_gear_item_id)->toBe($drinks->id)
+        ->and($gear->quantity_entitled)->toBe(3);
 });

@@ -18,6 +18,14 @@ class VolunteerGearFactory extends Factory
             'project_gear_item_id' => ProjectGearItem::factory(),
             'volunteer_id' => Volunteer::factory(),
             'size' => null,
+            'quantity_entitled' => null,
         ];
+    }
+
+    public function withQuantity(int $quantity): static
+    {
+        return $this->state(fn () => [
+            'quantity_entitled' => $quantity,
+        ]);
     }
 }

@@ -3,10 +3,14 @@
 namespace App\Livewire\Events;
 
 use App\Actions\RecordGearPickup;
+use App\Enums\GearItemType;
+use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -57,11 +61,43 @@ class GearTracker extends Component
         $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
             ->findOrFail($gearId);
 
+        if ($gear->quantity_entitled !== null) {
+            return;
+        }
+
         if ($gear->isPickedUp()) {
             $gear->pickups()->delete();
         } else {
             app(RecordGearPickup::class)->execute($gear, auth()->user());
         }
+
+        unset($this->volunteers);
+    }
+
+    public function recordQuantityPickup(int $gearId): void
+    {
+        Gate::authorize('trackGearPickup', $this->event);
+
+        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
+            ->findOrFail($gearId);
+
+        try {
+            app(RecordGearPickup::class)->execute($gear, auth()->user());
+        } catch (DomainException $e) {
+            $this->addError('gear', $e->getMessage());
+        }
+
+        unset($this->volunteers);
+    }
+
+    public function undoLastQuantityPickup(int $gearId): void
+    {
+        Gate::authorize('trackGearPickup', $this->event);
+
+        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
+            ->findOrFail($gearId);
+
+        $gear->pickups()->latest('picked_up_at')->first()?->delete();
 
         unset($this->volunteers);
     }
@@ -74,14 +110,23 @@ class GearTracker extends Component
 
         $item = $this->event->project->gearItems()->findOrFail($itemId);
 
-        $gear = VolunteerGear::firstOrCreate(
-            [
-                'project_gear_item_id' => $item->id,
-                'volunteer_id' => $volunteerId,
-            ],
-        );
+        try {
+            DB::transaction(function () use ($item, $volunteerId) {
+                $gear = VolunteerGear::firstOrCreate(
+                    [
+                        'project_gear_item_id' => $item->id,
+                        'volunteer_id' => $volunteerId,
+                    ],
+                    [
+                        'quantity_entitled' => $item->type === GearItemType::Quantity ? $item->quantity_per_volunteer : null,
+                    ],
+                );
 
-        app(RecordGearPickup::class)->execute($gear, auth()->user());
+                app(RecordGearPickup::class)->execute($gear, auth()->user());
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Concurrent request already created the record — safe to ignore
+        }
 
         unset($this->volunteers);
     }

@@ -15,9 +15,16 @@
                 @foreach ($this->gearItems as $item)
                     <div wire:key="gear-item-{{ $item->id }}" class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4">
                         <div>
-                            <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $item->name }}</div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $item->name }}</span>
+                                @if ($item->type === \App\Enums\GearItemType::Quantity)
+                                    <flux:badge size="sm" color="blue">{{ __('Quantity') }}</flux:badge>
+                                @endif
+                            </div>
                             <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                @if ($item->requires_size)
+                                @if ($item->type === \App\Enums\GearItemType::Quantity)
+                                    {{ __(':count per volunteer', ['count' => $item->quantity_per_volunteer]) }}
+                                @elseif ($item->requires_size)
                                     {{ __('Sizes:') }} {{ implode(', ', $item->available_sizes ?? []) }}
                                 @else
                                     {{ __('No size selection') }}
@@ -47,21 +54,39 @@
             <form wire:submit="addItem" class="space-y-4">
                 <flux:field>
                     <flux:label>{{ __('Item Name') }}</flux:label>
-                    <flux:input wire:model="newItemName" placeholder="{{ __('e.g. T-Shirt, Badge, Lanyard') }}" />
+                    <flux:input wire:model="newItemName" placeholder="{{ __('e.g. T-Shirt, Badge, Drink Tokens') }}" />
                     <flux:error name="newItemName" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:checkbox wire:model.live="newItemRequiresSize" label="{{ __('Requires size selection') }}" />
+                    <flux:label>{{ __('Type') }}</flux:label>
+                    <flux:select wire:model.live="newItemType">
+                        <flux:select.option value="size_selection">{{ __('Size Selection (Typ 1)') }}</flux:select.option>
+                        <flux:select.option value="quantity">{{ __('Quantity (Typ 2)') }}</flux:select.option>
+                    </flux:select>
+                    <flux:error name="newItemType" />
                 </flux:field>
 
-                @if ($newItemRequiresSize)
+                @if ($newItemType === 'quantity')
                     <flux:field>
-                        <flux:label>{{ __('Available Sizes') }}</flux:label>
-                        <flux:input wire:model="newItemSizes" placeholder="{{ __('XS, S, M, L, XL, XXL') }}" />
-                        <flux:description>{{ __('Comma-separated list of available sizes.') }}</flux:description>
-                        <flux:error name="newItemSizes" />
+                        <flux:label>{{ __('Quantity per Volunteer') }}</flux:label>
+                        <flux:input wire:model="newItemQuantityPerVolunteer" type="number" min="1" placeholder="{{ __('e.g. 3') }}" />
+                        <flux:description>{{ __('How many units each volunteer receives.') }}</flux:description>
+                        <flux:error name="newItemQuantityPerVolunteer" />
                     </flux:field>
+                @else
+                    <flux:field>
+                        <flux:checkbox wire:model.live="newItemRequiresSize" label="{{ __('Requires size selection') }}" />
+                    </flux:field>
+
+                    @if ($newItemRequiresSize)
+                        <flux:field>
+                            <flux:label>{{ __('Available Sizes') }}</flux:label>
+                            <flux:input wire:model="newItemSizes" placeholder="{{ __('XS, S, M, L, XL, XXL') }}" />
+                            <flux:description>{{ __('Comma-separated list of available sizes.') }}</flux:description>
+                            <flux:error name="newItemSizes" />
+                        </flux:field>
+                    @endif
                 @endif
 
                 <flux:button type="submit" variant="primary">

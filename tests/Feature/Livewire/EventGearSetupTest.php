@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\GearItemType;
 use App\Enums\StaffRole;
 use App\Livewire\Events\EventGearSetup;
 use App\Models\Event;
@@ -152,4 +153,66 @@ it('accepts non-sized item without sizes field', function () {
         ->assertHasNoErrors();
 
     expect(ProjectGearItem::count())->toBe(1);
+});
+
+it('allows organizer to add a Typ 2 quantity gear item', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'Drink Tokens')
+        ->set('newItemType', 'quantity')
+        ->set('newItemQuantityPerVolunteer', 3)
+        ->call('addItem')
+        ->assertHasNoErrors();
+
+    expect(ProjectGearItem::count())->toBe(1);
+
+    $item = ProjectGearItem::first();
+    expect($item->name)->toBe('Drink Tokens')
+        ->and($item->type)->toBe(GearItemType::Quantity)
+        ->and($item->quantity_per_volunteer)->toBe(3)
+        ->and($item->requires_size)->toBeFalse();
+});
+
+it('validates quantity_per_volunteer is required for Typ 2', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'Drinks')
+        ->set('newItemType', 'quantity')
+        ->set('newItemQuantityPerVolunteer', null)
+        ->call('addItem')
+        ->assertHasErrors(['newItemQuantityPerVolunteer']);
+
+    expect(ProjectGearItem::count())->toBe(0);
+});
+
+it('validates quantity_per_volunteer is at least 1', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'Drinks')
+        ->set('newItemType', 'quantity')
+        ->set('newItemQuantityPerVolunteer', 0)
+        ->call('addItem')
+        ->assertHasErrors(['newItemQuantityPerVolunteer']);
+
+    expect(ProjectGearItem::count())->toBe(0);
+});
+
+it('defaults to Typ 1 size_selection when no type specified', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->set('newItemName', 'Badge')
+        ->call('addItem')
+        ->assertHasNoErrors();
+
+    $item = ProjectGearItem::first();
+    expect($item->type)->toBe(GearItemType::SizeSelection);
+});
+
+it('renders Typ 2 items with quantity info', function () {
+    ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Drink Tokens']);
+
+    Livewire::actingAs($this->organizer)
+        ->test(EventGearSetup::class, ['eventId' => $this->event->id])
+        ->assertSee('Drink Tokens')
+        ->assertSee('3');
 });

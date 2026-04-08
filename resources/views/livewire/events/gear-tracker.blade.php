@@ -50,23 +50,40 @@
                                 @foreach ($this->gearItems as $gearItem)
                                     @php
                                         $gear = $volunteer->volunteerGear->firstWhere('project_gear_item_id', $gearItem->id);
+                                        $isQuantityType = $gearItem->type === \App\Enums\GearItemType::Quantity;
                                     @endphp
                                     <flux:table.cell>
                                         @if ($gear)
-                                            <div class="flex items-center gap-2">
-                                                @if ($gear->size)
-                                                    <flux:badge size="sm" color="zinc">{{ $gear->size }}</flux:badge>
-                                                @endif
-                                                @if ($gear->isPickedUp())
-                                                    <flux:button size="xs" variant="primary" wire:click="togglePickup({{ $gear->id }})" aria-label="{{ __('Undo pickup') }}">
-                                                        <flux:icon name="check" class="size-4" />
-                                                    </flux:button>
-                                                @else
-                                                    <flux:button size="xs" variant="ghost" wire:click="togglePickup({{ $gear->id }})" aria-label="{{ __('Mark as picked up') }}">
-                                                        <flux:icon name="hand-raised" class="size-4" />
-                                                    </flux:button>
-                                                @endif
-                                            </div>
+                                            @if ($isQuantityType)
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-sm font-medium">{{ $gear->totalPickedUp() }} / {{ $gear->quantity_entitled }}</span>
+                                                    @if ($gear->remainingQuantity() > 0)
+                                                        <flux:button size="xs" variant="ghost" wire:click="recordQuantityPickup({{ $gear->id }})" aria-label="{{ __('Record pickup') }}">
+                                                            <flux:icon name="plus" class="size-4" />
+                                                        </flux:button>
+                                                    @endif
+                                                    @if ($gear->totalPickedUp() > 0)
+                                                        <flux:button size="xs" variant="ghost" wire:click="undoLastQuantityPickup({{ $gear->id }})" aria-label="{{ __('Undo last pickup') }}">
+                                                            <flux:icon name="minus" class="size-4" />
+                                                        </flux:button>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <div class="flex items-center gap-2">
+                                                    @if ($gear->size)
+                                                        <flux:badge size="sm" color="zinc">{{ $gear->size }}</flux:badge>
+                                                    @endif
+                                                    @if ($gear->isPickedUp())
+                                                        <flux:button size="xs" variant="primary" wire:click="togglePickup({{ $gear->id }})" aria-label="{{ __('Undo pickup') }}">
+                                                            <flux:icon name="check" class="size-4" />
+                                                        </flux:button>
+                                                    @else
+                                                        <flux:button size="xs" variant="ghost" wire:click="togglePickup({{ $gear->id }})" aria-label="{{ __('Mark as picked up') }}">
+                                                            <flux:icon name="hand-raised" class="size-4" />
+                                                        </flux:button>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         @else
                                             <flux:button size="xs" variant="ghost" wire:click="assignAndPickup({{ $gearItem->id }}, {{ $volunteer->id }})" aria-label="{{ __('Assign & pick up') }}">
                                                 <flux:icon name="plus" class="size-4" />

@@ -19,7 +19,15 @@ class VolunteerGear extends Model
         'project_gear_item_id',
         'volunteer_id',
         'size',
+        'quantity_entitled',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'quantity_entitled' => 'integer',
+        ];
+    }
 
     public function gearItem(): BelongsTo
     {
@@ -34,6 +42,22 @@ class VolunteerGear extends Model
     public function pickups(): HasMany
     {
         return $this->hasMany(VolunteerGearPickup::class);
+    }
+
+    public function totalPickedUp(): int
+    {
+        return (int) ($this->relationLoaded('pickups')
+            ? $this->pickups->sum('quantity')
+            : $this->pickups()->sum('quantity'));
+    }
+
+    public function remainingQuantity(): ?int
+    {
+        if ($this->quantity_entitled === null) {
+            return null;
+        }
+
+        return max(0, $this->quantity_entitled - $this->totalPickedUp());
     }
 
     public function isPickedUp(): bool

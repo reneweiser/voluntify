@@ -67,3 +67,28 @@ it('stores null available_states by default', function () {
 
     expect($item->available_states)->toBeNull();
 });
+
+it('stores quantity_per_volunteer for quantity type gear item', function () {
+    $item = ProjectGearItem::factory()->quantity()->create(['quantity_per_volunteer' => 3]);
+
+    expect($item->fresh()->quantity_per_volunteer)->toBe(3);
+});
+
+it('stores job_ids as json array', function () {
+    $item = ProjectGearItem::factory()->quantity()->create(['job_ids' => [1, 2, 3]]);
+
+    expect($item->fresh()->job_ids)->toBe([1, 2, 3]);
+});
+
+it('defaults quantity_per_volunteer to null', function () {
+    $item = ProjectGearItem::factory()->create();
+
+    expect($item->quantity_per_volunteer)->toBeNull();
+});
+
+it('factory quantity state sets quantity_per_volunteer', function () {
+    $item = ProjectGearItem::factory()->quantity()->create();
+
+    expect($item->quantity_per_volunteer)->toBe(3)
+        ->and($item->requires_size)->toBeFalse();
+});

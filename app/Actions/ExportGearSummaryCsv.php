@@ -18,12 +18,18 @@ class ExportGearSummaryCsv
                 ->cursor();
 
             foreach ($gearRecords as $gear) {
+                if ($gear->quantity_entitled !== null) {
+                    $pickedUpDisplay = $gear->totalPickedUp().'/'.$gear->quantity_entitled;
+                } else {
+                    $pickedUpDisplay = $gear->isPickedUp() ? 'Ja' : 'Nein';
+                }
+
                 yield [
                     $gear->volunteer->full_name,
                     $gear->volunteer->email,
                     $gear->gearItem->name,
                     $gear->size ?? '',
-                    $gear->isPickedUp() ? 'Ja' : 'Nein',
+                    $pickedUpDisplay,
                 ];
             }
         });

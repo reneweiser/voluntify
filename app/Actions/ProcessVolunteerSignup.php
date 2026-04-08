@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Events\Activity\VolunteerSignedUp;
 use App\Models\Event;
+use App\Models\Shift;
 use App\Models\Volunteer;
 use App\ValueObjects\SignupOutcome;
 
@@ -49,9 +50,14 @@ class ProcessVolunteerSignup
                 sessionId: $sessionId,
             );
 
-            if ($gearSelections !== null) {
-                $this->assignGear->execute($volunteer, $event, $gearSelections);
-            }
+            $volunteerJobIds = collect($shiftIds)
+                ->map(fn ($id) => Shift::find($id)?->volunteerJob?->id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $this->assignGear->execute($volunteer, $event, $gearSelections ?? [], $volunteerJobIds);
 
             if ($customFieldResponses !== null) {
                 $this->recordCustomFields->execute($volunteer, $event, $customFieldResponses);

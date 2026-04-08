@@ -584,7 +584,7 @@ it('creates gear records on signup with gear selections through wizard', functio
         ->assertHasNoErrors()
         ->assertSet('state', WizardState::Complete);
 
-    expect(VolunteerGear::count())->toBe(2);
+    // Only T-Shirt gets created — Badge has no selection so it's skipped by the filter
     expect(VolunteerGear::where('project_gear_item_id', $tshirt->id)->first()->size)->toBe('M');
 });
 

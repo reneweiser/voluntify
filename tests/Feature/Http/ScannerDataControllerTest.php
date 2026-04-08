@@ -258,3 +258,95 @@ it('returns volunteer gear with pickup information', function () {
         ->and($volunteerGear[0]['pickups'])->toHaveCount(1)
         ->and($volunteerGear[0]['pickups'][0]['state'])->toBe('M');
 });
+
+it('includes quantity_entitled in volunteer gear payload for Typ 2 gear', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
+        'project_id' => $this->project->id,
+        'event_id' => null,
+    ]);
+
+    $item = ProjectGearItem::factory()->quantity(3)->for($this->project)->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    VolunteerGear::factory()->withQuantity(3)->create([
+        'project_gear_item_id' => $item->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk();
+    $volunteerGear = $response->json('volunteer_gear.'.$volunteer->id);
+    expect($volunteerGear[0]['quantity_entitled'])->toBe(3);
+});
+
+it('includes quantity_per_volunteer in gear items payload', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+        'type' => ScannerType::VolunteerAdmin,
+    ]);
+
+    ProjectGearItem::factory()->quantity(5)->for($this->project)->create();
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk();
+    $gearItems = $response->json('gear_items');
+    expect($gearItems[0]['quantity_per_volunteer'])->toBe(5);
+});
+
+it('rejects gear pickup when quantity exceeded via scanner API', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+        'type' => ScannerType::VolunteerAdmin,
+    ]);
+
+    $item = ProjectGearItem::factory()->quantity(1)->for($this->project)->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $gear = VolunteerGear::factory()->withQuantity(1)->create([
+        'project_gear_item_id' => $item->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    VolunteerGearPickup::factory()->create(['volunteer_gear_id' => $gear->id, 'quantity' => 1]);
+
+    $response = $this->postJson(route('scanner-api.gear-pickup', $scanner->id), [
+        'volunteer_gear_id' => $gear->id,
+        'quantity' => 1,
+    ], [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonPath('error', 'Pickup would exceed entitled quantity.');
+});
+
+it('allows gear pickup within quantity limit via scanner API', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+        'type' => ScannerType::VolunteerAdmin,
+    ]);
+
+    $item = ProjectGearItem::factory()->quantity(3)->for($this->project)->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $gear = VolunteerGear::factory()->withQuantity(3)->create([
+        'project_gear_item_id' => $item->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $response = $this->postJson(route('scanner-api.gear-pickup', $scanner->id), [
+        'volunteer_gear_id' => $gear->id,
+        'quantity' => 1,
+    ], [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('success', true);
+});
