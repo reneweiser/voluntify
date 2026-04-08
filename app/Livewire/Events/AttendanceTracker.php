@@ -26,6 +26,13 @@ class AttendanceTracker extends Component
         Gate::authorize('markAttendance', $this->event);
     }
 
+    /** @return array<int, array{key: string, label: string, active: bool, core: bool}> */
+    #[Computed]
+    public function attendanceStates(): array
+    {
+        return $this->event->project->active_attendance_states;
+    }
+
     #[Computed]
     public function shifts(): Collection
     {
@@ -61,6 +68,11 @@ class AttendanceTracker extends Component
     public function markStatus(int $signupId, string $status): void
     {
         Gate::authorize('markAttendance', $this->event);
+
+        $activeKeys = collect($this->attendanceStates)->pluck('key')->all();
+        if (! in_array($status, $activeKeys, true)) {
+            return;
+        }
 
         $signup = ShiftSignup::whereHas('shift.volunteerJob', fn ($q) => $q->where('event_id', $this->event->id))
             ->findOrFail($signupId);

@@ -95,3 +95,17 @@ it('does not detect conflict for arrival at a different event', function () {
 
     expect($record->conflictDetected)->toBeFalse();
 });
+
+it('records attendance with en_route status', function () {
+    $record = $this->action->execute($this->signup, AttendanceStatus::EnRoute, $this->recorder);
+
+    expect($record->status)->toBe(AttendanceStatus::EnRoute)
+        ->and($record->conflictDetected)->toBeFalse();
+});
+
+it('records attendance with excused status', function () {
+    $record = $this->action->execute($this->signup, AttendanceStatus::Excused, $this->recorder);
+
+    expect($record->status)->toBe(AttendanceStatus::Excused)
+        ->and($record->conflictDetected)->toBeFalse();
+});

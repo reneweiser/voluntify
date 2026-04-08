@@ -108,6 +108,7 @@
                                             \App\Enums\AttendanceStatus::OnTime => 'emerald',
                                             \App\Enums\AttendanceStatus::Late => 'amber',
                                             \App\Enums\AttendanceStatus::NoShow => 'red',
+                                            default => 'zinc',
                                         };
                                     @endphp
                                     <flux:badge size="sm" :color="$color">{{ $signup->attendanceRecord->status->name }}</flux:badge>

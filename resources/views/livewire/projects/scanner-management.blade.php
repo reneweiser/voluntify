@@ -112,6 +112,14 @@
                             <flux:button size="sm" icon="paper-airplane" wire:click="sendLinks({{ $scanner->id }})" title="{{ __('Send links') }}">
                                 {{ __('Send Links') }}
                             </flux:button>
+                            <flux:button
+                                size="sm"
+                                variant="ghost"
+                                icon="arrow-path"
+                                wire:click="regenerateAuthCode({{ $scanner->id }})"
+                                wire:confirm="{{ __('This will generate a new auth code and email it to all assignees. The old code will stop working. Continue?') }}"
+                                title="{{ __('Regenerate Auth Code') }}"
+                            />
                             <flux:button size="sm" variant="ghost" icon="pencil" wire:click="editScanner({{ $scanner->id }})" title="{{ __('Edit') }}" />
                             <flux:button size="sm" variant="ghost" icon="trash" wire:click="confirmDelete({{ $scanner->id }})" title="{{ __('Delete') }}" />
                         </div>

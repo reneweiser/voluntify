@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Actions\CheckInGuest;
 use App\Actions\RecordArrival;
+use App\Actions\RecordAttendance;
 use App\Actions\RecordGearPickup;
 use App\Actions\RecordGuestGearPickup;
 use App\Enums\ArrivalMethod;
+use App\Enums\AttendanceStatus;
 use App\Enums\ScannerType;
 use App\Exceptions\DomainException;
 use App\Models\AttendanceRecord;
@@ -16,6 +18,7 @@ use App\Models\GuestEntry;
 use App\Models\GuestEntryGear;
 use App\Models\ProjectGearItem;
 use App\Models\ProjectScanner;
+use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
@@ -152,6 +155,7 @@ class ScannerDataController extends Controller
             'guest_entries' => $guestEntries,
             'gear_items' => $gearItems,
             'volunteer_gear' => $volunteerGearMap,
+            'attendance_states' => $scanner->project->active_attendance_states,
         ]);
     }
 
@@ -362,6 +366,47 @@ class ScannerDataController extends Controller
 
         return response()->json([
             'guest_entries' => $guestEntries,
+        ]);
+    }
+
+    public function attendance(
+        int $scannerId,
+        Request $request,
+        RecordAttendance $recordAttendance,
+    ): JsonResponse {
+        /** @var ProjectScanner $scanner */
+        $scanner = $request->attributes->get('scanner');
+
+        if ($scanner->id !== $scannerId) {
+            return response()->json(['error' => 'Scanner ID mismatch.'], 403);
+        }
+
+        if ($scanner->type !== ScannerType::VolunteerAdmin) {
+            return response()->json(['error' => 'Only volunteer admin scanners can record attendance.'], 403);
+        }
+
+        $activeKeys = collect($scanner->project->active_attendance_states)->pluck('key')->all();
+
+        $request->validate([
+            'shift_signup_id' => ['required', 'integer'],
+            'status' => ['required', 'string', Rule::in($activeKeys)],
+        ]);
+
+        $signup = ShiftSignup::whereHas('shift.volunteerJob.event', fn ($q) => $q->where('project_id', $scanner->project_id))
+            ->findOrFail($request->integer('shift_signup_id'));
+
+        $record = $recordAttendance->execute(
+            $signup,
+            AttendanceStatus::from($request->input('status')),
+        );
+
+        return response()->json([
+            'success' => true,
+            'attendance_record' => [
+                'id' => $record->id,
+                'shift_signup_id' => $record->shift_signup_id,
+                'status' => $record->status->value,
+            ],
         ]);
     }
 

@@ -88,6 +88,46 @@ it('skips cancelled signups', function () {
     expect($count)->toBe(0);
 });
 
+it('skips signups marked as en_route', function () {
+    $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->subHours(5),
+        'ends_at' => now()->subHours(3),
+    ]);
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $shift->id,
+    ]);
+
+    AttendanceRecord::factory()->create([
+        'shift_signup_id' => $signup->id,
+        'status' => AttendanceStatus::EnRoute,
+    ]);
+
+    $count = app(MarkNoShows::class)->execute();
+
+    expect($count)->toBe(0);
+});
+
+it('skips signups marked as excused', function () {
+    $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->subHours(5),
+        'ends_at' => now()->subHours(3),
+    ]);
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $shift->id,
+    ]);
+
+    AttendanceRecord::factory()->create([
+        'shift_signup_id' => $signup->id,
+        'status' => AttendanceStatus::Excused,
+    ]);
+
+    $count = app(MarkNoShows::class)->execute();
+
+    expect($count)->toBe(0);
+});
+
 it('respects two-hour buffer', function () {
     $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'starts_at' => now()->subHours(2),

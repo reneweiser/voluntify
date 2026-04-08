@@ -83,6 +83,25 @@ it('creates project without image', function () {
     expect($project->title_image_path)->toBeNull();
 });
 
+it('sets default attendance states on new project', function () {
+    $action = new CreateProject;
+
+    $project = $action->execute(
+        organization: $this->org,
+        name: 'Attendance Project',
+        causer: $this->user,
+    );
+
+    expect($project->attendance_states)->toBeArray()
+        ->toHaveCount(5);
+
+    $keys = array_column($project->attendance_states, 'key');
+    expect($keys)->toBe(['on_time', 'late', 'en_route', 'excused', 'no_show']);
+
+    $coreStates = array_filter($project->attendance_states, fn ($s) => $s['core']);
+    expect($coreStates)->toHaveCount(2);
+});
+
 it('dispatches ProjectCreatedActivity event with causer', function () {
     Event::fake([ProjectCreatedActivity::class]);
 

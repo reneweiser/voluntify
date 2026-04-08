@@ -16,6 +16,7 @@ class ScannerLinkMail extends Mailable
     public function __construct(
         public ProjectScanner $scanner,
         public string $url,
+        public ?string $authCode = null,
     ) {}
 
     public function envelope(): Envelope
@@ -34,6 +35,7 @@ class ScannerLinkMail extends Mailable
                 'url' => $this->url,
                 'startsAt' => $this->scanner->starts_at->setTimezone($this->scanner->project->timezone ?? 'UTC')->format('M d, Y H:i'),
                 'endsAt' => $this->scanner->ends_at->setTimezone($this->scanner->project->timezone ?? 'UTC')->format('M d, Y H:i'),
+                'authCode' => $this->authCode,
             ],
         );
     }
