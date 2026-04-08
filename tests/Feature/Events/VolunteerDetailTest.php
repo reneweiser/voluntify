@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\ArrivalMethod;
 use App\Enums\AttendanceStatus;
+use App\Enums\StaffRole;
 use App\Livewire\Events\VolunteerDetail;
 use App\Models\AttendanceRecord;
 use App\Models\CustomFieldResponse;
@@ -9,11 +11,14 @@ use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\ProjectGearItem;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Models\VolunteerGear;
+use App\Models\VolunteerGearPickup;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -185,4 +190,195 @@ it('promotes volunteer and creates user', function () {
 
     expect($this->volunteer->fresh()->user_id)->not->toBeNull();
     expect(User::where('email', $this->volunteer->email)->exists())->toBeTrue();
+});
+
+// --- Arrival management tests ---
+
+it('shows mark as arrived button when not arrived', function () {
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Als angekommen markieren');
+});
+
+it('hides mark as arrived button when already arrived', function () {
+    $ticket = Ticket::factory()->for($this->volunteer)->for($this->project, 'project')->create();
+
+    EventArrival::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'event_id' => $this->event->id,
+        'ticket_id' => $ticket->id,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertDontSee('Als angekommen markieren');
+});
+
+it('marks volunteer as arrived via manual lookup', function () {
+    $ticket = Ticket::factory()->for($this->volunteer)->for($this->project, 'project')->create();
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('markAsArrived')
+        ->assertHasNoErrors();
+
+    $arrival = EventArrival::where('volunteer_id', $this->volunteer->id)
+        ->where('event_id', $this->event->id)
+        ->first();
+
+    expect($arrival)->not->toBeNull();
+    expect($arrival->method)->toBe(ArrivalMethod::ManualLookup);
+    expect($arrival->scanned_by)->toBe($this->user->id);
+    expect($arrival->ticket_id)->toBe($ticket->id);
+});
+
+it('handles missing ticket when marking arrival', function () {
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('markAsArrived')
+        ->assertHasErrors('arrival');
+
+    expect(EventArrival::where('volunteer_id', $this->volunteer->id)->exists())->toBeFalse();
+});
+
+it('prevents unauthorized arrival marking', function () {
+    $vaUser = User::factory()->create();
+    $this->project->users()->attach($vaUser, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($vaUser)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('markAsArrived')
+        ->assertForbidden();
+});
+
+// --- Gear management tests ---
+
+it('shows gear assignments with size info', function () {
+    $gearItem = ProjectGearItem::factory()
+        ->for($this->project)
+        ->sized()
+        ->create(['name' => 'T-Shirt']);
+
+    VolunteerGear::factory()->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+        'size' => 'L',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('T-Shirt')
+        ->assertSee('L');
+});
+
+it('shows gear assignments with quantity pickup progress', function () {
+    $gearItem = ProjectGearItem::factory()
+        ->for($this->project)
+        ->quantity(5)
+        ->create(['name' => 'Meal Voucher']);
+
+    $gear = VolunteerGear::factory()->withQuantity(5)->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+    ]);
+
+    VolunteerGearPickup::factory()->create([
+        'volunteer_gear_id' => $gear->id,
+        'quantity' => 2,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Meal Voucher')
+        ->assertSee('2 / 5');
+});
+
+it('records gear pickup for quantity gear', function () {
+    $gearItem = ProjectGearItem::factory()
+        ->for($this->project)
+        ->quantity(5)
+        ->create(['name' => 'Meal Voucher']);
+
+    $gear = VolunteerGear::factory()->withQuantity(5)->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('recordGearPickup', $gear->id)
+        ->assertHasNoErrors();
+
+    expect(VolunteerGearPickup::where('volunteer_gear_id', $gear->id)->count())->toBe(1);
+    expect(VolunteerGearPickup::where('volunteer_gear_id', $gear->id)->first()->picked_up_by)->toBe($this->user->id);
+});
+
+it('records gear pickup for sized gear', function () {
+    $gearItem = ProjectGearItem::factory()
+        ->for($this->project)
+        ->sized()
+        ->create(['name' => 'T-Shirt']);
+
+    $gear = VolunteerGear::factory()->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+        'size' => 'M',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('recordGearPickup', $gear->id)
+        ->assertHasNoErrors();
+
+    expect(VolunteerGearPickup::where('volunteer_gear_id', $gear->id)->count())->toBe(1);
+});
+
+it('undoes last gear pickup', function () {
+    $gearItem = ProjectGearItem::factory()
+        ->for($this->project)
+        ->quantity(5)
+        ->create(['name' => 'Meal Voucher']);
+
+    $gear = VolunteerGear::factory()->withQuantity(5)->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+    ]);
+
+    VolunteerGearPickup::factory()->create([
+        'volunteer_gear_id' => $gear->id,
+        'picked_up_at' => now()->subMinute(),
+        'quantity' => 1,
+    ]);
+    $latestPickup = VolunteerGearPickup::factory()->create([
+        'volunteer_gear_id' => $gear->id,
+        'picked_up_at' => now(),
+        'quantity' => 1,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('undoGearPickup', $gear->id)
+        ->assertHasNoErrors();
+
+    expect(VolunteerGearPickup::where('volunteer_gear_id', $gear->id)->count())->toBe(1);
+    expect(VolunteerGearPickup::find($latestPickup->id))->toBeNull();
+});
+
+it('prevents unauthorized gear pickup', function () {
+    $vaUser = User::factory()->create();
+    $this->project->users()->attach($vaUser, ['role' => StaffRole::VolunteerAdmin]);
+
+    $gearItem = ProjectGearItem::factory()
+        ->for($this->project)
+        ->create(['name' => 'Badge']);
+
+    $gear = VolunteerGear::factory()->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+    ]);
+
+    Livewire::actingAs($vaUser)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('recordGearPickup', $gear->id)
+        ->assertForbidden();
 });

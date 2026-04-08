@@ -3,6 +3,9 @@
 namespace App\Livewire\Events;
 
 use App\Actions\PromoteVolunteer;
+use App\Actions\RecordArrival;
+use App\Actions\RecordGearPickup;
+use App\Enums\ArrivalMethod;
 use App\Enums\ScannerType;
 use App\Enums\StaffRole;
 use App\Exceptions\DomainException;
@@ -10,7 +13,9 @@ use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventArrival;
 use App\Models\ProjectScanner;
+use App\Models\Ticket;
 use App\Models\Volunteer;
+use App\Models\VolunteerGear;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -87,6 +92,26 @@ class VolunteerDetail extends Component
         return (bool) $this->volunteer->user_id;
     }
 
+    #[Computed]
+    public function ticket(): ?Ticket
+    {
+        return $this->volunteer->tickets()
+            ->where('project_id', $this->event->project_id)
+            ->first();
+    }
+
+    /**
+     * @return Collection<int, VolunteerGear>
+     */
+    #[Computed]
+    public function volunteerGear(): Collection
+    {
+        return $this->volunteer->volunteerGear()
+            ->whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
+            ->with(['gearItem', 'pickups'])
+            ->get();
+    }
+
     /**
      * @return Collection<int, ProjectScanner>
      */
@@ -129,5 +154,55 @@ class VolunteerDetail extends Component
         } catch (DomainException $e) {
             $this->addError('promote', $e->getMessage());
         }
+    }
+
+    public function markAsArrived(): void
+    {
+        Gate::authorize('scan', $this->event);
+
+        $ticket = $this->ticket;
+
+        if (! $ticket) {
+            $this->addError('arrival', __('Kein Ticket für diesen Volunteer vorhanden.'));
+
+            return;
+        }
+
+        app(RecordArrival::class)->execute(
+            ticket: $ticket,
+            event: $this->event,
+            scannedBy: auth()->user(),
+            method: ArrivalMethod::ManualLookup,
+        );
+
+        unset($this->arrival, $this->ticket);
+    }
+
+    public function recordGearPickup(int $gearId): void
+    {
+        Gate::authorize('trackGearPickup', $this->event);
+
+        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
+            ->findOrFail($gearId);
+
+        try {
+            app(RecordGearPickup::class)->execute($gear, auth()->user());
+        } catch (DomainException $e) {
+            $this->addError('gear', $e->getMessage());
+        }
+
+        unset($this->volunteerGear);
+    }
+
+    public function undoGearPickup(int $gearId): void
+    {
+        Gate::authorize('trackGearPickup', $this->event);
+
+        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
+            ->findOrFail($gearId);
+
+        $gear->pickups()->latest('picked_up_at')->first()?->delete();
+
+        unset($this->volunteerGear);
     }
 }

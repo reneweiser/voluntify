@@ -1,0 +1,53 @@
+<?php
+
+namespace App\Notifications;
+
+use App\Models\Project;
+use App\Notifications\Concerns\UsesOrganizationMailer;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+
+class VolunteerProfileDeletedNotification extends Notification implements ShouldQueue
+{
+    use Queueable;
+    use UsesOrganizationMailer;
+
+    public function __construct(
+        public string $volunteerName,
+        public Project $project,
+        public string $shiftSummary,
+    ) {}
+
+    /**
+     * @return array<int, string>
+     */
+    public function via(object $notifiable): array
+    {
+        return ['mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $mail = (new MailMessage)
+            ->subject("Volunteer-Profil gelöscht: {$this->volunteerName}")
+            ->greeting("Hallo {$notifiable->name}!")
+            ->line("**{$this->volunteerName}** hat sein Volunteer-Profil im Projekt **{$this->project->name}** gelöscht.")
+            ->line('Alle zugehörigen Daten (Anmeldungen, Tickets, Gear) wurden unwiderruflich entfernt.');
+
+        if ($this->shiftSummary !== '') {
+            $mail->line('**Betroffene kommende Schichten (jetzt unterbesetzt):**');
+            foreach (explode("\n", $this->shiftSummary) as $line) {
+                $trimmed = trim($line);
+                if ($trimmed !== '') {
+                    $mail->line($trimmed);
+                }
+            }
+        }
+
+        $mail->line('Bitte prüfe, ob eine Nachbesetzung erforderlich ist.');
+
+        return $this->applyOrgMailer($mail, $this->project->organization, $this->project);
+    }
+}

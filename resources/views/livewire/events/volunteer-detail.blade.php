@@ -43,7 +43,15 @@
                             <flux:text size="sm">{{ $this->arrival->scanned_at->format('M d, Y g:i A') }}</flux:text>
                         </div>
                     @else
-                        <flux:badge size="sm" color="zinc">{{ __('Not arrived') }}</flux:badge>
+                        <div class="flex items-center gap-2">
+                            <flux:badge size="sm" color="zinc">{{ __('Not arrived') }}</flux:badge>
+                            @can('scan', $event)
+                                <flux:button size="xs" variant="primary" wire:click="markAsArrived" wire:confirm="{{ __('Volunteer als angekommen markieren?') }}">
+                                    {{ __('Als angekommen markieren') }}
+                                </flux:button>
+                            @endcan
+                        </div>
+                        <flux:error name="arrival" />
                     @endif
                 </div>
             </div>
@@ -112,6 +120,73 @@
                 </flux:table.rows>
             </flux:table>
             </div>
+        @endif
+
+        {{-- Gear assignments --}}
+        @if ($this->volunteerGear->isNotEmpty())
+            <flux:heading size="lg" class="mt-6 mb-4">{{ __('Gear') }}</flux:heading>
+
+            <div class="overflow-x-auto">
+            <flux:table>
+                <flux:table.columns>
+                    <flux:table.column>{{ __('Item') }}</flux:table.column>
+                    <flux:table.column>{{ __('Size') }}</flux:table.column>
+                    <flux:table.column>{{ __('Status') }}</flux:table.column>
+                    <flux:table.column>{{ __('Actions') }}</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
+                    @foreach ($this->volunteerGear as $gear)
+                        <flux:table.row :key="'gear-'.$gear->id">
+                            <flux:table.cell>{{ $gear->gearItem->name }}</flux:table.cell>
+                            <flux:table.cell>
+                                @if ($gear->size)
+                                    <flux:badge size="sm" color="zinc">{{ $gear->size }}</flux:badge>
+                                @else
+                                    —
+                                @endif
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                @if ($gear->quantity_entitled !== null)
+                                    <span class="text-sm font-medium">{{ $gear->totalPickedUp() }} / {{ $gear->quantity_entitled }}</span>
+                                @elseif ($gear->isPickedUp())
+                                    <flux:badge size="sm" color="emerald">{{ __('Picked up') }}</flux:badge>
+                                @else
+                                    <flux:badge size="sm" color="zinc">{{ __('Not picked up') }}</flux:badge>
+                                @endif
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                @can('trackGearPickup', $event)
+                                    @if ($gear->quantity_entitled !== null)
+                                        @if ($gear->remainingQuantity() > 0)
+                                            <flux:button size="xs" variant="ghost" wire:click="recordGearPickup({{ $gear->id }})" aria-label="{{ __('Record pickup') }}">
+                                                <flux:icon name="plus" class="size-4" />
+                                            </flux:button>
+                                        @endif
+                                        @if ($gear->totalPickedUp() > 0)
+                                            <flux:button size="xs" variant="ghost" wire:click="undoGearPickup({{ $gear->id }})" aria-label="{{ __('Undo last pickup') }}">
+                                                <flux:icon name="minus" class="size-4" />
+                                            </flux:button>
+                                        @endif
+                                    @else
+                                        @if ($gear->isPickedUp())
+                                            <flux:button size="xs" variant="ghost" wire:click="undoGearPickup({{ $gear->id }})" aria-label="{{ __('Undo pickup') }}">
+                                                <flux:icon name="arrow-uturn-left" class="size-4" />
+                                            </flux:button>
+                                        @else
+                                            <flux:button size="xs" variant="ghost" wire:click="recordGearPickup({{ $gear->id }})" aria-label="{{ __('Mark as picked up') }}">
+                                                <flux:icon name="hand-raised" class="size-4" />
+                                            </flux:button>
+                                        @endif
+                                    @endif
+                                @endcan
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
+            </div>
+
+            <flux:error name="gear" />
         @endif
 
         {{-- Promote modal --}}

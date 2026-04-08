@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: implement
-current_focus: "H3 — Tests for 8 untested Actions (destructive ops, Fortify, invitation)"
-current_milestone: m14-audit-remediation
+current_focus: "#117 — Admin Manual Arrival + Gear Management on VolunteerDetail"
+current_milestone: m15-volunteer-portal-enhancements
 entry_point: plan
 stages_to_run:
   - plan
@@ -17,7 +17,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-01T23:45:00"
+last_updated: "2026-04-08T15:00:00"
 ---
 
 # TALL Pipeline — Index
@@ -34,6 +34,7 @@ last_updated: "2026-04-01T23:45:00"
 | m12-guest-lists | Guest Lists (#90) | Guest list CRUD, QR generation, grouped emails, scanner integration | m8, m11 | complete |
 | m13-polish | Communication & Polish | Announcements, email templates, remaining features | m8, m9, m11 | complete (all stages) |
 | m14-audit-remediation | Code Quality Audit Remediation | H0-H3: test gaps, Form Objects, auth refactor | m13 | in_progress |
+| m15-volunteer-portal-enhancements | Volunteer Portal Enhancements | #117 arrival+gear, #125 banners, #115 magic link re-request, #126 QR+resend, #127 attendance, #105 self-deletion | m14 | in_progress |
 
 ## Artifacts
 
