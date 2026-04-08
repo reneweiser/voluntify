@@ -59,3 +59,44 @@ it('returns multiple items', function () {
 
     expect($result)->toHaveCount(2);
 });
+
+it('returns null total_entitled and total_picked_up_quantity for Typ 1 items', function () {
+    ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+
+    $result = $this->action->execute($this->project);
+
+    expect($result[0]['total_entitled'])->toBeNull()
+        ->and($result[0]['total_picked_up_quantity'])->toBeNull();
+});
+
+it('includes total_entitled and total_picked_up_quantity for Typ 2 items', function () {
+    $item = ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Drinks']);
+    $v1 = Volunteer::factory()->for($this->project)->create();
+    $v2 = Volunteer::factory()->for($this->project)->create();
+    $gear1 = VolunteerGear::factory()->withQuantity(3)->create(['project_gear_item_id' => $item->id, 'volunteer_id' => $v1->id]);
+    $gear2 = VolunteerGear::factory()->withQuantity(3)->create(['project_gear_item_id' => $item->id, 'volunteer_id' => $v2->id]);
+
+    VolunteerGearPickup::factory()->create(['volunteer_gear_id' => $gear1->id, 'quantity' => 2]);
+    VolunteerGearPickup::factory()->create(['volunteer_gear_id' => $gear2->id, 'quantity' => 1]);
+
+    $result = $this->action->execute($this->project);
+
+    expect($result[0]['total_entitled'])->toBe(6)
+        ->and($result[0]['total_picked_up_quantity'])->toBe(3)
+        ->and($result[0]['pending'])->toBe(3);
+});
+
+it('calculates pending correctly for Typ 2 when fully picked up', function () {
+    $item = ProjectGearItem::factory()->quantity(2)->for($this->project)->create(['name' => 'Tokens']);
+    $v1 = Volunteer::factory()->for($this->project)->create();
+    $gear1 = VolunteerGear::factory()->withQuantity(2)->create(['project_gear_item_id' => $item->id, 'volunteer_id' => $v1->id]);
+
+    VolunteerGearPickup::factory()->create(['volunteer_gear_id' => $gear1->id, 'quantity' => 1]);
+    VolunteerGearPickup::factory()->create(['volunteer_gear_id' => $gear1->id, 'quantity' => 1]);
+
+    $result = $this->action->execute($this->project);
+
+    expect($result[0]['total_entitled'])->toBe(2)
+        ->and($result[0]['total_picked_up_quantity'])->toBe(2)
+        ->and($result[0]['pending'])->toBe(0);
+});

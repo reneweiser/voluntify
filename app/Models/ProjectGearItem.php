@@ -18,6 +18,8 @@ class ProjectGearItem extends Model
         'project_id',
         'name',
         'type',
+        'quantity_per_volunteer',
+        'job_ids',
         'requires_size',
         'available_sizes',
         'available_states',
@@ -28,6 +30,8 @@ class ProjectGearItem extends Model
     {
         return [
             'type' => GearItemType::class,
+            'quantity_per_volunteer' => 'integer',
+            'job_ids' => 'array',
             'requires_size' => 'boolean',
             'available_sizes' => 'array',
             'available_states' => 'array',

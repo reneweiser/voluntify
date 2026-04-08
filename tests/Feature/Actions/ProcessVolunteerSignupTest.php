@@ -134,7 +134,7 @@ it('creates gear records for verified volunteer with gear selections', function 
         event: $this->event,
         shiftIds: [$this->shift->id],
         phone: null,
-        gearSelections: [$tshirt->id => 'M'],
+        gearSelections: [$tshirt->id => 'M', $badge->id => null],
     );
 
     expect($outcome->type)->toBe(SignupOutcomeType::Completed);
@@ -250,4 +250,51 @@ it('passes sessionId through to SignUpVolunteerForShifts to release reservations
 
     // Reservation should have been released
     expect(ShiftReservation::forSession('signup-session')->count())->toBe(0);
+});
+
+it('auto-assigns Typ 2 gear for verified volunteer without gearSelections', function () {
+    $drinks = ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Drinks']);
+
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'typ2@example.com', 'first_name' => 'Auto', 'last_name' => 'Gear']);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $outcome = $action->execute(
+        firstName: 'Auto',
+        lastName: 'Gear',
+        email: 'typ2@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+    );
+
+    expect($outcome->type)->toBe(SignupOutcomeType::Completed);
+    expect(VolunteerGear::count())->toBe(1);
+
+    $gear = VolunteerGear::first();
+    expect($gear->project_gear_item_id)->toBe($drinks->id)
+        ->and($gear->quantity_entitled)->toBe(3);
+});
+
+it('auto-assigns Typ 2 gear alongside Typ 1 selections', function () {
+    $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
+    $drinks = ProjectGearItem::factory()->quantity(2)->for($this->project)->create(['name' => 'Drinks']);
+
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'both@example.com', 'first_name' => 'Both', 'last_name' => 'Types']);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $outcome = $action->execute(
+        firstName: 'Both',
+        lastName: 'Types',
+        email: 'both@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+        gearSelections: [$tshirt->id => 'L'],
+    );
+
+    expect($outcome->type)->toBe(SignupOutcomeType::Completed);
+    expect(VolunteerGear::count())->toBe(2);
+
+    expect(VolunteerGear::where('project_gear_item_id', $tshirt->id)->first()->size)->toBe('L');
+    expect(VolunteerGear::where('project_gear_item_id', $drinks->id)->first()->quantity_entitled)->toBe(2);
 });

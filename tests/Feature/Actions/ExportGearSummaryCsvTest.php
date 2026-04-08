@@ -117,3 +117,59 @@ it('only exports gear for the specified project', function () {
     expect($rows)->toHaveCount(2)
         ->and($rows[1][2])->toBe('Ours');
 });
+
+it('shows quantity fraction for Typ 2 gear', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $item = ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Drinks']);
+    $gear = VolunteerGear::factory()->withQuantity(3)->create([
+        'project_gear_item_id' => $item->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    VolunteerGearPickup::factory()->create(['volunteer_gear_id' => $gear->id, 'quantity' => 2]);
+
+    $rows = $this->action->execute($this->project)->toArray();
+    $dataRow = $rows[1];
+
+    expect($dataRow[4])->toBe('2/3');
+});
+
+it('shows 0/N for Typ 2 gear with no pickups', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $item = ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Tokens']);
+    VolunteerGear::factory()->withQuantity(3)->create([
+        'project_gear_item_id' => $item->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $rows = $this->action->execute($this->project)->toArray();
+    $dataRow = $rows[1];
+
+    expect($dataRow[4])->toBe('0/3');
+});
+
+it('still shows Ja/Nein for Typ 1 gear alongside Typ 2', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $badge = ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+    $drinks = ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Drinks']);
+
+    $badgeGear = VolunteerGear::factory()->create([
+        'project_gear_item_id' => $badge->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+    VolunteerGearPickup::factory()->create(['volunteer_gear_id' => $badgeGear->id]);
+
+    VolunteerGear::factory()->withQuantity(3)->create([
+        'project_gear_item_id' => $drinks->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $rows = $this->action->execute($this->project)->toArray();
+    $dataRows = array_slice($rows, 1);
+
+    $badgeRow = collect($dataRows)->firstWhere(2, 'Badge');
+    $drinkRow = collect($dataRows)->firstWhere(2, 'Drinks');
+
+    expect($badgeRow[4])->toBe('Ja')
+        ->and($drinkRow[4])->toBe('0/3');
+});

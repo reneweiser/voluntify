@@ -292,6 +292,8 @@
                                         </flux:select>
                                         <flux:error name="gearSelections.{{ $item->id }}" />
                                     </flux:field>
+                                @elseif ($item->type === \App\Enums\GearItemType::Quantity)
+                                    <p class="text-sm" style="color: #9a9a9a;">{{ __('Qty: :count included', ['count' => $item->quantity_per_volunteer]) }}</p>
                                 @else
                                     <p class="text-sm" style="color: #9a9a9a;">{{ __('Included with your signup') }}</p>
                                 @endif

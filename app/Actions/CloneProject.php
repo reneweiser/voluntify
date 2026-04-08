@@ -38,6 +38,7 @@ class CloneProject
             foreach ($project->gearItems as $gearItem) {
                 $clonedGear = $gearItem->replicate(['id', 'project_id', 'created_at', 'updated_at']);
                 $clonedGear->project_id = $clonedProject->id;
+                $clonedGear->job_ids = null;
                 $clonedGear->save();
             }
 

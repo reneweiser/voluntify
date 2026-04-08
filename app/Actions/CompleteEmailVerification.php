@@ -8,6 +8,7 @@ use App\Events\Activity\VolunteerVerified;
 use App\Exceptions\DomainException;
 use App\Exceptions\ExpiredVerificationException;
 use App\Models\EmailVerificationToken;
+use App\Models\Shift;
 use App\ValueObjects\HashedToken;
 use App\ValueObjects\ShiftSignupResult;
 
@@ -46,9 +47,14 @@ class CompleteEmailVerification
             shiftIds: $token->shift_ids,
         );
 
-        if ($token->gear_selections) {
-            $this->assignGear->execute($volunteer, $event, $token->gear_selections);
-        }
+        $volunteerJobIds = collect($token->shift_ids)
+            ->map(fn ($id) => Shift::find($id)?->volunteerJob?->id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->assignGear->execute($volunteer, $event, $token->gear_selections ?? [], $volunteerJobIds);
 
         if ($token->custom_field_responses) {
             $this->recordCustomFields->execute($volunteer, $event, $token->custom_field_responses);

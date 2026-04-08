@@ -99,7 +99,9 @@
                                     @endif
                                 </div>
                             </div>
-                            @if ($gear->isPickedUp())
+                            @if ($gear->quantity_entitled !== null)
+                                <span class="text-xs font-semibold px-2.5 py-1 rounded" style="background: rgba(59,130,246,0.15); color: #93c5fd;">{{ $gear->totalPickedUp() }} / {{ $gear->quantity_entitled }}</span>
+                            @elseif ($gear->isPickedUp())
                                 <span class="text-xs font-semibold px-2.5 py-1 rounded" style="background: rgba(5,150,105,0.15); color: #6ee7b7;">{{ __('Picked Up') }}</span>
                             @else
                                 <span class="text-xs font-semibold px-2.5 py-1 rounded" style="background: rgba(255,255,255,0.08); color: #9a9a9a;">{{ __('Not Picked Up') }}</span>

@@ -87,6 +87,7 @@ class ScannerDataController extends Controller
                     'id' => $item->id,
                     'name' => $item->name,
                     'type' => $item->type->value,
+                    'quantity_per_volunteer' => $item->quantity_per_volunteer,
                     'available_sizes' => $item->available_sizes,
                     'available_states' => $item->available_states,
                 ]);
@@ -96,6 +97,7 @@ class ScannerDataController extends Controller
                     'id' => $g->id,
                     'project_gear_item_id' => $g->project_gear_item_id,
                     'size' => $g->size,
+                    'quantity_entitled' => $g->quantity_entitled,
                     'picked_up' => $g->isPickedUp(),
                     'pickups' => $g->pickups->map(fn ($p) => [
                         'state' => $p->state,
@@ -229,12 +231,16 @@ class ScannerDataController extends Controller
         $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $scanner->project_id))
             ->findOrFail($request->integer('volunteer_gear_id'));
 
-        $pickup = $recordGearPickup->execute(
-            gear: $gear,
-            user: null,
-            state: $request->input('state'),
-            quantity: $request->integer('quantity', 1),
-        );
+        try {
+            $pickup = $recordGearPickup->execute(
+                gear: $gear,
+                user: null,
+                state: $request->input('state'),
+                quantity: $request->integer('quantity', 1),
+            );
+        } catch (DomainException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
 
         return response()->json([
             'success' => true,

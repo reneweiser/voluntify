@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Models\ProjectGearItem;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -16,6 +17,10 @@ class EventGearSetup extends Component
     public Event $event;
 
     public string $newItemName = '';
+
+    public string $newItemType = 'size_selection';
+
+    public ?int $newItemQuantityPerVolunteer = null;
 
     public bool $newItemRequiresSize = false;
 
@@ -38,18 +43,26 @@ class EventGearSetup extends Component
     {
         Gate::authorize('manageGear', $this->event);
 
-        $this->validate([
+        $rules = [
             'newItemName' => ['required', 'string', 'max:255'],
-            'newItemSizes' => ['required_if:newItemRequiresSize,true', 'string', 'max:500', 'regex:/[a-zA-Z0-9]/'],
-        ]);
+            'newItemType' => ['required', Rule::in(['size_selection', 'quantity'])],
+        ];
+
+        if ($this->newItemType === 'quantity') {
+            $rules['newItemQuantityPerVolunteer'] = ['required', 'integer', 'min:1'];
+        } else {
+            $rules['newItemSizes'] = ['required_if:newItemRequiresSize,true', 'string', 'max:500', 'regex:/[a-zA-Z0-9]/'];
+        }
+
+        $this->validate($rules);
 
         $sizes = null;
-        if ($this->newItemRequiresSize && $this->newItemSizes !== '') {
+        if ($this->newItemType === 'size_selection' && $this->newItemRequiresSize && $this->newItemSizes !== '') {
             $sizes = array_map('trim', explode(',', $this->newItemSizes));
             $sizes = array_values(array_filter($sizes));
         }
 
-        if ($this->newItemRequiresSize && empty($sizes)) {
+        if ($this->newItemType === 'size_selection' && $this->newItemRequiresSize && empty($sizes)) {
             $this->addError('newItemSizes', __('At least one valid size is required.'));
 
             return;
@@ -60,12 +73,14 @@ class EventGearSetup extends Component
         ProjectGearItem::create([
             'project_id' => $this->event->project_id,
             'name' => $this->newItemName,
-            'requires_size' => $this->newItemRequiresSize,
-            'available_sizes' => $this->newItemRequiresSize ? $sizes : null,
+            'type' => $this->newItemType,
+            'quantity_per_volunteer' => $this->newItemType === 'quantity' ? $this->newItemQuantityPerVolunteer : null,
+            'requires_size' => $this->newItemType === 'size_selection' ? $this->newItemRequiresSize : false,
+            'available_sizes' => $this->newItemType === 'size_selection' && $this->newItemRequiresSize ? $sizes : null,
             'sort_order' => $maxSort + 1,
         ]);
 
-        $this->reset('newItemName', 'newItemRequiresSize', 'newItemSizes');
+        $this->reset('newItemName', 'newItemType', 'newItemQuantityPerVolunteer', 'newItemRequiresSize', 'newItemSizes');
         unset($this->gearItems);
     }
 

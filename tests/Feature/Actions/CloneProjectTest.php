@@ -157,3 +157,18 @@ it('dispatches EventCloned for each cloned event with causer', function () {
         return $event->causer->id === $this->user->id;
     });
 });
+
+it('clones gear item with null job_ids', function () {
+    ProjectGearItem::factory()->quantity(3)->for($this->project)->create([
+        'name' => 'Drinks',
+        'job_ids' => [1, 2, 3],
+    ]);
+
+    $action = app(CloneProject::class);
+    $clonedProject = $action->execute($this->project, $this->user);
+
+    $clonedGear = $clonedProject->gearItems->first();
+    expect($clonedGear->name)->toBe('Drinks')
+        ->and($clonedGear->quantity_per_volunteer)->toBe(3)
+        ->and($clonedGear->job_ids)->toBeNull();
+});

@@ -33,10 +33,12 @@ class ProjectGearItemFactory extends Factory
         ]);
     }
 
-    public function quantity(): static
+    public function quantity(int $quantityPerVolunteer = 3): static
     {
         return $this->state(fn () => [
             'type' => GearItemType::Quantity,
+            'quantity_per_volunteer' => $quantityPerVolunteer,
+            'requires_size' => false,
         ]);
     }
 }

@@ -16,6 +16,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
+use App\Models\VolunteerGearPickup;
 use App\Models\VolunteerJob;
 use Livewire\Livewire;
 
@@ -260,6 +261,23 @@ it('displays assigned gear with size and pickup status', function () {
         ->assertSee('T-Shirt')
         ->assertSee('L')
         ->assertSee('Badge');
+});
+
+it('displays Typ 2 gear with quantity pickup status', function () {
+    $drinks = ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Drink Tokens']);
+    $gear = VolunteerGear::factory()->withQuantity(3)->create([
+        'project_gear_item_id' => $drinks->id,
+        'volunteer_id' => $this->volunteer->id,
+    ]);
+    VolunteerGearPickup::factory()->create(['volunteer_gear_id' => $gear->id, 'quantity' => 1]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Drink Tokens')
+        ->assertSee('1 / 3');
 });
 
 it('shows custom field responses grouped by event', function () {
