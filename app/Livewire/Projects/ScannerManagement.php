@@ -9,6 +9,7 @@ use App\Actions\UpdateProjectScanner;
 use App\Concerns\ConvertsTimezone;
 use App\Events\Activity\ScannerAssigneeAdded;
 use App\Events\Activity\ScannerAssigneeRemoved;
+use App\Exceptions\HasGuestListsException;
 use App\Livewire\Forms\ScannerForm;
 use App\Models\Event;
 use App\Models\Project;
@@ -139,6 +140,7 @@ class ScannerManagement extends Component
 
     public function confirmDelete(int $scannerId): void
     {
+        $this->resetErrorBag('scanner');
         $this->deletingScannerId = $scannerId;
         $this->showDeleteConfirm = true;
     }
@@ -148,8 +150,14 @@ class ScannerManagement extends Component
         $scanner = ProjectScanner::where('project_id', $this->projectId)
             ->findOrFail($this->deletingScannerId);
 
-        $action = new DeleteProjectScanner;
-        $action->execute($scanner);
+        try {
+            $action = new DeleteProjectScanner;
+            $action->execute($scanner);
+        } catch (HasGuestListsException $e) {
+            $this->addError('scanner', $e->getMessage());
+
+            return;
+        }
 
         $this->showDeleteConfirm = false;
         $this->deletingScannerId = null;

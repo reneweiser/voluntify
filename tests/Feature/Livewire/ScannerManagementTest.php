@@ -5,6 +5,7 @@ use App\Enums\ScannerType;
 use App\Enums\StaffRole;
 use App\Jobs\SendScannerLinksJob;
 use App\Livewire\Projects\ScannerManagement;
+use App\Models\GuestList;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectScanner;
@@ -133,4 +134,23 @@ it('removes an assignee from a scanner', function () {
         ->assertHasNoErrors();
 
     expect(ProjectScannerAssignee::find($assignee->id))->toBeNull();
+});
+
+it('shows error when deleting scanner with guest lists', function () {
+    $scanner = ProjectScanner::factory()->create([
+        'project_id' => $this->project->id,
+    ]);
+    GuestList::factory()->create([
+        'scanner_id' => $scanner->id,
+        'project_id' => $this->project->id,
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->call('confirmDelete', $scanner->id)
+        ->call('deleteScanner')
+        ->assertHasErrors('scanner')
+        ->assertSet('showDeleteConfirm', true);
+
+    expect(ProjectScanner::find($scanner->id))->not->toBeNull();
 });
