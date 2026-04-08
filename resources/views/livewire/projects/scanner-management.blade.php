@@ -15,6 +15,10 @@
         <flux:callout variant="success" class="mb-4">{{ session('message') }}</flux:callout>
     @endif
 
+    @error('scanner')
+        <flux:callout variant="danger" class="mb-4">{{ $message }}</flux:callout>
+    @enderror
+
     {{-- Raw auth code (shown once after creation) --}}
     @if (session('rawAuthCode'))
         @php $authCodeData = session('rawAuthCode'); @endphp

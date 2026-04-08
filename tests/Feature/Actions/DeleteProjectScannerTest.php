@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\DeleteProjectScanner;
+use App\Exceptions\HasGuestListsException;
+use App\Models\GuestList;
 use App\Models\Project;
 use App\Models\ProjectScanner;
 use App\Models\ProjectScannerAssignee;
@@ -39,4 +41,31 @@ it('does not delete other scanners in the same project', function () {
 
     expect(ProjectScanner::find($scanner1->id))->toBeNull()
         ->and(ProjectScanner::find($scanner2->id))->not->toBeNull();
+});
+
+it('throws HasGuestListsException when scanner has guest lists', function () {
+    $scanner = ProjectScanner::factory()->create();
+    GuestList::factory()->create([
+        'scanner_id' => $scanner->id,
+        'project_id' => $scanner->project_id,
+    ]);
+
+    expect(fn () => (new DeleteProjectScanner)->execute($scanner))
+        ->toThrow(HasGuestListsException::class);
+
+    expect(ProjectScanner::find($scanner->id))->not->toBeNull();
+});
+
+it('deletes scanner after all guest lists are removed', function () {
+    $scanner = ProjectScanner::factory()->create();
+    $guestList = GuestList::factory()->create([
+        'scanner_id' => $scanner->id,
+        'project_id' => $scanner->project_id,
+    ]);
+
+    $guestList->delete();
+
+    (new DeleteProjectScanner)->execute($scanner);
+
+    expect(ProjectScanner::find($scanner->id))->toBeNull();
 });
