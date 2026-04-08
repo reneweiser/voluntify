@@ -1,12 +1,16 @@
 <?php
 
 use App\Actions\VerifyMagicLink;
+use App\Enums\AttendanceStatus;
+use App\Enums\EventStatus;
 use App\Exceptions\InvalidMagicLinkException;
 use App\Livewire\Public\VolunteerPortal;
 use App\Models\Announcement;
+use App\Models\AttendanceRecord;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\Event;
+use App\Models\MagicLinkToken;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
@@ -18,6 +22,9 @@ use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use App\Models\VolunteerGearPickup;
 use App\Models\VolunteerJob;
+use App\Notifications\TicketResendNotification;
+use App\ValueObjects\HashedToken;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -338,7 +345,7 @@ it('shows back link to ticket page when volunteer has a ticket', function () {
 
     Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
         ->assertSeeHtml(route('volunteer.ticket', 'token'))
-        ->assertSee('View Your Ticket');
+        ->assertSee('Ticket-Seite anzeigen');
 });
 
 it('does not show ticket link when volunteer has no ticket', function () {
@@ -347,7 +354,7 @@ it('does not show ticket link when volunteer has no ticket', function () {
         ->andReturn($this->volunteer);
 
     Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
-        ->assertDontSee('View Your Ticket');
+        ->assertDontSee('Ticket-Seite anzeigen');
 });
 
 it('includes correct magic token in ticket link href', function () {
@@ -362,4 +369,410 @@ it('includes correct magic token in ticket link href', function () {
 
     Livewire::test(VolunteerPortal::class, ['magicToken' => 'my-secret-token'])
         ->assertSeeHtml(route('volunteer.ticket', 'my-secret-token'));
+});
+
+it('shows next shift banner with job event and time', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    $timezone = $this->project->timezone ?? 'UTC';
+    $expectedDate = $this->futureShift->shift_date->setTimezone($timezone)->format('M d, Y');
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Nächste Schicht')
+        ->assertSee('Setup Crew')
+        ->assertSee($this->event->name)
+        ->assertSee($expectedDate);
+});
+
+it('hides next shift banner when no upcoming shifts', function () {
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('Nächste Schicht');
+});
+
+it('shows the earliest upcoming shift in banner', function () {
+    $earlierShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->addDays(1),
+        'ends_at' => now()->addDays(1)->addHours(2),
+    ]);
+    $laterShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->addDays(5),
+        'ends_at' => now()->addDays(5)->addHours(2),
+    ]);
+    $laterJob = VolunteerJob::factory()->for($this->event)->create(['name' => 'Later Job']);
+    $laterShift->update(['volunteer_job_id' => $laterJob->id]);
+
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $laterShift->id,
+    ]);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $earlierShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    $timezone = $this->project->timezone ?? 'UTC';
+    $earlierDate = $earlierShift->shift_date->setTimezone($timezone)->format('M d, Y');
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSeeInOrder(['Nächste Schicht', 'Setup Crew', $earlierDate]);
+});
+
+it('shows maintenance banner for draft event shifts', function () {
+    $draftEvent = Event::factory()->for($this->org)->for($this->project)->create([
+        'status' => EventStatus::Draft,
+    ]);
+    $draftJob = VolunteerJob::factory()->for($draftEvent)->create(['name' => 'Draft Job']);
+    $draftShift = Shift::factory()->for($draftJob, 'volunteerJob')->create([
+        'starts_at' => now()->addDays(2),
+        'ends_at' => now()->addDays(2)->addHours(2),
+    ]);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $draftShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Dieses Event wird gerade aktualisiert.');
+});
+
+it('hides maintenance banner for published events', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('Dieses Event wird gerade aktualisiert.');
+});
+
+it('hides cancel button for draft event shifts', function () {
+    $draftEvent = Event::factory()->for($this->org)->for($this->project)->create([
+        'status' => EventStatus::Draft,
+    ]);
+    $draftJob = VolunteerJob::factory()->for($draftEvent)->create(['name' => 'Draft Job']);
+    $draftShift = Shift::factory()->for($draftJob, 'volunteerJob')->create([
+        'starts_at' => now()->addDays(3),
+        'ends_at' => now()->addDays(3)->addHours(2),
+    ]);
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $draftShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Draft Job')
+        ->assertDontSeeHtml('wire:click="confirmCancel('.$signup->id.')"');
+});
+
+it('shows re-request link on expired state when project is resolvable', function () {
+    $plainToken = 'expired-test-token-abc123';
+    $hash = HashedToken::fromPlaintext($plainToken)->hash;
+
+    MagicLinkToken::create([
+        'volunteer_id' => $this->volunteer->id,
+        'token_hash' => $hash,
+        'expires_at' => now()->subHour(),
+    ]);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => $plainToken])
+        ->assertSee('Link Expired')
+        ->assertSee('Neuen Zugangslink anfordern')
+        ->assertSeeHtml(route('projects.public', $this->project->public_token));
+});
+
+it('shows fallback message on expired state when project is not resolvable', function () {
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->with('unknown-expired-token')
+        ->andThrow(new InvalidMagicLinkException('This magic link has expired.'));
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'unknown-expired-token'])
+        ->assertSee('Link Expired')
+        ->assertSee('Please request a new one from the event organizer.')
+        ->assertDontSee('Neuen Zugangslink anfordern');
+});
+
+it('displays QR code SVG when volunteer has ticket', function () {
+    Ticket::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'project_id' => $this->project->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSeeHtml('<svg');
+});
+
+it('hides QR section when no ticket', function () {
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSeeHtml('<svg')
+        ->assertDontSee('QR-Code erneut senden');
+});
+
+it('shows resend button when ticket exists', function () {
+    Ticket::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'project_id' => $this->project->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('QR-Code erneut senden');
+});
+
+it('resends ticket email on button click', function () {
+    Notification::fake();
+
+    Ticket::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'project_id' => $this->project->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('resendTicketEmail');
+
+    Notification::assertSentTo($this->volunteer, TicketResendNotification::class);
+});
+
+it('rate limits resend to once per 5 minutes', function () {
+    Notification::fake();
+
+    Ticket::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'project_id' => $this->project->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    $component = Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('resendTicketEmail')
+        ->assertSee('QR-Code wurde erneut gesendet.');
+
+    $component->call('resendTicketEmail')
+        ->assertSee('Bitte warte einige Minuten, bevor du es erneut versuchst.');
+
+    Notification::assertSentToTimes($this->volunteer, TicketResendNotification::class, 1);
+});
+
+it('shows success message after resend', function () {
+    Notification::fake();
+
+    Ticket::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'project_id' => $this->project->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('resendTicketEmail')
+        ->assertSee('QR-Code wurde erneut gesendet.');
+});
+
+it('shows on-time status for past shift', function () {
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->pastShift->id,
+    ]);
+    AttendanceRecord::factory()->create([
+        'shift_signup_id' => $signup->id,
+        'status' => AttendanceStatus::OnTime,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Pünktlich');
+});
+
+it('shows late status for past shift', function () {
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->pastShift->id,
+    ]);
+    AttendanceRecord::factory()->create([
+        'shift_signup_id' => $signup->id,
+        'status' => AttendanceStatus::Late,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Verspätet');
+});
+
+it('shows no-show status for past shift', function () {
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->pastShift->id,
+    ]);
+    AttendanceRecord::factory()->create([
+        'shift_signup_id' => $signup->id,
+        'status' => AttendanceStatus::NoShow,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Nicht erschienen');
+});
+
+it('shows dash for unrecorded past shift', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->pastShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Past Shifts')
+        ->assertSeeHtml('—');
+});
+
+it('shows check-in indicator on upcoming shift when scanned', function () {
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+    AttendanceRecord::factory()->create([
+        'shift_signup_id' => $signup->id,
+        'status' => AttendanceStatus::OnTime,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Eingecheckt');
+});
+
+it('hides check-in indicator on upcoming shift without attendance', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('Eingecheckt');
+});
+
+it('shows delete profile section in portal', function () {
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Profil löschen');
+});
+
+it('requires confirmation checkbox for profile deletion', function () {
+    Notification::fake();
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->set('showDeleteModal', true)
+        ->call('deleteProfile');
+
+    expect(Volunteer::find($this->volunteer->id))->not->toBeNull();
+});
+
+it('deletes profile and redirects to project page', function () {
+    Notification::fake();
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    $expectedUrl = route('projects.public', $this->project->public_token);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->set('showDeleteModal', true)
+        ->set('deleteConfirmed', true)
+        ->call('deleteProfile')
+        ->assertRedirect($expectedUrl);
+
+    expect(Volunteer::find($this->volunteer->id))->toBeNull();
+});
+
+it('cannot delete another volunteers profile', function () {
+    Notification::fake();
+
+    $otherVolunteer = Volunteer::factory()->for($this->project)->create();
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    // The volunteer property is set from the magic link, so even if someone
+    // tries to manipulate, they can only delete their own profile (the one
+    // resolved from the magic link).
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->set('showDeleteModal', true)
+        ->set('deleteConfirmed', true)
+        ->call('deleteProfile');
+
+    // Other volunteer should still exist
+    expect(Volunteer::find($otherVolunteer->id))->not->toBeNull();
 });

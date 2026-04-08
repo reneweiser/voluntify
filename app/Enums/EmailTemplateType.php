@@ -16,6 +16,7 @@ enum EmailTemplateType: string
     case EventAnnouncement = 'event_announcement';
     case EventUpdated = 'event_updated';
     case CancellationConfirmation = 'cancellation_confirmation';
+    case ProfileDeletion = 'profile_deletion';
 
     /**
      * Human-readable German label for the template type.
@@ -33,6 +34,7 @@ enum EmailTemplateType: string
             self::EventAnnouncement => 'Event-Ankündigung',
             self::EventUpdated => 'Event-Aktualisierung',
             self::CancellationConfirmation => 'Stornierungsbestätigung',
+            self::ProfileDeletion => 'Profil-Löschung',
         };
     }
 }

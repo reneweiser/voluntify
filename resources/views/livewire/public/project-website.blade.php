@@ -141,4 +141,40 @@
             @endforeach
         </div>
     @endif
+
+    {{-- Access link request form --}}
+    <div class="mt-12 rounded-lg p-6" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+        <h2 class="font-bebas text-white mb-1" style="font-size: 1.4rem; letter-spacing: 0.06em;">{{ __('Zugang erhalten') }}</h2>
+        <p class="mb-4 text-sm" style="color: #a1a1aa;">{{ __('Gib deine E-Mail-Adresse ein, um einen neuen Zugangslink zu deinem Volunteer-Portal zu erhalten.') }}</p>
+
+        @if ($accessLinkMessage)
+            <div class="rounded-lg p-3 mb-4 text-sm" style="background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.2); color: #6ee7b7;">
+                {{ $accessLinkMessage }}
+            </div>
+        @endif
+
+        <form wire:submit="requestAccessLink" class="flex flex-col sm:flex-row gap-3">
+            <div class="flex-1">
+                <input
+                    type="email"
+                    wire:model="requestEmail"
+                    placeholder="{{ __('E-Mail-Adresse') }}"
+                    class="w-full rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2"
+                    style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); focus-ring-color: var(--brand);"
+                />
+                @error('requestEmail')
+                    <p class="mt-1 text-sm" style="color: #fca5a5;">{{ $message }}</p>
+                @enderror
+            </div>
+            <button
+                type="submit"
+                wire:loading.attr="disabled"
+                class="shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-opacity"
+                style="background: var(--brand); letter-spacing: 0.03em;"
+            >
+                <span wire:loading.remove wire:target="requestAccessLink">{{ __('Zugangslink senden') }}</span>
+                <span wire:loading wire:target="requestAccessLink">{{ __('Wird gesendet...') }}</span>
+            </button>
+        </form>
+    </div>
 </div>

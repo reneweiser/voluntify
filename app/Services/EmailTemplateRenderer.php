@@ -54,6 +54,10 @@ class EmailTemplateRenderer
             'subject' => 'Stornierungsbestätigung für {{event_name}}',
             'body' => "Hallo {{vorname}}!\n\nDeine folgende Schicht bei **{{event_name}}** wurde storniert:\n{{cancelled_shift_summary}}\n\n{{remaining_shifts_section}}\n\nDu kannst dein Ticket jederzeit über den folgenden Link einsehen: {{portal_link}}\n\nVielen Dank!",
         ],
+        'profile_deletion' => [
+            'subject' => 'Dein Profil wurde gelöscht',
+            'body' => "Hallo {{vorname}}!\n\nDein Volunteer-Profil und alle zugehörigen Daten wurden auf deine Anfrage hin gelöscht.\n\n**Folgende Daten wurden unwiderruflich entfernt:**\n- Alle Schicht-Anmeldungen\n- Eventuelle Tickets und QR-Codes\n- Gear-Zuweisungen\n- Persönliche Daten (Name, E-Mail, Telefon)\n\nDieser Vorgang kann nicht rückgängig gemacht werden. Falls du erneut als Volunteer teilnehmen möchtest, musst du dich neu registrieren.\n\nVielen Dank für dein Engagement!",
+        ],
     ];
 
     /**
@@ -172,6 +176,11 @@ class EmailTemplateRenderer
                 'remaining_shifts_section',
                 'portal_link',
                 'kontakt_email',
+                'project_name',
+            ],
+            EmailTemplateType::ProfileDeletion => [
+                'vorname',
+                'nachname',
                 'project_name',
             ],
         };
