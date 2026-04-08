@@ -64,6 +64,7 @@
                                                 \App\Enums\AttendanceStatus::OnTime => 'emerald',
                                                 \App\Enums\AttendanceStatus::Late => 'amber',
                                                 \App\Enums\AttendanceStatus::NoShow => 'red',
+                                                default => 'zinc',
                                             };
                                         @endphp
                                         <flux:badge size="sm" :color="$color">{{ $signup->attendanceRecord->status->name }}</flux:badge>
@@ -73,33 +74,33 @@
                                 </flux:table.cell>
                                 <flux:table.cell align="end">
                                     <div class="flex items-center justify-end gap-1">
-                                        <flux:button
-                                            size="xs"
-                                            :variant="$signup->attendanceRecord?->status === \App\Enums\AttendanceStatus::OnTime ? 'primary' : 'ghost'"
-                                            wire:click="markStatus({{ $signup->id }}, 'on_time')"
-                                            title="{{ __('On Time') }}"
-                                        >
-                                            <flux:icon name="check" class="size-4 sm:hidden" />
-                                            <span class="hidden sm:inline">{{ __('On Time') }}</span>
-                                        </flux:button>
-                                        <flux:button
-                                            size="xs"
-                                            :variant="$signup->attendanceRecord?->status === \App\Enums\AttendanceStatus::Late ? 'primary' : 'ghost'"
-                                            wire:click="markStatus({{ $signup->id }}, 'late')"
-                                            title="{{ __('Late') }}"
-                                        >
-                                            <flux:icon name="clock" class="size-4 sm:hidden" />
-                                            <span class="hidden sm:inline">{{ __('Late') }}</span>
-                                        </flux:button>
-                                        <flux:button
-                                            size="xs"
-                                            :variant="$signup->attendanceRecord?->status === \App\Enums\AttendanceStatus::NoShow ? 'danger' : 'ghost'"
-                                            wire:click="markStatus({{ $signup->id }}, 'no_show')"
-                                            title="{{ __('No Show') }}"
-                                        >
-                                            <flux:icon name="x-mark" class="size-4 sm:hidden" />
-                                            <span class="hidden sm:inline">{{ __('No Show') }}</span>
-                                        </flux:button>
+                                        @foreach ($this->attendanceStates as $state)
+                                            @php
+                                                $isActive = $signup->attendanceRecord?->status?->value === $state['key'];
+                                                $variant = match(true) {
+                                                    $isActive && $state['key'] === 'no_show' => 'danger',
+                                                    $isActive => 'primary',
+                                                    default => 'ghost',
+                                                };
+                                                $icon = match($state['key']) {
+                                                    'on_time' => 'check',
+                                                    'late' => 'clock',
+                                                    'no_show' => 'x-mark',
+                                                    'en_route' => 'arrow-right',
+                                                    'excused' => 'shield-check',
+                                                    default => 'tag',
+                                                };
+                                            @endphp
+                                            <flux:button
+                                                size="xs"
+                                                :variant="$variant"
+                                                wire:click="markStatus({{ $signup->id }}, '{{ $state['key'] }}')"
+                                                title="{{ $state['label'] }}"
+                                            >
+                                                <flux:icon :name="$icon" class="size-4 sm:hidden" />
+                                                <span class="hidden sm:inline">{{ $state['label'] }}</span>
+                                            </flux:button>
+                                        @endforeach
                                     </div>
                                 </flux:table.cell>
                             </flux:table.row>

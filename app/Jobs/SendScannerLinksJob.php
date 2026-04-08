@@ -19,7 +19,10 @@ class SendScannerLinksJob implements ShouldQueue
 
     public int $timeout = 30;
 
-    public function __construct(public ProjectScannerAssignee $assignee) {}
+    public function __construct(
+        public ProjectScannerAssignee $assignee,
+        public ?string $rawAuthCode = null,
+    ) {}
 
     public function handle(): void
     {
@@ -32,7 +35,7 @@ class SendScannerLinksJob implements ShouldQueue
         $url = route('scanner.auth', $scanner->scanner_token);
 
         Mail::to($this->assignee->email)
-            ->send(new ScannerLinkMail($scanner, $url));
+            ->send(new ScannerLinkMail($scanner, $url, $this->rawAuthCode));
 
         $this->assignee->update(['link_sent_at' => now()]);
     }

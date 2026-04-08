@@ -15,4 +15,5 @@ Route::prefix('scanner')->middleware(['scanner-api', 'throttle:60,1'])->group(fu
     Route::post('/{scannerId}/guest-checkin', [ScannerDataController::class, 'guestCheckin'])->name('scanner-api.guest-checkin');
     Route::post('/{scannerId}/guest-gear-pickup', [ScannerDataController::class, 'guestGearPickup'])->name('scanner-api.guest-gear-pickup');
     Route::post('/{scannerId}/guest-sync', [ScannerDataController::class, 'guestSync'])->name('scanner-api.guest-sync');
+    Route::post('/{scannerId}/attendance', [ScannerDataController::class, 'attendance'])->name('scanner-api.attendance');
 });

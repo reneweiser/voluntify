@@ -67,6 +67,14 @@
             {{ __('Website') }}
         </flux:navlist.item>
         <flux:navlist.item
+            :href="route('projects.attendance-states', $project)"
+            :current="request()->routeIs('projects.attendance-states')"
+            icon="clipboard-document-check"
+            wire:navigate
+        >
+            {{ __('Anwesenheit') }}
+        </flux:navlist.item>
+        <flux:navlist.item
             :href="route('projects.hint-texts', $project)"
             :current="request()->routeIs('projects.hint-texts')"
             icon="information-circle"

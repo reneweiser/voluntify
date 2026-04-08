@@ -11,6 +11,7 @@ use App\Models\Project;
 use App\Models\ProjectScanner;
 use App\Models\ProjectScannerAssignee;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
@@ -135,6 +136,64 @@ it('removes an assignee from a scanner', function () {
 
     expect(ProjectScannerAssignee::find($assignee->id))->toBeNull();
 });
+
+it('regenerates auth code and flashes new code', function () {
+    $scanner = ProjectScanner::factory()->create([
+        'project_id' => $this->project->id,
+    ]);
+    $oldHash = $scanner->auth_code;
+
+    $component = Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->call('regenerateAuthCode', $scanner->id)
+        ->assertHasNoErrors();
+
+    $scanner->refresh();
+    expect($scanner->auth_code)->not->toBe($oldHash);
+});
+
+it('dispatches SendScannerLinksJob with new code to all assignees after regeneration', function () {
+    Queue::fake();
+
+    $scanner = ProjectScanner::factory()->create([
+        'project_id' => $this->project->id,
+    ]);
+    ProjectScannerAssignee::factory()->count(2)->for($scanner, 'projectScanner')->create();
+
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->call('regenerateAuthCode', $scanner->id);
+
+    Queue::assertPushed(SendScannerLinksJob::class, 2);
+    Queue::assertPushed(SendScannerLinksJob::class, function ($job) {
+        return $job->rawAuthCode !== null && preg_match('/^\d{6}$/', $job->rawAuthCode);
+    });
+});
+
+it('does not dispatch jobs when scanner has no assignees on regeneration', function () {
+    Queue::fake();
+
+    $scanner = ProjectScanner::factory()->create([
+        'project_id' => $this->project->id,
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->call('regenerateAuthCode', $scanner->id);
+
+    Queue::assertNothingPushed();
+});
+
+it('scopes regeneration to project scanners only', function () {
+    $otherProject = Project::factory()->for($this->org)->create();
+    $otherScanner = ProjectScanner::factory()->create([
+        'project_id' => $otherProject->id,
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->call('regenerateAuthCode', $otherScanner->id);
+})->throws(ModelNotFoundException::class);
 
 it('shows error when deleting scanner with guest lists', function () {
     $scanner = ProjectScanner::factory()->create([

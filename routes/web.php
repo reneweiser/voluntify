@@ -19,6 +19,7 @@ use App\Livewire\Events\ProjectShow;
 use App\Livewire\Events\VolunteerDetail;
 use App\Livewire\Events\VolunteerList;
 use App\Livewire\Projects\AnnouncementComposer;
+use App\Livewire\Projects\AttendanceStatesSettings;
 use App\Livewire\Projects\GearSummary;
 use App\Livewire\Projects\GuestListIndex;
 use App\Livewire\Projects\GuestListShow;
@@ -82,6 +83,7 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'resolve-org'])->group(f
     Route::livewire('projects/{projectId}/members', ProjectMembers::class)->name('projects.members');
     Route::livewire('projects/{projectId}/scanners', ScannerManagement::class)->name('projects.scanners');
     Route::livewire('projects/{projectId}/hint-texts', HintTextSettings::class)->name('projects.hint-texts');
+    Route::livewire('projects/{projectId}/attendance-states', AttendanceStatesSettings::class)->name('projects.attendance-states');
     Route::livewire('projects/{projectId}/website', ProjectWebsiteEditor::class)->name('projects.website-editor');
     Route::livewire('projects/{projectId}/gear-summary', GearSummary::class)->name('projects.gear-summary');
     Route::livewire('projects/{projectId}/guest-lists', GuestListIndex::class)->name('guest-lists.index');

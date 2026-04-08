@@ -20,6 +20,7 @@ class CreateProject
         $project = $organization->projects()->create([
             'name' => $name,
             'description' => $description,
+            'attendance_states' => Project::defaultAttendanceStates(),
         ]);
 
         if ($titleImage) {

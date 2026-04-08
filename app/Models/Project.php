@@ -32,6 +32,7 @@ class Project extends Model
         'website_description',
         'website_contact_info',
         'website_published',
+        'attendance_states',
         'deletion_requested_at',
     ];
 
@@ -39,9 +40,36 @@ class Project extends Model
     {
         return [
             'cancellation_enabled' => 'boolean',
+            'attendance_states' => 'array',
             'cancellation_cutoff_hours' => 'integer',
             'website_published' => 'boolean',
             'deletion_requested_at' => 'datetime',
+        ];
+    }
+
+    /** @return array<int, array{key: string, label: string, active: bool, core: bool}> */
+    public function getActiveAttendanceStatesAttribute(): array
+    {
+        $states = $this->attendance_states ?? self::defaultAttendanceStates();
+
+        return array_values(array_filter($states, fn ($s) => ($s['active'] ?? false)));
+    }
+
+    /** @return array<int, array{key: string, label: string, active: bool, core: bool}> */
+    public function getAllAttendanceStatesAttribute(): array
+    {
+        return $this->attendance_states ?? self::defaultAttendanceStates();
+    }
+
+    /** @return array<int, array{key: string, label: string, active: bool, core: bool}> */
+    public static function defaultAttendanceStates(): array
+    {
+        return [
+            ['key' => 'on_time', 'label' => 'Pünktlich', 'active' => true, 'core' => true],
+            ['key' => 'late', 'label' => 'Verspätet', 'active' => true, 'core' => false],
+            ['key' => 'en_route', 'label' => 'Unterwegs', 'active' => true, 'core' => false],
+            ['key' => 'excused', 'label' => 'Entschuldigt', 'active' => true, 'core' => false],
+            ['key' => 'no_show', 'label' => 'Nicht erschienen', 'active' => true, 'core' => true],
         ];
     }
 

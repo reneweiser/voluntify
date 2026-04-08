@@ -251,6 +251,12 @@
                                             @case(\App\Enums\AttendanceStatus::NoShow)
                                                 <span class="text-xs font-semibold px-2.5 py-1 rounded" style="background: rgba(230,57,70,0.15); color: #fca5a5;">{{ __('Nicht erschienen') }}</span>
                                                 @break
+                                            @case(\App\Enums\AttendanceStatus::EnRoute)
+                                                <span class="text-xs font-semibold px-2.5 py-1 rounded" style="background: rgba(59,130,246,0.15); color: #93c5fd;">{{ __('Unterwegs') }}</span>
+                                                @break
+                                            @case(\App\Enums\AttendanceStatus::Excused)
+                                                <span class="text-xs font-semibold px-2.5 py-1 rounded" style="background: rgba(107,114,128,0.15); color: #d1d5db;">{{ __('Entschuldigt') }}</span>
+                                                @break
                                         @endswitch
                                     @else
                                         <span class="text-xs" style="color: #9a9a9a;">—</span>

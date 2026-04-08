@@ -4,6 +4,7 @@ namespace App\Livewire\Projects;
 
 use App\Actions\CreateProjectScanner;
 use App\Actions\DeleteProjectScanner;
+use App\Actions\RegenerateAuthCode;
 use App\Actions\SendScannerLinks;
 use App\Actions\UpdateProjectScanner;
 use App\Concerns\ConvertsTimezone;
@@ -161,6 +162,25 @@ class ScannerManagement extends Component
 
         $this->showDeleteConfirm = false;
         $this->deletingScannerId = null;
+        unset($this->scanners);
+    }
+
+    public function regenerateAuthCode(int $scannerId): void
+    {
+        $scanner = ProjectScanner::where('project_id', $this->projectId)
+            ->findOrFail($scannerId);
+
+        $action = new RegenerateAuthCode;
+        $rawCode = $action->execute($scanner);
+
+        session()->flash('rawAuthCode', [
+            'id' => $scanner->id,
+            'code' => $rawCode,
+        ]);
+
+        $sendLinks = new SendScannerLinks;
+        $sendLinks->execute($scanner, $rawCode);
+
         unset($this->scanners);
     }
 

@@ -142,6 +142,63 @@ it('excludes cancelled signups from attendance view', function () {
         ->assertDontSee('Cancelled Volunteer');
 });
 
+it('renders all active attendance states from project configuration', function () {
+    $this->project->update(['attendance_states' => Project::defaultAttendanceStates()]);
+
+    $volunteer = Volunteer::factory()->create();
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $this->shift->id,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(AttendanceTracker::class, ['eventId' => $this->event->id])
+        ->set('selectedShiftId', $this->shift->id)
+        ->assertSee('Pünktlich')
+        ->assertSee('Verspätet')
+        ->assertSee('Nicht erschienen')
+        ->assertSee('Unterwegs')
+        ->assertSee('Entschuldigt');
+});
+
+it('hides deactivated attendance states', function () {
+    $states = Project::defaultAttendanceStates();
+    $states[2]['active'] = false; // en_route
+    $states[3]['active'] = false; // excused
+    $this->project->update(['attendance_states' => $states]);
+
+    $volunteer = Volunteer::factory()->create();
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $this->shift->id,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(AttendanceTracker::class, ['eventId' => $this->event->id])
+        ->set('selectedShiftId', $this->shift->id)
+        ->assertSee('Pünktlich')
+        ->assertDontSee('Unterwegs')
+        ->assertDontSee('Entschuldigt');
+});
+
+it('uses custom labels from project configuration', function () {
+    $states = Project::defaultAttendanceStates();
+    $states[0]['label'] = 'Rechtzeitig';
+    $this->project->update(['attendance_states' => $states]);
+
+    $volunteer = Volunteer::factory()->create();
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $this->shift->id,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(AttendanceTracker::class, ['eventId' => $this->event->id])
+        ->set('selectedShiftId', $this->shift->id)
+        ->assertSee('Rechtzeitig')
+        ->assertDontSee('Pünktlich');
+});
+
 it('shows empty state when no shift selected', function () {
     Livewire::actingAs($this->user)
         ->test(AttendanceTracker::class, ['eventId' => $this->event->id])

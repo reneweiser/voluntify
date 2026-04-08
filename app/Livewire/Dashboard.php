@@ -171,7 +171,7 @@ class Dashboard extends Component
     }
 
     /**
-     * @return array{on_time: int, late: int, no_show: int, unmarked: int}
+     * @return array{on_time: int, late: int, no_show: int, en_route: int, excused: int, unmarked: int}
      */
     #[Computed]
     public function attendanceSummary(): array
@@ -194,12 +194,16 @@ class Dashboard extends Component
         $onTime = $counts[AttendanceStatus::OnTime->value] ?? 0;
         $late = $counts[AttendanceStatus::Late->value] ?? 0;
         $noShow = $counts[AttendanceStatus::NoShow->value] ?? 0;
+        $enRoute = $counts[AttendanceStatus::EnRoute->value] ?? 0;
+        $excused = $counts[AttendanceStatus::Excused->value] ?? 0;
 
         return [
             'on_time' => $onTime,
             'late' => $late,
             'no_show' => $noShow,
-            'unmarked' => $totalSignups - $onTime - $late - $noShow,
+            'en_route' => $enRoute,
+            'excused' => $excused,
+            'unmarked' => $totalSignups - $onTime - $late - $noShow - $enRoute - $excused,
         ];
     }
 
@@ -207,7 +211,7 @@ class Dashboard extends Component
     public function noShowRate(): float
     {
         $summary = $this->attendanceSummary;
-        $total = $summary['on_time'] + $summary['late'] + $summary['no_show'];
+        $total = $summary['on_time'] + $summary['late'] + $summary['no_show'] + $summary['en_route'] + $summary['excused'];
 
         if ($total === 0) {
             return 0;

@@ -52,6 +52,39 @@ it('returns scanner data with valid token', function () {
         ->assertJsonPath('scanner.type', ScannerType::EntryStaff->value);
 });
 
+it('includes attendance_states in data response', function () {
+    $this->project->update(['attendance_states' => Project::defaultAttendanceStates()]);
+
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonStructure(['attendance_states'])
+        ->assertJsonCount(5, 'attendance_states');
+});
+
+it('returns default states for projects with null attendance_states', function () {
+    $this->project->update(['attendance_states' => null]);
+
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonCount(5, 'attendance_states');
+});
+
 it('returns 401 for expired scanner token', function () {
     $scanner = ProjectScanner::factory()->expired()->create([
         'project_id' => $this->project->id,
