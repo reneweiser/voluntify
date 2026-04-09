@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: implement
-current_focus: "M16 bugfixes — #132, #133, #138, #141, #142"
-current_milestone: m16-bugfixes
+current_focus: "All Phase 2 milestones complete (M7–M16)"
+current_milestone: none
 entry_point: plan
 stages_to_run:
   - plan
@@ -33,9 +33,9 @@ last_updated: "2026-04-08T15:00:00"
 | m11-scanner | Scanner Rewrite | Project scanners, temp auth, dual scanner types, rename volunteer tab to "Volunteers" | m8, m9 | complete |
 | m12-guest-lists | Guest Lists (#90) | Guest list CRUD, QR generation, grouped emails, scanner integration | m8, m11 | complete |
 | m13-polish | Communication & Polish | Announcements, email templates, remaining features | m8, m9, m11 | complete (all stages) |
-| m14-audit-remediation | Code Quality Audit Remediation | H0-H3: test gaps, Form Objects, auth refactor | m13 | in_progress |
-| m15-volunteer-portal-enhancements | Volunteer Portal Enhancements | #117 arrival+gear, #125 banners, #115 magic link re-request, #126 QR+resend, #127 attendance, #105 self-deletion | m14 | in_progress |
-| m16-bugfixes | Bug Fixes | #132 scanner modes, #133 gear-only shifts, #138 VA arrival button, #141 dropdown placeholder, #142 portal cancel errors | m15 | in_progress |
+| m14-audit-remediation | Code Quality Audit Remediation | H0-H3: test gaps, Form Objects, auth refactor | m13 | complete |
+| m15-volunteer-portal-enhancements | Volunteer Portal Enhancements | #117 arrival+gear, #125 banners, #115 magic link re-request, #126 QR+resend, #127 attendance, #105 self-deletion | m14 | complete |
+| m16-bugfixes | Bug Fixes | #132 scanner modes, #133 gear-only shifts, #138 VA arrival button, #141 dropdown placeholder, #142 portal cancel errors | m15 | complete |
 
 ## Artifacts
 
