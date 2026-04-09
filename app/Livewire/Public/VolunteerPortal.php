@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,10 +33,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 #[Title('Volunteer Portal')]
 class VolunteerPortal extends Component
 {
+    #[Locked]
     public ?Volunteer $volunteer = null;
 
     public bool $expired = false;
 
+    #[Locked]
     public string $magicToken = '';
 
     public bool $hasTicket = false;
