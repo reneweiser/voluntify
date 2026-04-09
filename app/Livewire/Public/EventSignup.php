@@ -394,7 +394,16 @@ class EventSignup extends Component
 
         $customFieldRules = [];
         foreach ($this->customRegistrationFields as $field) {
-            $customFieldRules['customFieldResponses.'.$field->id] = $field->type->validationRules($field->options ?? [], $field->required);
+            $customFieldRules['customFieldResponses.'.$field->id] = $field->type->validationRules(
+                $field->options ?? [],
+                $field->required,
+                $field->allow_multiple,
+            );
+
+            $itemRules = $field->type->validationItemRules($field->options ?? [], $field->allow_multiple);
+            if ($itemRules !== null) {
+                $customFieldRules['customFieldResponses.'.$field->id.'.*'] = $itemRules;
+            }
         }
 
         $this->validate(array_merge($gearRules, $customFieldRules));

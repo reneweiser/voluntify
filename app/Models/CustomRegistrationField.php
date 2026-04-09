@@ -23,6 +23,7 @@ class CustomRegistrationField extends Model
         'type',
         'options',
         'required',
+        'allow_multiple',
         'sort_order',
     ];
 
@@ -32,6 +33,7 @@ class CustomRegistrationField extends Model
             'type' => CustomFieldType::class,
             'options' => 'array',
             'required' => 'boolean',
+            'allow_multiple' => 'boolean',
         ];
     }
 

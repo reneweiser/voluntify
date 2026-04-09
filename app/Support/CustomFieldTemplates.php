@@ -5,7 +5,7 @@ namespace App\Support;
 class CustomFieldTemplates
 {
     /**
-     * @return array<string, array{label: string, type: string, options: array<string, mixed>, required: bool}>
+     * @return array<string, array{label: string, type: string, options: array<string, mixed>, required: bool, allow_multiple?: bool}>
      */
     public static function all(): array
     {
@@ -18,9 +18,10 @@ class CustomFieldTemplates
             ],
             'dietary_restrictions' => [
                 'label' => 'Dietary Restrictions',
-                'type' => 'select',
+                'type' => 'checkbox',
                 'options' => ['choices' => ['None', 'Vegetarian', 'Vegan', 'Gluten-free', 'Other']],
                 'required' => false,
+                'allow_multiple' => true,
             ],
             'tshirt_size' => [
                 'label' => 'T-Shirt Size',

@@ -29,6 +29,8 @@ class CustomFieldSetup extends Component
 
     public bool $newFieldMultiline = false;
 
+    public bool $newFieldAllowMultiple = false;
+
     public bool $showSignupWarning = false;
 
     public function mount(int $eventId): void
@@ -104,6 +106,7 @@ class CustomFieldSetup extends Component
         $this->newFieldType = $template['type'];
         $this->newFieldRequired = $template['required'];
         $this->newFieldMultiline = $template['options']['multiline'] ?? false;
+        $this->newFieldAllowMultiple = $template['allow_multiple'] ?? false;
         $this->newFieldOptions = isset($template['options']['choices'])
             ? implode(', ', $template['options']['choices'])
             : '';
@@ -117,12 +120,20 @@ class CustomFieldSetup extends Component
         return CustomFieldTemplates::all();
     }
 
+    /**
+     * Whether the current field type supports options (choices).
+     */
+    public function hasChoiceSupport(): bool
+    {
+        return in_array($this->newFieldType, ['select', 'checkbox']);
+    }
+
     /** @return array{CustomFieldType, array<string, mixed>}|null */
     private function validateAndBuildOptions(): ?array
     {
         $this->validate([
             'newFieldLabel' => ['required', 'string', 'max:255'],
-            'newFieldOptions' => $this->newFieldType === 'select' ? ['required', 'string'] : ['nullable'],
+            'newFieldOptions' => $this->hasChoiceSupport() && $this->newFieldOptions !== '' ? ['required', 'string'] : ['nullable'],
         ]);
 
         $type = CustomFieldType::from($this->newFieldType);
@@ -143,16 +154,19 @@ class CustomFieldSetup extends Component
     {
         $maxSort = $this->event->customRegistrationFields()->withTrashed()->max('sort_order') ?? 0;
 
+        $hasChoices = ! empty($options['choices'] ?? []);
+
         CustomRegistrationField::create([
             'event_id' => $this->event->id,
             'label' => $this->newFieldLabel,
             'type' => $type,
             'options' => $options ?: null,
             'required' => $this->newFieldRequired,
+            'allow_multiple' => $hasChoices && $this->newFieldAllowMultiple,
             'sort_order' => $maxSort + 1,
         ]);
 
-        $this->reset('newFieldLabel', 'newFieldType', 'newFieldOptions', 'newFieldRequired', 'newFieldMultiline', 'showSignupWarning');
+        $this->reset('newFieldLabel', 'newFieldType', 'newFieldOptions', 'newFieldRequired', 'newFieldMultiline', 'newFieldAllowMultiple', 'showSignupWarning');
         unset($this->customFields);
     }
 
@@ -160,7 +174,7 @@ class CustomFieldSetup extends Component
     {
         $options = [];
 
-        if ($type === CustomFieldType::Select && $this->newFieldOptions !== '') {
+        if ($this->hasChoiceSupport() && $this->newFieldOptions !== '') {
             $choices = array_map('trim', explode(',', $this->newFieldOptions));
             $options['choices'] = array_values(array_filter($choices));
         }

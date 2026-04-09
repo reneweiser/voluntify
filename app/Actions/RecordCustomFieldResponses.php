@@ -39,8 +39,29 @@ class RecordCustomFieldResponses
 
     private function validateResponse(CustomRegistrationField $field, mixed $value): void
     {
-        if ($field->type === CustomFieldType::Select && $value !== null && $value !== '') {
-            $choices = $field->options['choices'] ?? [];
+        $choices = $field->options['choices'] ?? [];
+
+        if (empty($choices)) {
+            return;
+        }
+
+        if ($field->allow_multiple) {
+            if (is_array($value)) {
+                if (count($value) > 50) {
+                    throw new DomainException("Too many selections for field \"{$field->label}\".");
+                }
+                foreach ($value as $item) {
+                    if (! in_array($item, $choices, true)) {
+                        throw new DomainException("Invalid value \"{$item}\" for field \"{$field->label}\".");
+                    }
+                }
+            }
+
+            return;
+        }
+
+        // Single-choice: validate against choices
+        if (($field->type === CustomFieldType::Select || $field->type === CustomFieldType::Checkbox) && $value !== null && $value !== '') {
             if (! in_array($value, $choices, true)) {
                 throw new DomainException("Invalid value \"{$value}\" for field \"{$field->label}\".");
             }

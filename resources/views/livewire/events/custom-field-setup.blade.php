@@ -23,10 +23,13 @@
                             </div>
                             <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                 {{ ucfirst($field->type->value) }}
-                                @if ($field->type->value === 'select' && !empty($field->options['choices']))
+                                @if (!empty($field->options['choices']))
                                     &mdash; {{ implode(', ', $field->options['choices']) }}
                                 @elseif ($field->type->value === 'text' && !empty($field->options['multiline']))
                                     &mdash; {{ __('Multiline') }}
+                                @endif
+                                @if ($field->allow_multiple)
+                                    <flux:badge size="sm" color="blue" class="ml-1">{{ __('Multiple') }}</flux:badge>
                                 @endif
                             </div>
                         </div>
@@ -84,13 +87,26 @@
                     </flux:field>
                 @endif
 
-                @if ($newFieldType === 'select')
+                @if (in_array($newFieldType, ['select', 'checkbox']))
                     <flux:field>
                         <flux:label>{{ __('Options') }}</flux:label>
                         <flux:input wire:model="newFieldOptions" placeholder="{{ __('Option A, Option B, Option C') }}" />
-                        <flux:description>{{ __('Comma-separated list of options.') }}</flux:description>
+                        <flux:description>
+                            @if ($newFieldType === 'checkbox')
+                                {{ __('Comma-separated list of options. Leave empty for a single yes/no checkbox.') }}
+                            @else
+                                {{ __('Comma-separated list of options.') }}
+                            @endif
+                        </flux:description>
                         <flux:error name="newFieldOptions" />
                     </flux:field>
+
+                    @if ($newFieldOptions !== '')
+                        <flux:field>
+                            <flux:checkbox wire:model="newFieldAllowMultiple" label="{{ __('Allow multiple selections') }}" />
+                            <flux:description>{{ __('When enabled, volunteers can select more than one option. Renders as checkboxes instead of a dropdown or radio buttons.') }}</flux:description>
+                        </flux:field>
+                    @endif
                 @endif
 
                 <flux:field>

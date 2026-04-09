@@ -47,6 +47,21 @@ class CustomRegistrationFieldFactory extends Factory
         ]);
     }
 
+    public function checkboxWithChoices(array $choices = ['A', 'B', 'C']): static
+    {
+        return $this->state(fn () => [
+            'type' => CustomFieldType::Checkbox,
+            'options' => ['choices' => $choices],
+        ]);
+    }
+
+    public function allowMultiple(): static
+    {
+        return $this->state(fn () => [
+            'allow_multiple' => true,
+        ]);
+    }
+
     public function multiline(): static
     {
         return $this->state(fn () => [

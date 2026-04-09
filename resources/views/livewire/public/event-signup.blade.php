@@ -319,27 +319,66 @@
                         <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;">{{ __('Additional Information') }}</h2>
 
                         @foreach ($this->customRegistrationFields as $field)
+                            @php
+                                $choices = $field->options['choices'] ?? [];
+                                $hasChoices = !empty($choices);
+                                $isMultiple = $field->allow_multiple && $hasChoices;
+                            @endphp
                             <flux:field wire:key="custom-field-{{ $field->id }}">
-                                <flux:label>
-                                    {{ $field->label }}
-                                    @if (!$field->required)
-                                        <span style="color: #9a9a9a; font-weight: 400;">({{ __('optional') }})</span>
-                                    @endif
-                                </flux:label>
-
                                 @if ($field->type->value === 'text' && !empty($field->options['multiline']))
+                                    <flux:label>
+                                        {{ $field->label }}
+                                        @if (!$field->required)
+                                            <span style="color: #9a9a9a; font-weight: 400;">({{ __('optional') }})</span>
+                                        @endif
+                                    </flux:label>
                                     <flux:textarea wire:model="customFieldResponses.{{ $field->id }}" placeholder="{{ $field->options['placeholder'] ?? '' }}" />
                                 @elseif ($field->type->value === 'text')
+                                    <flux:label>
+                                        {{ $field->label }}
+                                        @if (!$field->required)
+                                            <span style="color: #9a9a9a; font-weight: 400;">({{ __('optional') }})</span>
+                                        @endif
+                                    </flux:label>
                                     <flux:input wire:model="customFieldResponses.{{ $field->id }}" placeholder="{{ $field->options['placeholder'] ?? '' }}" />
+                                @elseif ($field->type->value === 'select' && $isMultiple)
+                                    {{-- Select + allow_multiple → checkbox group --}}
+                                    <flux:checkbox.group wire:model="customFieldResponses.{{ $field->id }}" label="{{ $field->label }}{{ !$field->required ? ' (' . __('optional') . ')' : '' }}">
+                                        @foreach ($choices as $choice)
+                                            <flux:checkbox label="{{ $choice }}" value="{{ $choice }}" />
+                                        @endforeach
+                                    </flux:checkbox.group>
                                 @elseif ($field->type->value === 'select')
+                                    {{-- Select single → dropdown --}}
+                                    <flux:label>
+                                        {{ $field->label }}
+                                        @if (!$field->required)
+                                            <span style="color: #9a9a9a; font-weight: 400;">({{ __('optional') }})</span>
+                                        @endif
+                                    </flux:label>
                                     <flux:select wire:model="customFieldResponses.{{ $field->id }}">
                                         <flux:select.option value="">{{ __('Please select...') }}</flux:select.option>
-                                        @foreach ($field->options['choices'] ?? [] as $choice)
+                                        @foreach ($choices as $choice)
                                             <flux:select.option :value="$choice">{{ $choice }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
+                                @elseif ($field->type->value === 'checkbox' && $isMultiple)
+                                    {{-- Checkbox + options + allow_multiple → checkbox group --}}
+                                    <flux:checkbox.group wire:model="customFieldResponses.{{ $field->id }}" label="{{ $field->label }}{{ !$field->required ? ' (' . __('optional') . ')' : '' }}">
+                                        @foreach ($choices as $choice)
+                                            <flux:checkbox label="{{ $choice }}" value="{{ $choice }}" />
+                                        @endforeach
+                                    </flux:checkbox.group>
+                                @elseif ($field->type->value === 'checkbox' && $hasChoices)
+                                    {{-- Checkbox + options + single → radio group --}}
+                                    <flux:radio.group wire:model="customFieldResponses.{{ $field->id }}" label="{{ $field->label }}{{ !$field->required ? ' (' . __('optional') . ')' : '' }}">
+                                        @foreach ($choices as $choice)
+                                            <flux:radio label="{{ $choice }}" value="{{ $choice }}" />
+                                        @endforeach
+                                    </flux:radio.group>
                                 @elseif ($field->type->value === 'checkbox')
-                                    <flux:checkbox wire:model="customFieldResponses.{{ $field->id }}" label="{{ $field->label }}" />
+                                    {{-- Checkbox without options → single yes/no --}}
+                                    <flux:checkbox wire:model="customFieldResponses.{{ $field->id }}" label="{{ $field->label }}{{ !$field->required ? ' (' . __('optional') . ')' : '' }}" />
                                 @endif
 
                                 <flux:error name="customFieldResponses.{{ $field->id }}" />
@@ -463,7 +502,15 @@
                                 @if (!empty($customFieldResponses[$field->id]))
                                     <div class="flex items-center gap-2 text-sm" wire:key="confirm-field-{{ $field->id }}">
                                         <span class="font-medium text-white">{{ $field->label }}:</span>
-                                        <span style="color: #a1a1aa;">{{ is_bool($customFieldResponses[$field->id]) ? ($customFieldResponses[$field->id] ? __('Yes') : __('No')) : $customFieldResponses[$field->id] }}</span>
+                                        <span style="color: #a1a1aa;">
+                                            @if (is_array($customFieldResponses[$field->id]))
+                                                {{ implode(', ', $customFieldResponses[$field->id]) }}
+                                            @elseif (is_bool($customFieldResponses[$field->id]))
+                                                {{ $customFieldResponses[$field->id] ? __('Yes') : __('No') }}
+                                            @else
+                                                {{ $customFieldResponses[$field->id] }}
+                                            @endif
+                                        </span>
                                     </div>
                                 @endif
                             @endforeach
