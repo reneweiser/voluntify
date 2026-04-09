@@ -109,6 +109,8 @@
                     x-cloak
                 >
                     <p class="text-center text-sm text-white" x-text="resultMessage"></p>
+                    <p class="mt-1 text-center text-xs text-zinc-400" x-show="selectedVolunteer?.phone" x-text="selectedVolunteer?.phone"></p>
+                    <p class="mt-1 text-center text-xs text-zinc-400" x-show="selectedVolunteer && !selectedVolunteer?.phone">{{ __('No phone number') }}</p>
                 </div>
 
                 {{-- Result panel (guest) --}}
@@ -242,10 +244,12 @@
                     class="w-full max-w-sm space-y-4"
                     x-cloak
                 >
-                    {{-- Name & email --}}
+                    {{-- Name, email & phone --}}
                     <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
                         <p class="text-lg font-semibold text-white" x-text="selectedVolunteer?.name"></p>
                         <p class="text-sm text-zinc-400" x-text="selectedVolunteer?.email"></p>
+                        <p class="text-sm text-zinc-400" x-show="selectedVolunteer?.phone" x-text="selectedVolunteer?.phone"></p>
+                        <p class="text-sm text-zinc-400" x-show="selectedVolunteer && !selectedVolunteer?.phone">{{ __('No phone number') }}</p>
                     </div>
 
                     @if (in_array('checkin', $modes))

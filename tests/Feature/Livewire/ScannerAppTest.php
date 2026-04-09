@@ -121,3 +121,23 @@ it('does not render global arrival button for VA scanner', function () {
     Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
         ->assertDontSeeHtml('confirmArrival()');
 });
+
+it('renders phone display in entry staff template', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::EntryStaff,
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSeeHtml('selectedVolunteer?.phone')
+        ->assertSee(__('No phone number'));
+});
+
+it('renders phone display in volunteer admin template', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSeeHtml('selectedVolunteer?.phone')
+        ->assertSee(__('No phone number'));
+});

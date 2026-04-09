@@ -128,6 +128,7 @@ class ScannerDataController extends Controller
                 'last_name' => $v->last_name,
                 'name' => $v->full_name,
                 'email' => $v->email,
+                'phone' => $v->phone,
                 'ticket' => $v->tickets->first(),
                 'shift_signups' => $v->shiftSignups->map(fn ($signup) => [
                     'id' => $signup->id,
