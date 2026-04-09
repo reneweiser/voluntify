@@ -42,3 +42,26 @@ it('requires guest count of at least 1', function () {
     expect($group->entries)->toHaveCount(1)
         ->and($group->entries->first()->number)->toBe(1);
 });
+
+it('generates QR tokens for entries when added to confirmed list', function () {
+    $guestList = GuestList::factory()->confirmed()->create();
+    $action = new AddGuestGroup;
+
+    $group = $action->execute($guestList, 'VIP Band', 3);
+
+    $group->entries->each(function (GuestEntry $entry) {
+        expect($entry->qr_token)->not->toBeNull()
+            ->and(strlen($entry->qr_token))->toBe(64);
+    });
+});
+
+it('does not generate QR tokens for entries when added to draft list', function () {
+    $guestList = GuestList::factory()->create();
+    $action = new AddGuestGroup;
+
+    $group = $action->execute($guestList, 'Draft Band', 2);
+
+    $group->entries->each(function (GuestEntry $entry) {
+        expect($entry->qr_token)->toBeNull();
+    });
+});

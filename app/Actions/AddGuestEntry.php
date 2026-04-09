@@ -33,6 +33,7 @@ class AddGuestEntry
 
             if ($email) {
                 SendGuestInvitationsJob::dispatch($guestList, $email);
+                $entry->update(['invitation_sent_at' => now()]);
             }
         }
 

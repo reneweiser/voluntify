@@ -3,6 +3,7 @@
 use App\Enums\GuestListStatus;
 use App\Enums\StaffRole;
 use App\Jobs\ConfirmGuestListJob;
+use App\Jobs\SendGuestInvitationsJob;
 use App\Livewire\Projects\GuestListShow;
 use App\Models\GuestEntry;
 use App\Models\GuestGroup;
@@ -303,4 +304,113 @@ it('prevents removing entry from another guest list', function () {
             'guestListId' => $this->guestList->id,
         ])
         ->call('removeEntry', $otherEntry->id);
+});
+
+it('shows send pending invitations button for confirmed list with unsent entries', function () {
+    $this->guestList->update([
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    $group = GuestGroup::factory()->create(['guest_list_id' => $this->guestList->id]);
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'pending@example.com',
+        'invitation_sent_at' => null,
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->assertSee('Send Pending Invitations');
+});
+
+it('does not show send pending invitations button for draft list', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->assertDontSee('Send Pending Invitations');
+});
+
+it('does not show send pending invitations button when all invitations already sent', function () {
+    $this->guestList->update([
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    $group = GuestGroup::factory()->create(['guest_list_id' => $this->guestList->id]);
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'sent@example.com',
+        'invitation_sent_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->assertDontSee('Send Pending Invitations');
+});
+
+it('dispatches invitation jobs only for unsent entries when sending pending invitations', function () {
+    Queue::fake();
+
+    $this->guestList->update([
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    $group = GuestGroup::factory()->create(['guest_list_id' => $this->guestList->id]);
+
+    // Unsent entries with email + qr_token
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'new1@example.com',
+        'invitation_sent_at' => null,
+    ]);
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'new1@example.com', // duplicate email, should dispatch once
+        'invitation_sent_at' => null,
+    ]);
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'new2@example.com',
+        'invitation_sent_at' => null,
+    ]);
+
+    // Already sent — should NOT be re-dispatched
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'already@example.com',
+        'invitation_sent_at' => now(),
+    ]);
+
+    // No email — should be skipped
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => null,
+        'invitation_sent_at' => null,
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->call('sendPendingInvitations')
+        ->assertHasNoErrors();
+
+    Queue::assertPushed(SendGuestInvitationsJob::class, 2); // 2 unique unsent emails
+
+    // Verify invitation_sent_at was set
+    expect(GuestEntry::where('guest_group_id', $group->id)
+        ->whereNotNull('email')
+        ->whereNull('invitation_sent_at')
+        ->count())->toBe(0);
 });

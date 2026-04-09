@@ -47,13 +47,19 @@ class ConfirmGuestListJob implements ShouldBeUnique, ShouldQueue
             });
         });
 
-        $emails = $this->guestList->entries()
+        $entries = $this->guestList->entries()
             ->whereNotNull('email')
-            ->distinct()
-            ->pluck('email');
+            ->whereNotNull('qr_token')
+            ->get();
+
+        $emails = $entries->pluck('email')->unique();
 
         foreach ($emails as $email) {
             SendGuestInvitationsJob::dispatch($this->guestList, $email);
         }
+
+        $entries->each(function (GuestEntry $entry) {
+            $entry->update(['invitation_sent_at' => now()]);
+        });
     }
 }

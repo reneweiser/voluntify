@@ -26,6 +26,7 @@ class GuestEntry extends Model
         'qr_token',
         'checked_in_at',
         'checked_in_by',
+        'invitation_sent_at',
     ];
 
     protected function casts(): array
@@ -33,6 +34,7 @@ class GuestEntry extends Model
         return [
             'number' => 'integer',
             'checked_in_at' => 'datetime',
+            'invitation_sent_at' => 'datetime',
         ];
     }
 

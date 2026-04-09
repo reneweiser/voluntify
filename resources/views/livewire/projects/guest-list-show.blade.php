@@ -13,6 +13,13 @@
                     {{ __('Confirm') }}
                 </flux:button>
             @endif
+            @if ($this->guestList->isConfirmed() && $this->pendingInvitationCount > 0)
+                <flux:button variant="primary" wire:click="sendPendingInvitations"
+                    wire:confirm="{{ __('Send invitations to all guests with an email address?') }}"
+                    wire:loading.attr="disabled">
+                    {{ __('Send Pending Invitations') }} ({{ $this->pendingInvitationCount }})
+                </flux:button>
+            @endif
             <flux:button variant="ghost" icon="pencil" wire:click="openEditModal">
                 {{ __('Edit') }}
             </flux:button>
