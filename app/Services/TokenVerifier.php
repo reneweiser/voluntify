@@ -15,9 +15,9 @@ class TokenVerifier
      *
      * @throws InvalidTicketException
      */
-    public function verify(string $jwt, int $eventId): \stdClass
+    public function verify(string $jwt, int $projectId): \stdClass
     {
-        $keys = $this->allVerificationKeys($eventId);
+        $keys = $this->allVerificationKeys($projectId);
 
         foreach ($keys as $key) {
             try {
@@ -33,9 +33,9 @@ class TokenVerifier
     /**
      * @return Key[]
      */
-    private function allVerificationKeys(int $eventId): array
+    private function allVerificationKeys(int $projectId): array
     {
-        $publicKeys = $this->jwtKeyService->publicKeys($eventId);
+        $publicKeys = $this->jwtKeyService->publicKeys($projectId);
 
         return [
             new Key($publicKeys['current'], 'EdDSA'),
