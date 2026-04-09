@@ -45,6 +45,8 @@ class VolunteerPortal extends Component
 
     public ?int $cancellingSignupId = null;
 
+    public bool $showCancelModal = false;
+
     public string $successMessage = '';
 
     public ?string $projectPublicToken = null;
@@ -220,15 +222,28 @@ class VolunteerPortal extends Component
     public function confirmCancel(int $signupId): void
     {
         $this->cancellingSignupId = $signupId;
+        $this->showCancelModal = true;
     }
 
     public function dismissCancel(): void
     {
         $this->cancellingSignupId = null;
+        $this->showCancelModal = false;
+    }
+
+    public function updatedShowCancelModal(bool $value): void
+    {
+        if (! $value) {
+            $this->cancellingSignupId = null;
+        }
     }
 
     public function cancelSignup(): void
     {
+        if (! $this->cancellingSignupId) {
+            return;
+        }
+
         $signup = $this->volunteer->shiftSignups()
             ->with('shift.volunteerJob.event.project')
             ->find($this->cancellingSignupId);
@@ -246,6 +261,7 @@ class VolunteerPortal extends Component
         }
 
         $this->cancellingSignupId = null;
+        $this->showCancelModal = false;
         $this->successMessage = 'Signup cancelled successfully.';
 
         unset($this->upcomingSignups, $this->pastSignups);

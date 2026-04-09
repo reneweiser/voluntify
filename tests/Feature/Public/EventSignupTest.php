@@ -1130,3 +1130,130 @@ it('resets existingGearSelections on restartSignup', function () {
         ->assertSet('existingGearSelections', [])
         ->assertSet('gearSelections', []);
 });
+
+// --- Returning volunteer: overlap detection includes existing shifts ---
+
+it('detects overlap between new shift and existing shift for returning volunteer', function () {
+    $existingShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 10,
+    ]);
+    $newShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 10,
+    ]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['email' => 'returning@example.com']);
+    ShiftSignup::factory()->create(['shift_id' => $existingShift->id, 'volunteer_id' => $volunteer->id]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'returning@example.com');
+    $component->call('advanceToShifts')
+        ->assertSet('existingShiftIds', [$existingShift->id])
+        ->set('selectedShiftIds', [$existingShift->id, $newShift->id])
+        ->assertSee(__('Conflict'))
+        ->assertSee(__('Some selected shifts overlap in time'))
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::SelectingShifts);
+
+    expect(ShiftReservation::count())->toBe(0);
+});
+
+it('allows new shift that does not overlap with existing shift for returning volunteer', function () {
+    $existingShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 09:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'capacity' => 10,
+    ]);
+    $newShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 15:00:00'),
+        'capacity' => 10,
+    ]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['email' => 'returning@example.com']);
+    ShiftSignup::factory()->create(['shift_id' => $existingShift->id, 'volunteer_id' => $volunteer->id]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'returning@example.com');
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$existingShift->id, $newShift->id])
+        ->assertDontSee(__('Conflict'))
+        ->call('reserveAndAdvance')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::Confirming);
+});
+
+it('does not flag false conflict when existing shift has no defined times', function () {
+    $existingShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => null,
+        'ends_at' => null,
+        'capacity' => 10,
+    ]);
+    $newShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 10,
+    ]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['email' => 'returning@example.com']);
+    ShiftSignup::factory()->create(['shift_id' => $existingShift->id, 'volunteer_id' => $volunteer->id]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'returning@example.com');
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$existingShift->id, $newShift->id])
+        ->assertDontSee(__('Conflict'))
+        ->call('reserveAndAdvance')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::Confirming);
+});
+
+it('returning volunteer with existing shifts can reach confirming step without error', function () {
+    $existingShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 09:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'capacity' => 10,
+    ]);
+    $newShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 15:00:00'),
+        'capacity' => 10,
+    ]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'returning-confirm@example.com',
+        'first_name' => 'Returning',
+        'last_name' => 'Confirmer',
+    ]);
+    ShiftSignup::factory()->create(['shift_id' => $existingShift->id, 'volunteer_id' => $volunteer->id]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning-confirm@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'returning-confirm@example.com');
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$existingShift->id, $newShift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::Confirming)
+        ->assertSee('Confirm Your Signup')
+        ->assertSee('Returning Confirmer')
+        ->assertSee('returning-confirm@example.com')
+        ->assertSee(__('already signed up'));
+});

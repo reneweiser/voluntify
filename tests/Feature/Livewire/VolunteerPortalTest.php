@@ -868,3 +868,64 @@ it('cannot delete another volunteers profile', function () {
     // Other volunteer should still exist
     expect(Volunteer::find($otherVolunteer->id))->not->toBeNull();
 });
+
+// --- Cancel modal: wire:model boolean coercion protection ---
+
+it('rejects cancellation when cancellingSignupId is coerced to boolean true', function () {
+    // Create decoy signups (different volunteer) to consume low IDs
+    $otherVolunteer = Volunteer::factory()->for($this->project)->create();
+    $decoyShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->addDays(5),
+        'ends_at' => now()->addDays(5)->addHours(2),
+    ]);
+    ShiftSignup::factory()->create(['volunteer_id' => $otherVolunteer->id, 'shift_id' => $this->futureShift->id]);
+    ShiftSignup::factory()->create(['volunteer_id' => $otherVolunteer->id, 'shift_id' => $decoyShift->id]);
+
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    // Ensure the real signup ID is not 1 (what true coerces to)
+    expect($signup->id)->toBeGreaterThan(1);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    // Simulate the corruption: Flux modal wire:model coerces integer to boolean true -> ?int casts to 1
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('confirmCancel', $signup->id)
+        ->set('cancellingSignupId', true)
+        ->call('cancelSignup')
+        ->assertForbidden();
+});
+
+it('cancellingSignupId is cleared when showCancelModal becomes false', function () {
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('confirmCancel', $signup->id)
+        ->assertSet('cancellingSignupId', $signup->id)
+        ->assertSet('showCancelModal', true)
+        ->set('showCancelModal', false)
+        ->assertSet('cancellingSignupId', null);
+});
+
+it('does not abort when cancellingSignupId is null', function () {
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('cancelSignup')
+        ->assertOk()
+        ->assertDontSee('Signup cancelled successfully');
+});
