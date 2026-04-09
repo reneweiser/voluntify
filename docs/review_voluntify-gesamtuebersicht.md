@@ -19,14 +19,17 @@ Organisation
 └── Projekt (z.B. "Hochschulball 2026")
     ├── Projektwebsite (öffentlich, permanenter Link /p/{token})
     ├── Projekteinstellungen
-    │   ├── Allgemein (Name, Beschreibung, Titelbild)
+    │   ├── Allgemein (Name, Beschreibung, Titelbild, Timezone)
     │   ├── E-Mail (Absendername, Kontakt-E-Mail)
-    │   ├── Custom Fields (projektweite Pflichtfelder)
-    │   ├── Gear (T-Shirt, Getränkemarken etc.)
-    │   ├── Scanner (Volunteer Admin + Entry Staff)
+    │   ├── Custom Fields (projektweite Felder, Scoping: event_ids + job_ids)
+    │   ├── Gear (Typ 1 + Typ 2, Scoping: event_ids + job_ids)
+    │   ├── Scanner (Volunteer Admin → Attendance + Gear, Entry Staff → Arrival)
+    │   ├── Gästelisten (VIPs, Künstler, Begleitpersonen — an Scanner gebunden)
+    │   ├── Anwesenheit (konfigurierbare Stadien + Default-Status)
     │   └── Mitglieder (nur Organizer-Rolle)
     ├── Volunteers (gehören zum Projekt, nicht zum einzelnen Event)
-    └── Events (z.B. "Aufbautag", "Hauptabend")
+    ├── Gäste (Guest Lists → Guest Groups → Guest Entries, mit optionalem Gear)
+    └── Events (z.B. "Aufbautag", "Hauptabend", "Konzert")
         ├── Jobs (z.B. "Einlass", "Bar", "Bühne")
         │   └── Schichten (Datum, Zeit optional, Kapazität)
         ├── Anmeldungen (Volunteers → Schichten)
@@ -36,6 +39,17 @@ Organisation
         │   ├── Anwesenheit (Grace Period)
         │   └── E-Mail (Benachrichtigungs-E-Mail, E-Mail-Vorlagen)
         └── Event-Status (Draft / Published Open / Published Closed / Archived)
+```
+
+**Personen & Rollen:**
+
+```text
+Organisation
+├── Organizer (permanenter Account, Org- oder Projekt-Level)
+├── Volunteer Admin (temporärer Scanner-Link, Schicht-Check-in + Gear)
+├── Entry Staff (temporärer Scanner-Link, Event-Einlass)
+├── Volunteer (kein Account, Magic-Link, gehört zum Projekt)
+└── Gast (kein Account, QR-Code via Gästeliste, VIPs/Künstler/Begleitpersonen)
 ```
 
 **Wichtige Prinzipien:**
@@ -201,24 +215,26 @@ Event-Karten zeigen: Name, Datum, Ort, Anmeldefrist, Status-Badge.
 ### 5.2 Signup-Flow (#69, #49, #50, #54, #80, #82)
 
 ```text
-Welcome-Seite
+Schritt 1 — E-Mail + Verifikation
+    ↓                              ↓
+Neuer User                    Bekannter User
+    ↓                              ↓
+E-Mail-Verifizierung          Verifikations-Link per E-Mail
+    ↓                              ↓
+Persönliche Daten eingeben    Daten vorbelegt (read-only bestehendes Gear/Schichten)
     ↓
-Schritt 1 — E-Mail-Eingabe
-    ↓                         ↓
-Neuer User               Bekannter User
-    ↓                         ↓
-E-Mail-Verifizierung    Magic Link → direkt zurück in Schritt 2
+Schritt 2 — Schichtauswahl
+    (20-Min-Reservierung startet hier)
+    (Bekannter User: bestehende Schichten read-only, nur neue wählbar)
     ↓
-Schritt 2 — Persönliche Daten + Schichtauswahl
-    (20-Min-Reservierung startet mit Beginn von Schritt 2)
-    ↓
-Schritt 3 — Custom Fields + Gear
+Schritt 3 — Gear Typ 1 + Custom Fields (nur wenn vorhanden, sonst überspringen)
+    (nur für neu gewählte Schichten, basierend auf event_ids/job_ids Scoping)
     (Countdown läuft weiter)
     ↓
-Schritt 4 — Zusammenfassung
+Schritt 4 — Zusammenfassung + "Verbindlich anmelden"
     ↓
 Anmeldung abgeschlossen
-→ Bestätigungs-E-Mail + QR-Code (pro Projekt, gilt für alle Events)
+→ Bestätigungs-E-Mail mit Zusammenfassung + QR-Code (pro Projekt, gilt für alle Events)
 ```
 
 #### Schritt 1 — E-Mail
@@ -382,10 +398,29 @@ Gear ist auf Projektebene definiert und gilt für alle Events im Projekt.
 
 ### 8.1 Scanner-Typen
 
-| Typ | Zweck | Zuweisung |
-|---|---|---|
-| **Entry Staff Scanner** | Einlasskontrolle per QR | per E-Mail, temporärer Link |
-| **Volunteer Admin Scanner** | Check-in + Gear-Ausgabe | per E-Mail, temporärer Link |
+| Typ | Zweck | Funktion | Zuweisung |
+|---|---|---|---|
+| **Entry Staff Scanner** | **Event Arrival** — Einlasskontrolle | QR-Scan, Volunteer-Suche, Gastliste | per E-Mail, temporärer Link |
+| **Volunteer Admin Scanner** | **Attendance** — Schicht-Check-in + Gear | QR-Scan, Volunteer-Suche, Pro-Schicht Status, Gear-Ausgabe | per E-Mail, temporärer Link |
+
+> Arrival und Attendance sind getrennte Konzepte: Arrival = "Volunteer hat Zutritt zum Event-Gelände" (z.B. auch kostenloser Eintritt zu Konzerten als Volunteer-Benefit). Attendance = "Volunteer hat sich zur Schicht gemeldet". Ein Volunteer kann multiple Arrivals haben (verschiedene Events an verschiedenen Tagen).
+
+**Scanner-Workflows:**
+
+```text
+Entry Staff Scanner (Arrival)              Volunteer Admin Scanner (Attendance)
+──────────────────────────────             ─────────────────────────────────────
+QR-Scan / Volunteer-Suche / Gastliste      QR-Scan / Volunteer-Suche
+    ↓                                          ↓
+Ticket validieren                          Volunteer + Schichten anzeigen
+    ↓                                          ↓
+🟢 Zugang / 🟡 Bereits da / 🔴 Kein       Pro Schicht: Status setzen
+    ↓                                      (Eingecheckt / Verspätet / ...)
+"Nächsten scannen" (manuell)                   ↓
+                                           Gear anzeigen + ausgeben (wenn Mode aktiv)
+                                               ↓
+                                           "Nächsten scannen"
+```
 
 ### 8.2 Scanner-Konfiguration (#75)
 

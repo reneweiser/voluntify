@@ -33,6 +33,7 @@
 ## Entscheidungen
 
 - [PO-Session 2026-03-30](decisions/2026-03-30-po-session.md) — F1–F10, Announcements, Volunteer Management, Docs-Rewrite
+- [PO-Session 2026-04-09](decisions/2026-04-09-po-session.md) — Arrival/Attendance Trennung, Gear/CF Scoping, Signup-Flow, Navigation, Attendance-Stadien
 
 ## Deployment
 

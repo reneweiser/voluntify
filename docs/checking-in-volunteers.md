@@ -8,12 +8,12 @@ Voluntify has two scanner types, each designed for a specific role:
 
 | Scanner | Purpose | Operated By |
 |---|---|---|
-| **Entry Staff Scanner** | Entrance control via QR code | Entry Staff |
-| **Volunteer Admin Scanner** | Check-in, attendance, gear pickup | Volunteer Admin |
+| **Entry Staff Scanner** | **Event Arrival** -- entrance control via QR code | Entry Staff |
+| **Volunteer Admin Scanner** | **Attendance** -- shift check-in, gear pickup | Volunteer Admin |
 
 Both scanner types are configured at **project level** under Projekt > Scanner. Each scanner has a type, scope (event or project), time window, assigned operators, and optional hint text.
 
-> Why two scanner types? Entry Staff only need a fast, clear yes/no for entrance. Volunteer Admins need detailed volunteer views for attendance and gear management. Combining both into one would clutter the Entry Staff's workflow.
+> Why two scanner types? Entry Staff handle **Event Arrival** -- a fast yes/no for venue access, potentially across multiple events (e.g. volunteer gets free entry to concerts as a benefit). Volunteer Admins handle **Attendance** -- per-shift check-in with configurable states and gear management. These are separate concepts: a volunteer can arrive at the venue (Entry Staff) but still be missing from their shift (Volunteer Admin). Combining both into one would clutter the Entry Staff's workflow.
 
 ## Scanner Setup (Organizer)
 
@@ -88,8 +88,8 @@ The Volunteer Admin Scanner is designed for on-the-ground shift management: chec
 
 The Organizer configures which modes are active for each scanner:
 
-- **Check-in only** -- Mark volunteers as arrived for their shifts
-- **Gear Pickup only** -- Distribute gear items
+- **Check-in only** -- Mark shift attendance using configurable states
+- **Gear Pickup only** -- Distribute gear items (no shift information shown)
 - **Both** -- Check-in first, then gear pickup (sequential flow)
 
 ### Scan Flow
