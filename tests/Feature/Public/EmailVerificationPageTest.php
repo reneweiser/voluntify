@@ -57,21 +57,23 @@ it('shows already-verified message for re-used token', function () {
         ->assertSee('Continue Signup');
 });
 
-it('includes continue-signup link with token ID', function () {
+it('includes continue-signup link with token hash', function () {
     $plainToken = Str::random(64);
+    $hashed = HashedToken::fromPlaintext($plainToken);
     $token = EmailVerificationToken::factory()->create([
         'volunteer_id' => $this->volunteer->id,
         'event_id' => $this->event->id,
         'email' => $this->volunteer->email,
-        'token_hash' => HashedToken::fromPlaintext($plainToken)->hash,
+        'token_hash' => $hashed->hash,
         'expires_at' => now()->addHours(24),
     ]);
 
     $component = Livewire::test(EmailVerificationPage::class, ['token' => $plainToken]);
 
     $continueUrl = $component->get('continueSignupUrl');
-    expect($continueUrl)->toContain('vt='.$token->id)
-        ->and($continueUrl)->toContain($this->event->public_token);
+    expect($continueUrl)->toContain('vt='.$hashed->hash)
+        ->and($continueUrl)->toContain($this->event->public_token)
+        ->and($continueUrl)->not->toContain('vt='.$token->id);
 });
 
 it('shows expired message for expired token', function () {

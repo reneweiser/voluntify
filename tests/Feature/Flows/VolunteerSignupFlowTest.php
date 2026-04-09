@@ -82,7 +82,7 @@ it('completes full flow: email → verify → info → shifts → confirm → co
     expect(Ticket::where('volunteer_id', $volunteer->id)->where('project_id', $this->project->id)->exists())->toBeTrue();
 });
 
-it('handles returning verified volunteer: email → info (prefilled) → shifts → confirm', function () {
+it('handles returning verified volunteer: email → verify → info (prefilled) → shifts → confirm', function () {
     $volunteer = Volunteer::factory()->for($this->project)->verified()->create([
         'first_name' => 'Bob',
         'last_name' => 'Verified',
@@ -90,11 +90,16 @@ it('handles returning verified volunteer: email → info (prefilled) → shifts 
         'phone' => '+2222222222',
     ]);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->assertSet('state', WizardState::EmailEntry)
         ->set('volunteerEmail', 'bob@verified.test')
         ->call('submitEmail')
-        // Skips PendingVerification for verified volunteers
+        ->assertSet('state', WizardState::PendingVerification);
+
+    // Simulate verification
+    $token = EmailVerificationToken::where('email', 'bob@verified.test')->first();
+    $token->update(['verified_at' => now()]);
+    $component->call('checkVerification')
         ->assertSet('state', WizardState::PersonalInfo)
         ->assertSet('volunteerFirstName', 'Bob')
         ->assertSet('volunteerLastName', 'Verified')
@@ -153,9 +158,13 @@ it('handles reservation expiry flow: reserve → expire → restart to EmailEntr
         'last_name' => 'Test',
     ]);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerEmail', 'expire@test.com')
-        ->call('submitEmail')
+        ->call('submitEmail');
+
+    $token = EmailVerificationToken::where('email', 'expire@test.com')->first();
+    $token->update(['verified_at' => now()]);
+    $component->call('checkVerification')
         ->call('advanceToShifts')
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
@@ -174,9 +183,13 @@ it('releases reservations after successful signup', function () {
         'last_name' => 'Test',
     ]);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerEmail', 'release@test.com')
-        ->call('submitEmail')
+        ->call('submitEmail');
+
+    $token = EmailVerificationToken::where('email', 'release@test.com')->first();
+    $token->update(['verified_at' => now()]);
+    $component->call('checkVerification')
         ->call('advanceToShifts')
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
@@ -220,8 +233,8 @@ it('handles cross-device verification via vt query param', function () {
         'expires_at' => now()->addHours(24),
     ]);
 
-    // Verify cross-device access via full HTTP request with ?vt= query param
-    $url = route('events.public', $this->event->public_token).'?vt='.$token->id;
+    // Verify cross-device access via full HTTP request with ?vt= query param (uses token_hash)
+    $url = route('events.public', $this->event->public_token).'?vt='.$token->token_hash;
     $this->get($url)
         ->assertOk()
         ->assertSeeLivewire(EventSignup::class);

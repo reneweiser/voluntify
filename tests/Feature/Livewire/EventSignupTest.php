@@ -29,6 +29,7 @@ it('renders custom fields on step 2 of the wizard', function () {
     CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release', 'sort_order' => 3]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('state', WizardState::PersonalInfo)
         ->set('volunteerFirstName', 'Test')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'test@example.com')
@@ -55,6 +56,7 @@ it('validates required custom fields on step 2', function () {
     $field = CustomRegistrationField::factory()->required()->for($this->event)->create(['label' => 'Required Field']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('state', WizardState::PersonalInfo)
         ->set('volunteerFirstName', 'Test')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'test@example.com')
@@ -70,6 +72,7 @@ it('completes signup flow with custom field responses for new volunteer', functi
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('state', WizardState::PersonalInfo)
         ->set('volunteerFirstName', 'Test')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'newvolunteer@example.com')
@@ -91,6 +94,7 @@ it('completes signup with custom fields for verified volunteer', function () {
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('state', WizardState::PersonalInfo)
         ->set('volunteerFirstName', 'Verified')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'verified@example.com')
@@ -111,6 +115,7 @@ it('renders placeholder option in custom field select dropdown', function () {
     CustomRegistrationField::factory()->select(['Vegan', 'Vegetarian', 'None'])->for($this->event)->create(['label' => 'Diet Preference']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('state', WizardState::PersonalInfo)
         ->set('volunteerFirstName', 'Test')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'test@example.com')
@@ -125,6 +130,7 @@ it('renders placeholder option in gear size select dropdown', function () {
     ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('state', WizardState::PersonalInfo)
         ->set('volunteerFirstName', 'Test')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'test@example.com')
@@ -151,6 +157,7 @@ it('validates multi-choice custom field with array values', function () {
     $field = CustomRegistrationField::factory()->select(['Red', 'Blue', 'Green'])->allowMultiple()->for($this->event)->create(['label' => 'Favorite Colors']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('state', WizardState::PersonalInfo)
         ->set('volunteerFirstName', 'Test')
         ->set('volunteerLastName', 'Person')
         ->set('volunteerEmail', 'test@example.com')
