@@ -1,7 +1,7 @@
 ---
 pipeline_status: in_progress
 current_stage: implement
-current_focus: "Batch 1: Mail reliability (#112, #113)"
+current_focus: "M17 complete — all 8 issues implemented and audited"
 current_milestone: m17-reliability-quick-wins
 entry_point: plan
 stages_to_run:
@@ -33,7 +33,7 @@ last_updated: "2026-04-09T10:00:00"
 | m14-audit-remediation | Code Quality Audit Remediation | H0-H3: test gaps, Form Objects, auth refactor | m13 | complete |
 | m15-volunteer-portal-enhancements | Volunteer Portal Enhancements | #117 arrival+gear, #125 banners, #115 magic link re-request, #126 QR+resend, #127 attendance, #105 self-deletion | m14 | complete |
 | m16-bugfixes | Bug Fixes | #132 scanner modes, #133 gear-only shifts, #138 VA arrival button, #141 dropdown placeholder, #142 portal cancel errors | m15 | complete |
-| m17-reliability-quick-wins | Reliability & Quick Wins | #112 immed. cancel notify, #113 retry strategy, #114 idempotency, #122 tz picker, #135 gear counter, #136 camera pause, #140 signup nav, #143 deletion guard | m16 | in_progress |
+| m17-reliability-quick-wins | Reliability & Quick Wins | #112 immed. cancel notify, #113 retry strategy, #114 idempotency, #122 tz picker, #135 gear counter, #136 camera pause, #140 signup nav, #143 deletion guard | m16 | complete |
 
 ## Artifacts
 

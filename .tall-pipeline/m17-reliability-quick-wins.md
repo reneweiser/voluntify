@@ -73,18 +73,20 @@
 - Tests: Livewire test verifying link presence in complete state
 
 ## Implement
-- **Status:** pending
+- **Status:** complete
+- **Gate summary:** 4 batches, 5 commits, all 1811 tests green
 - **Tasks:**
-  - [ ] Batch 1: #112 ImmediateCancellationNotification + #113 HasRetryStrategy trait
-  - [ ] Batch 2: #114 idempotency guards + #143 deletion blocking
-  - [ ] Batch 3: #135 gear counter + #136 camera auto-pause
-  - [ ] Batch 4: #122 timezone picker + #140 signup back nav
+  - [x] Batch 1: #112 ImmediateCancellationNotification + #113 HasRetryStrategy trait
+  - [x] Batch 2: #114 idempotency guards + #143 deletion blocking
+  - [x] Batch 3: #135 gear counter + #136 camera auto-pause
+  - [x] Batch 4: #122 timezone picker + #140 signup back nav
 
 ## Test
-- **Status:** pending
+- **Status:** complete (covered inline with implementation)
 
 ## Security Audit
-- **Status:** pending
+- **Status:** complete
+- **Gate summary:** 0 critical, 1 high (fixed), 1 medium (fixed), 2 low (accepted), 1 info
 
 ## Decisions
 
@@ -103,6 +105,16 @@
 | Listeners | NotifyOrganizersOfCancellation |
 
 ## Reviews
+
+### Security Audit — 2026-04-09
+
+| # | Perspective | Concern | Severity | Resolution | Rationale |
+|---|---|---|---|---|---|
+| 1 | Security Paranoid | VolunteerPortal.$volunteer not #[Locked] | high | accepted | Added #[Locked] attribute |
+| 2 | Security Paranoid | VolunteerPortal.$magicToken not #[Locked] | medium | accepted | Added #[Locked] attribute |
+| 3 | Security Paranoid | Deletion guard TOCTOU race condition | low | accepted | Volunteer-initiated only, low concurrency, acceptable risk |
+| 4 | Security Paranoid | DomainException messages shown verbatim | low | accepted | Messages are hand-crafted German strings, no internal details |
+| 5 | Security Paranoid | @entangle on timezone picker is safe | info | n/a | Server-side validation via form object gates persistence |
 
 ## Feedback Loops
 
