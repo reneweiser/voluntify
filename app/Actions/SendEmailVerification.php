@@ -7,33 +7,35 @@ use App\Models\Event;
 use App\Models\Volunteer;
 use App\Notifications\EmailVerification;
 use App\ValueObjects\HashedToken;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class SendEmailVerification
 {
-    /**
-     * @param  array<int>  $shiftIds
-     * @param  array<int, string|null>|null  $gearSelections
-     * @param  array<int, mixed>|null  $customFieldResponses
-     */
-    public function execute(Volunteer $volunteer, Event $event, array $shiftIds, ?array $gearSelections = null, ?array $customFieldResponses = null): void
+    public function execute(string $email, Event $event, ?Volunteer $volunteer = null): EmailVerificationToken
     {
         $plainToken = Str::random(64);
         $hashed = HashedToken::fromPlaintext($plainToken);
 
-        EmailVerificationToken::create([
-            'volunteer_id' => $volunteer->id,
+        $token = EmailVerificationToken::create([
+            'volunteer_id' => $volunteer?->id,
             'event_id' => $event->id,
             'project_id' => $event->project_id,
-            'shift_ids' => $shiftIds,
-            'gear_selections' => $gearSelections,
-            'custom_field_responses' => $customFieldResponses,
+            'email' => $email,
+            'shift_ids' => null,
             'token_hash' => $hashed->hash,
             'expires_at' => now()->addHours(24),
         ]);
 
         $verificationUrl = route('volunteer.verify-email', $plainToken);
+        $notification = new EmailVerification($event, $verificationUrl);
 
-        $volunteer->notify(new EmailVerification($event, $verificationUrl));
+        if ($volunteer) {
+            $volunteer->notify($notification);
+        } else {
+            Notification::route('mail', $email)->notify($notification);
+        }
+
+        return $token;
     }
 }

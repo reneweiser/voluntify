@@ -6,13 +6,12 @@ use App\Events\Activity\VolunteerSignedUp;
 use App\Models\Event;
 use App\Models\Shift;
 use App\Models\Volunteer;
-use App\ValueObjects\SignupOutcome;
+use App\ValueObjects\ShiftSignupResult;
 
 class ProcessVolunteerSignup
 {
     public function __construct(
         private SignUpVolunteerForShifts $signUpAction,
-        private SendEmailVerification $sendVerification,
         private AssignGearToVolunteer $assignGear,
         private RecordCustomFieldResponses $recordCustomFields,
     ) {}
@@ -32,7 +31,7 @@ class ProcessVolunteerSignup
         ?array $gearSelections = null,
         ?array $customFieldResponses = null,
         ?string $sessionId = null,
-    ): SignupOutcome {
+    ): ShiftSignupResult {
         $volunteer = Volunteer::firstOrCreate(
             ['email' => $email, 'project_id' => $event->project_id],
             ['first_name' => $firstName, 'last_name' => $lastName, 'phone' => $phone],
@@ -42,34 +41,28 @@ class ProcessVolunteerSignup
             $volunteer->update(['phone' => $phone]);
         }
 
-        if ($volunteer->isEmailVerified()) {
-            $result = $this->signUpAction->execute(
-                volunteer: $volunteer,
-                event: $event,
-                shiftIds: $shiftIds,
-                sessionId: $sessionId,
-            );
+        $result = $this->signUpAction->execute(
+            volunteer: $volunteer,
+            event: $event,
+            shiftIds: $shiftIds,
+            sessionId: $sessionId,
+        );
 
-            $volunteerJobIds = collect($shiftIds)
-                ->map(fn ($id) => Shift::find($id)?->volunteerJob?->id)
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
+        $volunteerJobIds = collect($shiftIds)
+            ->map(fn ($id) => Shift::find($id)?->volunteerJob?->id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
-            $this->assignGear->execute($volunteer, $event, $gearSelections ?? [], $volunteerJobIds);
+        $this->assignGear->execute($volunteer, $event, $gearSelections ?? [], $volunteerJobIds);
 
-            if ($customFieldResponses !== null) {
-                $this->recordCustomFields->execute($volunteer, $event, $customFieldResponses);
-            }
-
-            VolunteerSignedUp::dispatch($volunteer, $event, count($shiftIds));
-
-            return SignupOutcome::completed($result);
+        if ($customFieldResponses !== null) {
+            $this->recordCustomFields->execute($volunteer, $event, $customFieldResponses);
         }
 
-        $this->sendVerification->execute($volunteer, $event, $shiftIds, $gearSelections, $customFieldResponses);
+        VolunteerSignedUp::dispatch($volunteer, $event, count($shiftIds));
 
-        return SignupOutcome::pendingVerification($email);
+        return $result;
     }
 }

@@ -9,6 +9,7 @@ use App\Notifications\Concerns\UsesOrganizationMailer;
 use App\Services\EmailTemplateRenderer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -33,23 +34,27 @@ class EmailVerification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
+        $isAnonymous = $notifiable instanceof AnonymousNotifiable;
+
         $renderer = app(EmailTemplateRenderer::class);
         $rendered = $renderer->render(
             EmailTemplateType::EmailVerification,
             $this->event,
             [
                 // #81 - German placeholders (primary)
-                'vorname' => $notifiable->first_name,
-                'nachname' => $notifiable->last_name,
+                'vorname' => $isAnonymous ? '' : $notifiable->first_name,
+                'nachname' => $isAnonymous ? '' : $notifiable->last_name,
                 // Legacy placeholders (backwards compatibility)
-                'volunteer_name' => $notifiable->full_name,
+                'volunteer_name' => $isAnonymous ? '' : $notifiable->full_name,
                 'event_name' => $this->event->name,
             ],
         );
 
+        $greeting = $isAnonymous ? 'Hallo!' : "Hallo {$notifiable->first_name}!";
+
         $mail = (new MailMessage)
             ->subject($rendered['subject'])
-            ->greeting("Hallo {$notifiable->first_name}!");
+            ->greeting($greeting);
 
         foreach (explode("\n", $rendered['body']) as $line) {
             $trimmed = trim($line);
@@ -58,7 +63,7 @@ class EmailVerification extends Notification implements ShouldQueue
             }
         }
 
-        $mail->action('E-Mail bestätigen & Anmeldung abschließen', $this->verificationUrl);
+        $mail->action('E-Mail bestätigen', $this->verificationUrl);
 
         return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
     }

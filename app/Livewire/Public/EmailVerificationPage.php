@@ -18,32 +18,28 @@ class EmailVerificationPage extends Component
 
     public bool $expired = false;
 
-    public int $newSignupCount = 0;
-
-    public int $skippedFullCount = 0;
+    public bool $alreadyVerified = false;
 
     public string $eventName = '';
 
     public string $eventPublicToken = '';
+
+    public string $continueSignupUrl = '';
 
     public function mount(string $token): void
     {
         try {
             $result = app(CompleteEmailVerification::class)->execute($token);
 
-            $this->verified = true;
-            $this->newSignupCount = count($result->newSignups);
-            $this->skippedFullCount = count($result->skippedFull);
+            $event = $result->event;
+            $this->eventName = $event->name;
+            $this->eventPublicToken = $event->public_token;
+            $this->continueSignupUrl = route('events.public', $event->public_token).'?vt='.$result->id;
 
-            $latestSignup = $result->volunteer->shiftSignups()
-                ->with('shift.volunteerJob.event')
-                ->latest()
-                ->first();
-
-            if ($latestSignup?->shift?->volunteerJob?->event) {
-                $event = $latestSignup->shift->volunteerJob->event;
-                $this->eventName = $event->name;
-                $this->eventPublicToken = $event->public_token;
+            if ($result->verified_at->lt(now()->subSeconds(5))) {
+                $this->alreadyVerified = true;
+            } else {
+                $this->verified = true;
             }
         } catch (ExpiredVerificationException) {
             $this->expired = true;

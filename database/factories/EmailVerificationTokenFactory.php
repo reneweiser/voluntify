@@ -21,9 +21,11 @@ class EmailVerificationTokenFactory extends Factory
             'volunteer_id' => Volunteer::factory(),
             'event_id' => Event::factory(),
             'project_id' => null,
-            'shift_ids' => [1],
+            'email' => fake()->safeEmail(),
+            'shift_ids' => null,
             'token_hash' => HashedToken::fromPlaintext(fake()->sha256())->hash,
             'expires_at' => now()->addHours(24),
+            'verified_at' => null,
         ];
     }
 
@@ -31,6 +33,23 @@ class EmailVerificationTokenFactory extends Factory
     {
         return $this->state(fn () => [
             'expires_at' => now()->subHour(),
+        ]);
+    }
+
+    public function verified(): static
+    {
+        return $this->state(fn () => [
+            'verified_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param  array<int>  $ids
+     */
+    public function withShiftIds(array $ids): static
+    {
+        return $this->state(fn () => [
+            'shift_ids' => $ids,
         ]);
     }
 }

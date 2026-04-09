@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\EmailVerificationToken;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -14,3 +15,4 @@ Schedule::command('app:release-expired-reservations')->everyMinute()->withoutOve
 Schedule::command('scanner-links:send')->everyFiveMinutes();
 Schedule::command('app:send-cancellation-digest')->everySixHours();
 Schedule::command('app:purge-pending-deletions')->daily();
+Schedule::command('model:prune', ['--model' => EmailVerificationToken::class])->daily();

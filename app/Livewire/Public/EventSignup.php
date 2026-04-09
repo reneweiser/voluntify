@@ -4,15 +4,18 @@ namespace App\Livewire\Public;
 
 use App\Actions\ProcessVolunteerSignup;
 use App\Actions\ReserveShifts;
+use App\Actions\SendEmailVerification;
 use App\Enums\EventStatus;
 use App\Enums\GearItemType;
 use App\Enums\HintLocation;
 use App\Enums\WizardState;
 use App\Exceptions\DomainException;
+use App\Models\EmailVerificationToken;
 use App\Models\Event;
 use App\Models\ShiftReservation;
 use App\Models\Volunteer;
 use App\Services\HintTextResolver;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
@@ -29,7 +32,7 @@ class EventSignup extends Component
     #[Locked]
     public Event $event;
 
-    public WizardState $state = WizardState::PersonalInfo;
+    public WizardState $state = WizardState::EmailEntry;
 
     /** @var array<int> */
     public array $selectedShiftIds = [];
@@ -57,12 +60,44 @@ class EventSignup extends Component
     #[Locked]
     public string $lookupMessage = '';
 
+    #[Locked]
+    public ?int $verificationTokenId = null;
+
+    #[Locked]
+    public ?int $existingVolunteerId = null;
+
+    /** @var array<int> */
+    #[Locked]
+    public array $existingShiftIds = [];
+
+    #[Locked]
+    public bool $isReturningVolunteer = false;
+
+    #[Locked]
+    public ?string $verificationStartedAt = null;
+
     public function mount(string $publicToken): void
     {
         $this->event = Event::with('project')
             ->where('public_token', $publicToken)
             ->where('status', EventStatus::PublishedOpen)
             ->firstOrFail();
+
+        // Cross-device verification: accept ?vt= query param with recently-verified token ID
+        $vt = request()->query('vt');
+        if ($vt) {
+            $token = EmailVerificationToken::where('id', $vt)
+                ->where('event_id', $this->event->id)
+                ->whereNotNull('verified_at')
+                ->where('verified_at', '>', now()->subMinutes(30))
+                ->first();
+
+            if ($token) {
+                $this->volunteerEmail = $token->volunteer?->email ?? $token->email ?? '';
+                $this->prefillFromVolunteer($token->volunteer);
+                $this->state = WizardState::PersonalInfo;
+            }
+        }
     }
 
     /**
@@ -201,25 +236,26 @@ class EventSignup extends Component
     }
 
     /**
-     * Look up existing volunteer by email to pre-fill returning volunteer data.
+     * Step 0 -> Step 1 or 2: Submit email, send verification or skip for verified volunteers.
      */
-    public function lookupVolunteer(): void
+    public function submitEmail(): void
     {
-        if (! $this->volunteerEmail || ! $this->event->project_id) {
-            $this->lookupMessage = '';
-
-            return;
-        }
+        $this->validate([
+            'volunteerEmail' => ['required', 'email', 'max:255'],
+        ]);
 
         $ipKey = 'signup-lookup:'.request()->ip();
         if (RateLimiter::tooManyAttempts($ipKey, 10)) {
+            $this->addError('volunteerEmail', __('Too many attempts. Please wait a moment before trying again.'));
+
             return;
         }
         RateLimiter::hit($ipKey, 60);
 
-        // Per-email rate limit to mitigate distributed enumeration
         $emailKey = 'signup-lookup-email:'.strtolower(trim($this->volunteerEmail));
         if (RateLimiter::tooManyAttempts($emailKey, 3)) {
+            $this->addError('volunteerEmail', __('Too many attempts for this email. Please wait a few minutes.'));
+
             return;
         }
         RateLimiter::hit($emailKey, 300);
@@ -228,20 +264,91 @@ class EventSignup extends Component
             ->where('project_id', $this->event->project_id)
             ->first();
 
+        if ($volunteer && $volunteer->isEmailVerified()) {
+            // Branch A: existing + verified → skip verification
+            $this->prefillFromVolunteer($volunteer);
+            $this->state = WizardState::PersonalInfo;
+
+            return;
+        }
+
+        // Branch B (existing + unverified) or C (new email)
         if ($volunteer) {
-            $this->volunteerFirstName = $volunteer->first_name;
-            $this->volunteerLastName = $volunteer->last_name;
-            if ($volunteer->phone) {
-                $this->volunteerPhone = $volunteer->phone;
+            $this->prefillFromVolunteer($volunteer);
+        }
+
+        $token = app(SendEmailVerification::class)->execute(
+            $this->volunteerEmail,
+            $this->event,
+            $volunteer,
+        );
+
+        $this->verificationTokenId = $token->id;
+        $this->verificationStartedAt = now()->toISOString();
+        $this->state = WizardState::PendingVerification;
+    }
+
+    /**
+     * Polled every 3s from the PendingVerification screen.
+     */
+    public function checkVerification(): void
+    {
+        if ($this->verificationTokenId === null) {
+            return;
+        }
+
+        // Max poll guard: stop after 10 minutes
+        if ($this->verificationStartedAt && Carbon::parse($this->verificationStartedAt)->diffInMinutes(now()) >= 10) {
+            return;
+        }
+
+        $token = EmailVerificationToken::find($this->verificationTokenId);
+
+        if ($token?->isVerified()) {
+            if ($token->volunteer_id) {
+                $this->prefillFromVolunteer($token->volunteer);
+            } else {
+                $this->volunteerEmail = $token->email ?? $this->volunteerEmail;
             }
-            $this->lookupMessage = __('Details pre-filled from your previous signup.');
-        } else {
-            $this->lookupMessage = '';
+            $this->state = WizardState::PersonalInfo;
+
+            return;
+        }
+
+        if ($token?->expires_at->isPast()) {
+            $this->verificationTokenId = null;
         }
     }
 
     /**
-     * Step 1 -> Step 2: Validate personal info and advance to shift selection.
+     * Resend verification email (rate-limited).
+     */
+    public function resendVerification(): void
+    {
+        $emailKey = 'email-verification-resend:'.strtolower(trim($this->volunteerEmail));
+        if (RateLimiter::tooManyAttempts($emailKey, 3)) {
+            $this->addError('volunteerEmail', __('Too many resend attempts. Please wait before trying again.'));
+
+            return;
+        }
+        RateLimiter::hit($emailKey, 3600);
+
+        $volunteer = Volunteer::where('email', $this->volunteerEmail)
+            ->where('project_id', $this->event->project_id)
+            ->first();
+
+        $token = app(SendEmailVerification::class)->execute(
+            $this->volunteerEmail,
+            $this->event,
+            $volunteer,
+        );
+
+        $this->verificationTokenId = $token->id;
+        $this->verificationStartedAt = now()->toISOString();
+    }
+
+    /**
+     * Step 2 -> Step 3: Validate personal info and advance to shift selection.
      */
     public function advanceToShifts(): void
     {
@@ -250,7 +357,7 @@ class EventSignup extends Component
     }
 
     /**
-     * Step 2 -> Step 3 (or 4): Validate shift selection, reserve shifts, and advance.
+     * Step 3 -> Step 4 (or 5): Validate shift selection, reserve shifts, and advance.
      */
     public function reserveAndAdvance(): void
     {
@@ -276,8 +383,20 @@ class EventSignup extends Component
             return;
         }
 
+        // Strip existing shifts from the selection for returning volunteers
+        $newShiftIds = array_values(array_diff(
+            array_map('intval', $this->selectedShiftIds),
+            $this->existingShiftIds,
+        ));
+
+        if (empty($newShiftIds)) {
+            $this->addError('selectedShiftIds', __('You are already signed up for all selected shifts.'));
+
+            return;
+        }
+
         $result = app(ReserveShifts::class)->execute(
-            shiftIds: array_map('intval', $this->selectedShiftIds),
+            shiftIds: $newShiftIds,
             sessionId: session()->getId(),
             event: $this->event,
         );
@@ -289,7 +408,7 @@ class EventSignup extends Component
             return;
         }
 
-        $this->selectedShiftIds = $result->reservedShiftIds();
+        $this->selectedShiftIds = array_merge($this->existingShiftIds, $result->reservedShiftIds());
         unset($this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
         $this->reservationExpiresAt = $result->expiresAt->toISOString();
 
@@ -307,7 +426,7 @@ class EventSignup extends Component
     }
 
     /**
-     * Step 3 -> Step 4: Validate gear/custom fields and advance to confirmation.
+     * Step 4 -> Step 5: Validate gear/custom fields and advance to confirmation.
      */
     public function advanceToConfirmation(): void
     {
@@ -327,15 +446,16 @@ class EventSignup extends Component
     public function goBack(): void
     {
         $this->state = match ($this->state) {
+            WizardState::PersonalInfo => WizardState::EmailEntry,
             WizardState::SelectingShifts => WizardState::PersonalInfo,
             WizardState::GearAndFields => WizardState::SelectingShifts,
-            WizardState::Confirming => WizardState::PersonalInfo,
+            WizardState::Confirming => $this->hasGearOrFields ? WizardState::GearAndFields : WizardState::SelectingShifts,
             default => $this->state,
         };
     }
 
     /**
-     * Step 4: Final submit.
+     * Final submit: sign up directly (email already verified).
      */
     public function submitSignup(): void
     {
@@ -345,15 +465,6 @@ class EventSignup extends Component
             return;
         }
         RateLimiter::hit('signup-submit:'.request()->ip(), 300);
-
-        // Per-email rate limit: prevent email-bombing a specific address (3 per hour)
-        $emailKey = 'email-verification-resend:'.strtolower(trim($this->volunteerEmail));
-        if ($this->volunteerEmail && RateLimiter::tooManyAttempts($emailKey, 3)) {
-            $this->addError('volunteerEmail', 'Zu viele Versuche für diese E-Mail-Adresse. Bitte warte eine Stunde.');
-
-            return;
-        }
-        RateLimiter::hit($emailKey, 3600);
 
         $this->validatePersonalInfo();
 
@@ -384,25 +495,23 @@ class EventSignup extends Component
                 ? collect($this->customFieldResponses)->only($validFieldIds)->all()
                 : null;
 
-            $outcome = $action->execute(
+            // Only submit newly selected shifts (exclude existing signups)
+            $newShiftIds = array_values(array_diff(
+                array_map('intval', $this->selectedShiftIds),
+                $this->existingShiftIds,
+            ));
+
+            $result = $action->execute(
                 firstName: $this->volunteerFirstName,
                 lastName: $this->volunteerLastName,
                 email: $this->volunteerEmail,
                 event: $this->event,
-                shiftIds: array_map('intval', $this->selectedShiftIds),
+                shiftIds: $newShiftIds,
                 phone: $this->volunteerPhone ?: null,
                 gearSelections: $gearSelections,
                 customFieldResponses: $customFieldResponses,
                 sessionId: session()->getId(),
             );
-
-            if ($outcome->isPendingVerification()) {
-                $this->state = WizardState::PendingVerification;
-
-                return;
-            }
-
-            $result = $outcome->batchResult;
 
             if ($result->hasNewSignups()) {
                 $this->state = WizardState::Complete;
@@ -416,10 +525,10 @@ class EventSignup extends Component
             } elseif (! $result->hasNewSignups() && count($result->skippedOverlap) > 0) {
                 $this->addError('selectedShiftIds', __('All selected shifts conflict with existing signups.'));
                 $this->restartSignup();
-            } elseif (count($result->skippedDuplicate) === count($this->selectedShiftIds)) {
+            } elseif (count($result->skippedDuplicate) === count($newShiftIds)) {
                 $this->addError('selectedShiftIds', __('You are already signed up for all selected shifts.'));
                 $this->restartSignup();
-            } elseif (count($result->skippedFull) === count($this->selectedShiftIds)) {
+            } elseif (count($result->skippedFull) === count($newShiftIds)) {
                 $this->addError('selectedShiftIds', __('All selected shifts are full.'));
                 $this->restartSignup();
             } else {
@@ -445,11 +554,19 @@ class EventSignup extends Component
      */
     public function restartSignup(): void
     {
-        $this->state = WizardState::PersonalInfo;
+        // Release any active reservations for this session
+        ShiftReservation::forSession(session()->getId())->delete();
+
+        $this->state = WizardState::EmailEntry;
         $this->selectedShiftIds = [];
         $this->reservationExpiresAt = '';
         $this->warningMessage = '';
         $this->lookupMessage = '';
+        $this->verificationTokenId = null;
+        $this->existingVolunteerId = null;
+        $this->existingShiftIds = [];
+        $this->isReturningVolunteer = false;
+        $this->verificationStartedAt = null;
         unset($this->jobs, $this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
     }
 
@@ -487,5 +604,33 @@ class EventSignup extends Component
             'volunteerEmail' => ['required', 'email', 'max:255'],
             'volunteerPhone' => [$this->event->phone_required ? 'required' : 'nullable', 'string', 'max:20'],
         ]);
+    }
+
+    private function prefillFromVolunteer(?Volunteer $volunteer): void
+    {
+        if (! $volunteer) {
+            return;
+        }
+
+        $this->isReturningVolunteer = true;
+        $this->existingVolunteerId = $volunteer->id;
+        $this->volunteerFirstName = $volunteer->first_name;
+        $this->volunteerLastName = $volunteer->last_name;
+        $this->volunteerEmail = $volunteer->email;
+
+        if ($volunteer->phone) {
+            $this->volunteerPhone = $volunteer->phone;
+        }
+
+        // Load existing shift signups for this event
+        $this->existingShiftIds = $volunteer->shiftSignups()
+            ->active()
+            ->whereHas('shift.volunteerJob', fn ($q) => $q->where('event_id', $this->event->id))
+            ->pluck('shift_id')
+            ->all();
+
+        if (! empty($this->existingShiftIds)) {
+            $this->lookupMessage = __('Details pre-filled from your previous signup.');
+        }
     }
 }

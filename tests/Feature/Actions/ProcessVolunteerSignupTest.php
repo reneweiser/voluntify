@@ -1,7 +1,6 @@
 <?php
 
 use App\Actions\ProcessVolunteerSignup;
-use App\Enums\SignupOutcomeType;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\EmailVerificationToken;
@@ -18,6 +17,7 @@ use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 use App\Notifications\EmailVerification;
 use App\Notifications\SignupConfirmation;
+use App\ValueObjects\ShiftSignupResult;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
@@ -30,10 +30,27 @@ beforeEach(function () {
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10]);
 });
 
-it('sends verification email for unverified new volunteer', function () {
+it('always returns ShiftSignupResult directly', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'test@example.com']);
+
     $action = app(ProcessVolunteerSignup::class);
 
-    $outcome = $action->execute(
+    $result = $action->execute(
+        firstName: 'Test',
+        lastName: 'Person',
+        email: 'test@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+    );
+
+    expect($result)->toBeInstanceOf(ShiftSignupResult::class)
+        ->and($result->hasNewSignups())->toBeTrue();
+});
+
+it('never sends verification email', function () {
+    $action = app(ProcessVolunteerSignup::class);
+
+    $action->execute(
         firstName: 'New',
         lastName: 'Person',
         email: 'new@example.com',
@@ -41,35 +58,46 @@ it('sends verification email for unverified new volunteer', function () {
         shiftIds: [$this->shift->id],
     );
 
-    expect($outcome->type)->toBe(SignupOutcomeType::PendingVerification)
-        ->and($outcome->pendingEmail)->toBe('new@example.com')
-        ->and($outcome->isPendingVerification())->toBeTrue();
-
-    // Volunteer created but no signups or tickets
-    expect(Volunteer::where('email', 'new@example.com')->exists())->toBeTrue()
-        ->and(ShiftSignup::count())->toBe(0)
-        ->and(Ticket::count())->toBe(0);
-
-    // Verification token created
-    expect(EmailVerificationToken::count())->toBe(1);
-
-    // EmailVerification sent, not SignupConfirmation
-    Notification::assertSentTo(
+    Notification::assertNotSentTo(
         Volunteer::where('email', 'new@example.com')->first(),
         EmailVerification::class,
     );
-    Notification::assertNotSentTo(
+
+    expect(EmailVerificationToken::count())->toBe(0);
+});
+
+it('creates volunteer and signups for new volunteer', function () {
+    $action = app(ProcessVolunteerSignup::class);
+
+    $result = $action->execute(
+        firstName: 'New',
+        lastName: 'Person',
+        email: 'new@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+    );
+
+    expect($result->hasNewSignups())->toBeTrue()
+        ->and(Volunteer::where('email', 'new@example.com')->exists())->toBeTrue()
+        ->and(ShiftSignup::count())->toBe(1)
+        ->and(Ticket::count())->toBe(1);
+
+    Notification::assertSentTo(
         Volunteer::where('email', 'new@example.com')->first(),
         SignupConfirmation::class,
     );
 });
 
-it('completes signup immediately for verified returning volunteer', function () {
-    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'verified@example.com', 'first_name' => 'Verified', 'last_name' => 'Person']);
+it('completes signup for verified returning volunteer', function () {
+    Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'verified@example.com',
+        'first_name' => 'Verified',
+        'last_name' => 'Person',
+    ]);
 
     $action = app(ProcessVolunteerSignup::class);
 
-    $outcome = $action->execute(
+    $result = $action->execute(
         firstName: 'Verified',
         lastName: 'Person',
         email: 'verified@example.com',
@@ -77,49 +105,17 @@ it('completes signup immediately for verified returning volunteer', function () 
         shiftIds: [$this->shift->id],
     );
 
-    expect($outcome->type)->toBe(SignupOutcomeType::Completed)
-        ->and($outcome->batchResult)->not->toBeNull()
-        ->and($outcome->batchResult->hasNewSignups())->toBeTrue();
-
-    // Signups and ticket created
-    expect(ShiftSignup::count())->toBe(1)
+    expect($result->hasNewSignups())->toBeTrue()
+        ->and(ShiftSignup::count())->toBe(1)
         ->and(Ticket::count())->toBe(1);
 
-    // SignupConfirmation sent, not EmailVerification
     Notification::assertSentTo(
         Volunteer::where('email', 'verified@example.com')->first(),
         SignupConfirmation::class,
     );
-    Notification::assertNotSentTo(
-        Volunteer::where('email', 'verified@example.com')->first(),
-        EmailVerification::class,
-    );
 });
 
-it('skips verification for returning verified volunteer on new event', function () {
-    $volunteer = Volunteer::factory()->for($this->project)->verified()->create();
-
-    $newEvent = Event::factory()->for($this->org)->for($this->project)->published()->create();
-    $newJob = VolunteerJob::factory()->for($newEvent)->create();
-    $newShift = Shift::factory()->for($newJob, 'volunteerJob')->create(['capacity' => 10]);
-
-    $action = app(ProcessVolunteerSignup::class);
-
-    $outcome = $action->execute(
-        firstName: $volunteer->first_name,
-        lastName: $volunteer->last_name,
-        email: $volunteer->email,
-        event: $newEvent,
-        shiftIds: [$newShift->id],
-    );
-
-    expect($outcome->type)->toBe(SignupOutcomeType::Completed)
-        ->and($outcome->batchResult->hasNewSignups())->toBeTrue();
-
-    Notification::assertSentTo($volunteer, SignupConfirmation::class);
-});
-
-it('creates gear records for verified volunteer with gear selections', function () {
+it('creates gear records with gear selections', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'gear@example.com']);
 
     $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
@@ -127,51 +123,30 @@ it('creates gear records for verified volunteer with gear selections', function 
 
     $action = app(ProcessVolunteerSignup::class);
 
-    $outcome = $action->execute(
+    $result = $action->execute(
         firstName: 'Gear',
         lastName: 'Person',
         email: 'gear@example.com',
         event: $this->event,
         shiftIds: [$this->shift->id],
-        phone: null,
         gearSelections: [$tshirt->id => 'M', $badge->id => null],
     );
 
-    expect($outcome->type)->toBe(SignupOutcomeType::Completed);
+    expect($result)->toBeInstanceOf(ShiftSignupResult::class);
     expect(VolunteerGear::count())->toBe(2);
 
     $tshirtGear = VolunteerGear::where('project_gear_item_id', $tshirt->id)->first();
     expect($tshirtGear->size)->toBe('M');
 });
 
-it('stores gear selections on verification token for unverified volunteer', function () {
-    $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
-
-    $action = app(ProcessVolunteerSignup::class);
-
-    $action->execute(
-        firstName: 'Unverified',
-        lastName: 'Gear',
-        email: 'unverified-gear@example.com',
-        event: $this->event,
-        shiftIds: [$this->shift->id],
-        phone: null,
-        gearSelections: [$tshirt->id => 'L'],
-    );
-
-    $token = EmailVerificationToken::first();
-    expect($token->gear_selections)->toBe([$tshirt->id => 'L']);
-    expect(VolunteerGear::count())->toBe(0);
-});
-
-it('records custom field responses for verified volunteer', function () {
+it('records custom field responses', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'custom@example.com']);
 
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     $action = app(ProcessVolunteerSignup::class);
 
-    $outcome = $action->execute(
+    $result = $action->execute(
         firstName: 'Custom',
         lastName: 'Person',
         email: 'custom@example.com',
@@ -180,28 +155,9 @@ it('records custom field responses for verified volunteer', function () {
         customFieldResponses: [$field->id => 'Vegan'],
     );
 
-    expect($outcome->type)->toBe(SignupOutcomeType::Completed);
+    expect($result)->toBeInstanceOf(ShiftSignupResult::class);
     expect(CustomFieldResponse::count())->toBe(1);
     expect(CustomFieldResponse::first()->value)->toBe('Vegan');
-});
-
-it('stores custom_field_responses on token for unverified volunteer', function () {
-    $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
-
-    $action = app(ProcessVolunteerSignup::class);
-
-    $action->execute(
-        firstName: 'Unverified',
-        lastName: 'Custom',
-        email: 'unverified-custom@example.com',
-        event: $this->event,
-        shiftIds: [$this->shift->id],
-        customFieldResponses: [$field->id => 'Vegan'],
-    );
-
-    $token = EmailVerificationToken::first();
-    expect($token->custom_field_responses)->toBe([$field->id => 'Vegan']);
-    expect(CustomFieldResponse::count())->toBe(0);
 });
 
 it('updates phone number for existing volunteer', function () {
@@ -224,11 +180,10 @@ it('updates phone number for existing volunteer', function () {
     expect(Volunteer::where('email', 'test@example.com')->first()->phone)->toBe('+15551234567');
 });
 
-it('passes sessionId through to SignUpVolunteerForShifts to release reservations', function () {
+it('passes sessionId through to release reservations', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'session@example.com']);
 
-    // Create a reservation that should be released after signup
-    $reservation = ShiftReservation::factory()->create([
+    ShiftReservation::factory()->create([
         'shift_id' => $this->shift->id,
         'session_id' => 'signup-session',
         'expires_at' => now()->addMinutes(10),
@@ -236,7 +191,7 @@ it('passes sessionId through to SignUpVolunteerForShifts to release reservations
 
     $action = app(ProcessVolunteerSignup::class);
 
-    $outcome = $action->execute(
+    $result = $action->execute(
         firstName: 'Session',
         lastName: 'Test',
         email: 'session@example.com',
@@ -245,21 +200,22 @@ it('passes sessionId through to SignUpVolunteerForShifts to release reservations
         sessionId: 'signup-session',
     );
 
-    expect($outcome->type)->toBe(SignupOutcomeType::Completed)
-        ->and($outcome->batchResult->hasNewSignups())->toBeTrue();
-
-    // Reservation should have been released
+    expect($result->hasNewSignups())->toBeTrue();
     expect(ShiftReservation::forSession('signup-session')->count())->toBe(0);
 });
 
-it('auto-assigns Typ 2 gear for verified volunteer without gearSelections', function () {
+it('auto-assigns Typ 2 gear without gearSelections', function () {
     $drinks = ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Drinks']);
 
-    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'typ2@example.com', 'first_name' => 'Auto', 'last_name' => 'Gear']);
+    Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'typ2@example.com',
+        'first_name' => 'Auto',
+        'last_name' => 'Gear',
+    ]);
 
     $action = app(ProcessVolunteerSignup::class);
 
-    $outcome = $action->execute(
+    $result = $action->execute(
         firstName: 'Auto',
         lastName: 'Gear',
         email: 'typ2@example.com',
@@ -267,7 +223,7 @@ it('auto-assigns Typ 2 gear for verified volunteer without gearSelections', func
         shiftIds: [$this->shift->id],
     );
 
-    expect($outcome->type)->toBe(SignupOutcomeType::Completed);
+    expect($result)->toBeInstanceOf(ShiftSignupResult::class);
     expect(VolunteerGear::count())->toBe(1);
 
     $gear = VolunteerGear::first();
@@ -279,11 +235,15 @@ it('auto-assigns Typ 2 gear alongside Typ 1 selections', function () {
     $tshirt = ProjectGearItem::factory()->sized()->for($this->project)->create(['name' => 'T-Shirt']);
     $drinks = ProjectGearItem::factory()->quantity(2)->for($this->project)->create(['name' => 'Drinks']);
 
-    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'both@example.com', 'first_name' => 'Both', 'last_name' => 'Types']);
+    Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'both@example.com',
+        'first_name' => 'Both',
+        'last_name' => 'Types',
+    ]);
 
     $action = app(ProcessVolunteerSignup::class);
 
-    $outcome = $action->execute(
+    $result = $action->execute(
         firstName: 'Both',
         lastName: 'Types',
         email: 'both@example.com',
@@ -292,7 +252,7 @@ it('auto-assigns Typ 2 gear alongside Typ 1 selections', function () {
         gearSelections: [$tshirt->id => 'L'],
     );
 
-    expect($outcome->type)->toBe(SignupOutcomeType::Completed);
+    expect($result)->toBeInstanceOf(ShiftSignupResult::class);
     expect(VolunteerGear::count())->toBe(2);
 
     expect(VolunteerGear::where('project_gear_item_id', $tshirt->id)->first()->size)->toBe('L');
