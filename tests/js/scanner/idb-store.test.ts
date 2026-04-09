@@ -21,6 +21,7 @@ const makeVolunteer = (overrides: Partial<Volunteer> = {}): Volunteer => ({
     last_name: 'Johnson',
     name: 'Alice Johnson',
     email: 'alice@example.com',
+    phone: null,
     ticket: { id: 10, jwt_token: 'eyJabc', volunteer_id: 1, project_id: 1 },
     shift_signups: [],
     ...overrides,

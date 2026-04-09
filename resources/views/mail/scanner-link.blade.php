@@ -9,12 +9,12 @@ You have been assigned as a scanner operator. Click the link below to access the
 Open Scanner
 </x-mail::button>
 
-@if ($authCode)
+@if (strlen($authCode) === 6)
 **Your Auth Code:** `{{ $authCode }}`
 
 Keep this code secure and do not share it publicly.
 @else
-You will need the auth code provided by your organizer to log in.
+Please ask your organizer to regenerate the auth code for this scanner.
 @endif
 
 Thanks,<br>

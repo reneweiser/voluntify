@@ -64,38 +64,23 @@ it('includes correct scanner auth URL in mail', function () {
     Carbon::setTestNow();
 });
 
-it('passes auth code to ScannerLinkMail when provided', function () {
+it('always reads auth code from scanner model', function () {
     Mail::fake();
     Carbon::setTestNow('2026-07-01 12:00:00');
 
-    $scanner = ProjectScanner::factory()->active()->create();
+    $scanner = ProjectScanner::factory()->active()->create([
+        'auth_code' => '654321',
+    ]);
     $assignee = ProjectScannerAssignee::factory()->for($scanner, 'projectScanner')->create([
         'email' => 'staff@example.com',
     ]);
-
-    $job = new SendScannerLinksJob($assignee, '654321');
-    $job->handle();
-
-    Mail::assertSent(ScannerLinkMail::class, function ($mail) {
-        return $mail->hasTo('staff@example.com')
-            && $mail->authCode === '654321';
-    });
-
-    Carbon::setTestNow();
-});
-
-it('sends mail without auth code when none provided', function () {
-    Mail::fake();
-    Carbon::setTestNow('2026-07-01 12:00:00');
-
-    $scanner = ProjectScanner::factory()->active()->create();
-    $assignee = ProjectScannerAssignee::factory()->for($scanner, 'projectScanner')->create();
 
     $job = new SendScannerLinksJob($assignee);
     $job->handle();
 
     Mail::assertSent(ScannerLinkMail::class, function ($mail) {
-        return $mail->authCode === null;
+        return $mail->hasTo('staff@example.com')
+            && $mail->authCode === '654321';
     });
 
     Carbon::setTestNow();

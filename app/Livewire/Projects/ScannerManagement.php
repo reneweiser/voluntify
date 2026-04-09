@@ -98,10 +98,11 @@ class ScannerManagement extends Component
         $action = new CreateProjectScanner;
         $scanner = $action->execute($this->project, $data);
 
-        session()->flash('rawAuthCode', [
-            'id' => $scanner->id,
-            'code' => $scanner->raw_auth_code,
-        ]);
+        // Auto-send links to assignees if any exist
+        $scanner->load('assignees');
+        if ($scanner->assignees->isNotEmpty()) {
+            (new SendScannerLinks)->execute($scanner);
+        }
 
         $this->form->reset();
         $this->showCreateModal = false;
@@ -180,15 +181,10 @@ class ScannerManagement extends Component
             ->findOrFail($scannerId);
 
         $action = new RegenerateAuthCode;
-        $rawCode = $action->execute($scanner);
-
-        session()->flash('rawAuthCode', [
-            'id' => $scanner->id,
-            'code' => $rawCode,
-        ]);
+        $action->execute($scanner);
 
         $sendLinks = new SendScannerLinks;
-        $sendLinks->execute($scanner, $rawCode);
+        $sendLinks->execute($scanner);
 
         unset($this->scanners);
     }

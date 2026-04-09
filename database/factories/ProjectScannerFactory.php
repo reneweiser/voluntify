@@ -7,7 +7,6 @@ use App\Enums\ScannerType;
 use App\Models\Project;
 use App\Models\ProjectScanner;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Facades\Hash;
 
 /** @extends Factory<ProjectScanner> */
 class ProjectScannerFactory extends Factory
@@ -28,7 +27,7 @@ class ProjectScannerFactory extends Factory
             'hint_text' => null,
             'starts_at' => now(),
             'ends_at' => now()->addHours(2),
-            'auth_code' => Hash::make($code),
+            'auth_code' => $code,
             'scanner_token' => bin2hex(random_bytes(32)),
         ];
     }
@@ -71,7 +70,7 @@ class ProjectScannerFactory extends Factory
     public function withAuthCode(string $plainCode): static
     {
         return $this->state(fn () => [
-            'auth_code' => Hash::make($plainCode),
+            'auth_code' => $plainCode,
         ]);
     }
 }

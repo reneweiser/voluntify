@@ -21,7 +21,6 @@ class SendScannerLinksJob implements ShouldQueue
 
     public function __construct(
         public ProjectScannerAssignee $assignee,
-        public ?string $rawAuthCode = null,
     ) {}
 
     public function handle(): void
@@ -35,7 +34,7 @@ class SendScannerLinksJob implements ShouldQueue
         $url = route('scanner.auth', $scanner->scanner_token);
 
         Mail::to($this->assignee->email)
-            ->send(new ScannerLinkMail($scanner, $url, $this->rawAuthCode));
+            ->send(new ScannerLinkMail($scanner, $url, $scanner->auth_code));
 
         $this->assignee->update(['link_sent_at' => now()]);
     }

@@ -52,6 +52,44 @@ it('returns scanner data with valid token', function () {
         ->assertJsonPath('scanner.type', ScannerType::EntryStaff->value);
 });
 
+it('includes phone in volunteer data when phone exists', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => null,
+    ]);
+
+    Volunteer::factory()->create([
+        'project_id' => $this->project->id,
+        'phone' => '+49123456789',
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('volunteers.0.phone', '+49123456789');
+});
+
+it('includes null phone when volunteer has no phone', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => null,
+    ]);
+
+    Volunteer::factory()->create([
+        'project_id' => $this->project->id,
+        'phone' => null,
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('volunteers.0.phone', null);
+});
+
 it('includes attendance_states in data response', function () {
     $this->project->update(['attendance_states' => Project::defaultAttendanceStates()]);
 

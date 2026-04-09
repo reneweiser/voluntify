@@ -35,6 +35,7 @@ export interface Volunteer {
     last_name: string;
     name: string;
     email: string;
+    phone: string | null;
     ticket: Ticket;
     shift_signups: ShiftSignup[];
 }
