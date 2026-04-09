@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Announcement;
+use App\Notifications\Concerns\HasRetryStrategy;
 use App\Notifications\Concerns\UsesOrganizationMailer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,6 +12,7 @@ use Illuminate\Notifications\Notification;
 
 class AnnouncementNotification extends Notification implements ShouldQueue
 {
+    use HasRetryStrategy;
     use Queueable;
     use UsesOrganizationMailer;
 

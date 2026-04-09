@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: implement
-current_focus: "All Phase 2 milestones complete (M7–M16)"
-current_milestone: none
+current_focus: "Batch 1: Mail reliability (#112, #113)"
+current_milestone: m17-reliability-quick-wins
 entry_point: plan
 stages_to_run:
   - plan
@@ -11,13 +11,10 @@ stages_to_run:
   - security-audit
 completed_stages:
   - plan
-  - implement
-  - test
-  - security-audit
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-08T15:00:00"
+last_updated: "2026-04-09T10:00:00"
 ---
 
 # TALL Pipeline — Index
@@ -36,6 +33,7 @@ last_updated: "2026-04-08T15:00:00"
 | m14-audit-remediation | Code Quality Audit Remediation | H0-H3: test gaps, Form Objects, auth refactor | m13 | complete |
 | m15-volunteer-portal-enhancements | Volunteer Portal Enhancements | #117 arrival+gear, #125 banners, #115 magic link re-request, #126 QR+resend, #127 attendance, #105 self-deletion | m14 | complete |
 | m16-bugfixes | Bug Fixes | #132 scanner modes, #133 gear-only shifts, #138 VA arrival button, #141 dropdown placeholder, #142 portal cancel errors | m15 | complete |
+| m17-reliability-quick-wins | Reliability & Quick Wins | #112 immed. cancel notify, #113 retry strategy, #114 idempotency, #122 tz picker, #135 gear counter, #136 camera pause, #140 signup nav, #143 deletion guard | m16 | in_progress |
 
 ## Artifacts
 
@@ -50,6 +48,8 @@ last_updated: "2026-04-08T15:00:00"
 | `.tall-pipeline/m12-security-audit.md` | security-audit | m12-guest-lists | Security audit report (0 crit, 1 high, 2 med, 3 low) | complete |
 | `.tall-pipeline/m13-polish.md` | plan+impl+test | m13-polish | M13 plan (19 features, 5 phases) + implementation + test stage results | complete |
 | `.tall-pipeline/m13-security-audit.md` | security-audit | m13-polish | Security audit report (0 crit, 1 high, 4 med, 5 low, 4 info) | complete |
+
+| `.tall-pipeline/m17-reliability-quick-wins.md` | plan+impl | m17 | M17 plan + implementation tracking | in_progress |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

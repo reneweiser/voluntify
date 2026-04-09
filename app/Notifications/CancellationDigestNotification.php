@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Project;
 use App\Models\ShiftSignup;
+use App\Notifications\Concerns\HasRetryStrategy;
 use App\Notifications\Concerns\UsesOrganizationMailer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,6 +14,7 @@ use Illuminate\Support\Collection;
 
 class CancellationDigestNotification extends Notification implements ShouldQueue
 {
+    use HasRetryStrategy;
     use Queueable;
     use UsesOrganizationMailer;
 

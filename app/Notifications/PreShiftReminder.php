@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Enums\EmailTemplateType;
 use App\Models\Event;
 use App\Models\Shift;
+use App\Notifications\Concerns\HasRetryStrategy;
 use App\Notifications\Concerns\UsesOrganizationMailer;
 use App\Services\EmailTemplateRenderer;
 use Illuminate\Bus\Queueable;
@@ -14,6 +15,7 @@ use Illuminate\Notifications\Notification;
 
 class PreShiftReminder extends Notification implements ShouldQueue
 {
+    use HasRetryStrategy;
     use Queueable;
     use UsesOrganizationMailer;
 
