@@ -285,7 +285,8 @@
                                 @if ($item->requires_size)
                                     <flux:field>
                                         <flux:label>{{ __('Size') }}</flux:label>
-                                        <flux:select wire:model="gearSelections.{{ $item->id }}" placeholder="{{ __('Select size...') }}">
+                                        <flux:select wire:model="gearSelections.{{ $item->id }}">
+                                            <flux:select.option value="">{{ __('Please select...') }}</flux:select.option>
                                             @foreach ($item->available_sizes ?? [] as $size)
                                                 <flux:select.option :value="$size">{{ $size }}</flux:select.option>
                                             @endforeach
@@ -321,7 +322,8 @@
                                 @elseif ($field->type->value === 'text')
                                     <flux:input wire:model="customFieldResponses.{{ $field->id }}" placeholder="{{ $field->options['placeholder'] ?? '' }}" />
                                 @elseif ($field->type->value === 'select')
-                                    <flux:select wire:model="customFieldResponses.{{ $field->id }}" placeholder="{{ __('Select...') }}">
+                                    <flux:select wire:model="customFieldResponses.{{ $field->id }}">
+                                        <flux:select.option value="">{{ __('Please select...') }}</flux:select.option>
                                         @foreach ($field->options['choices'] ?? [] as $choice)
                                             <flux:select.option :value="$choice">{{ $choice }}</flux:select.option>
                                         @endforeach

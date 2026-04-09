@@ -100,6 +100,26 @@ it('completes signup with custom fields for verified volunteer', function () {
         ->and(CustomFieldResponse::first()->value)->toBe('Vegan');
 });
 
+it('renders placeholder option in custom field select dropdown', function () {
+    CustomRegistrationField::factory()->select(['Vegan', 'Vegetarian', 'None'])->for($this->event)->create(['label' => 'Diet Preference']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->assertSee(__('Please select...'));
+});
+
+it('renders placeholder option in gear size select dropdown', function () {
+    ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->assertSee(__('Please select...'));
+});
+
 it('renders without error when gear item has requires_size true but available_sizes is null', function () {
     ProjectGearItem::factory()->for($this->project)->create([
         'name' => 'Broken T-Shirt',
