@@ -285,7 +285,13 @@ class VolunteerPortal extends Component
 
         $publicToken = $this->volunteer->project->public_token;
 
-        app(DeleteVolunteerProfile::class)->execute($this->volunteer);
+        try {
+            app(DeleteVolunteerProfile::class)->execute($this->volunteer);
+        } catch (DomainException $e) {
+            $this->addError('delete', $e->getMessage());
+
+            return;
+        }
 
         $this->redirect(route('projects.public', $publicToken));
     }

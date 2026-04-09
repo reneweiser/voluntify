@@ -315,6 +315,11 @@
                             <li>{{ __('Nicht abgeholte Gear-Artikel verfallen unwiderruflich') }}</li>
                         </ul>
                     </div>
+                    @error('delete')
+                        <div class="rounded-md p-3 text-sm" style="background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3); color: #fca5a5;">
+                            {{ $message }}
+                        </div>
+                    @enderror
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" wire:model="deleteConfirmed" class="rounded" style="accent-color: #e63946;">
                         <span class="text-sm" style="color: #fca5a5;">{{ __('Ich verstehe, dass dieser Vorgang nicht rückgängig gemacht werden kann.') }}</span>

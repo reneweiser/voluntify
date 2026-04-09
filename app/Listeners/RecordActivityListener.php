@@ -430,6 +430,17 @@ class RecordActivityListener implements ShouldHandleEventsAfterCommit
 
         $event = $e->signup->shift->volunteerJob->event;
 
+        $exists = ActivityLog::where('action', 'cancelled')
+            ->where('subject_type', Volunteer::class)
+            ->where('subject_id', $e->volunteer->id)
+            ->where('event_id', $event->id)
+            ->where('created_at', '>=', now()->subSeconds(10))
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
         ActivityLog::create([
             'organization_id' => $event->organization_id,
             'event_id' => $event->id,

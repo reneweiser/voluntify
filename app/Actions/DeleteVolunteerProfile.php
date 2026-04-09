@@ -3,7 +3,9 @@
 namespace App\Actions;
 
 use App\Enums\StaffRole;
+use App\Exceptions\DomainException;
 use App\Models\ActivityLog;
+use App\Models\Project;
 use App\Models\Volunteer;
 use App\Notifications\ProfileDeletionConfirmation;
 use App\Notifications\VolunteerProfileDeletedNotification;
@@ -15,8 +17,11 @@ class DeleteVolunteerProfile
     public function execute(Volunteer $volunteer): void
     {
         $volunteer->loadMissing('project.organization');
-        $volunteerName = $volunteer->full_name;
         $project = $volunteer->project;
+
+        $this->guardAgainstNonCancellableShifts($volunteer, $project);
+
+        $volunteerName = $volunteer->full_name;
         $organization = $project->organization;
 
         // 1. Send confirmation email synchronously (before deletion)
@@ -79,6 +84,41 @@ class DeleteVolunteerProfile
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+    }
+
+    private function guardAgainstNonCancellableShifts(Volunteer $volunteer, Project $project): void
+    {
+        if (! $project->isCancellationAllowed()) {
+            return;
+        }
+
+        $cutoffHours = $project->cancellation_cutoff_hours;
+
+        $hasBlockingShifts = $volunteer->shiftSignups()
+            ->active()
+            ->whereHas('shift', function ($query) use ($cutoffHours) {
+                $query->where(function ($q) use ($cutoffHours) {
+                    // Shift with defined times: not completed AND not cancellable
+                    $q->where(function ($inner) use ($cutoffHours) {
+                        $inner->whereNotNull('starts_at')
+                            ->where('ends_at', '>', now())
+                            ->where('starts_at', '<=', now()->addHours($cutoffHours));
+                    })
+                    // Shift without defined times: shift_date not in past AND not cancellable
+                        ->orWhere(function ($inner) use ($cutoffHours) {
+                            $inner->whereNull('starts_at')
+                                ->where('shift_date', '>=', now()->toDateString())
+                                ->where('shift_date', '<', now()->addHours($cutoffHours)->startOfDay()->toDateString());
+                        });
+                });
+            })
+            ->exists();
+
+        if ($hasBlockingShifts) {
+            throw new DomainException(
+                'Dein Profil kann gerade nicht gelöscht werden. Du hast dich verbindlich für Schichten angemeldet, bei denen der Stornierungszeitraum bereits abgelaufen ist. Sobald alle deine Schichten abgeschlossen oder innerhalb der Frist storniert sind, kannst du dein Profil jederzeit löschen.'
+            );
         }
     }
 

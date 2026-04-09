@@ -19,6 +19,10 @@ class SendCancellationConfirmation implements ShouldHandleEventsAfterCommit
         $signup = $event->signup;
         $volunteer = $event->volunteer;
 
+        if (! $signup->isCancelled()) {
+            return;
+        }
+
         $signup->loadMissing('shift.volunteerJob.event');
         $eventModel = $signup->shift->volunteerJob->event;
 
