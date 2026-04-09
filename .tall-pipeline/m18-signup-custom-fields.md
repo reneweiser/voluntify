@@ -172,13 +172,16 @@ restartSignup() --> PersonalInfo
 - Feature: `EventSignupTest` — restart returns to PersonalInfo
 
 ## Implement
-- **Status:** pending
+- **Status:** complete
+- **Gate summary:** Phase 1 committed (13 files, custom field enhancements), Phase 2 committed (5 files, signup step rework)
 
 ## Test
-- **Status:** pending
+- **Status:** complete
+- **Gate summary:** 11 new tests added (1834 total), covering multi-choice storage, setup UI, lookup, gear filtering, wizard validation
 
 ## Security Audit
-- **Status:** pending
+- **Status:** complete
+- **Gate summary:** 2 high, 3 medium, 2 low, 3 info findings. 4 fixed (H3 #[Locked], H8 array bypass, M1 locked messages, M7 per-email rate limit). 2 deferred (L4 action-layer text max, L10 advance rate limits). 1 rejected (M2 stale state — already re-validated).
 
 ## Decisions
 

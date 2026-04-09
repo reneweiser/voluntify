@@ -1,7 +1,7 @@
 ---
 pipeline_status: in_progress
-current_stage: plan
-current_focus: "M18 plan complete — custom field enhancements (#139) + signup step rework (#134)"
+current_stage: complete
+current_focus: "M18 complete — all stages done, security audit passed"
 current_milestone: m18-signup-custom-fields
 entry_point: plan
 stages_to_run:
@@ -34,7 +34,7 @@ last_updated: "2026-04-09T12:00:00"
 | m15-volunteer-portal-enhancements | Volunteer Portal Enhancements | #117 arrival+gear, #125 banners, #115 magic link re-request, #126 QR+resend, #127 attendance, #105 self-deletion | m14 | complete |
 | m16-bugfixes | Bug Fixes | #132 scanner modes, #133 gear-only shifts, #138 VA arrival button, #141 dropdown placeholder, #142 portal cancel errors | m15 | complete |
 | m17-reliability-quick-wins | Reliability & Quick Wins | #112 immed. cancel notify, #113 retry strategy, #114 idempotency, #122 tz picker, #135 gear counter, #136 camera pause, #140 signup nav, #143 deletion guard | m16 | complete |
-| m18-signup-custom-fields | Signup & Custom Fields Rework | #139 checkbox options + single/multi choice, #134 signup step rework | m17 | in_progress |
+| m18-signup-custom-fields | Signup & Custom Fields Rework | #139 checkbox options + single/multi choice, #134 signup step rework | m17 | complete |
 
 ## Artifacts
 
@@ -51,7 +51,7 @@ last_updated: "2026-04-09T12:00:00"
 | `.tall-pipeline/m13-security-audit.md` | security-audit | m13-polish | Security audit report (0 crit, 1 high, 4 med, 5 low, 4 info) | complete |
 
 | `.tall-pipeline/m17-reliability-quick-wins.md` | plan+impl | m17 | M17 plan + implementation tracking | complete |
-| `.tall-pipeline/m18-signup-custom-fields.md` | plan | m18 | M18 plan: custom field enhancements + signup step rework | in_progress |
+| `.tall-pipeline/m18-signup-custom-fields.md` | all | m18 | M18 plan+implement+test+security: custom field enhancements + signup step rework | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)
