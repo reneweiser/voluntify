@@ -275,6 +275,9 @@
                 <div class="space-y-4">
                     <h3 class="font-bebas text-white text-xl" style="letter-spacing: 0.04em;">{{ __('Cancel Signup?') }}</h3>
                     <p style="color: #a1a1aa;">{{ __('Are you sure you want to cancel this shift signup? Your spot will be freed for other volunteers.') }}</p>
+                    @error('cancel')
+                        <p class="text-sm" style="color: var(--red);">{{ $message }}</p>
+                    @enderror
                     <div class="flex gap-2 justify-end">
                         <button wire:click="dismissCancel" style="padding: 0.5rem 1rem; background: transparent; color: rgba(255,255,255,0.7); border: 2px solid rgba(255,255,255,0.2); border-radius: 4px; font-size: 0.875rem; font-weight: 600; cursor: pointer;">
                             {{ __('Keep') }}

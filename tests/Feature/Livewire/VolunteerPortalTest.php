@@ -211,6 +211,98 @@ it('prevents cancelling another volunteers signup', function () {
         ->assertForbidden();
 });
 
+it('handles domain exception when cancellation is not enabled', function () {
+    $this->project->update(['cancellation_enabled' => false]);
+
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('confirmCancel', $signup->id)
+        ->call('cancelSignup')
+        ->assertHasErrors('cancel')
+        ->assertSee('Cancellation is not enabled for this project.');
+
+    expect($signup->fresh()->cancelled_at)->toBeNull();
+});
+
+it('handles cutoff exception when shift is too close', function () {
+    $closeFutureShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->addHours(12),
+        'ends_at' => now()->addHours(14),
+    ]);
+
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $closeFutureShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('confirmCancel', $signup->id)
+        ->call('cancelSignup')
+        ->assertHasErrors('cancel')
+        ->assertSee('The cancellation cutoff has passed for this shift.');
+
+    expect($signup->fresh()->cancelled_at)->toBeNull();
+});
+
+it('cancels signup when volunteer has signups across multiple events', function () {
+    $secondEvent = Event::factory()->for($this->org)->for($this->project)->published()->create();
+    $secondJob = VolunteerJob::factory()->for($secondEvent)->create(['name' => 'Second Event Job']);
+    $secondShift = Shift::factory()->for($secondJob, 'volunteerJob')->create([
+        'starts_at' => now()->addDays(14),
+        'ends_at' => now()->addDays(14)->addHours(2),
+    ]);
+
+    $firstSignup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+    $secondSignup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $secondShift->id,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('confirmCancel', $secondSignup->id)
+        ->call('cancelSignup')
+        ->assertSee('Signup cancelled successfully');
+
+    expect($secondSignup->fresh()->cancelled_at)->not->toBeNull();
+    expect($firstSignup->fresh()->cancelled_at)->toBeNull();
+});
+
+it('handles already cancelled signup gracefully', function () {
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+        'cancelled_at' => now(),
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->call('confirmCancel', $signup->id)
+        ->call('cancelSignup')
+        ->assertHasErrors('cancel');
+});
+
 it('shows announcements for volunteers events', function () {
     ShiftSignup::factory()->create([
         'volunteer_id' => $this->volunteer->id,

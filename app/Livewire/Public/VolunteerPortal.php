@@ -7,6 +7,8 @@ use App\Actions\DeleteVolunteerProfile;
 use App\Actions\GenerateMagicLink;
 use App\Actions\VerifyMagicLink;
 use App\Enums\HintLocation;
+use App\Exceptions\CancellationCutoffPassedException;
+use App\Exceptions\DomainException;
 use App\Exceptions\InvalidMagicLinkException;
 use App\Models\Announcement;
 use App\Models\CustomFieldResponse;
@@ -224,13 +226,21 @@ class VolunteerPortal extends Component
 
     public function cancelSignup(): void
     {
-        $signup = ShiftSignup::find($this->cancellingSignupId);
+        $signup = $this->volunteer->shiftSignups()
+            ->with('shift.volunteerJob.event.project')
+            ->find($this->cancellingSignupId);
 
-        if (! $signup || $signup->volunteer_id !== $this->volunteer->id) {
+        if (! $signup) {
             abort(403);
         }
 
-        app(CancelShiftSignup::class)->execute($signup);
+        try {
+            app(CancelShiftSignup::class)->execute($signup);
+        } catch (DomainException|CancellationCutoffPassedException $e) {
+            $this->addError('cancel', $e->getMessage());
+
+            return;
+        }
 
         $this->cancellingSignupId = null;
         $this->successMessage = 'Signup cancelled successfully.';
