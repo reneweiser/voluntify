@@ -135,8 +135,27 @@ gh label create "urgency:critical" --color "b60205" --description "System down, 
 
 Label colors: critical=`b60205`, high=`d93f0b`, medium=`fbca04`, low=`0e8a16`.
 
+## Duplicate / Closed-Issue Check
+
+Before creating a new issue, search for existing issues (including closed ones) that match the topic:
+
+```bash
+gh issue list --repo reneweiser/voluntify --state closed --search "<keywords>" --limit 10
+```
+
+- If a **closed issue** covers the same problem or feature, **reopen it** instead of creating a new one:
+  ```bash
+  gh issue reopen <number> --repo reneweiser/voluntify
+  gh issue comment <number> --repo reneweiser/voluntify --body "Reopened: <reason>"
+  ```
+- Update the issue body or add a comment with any new context (updated endpoint, new reproduction steps, changed urgency, etc.).
+- Update labels if the urgency has changed.
+- Inform the user that the existing issue was reopened and link to it.
+- Only create a new issue if no matching closed issue exists.
+
 ## Checklist Before Submitting
 
+- [ ] Checked for existing closed issues (reopen if found)
 - [ ] Endpoint/Location included
 - [ ] Clear title with type prefix
 - [ ] Related issues referenced
