@@ -215,29 +215,41 @@ class EventSignup extends Component
 
         $intIds = array_map('intval', $this->selectedShiftIds);
 
-        // Exclude existing shifts from overlap detection — they were already approved
         $newOnly = array_diff($intIds, $this->existingShiftIds);
         if (count($newOnly) < 1) {
             return [];
         }
 
-        $selected = $this->jobs
-            ->flatMap(fn ($job) => $job->shifts)
-            ->filter(fn ($shift) => in_array((int) $shift->id, $newOnly, true)
-                && $shift->starts_at !== null
-                && $shift->ends_at !== null)
+        $allShifts = $this->jobs->flatMap(fn ($job) => $job->shifts);
+
+        $newShifts = $allShifts
+            ->filter(fn ($s) => in_array((int) $s->id, $newOnly, true)
+                && $s->starts_at !== null && $s->ends_at !== null)
+            ->values();
+
+        $existingShifts = $allShifts
+            ->filter(fn ($s) => in_array((int) $s->id, $this->existingShiftIds, true)
+                && $s->starts_at !== null && $s->ends_at !== null)
             ->values();
 
         $conflicting = [];
 
-        for ($i = 0; $i < $selected->count(); $i++) {
-            for ($j = $i + 1; $j < $selected->count(); $j++) {
-                $a = $selected[$i];
-                $b = $selected[$j];
+        // New vs new
+        for ($i = 0; $i < $newShifts->count(); $i++) {
+            for ($j = $i + 1; $j < $newShifts->count(); $j++) {
+                if ($newShifts[$i]->starts_at < $newShifts[$j]->ends_at
+                    && $newShifts[$i]->ends_at > $newShifts[$j]->starts_at) {
+                    $conflicting[] = $newShifts[$i]->id;
+                    $conflicting[] = $newShifts[$j]->id;
+                }
+            }
+        }
 
-                if ($a->starts_at < $b->ends_at && $a->ends_at > $b->starts_at) {
-                    $conflicting[] = $a->id;
-                    $conflicting[] = $b->id;
+        // New vs existing — only flag the new shift (existing is locked in the UI)
+        foreach ($newShifts as $new) {
+            foreach ($existingShifts as $existing) {
+                if ($new->starts_at < $existing->ends_at && $new->ends_at > $existing->starts_at) {
+                    $conflicting[] = $new->id;
                 }
             }
         }

@@ -271,7 +271,7 @@
 
         {{-- Cancel confirmation modal --}}
         @if ($cancellingSignupId)
-            <flux:modal wire:model="cancellingSignupId" class="max-w-sm">
+            <flux:modal wire:model="showCancelModal" class="max-w-sm">
                 <div class="space-y-4">
                     <h3 class="font-bebas text-white text-xl" style="letter-spacing: 0.04em;">{{ __('Cancel Signup?') }}</h3>
                     <p style="color: #a1a1aa;">{{ __('Are you sure you want to cancel this shift signup? Your spot will be freed for other volunteers.') }}</p>
