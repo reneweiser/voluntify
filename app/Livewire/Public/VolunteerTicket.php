@@ -59,6 +59,7 @@ class VolunteerTicket extends Component
         }
 
         return $this->volunteer->shiftSignups()
+            ->active()
             ->with('shift.volunteerJob.event.project')
             ->get();
     }

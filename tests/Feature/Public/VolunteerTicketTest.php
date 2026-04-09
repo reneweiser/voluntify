@@ -68,6 +68,32 @@ it('shows expired message for expired magic link', function () {
         ->assertSee('expired');
 });
 
+it('does not show cancelled shift signups', function () {
+    $cancelledJob = VolunteerJob::factory()
+        ->for($this->event)
+        ->create(['name' => 'Cancelled Duty']);
+    $cancelledShift = Shift::factory()
+        ->for($cancelledJob, 'volunteerJob')
+        ->create();
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $cancelledShift->id,
+        'cancelled_at' => now(),
+    ]);
+
+    Livewire::test(VolunteerTicket::class, ['magicToken' => $this->plainToken])
+        ->assertSee('Gate Security')
+        ->assertDontSee('Cancelled Duty');
+});
+
+it('renders without errors when all signups are cancelled', function () {
+    ShiftSignup::query()->update(['cancelled_at' => now()]);
+
+    Livewire::test(VolunteerTicket::class, ['magicToken' => $this->plainToken])
+        ->assertOk()
+        ->assertDontSee('Gate Security');
+});
+
 it('returns 404 for nonexistent token', function () {
     $this->get(route('volunteer.ticket', 'nonexistent-token'))
         ->assertNotFound();
