@@ -11,6 +11,7 @@ use App\Actions\UpdateGuestEntry;
 use App\Actions\UpdateGuestList;
 use App\Enums\ScannerType;
 use App\Exceptions\DomainException;
+use App\Jobs\SendGuestInvitationsJob;
 use App\Models\GuestEntry;
 use App\Models\GuestGroup;
 use App\Models\GuestList;
@@ -149,6 +150,44 @@ class GuestListShow extends Component
 
         session()->flash('message', 'Guest list confirmed. QR codes are being generated.');
         unset($this->guestList);
+    }
+
+    #[Computed]
+    public function pendingInvitationCount(): int
+    {
+        return $this->guestList->entries()
+            ->whereNotNull('email')
+            ->whereNotNull('qr_token')
+            ->whereNull('invitation_sent_at')
+            ->count();
+    }
+
+    public function sendPendingInvitations(): void
+    {
+        $guestList = GuestList::where('project_id', $this->projectId)->findOrFail($this->guestListId);
+
+        if (! $guestList->isConfirmed()) {
+            return;
+        }
+
+        $pendingEntries = $guestList->entries()
+            ->whereNotNull('email')
+            ->whereNotNull('qr_token')
+            ->whereNull('invitation_sent_at')
+            ->get();
+
+        $emails = $pendingEntries->pluck('email')->unique();
+
+        foreach ($emails as $email) {
+            SendGuestInvitationsJob::dispatch($guestList, $email);
+        }
+
+        $pendingEntries->each(function (GuestEntry $entry) {
+            $entry->update(['invitation_sent_at' => now()]);
+        });
+
+        session()->flash('message', __('Invitations queued for :count guests.', ['count' => $emails->count()]));
+        unset($this->guestList, $this->pendingInvitationCount);
     }
 
     public function addGroup(): void
