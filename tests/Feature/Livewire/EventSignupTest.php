@@ -170,3 +170,20 @@ it('validates multi-choice custom field with array values', function () {
         ->assertHasNoErrors()
         ->assertSet('state', WizardState::Confirming);
 });
+
+it('advances to confirmation when gear items exist but none require size validation', function () {
+    ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('state', WizardState::PersonalInfo)
+        ->set('volunteerFirstName', 'Test')
+        ->set('volunteerLastName', 'Person')
+        ->set('volunteerEmail', 'test@example.com')
+        ->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->call('advanceToConfirmation')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::Confirming);
+});

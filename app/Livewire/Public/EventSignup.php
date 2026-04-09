@@ -622,7 +622,11 @@ class EventSignup extends Component
             }
         }
 
-        $this->validate(array_merge($gearRules, $customFieldRules));
+        $rules = array_merge($gearRules, $customFieldRules);
+
+        if ($rules !== []) {
+            $this->validate($rules);
+        }
     }
 
     private function validatePersonalInfo(): void
