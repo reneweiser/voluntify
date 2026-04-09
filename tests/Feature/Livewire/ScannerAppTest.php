@@ -122,6 +122,47 @@ it('does not render global arrival button for VA scanner', function () {
         ->assertDontSeeHtml('confirmArrival()');
 });
 
+it('maps result state to emerald colors in entry staff template', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::EntryStaff,
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSeeHtml("'bg-emerald-500/10 border border-emerald-500/30': state === 'result'");
+});
+
+it('keeps loading state with zinc styling in entry staff template', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::EntryStaff,
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSeeHtml("'bg-zinc-800 border border-zinc-700': state === 'loading'");
+});
+
+it('includes confirm arrival button in entry staff result panel', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::EntryStaff,
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSeeHtml('confirmArrival()')
+        ->assertSeeHtml(__('Confirm Arrival'));
+});
+
+it('includes dismiss button for terminal states in entry staff', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::EntryStaff,
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSeeHtml(__('Next Scan'));
+});
+
 it('renders phone display in entry staff template', function () {
     $scanner = ProjectScanner::factory()->active()->create([
         'type' => ScannerType::EntryStaff,

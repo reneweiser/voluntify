@@ -264,11 +264,17 @@ export function scannerApp(config: ScannerAppConfig) {
                 };
 
                 if (alreadyArrived) {
+                    const arrival = this._arrivals.find((a) => a.volunteer_id === volunteer.id);
+                    const lastScan = arrival?.scanned_at
+                        ? new Date(arrival.scanned_at).toLocaleTimeString()
+                        : '';
                     this.state = 'duplicate';
-                    this.resultMessage = `${volunteer.name} has already been checked in.`;
+                    this.resultMessage = lastScan
+                        ? `Already checked in at ${lastScan}.`
+                        : 'Already checked in.';
                 } else {
                     this.state = 'result';
-                    this.resultMessage = `${volunteer.name} — ready to check in.`;
+                    this.resultMessage = 'Ready to check in.';
                 }
             } finally {
                 // Brief cooldown to prevent rapid re-scans
@@ -319,10 +325,6 @@ export function scannerApp(config: ScannerAppConfig) {
                 await this._sync();
             }
 
-            // Auto-dismiss after 2 seconds
-            setTimeout(() => {
-                this.dismiss();
-            }, 2000);
         },
 
         async confirmAttendance(shiftSignupId: number) {
@@ -517,7 +519,6 @@ export function scannerApp(config: ScannerAppConfig) {
                 await this._sync();
             }
 
-            setTimeout(() => this.dismiss(), 2000);
         },
 
         async _postGuestGear(guestEntryGearId: number, payload: Record<string, unknown>) {

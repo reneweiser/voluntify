@@ -95,22 +95,49 @@
 
                 {{-- Result panel (volunteer) --}}
                 <div
-                    x-show="(state !== 'idle' && state !== 'scanning') && !guestResult"
+                    x-show="['result', 'duplicate', 'invalid', 'confirmed', 'loading'].includes(state) && !guestResult"
                     x-transition
                     role="alert"
                     aria-live="assertive"
                     class="w-full max-w-sm rounded-xl p-4"
                     :class="{
-                        'bg-emerald-500/10 border border-emerald-500/30': state === 'confirmed',
+                        'bg-emerald-500/10 border border-emerald-500/30': state === 'result' || state === 'confirmed',
                         'bg-amber-500/10 border border-amber-500/30': state === 'duplicate',
                         'bg-red-500/10 border border-red-500/30': state === 'invalid',
                         'bg-zinc-800 border border-zinc-700': state === 'loading'
                     }"
                     x-cloak
                 >
-                    <p class="text-center text-sm text-white" x-text="resultMessage"></p>
+                    <p class="text-center text-lg font-semibold text-white" x-show="selectedVolunteer" x-text="selectedVolunteer?.name"></p>
                     <p class="mt-1 text-center text-xs text-zinc-400" x-show="selectedVolunteer?.phone" x-text="selectedVolunteer?.phone"></p>
                     <p class="mt-1 text-center text-xs text-zinc-400" x-show="selectedVolunteer && !selectedVolunteer?.phone">{{ __('No phone number') }}</p>
+                    <p class="mt-1 text-center text-sm text-white" x-text="state === 'invalid' ? errorMessage : resultMessage"></p>
+
+                    {{-- Confirm Arrival button (result state only) --}}
+                    <template x-if="state === 'result' && !guestResult">
+                        <div class="mt-3 flex justify-center">
+                            <button
+                                type="button"
+                                class="min-h-12 w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-medium text-white hover:bg-emerald-500 active:bg-emerald-700"
+                                @click="confirmArrival()"
+                            >
+                                {{ __('Confirm Arrival') }}
+                            </button>
+                        </div>
+                    </template>
+
+                    {{-- Next Scan button (terminal states) --}}
+                    <template x-if="state === 'duplicate' || state === 'invalid' || state === 'confirmed'">
+                        <div class="mt-3 flex justify-center">
+                            <button
+                                type="button"
+                                class="min-h-12 w-full rounded-lg border border-zinc-600 px-4 py-3 text-base font-medium text-zinc-300 hover:bg-zinc-700 active:bg-zinc-600"
+                                @click="dismiss()"
+                            >
+                                {{ __('Next Scan') }}
+                            </button>
+                        </div>
+                    </template>
                 </div>
 
                 {{-- Result panel (guest) --}}
@@ -137,6 +164,17 @@
                                 :aria-label="'Check in ' + guestResult.group_label + ' #' + guestResult.number"
                             >
                                 Check In
+                            </button>
+                        </div>
+                    </template>
+                    <template x-if="guestResult && (state === 'confirmed' || state === 'duplicate')">
+                        <div class="mt-3 flex justify-center">
+                            <button
+                                type="button"
+                                class="min-h-12 w-full rounded-lg border border-zinc-600 px-4 py-3 text-base font-medium text-zinc-300 hover:bg-zinc-700 active:bg-zinc-600"
+                                @click="dismiss()"
+                            >
+                                {{ __('Next Scan') }}
                             </button>
                         </div>
                     </template>
