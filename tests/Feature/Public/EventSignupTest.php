@@ -691,3 +691,19 @@ it('renders without error when gear item has requires_size true but available_si
         ->assertSuccessful()
         ->assertSee('Broken T-Shirt');
 });
+
+it('shows back to project link on complete state [#140]', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'back@example.com', 'first_name' => 'Nav', 'last_name' => 'Test']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->set('volunteerFirstName', 'Nav')
+        ->set('volunteerLastName', 'Test')
+        ->set('volunteerEmail', 'back@example.com')
+        ->call('advanceToConfirmation')
+        ->call('submitSignup')
+        ->assertSet('state', WizardState::Complete)
+        ->assertSeeHtml(route('projects.public', $this->project->public_token))
+        ->assertSee('Back to');
+});

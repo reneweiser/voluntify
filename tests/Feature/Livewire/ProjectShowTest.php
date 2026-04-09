@@ -142,13 +142,23 @@ it('loads current timezone into form when editing', function () {
         ->assertSet('projectForm.timezone', 'America/New_York');
 });
 
-it('renders timezone select with optgroup elements in edit mode', function () {
+it('renders searchable timezone picker in edit mode [#122]', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])
         ->call('startEditing')
-        ->assertSeeHtml('<optgroup label="Europe">')
-        ->assertSeeHtml('<optgroup label="America">')
-        ->assertSeeHtml('<optgroup label="Asia">');
+        ->assertSee('Search timezones...')
+        ->assertSee('Projekt-Zeitzone');
+});
+
+it('persists timezone change via searchable picker [#122]', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->call('startEditing')
+        ->set('projectForm.timezone', 'Europe/Berlin')
+        ->call('saveProject')
+        ->assertHasNoErrors();
+
+    expect($this->project->fresh()->timezone)->toBe('Europe/Berlin');
 });
 
 it('validates event name required when creating event', function () {

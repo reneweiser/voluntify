@@ -81,6 +81,16 @@
                     {{ $warningMessage }}
                 </div>
             @endif
+            @if ($event->project)
+                <div class="mt-6">
+                    <a href="{{ route('projects.public', $event->project->public_token) }}"
+                       style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1.5rem; border: 2px solid rgba(255,255,255,0.15); border-radius: 6px; color: rgba(255,255,255,0.8); font-size: 0.875rem; font-weight: 600; text-decoration: none; transition: all 0.2s;"
+                       onmouseover="this.style.borderColor='rgba(255,255,255,0.3)'; this.style.color='white';"
+                       onmouseout="this.style.borderColor='rgba(255,255,255,0.15)'; this.style.color='rgba(255,255,255,0.8)';">
+                        &larr; {{ __('Back to :project', ['project' => $event->project->name]) }}
+                    </a>
+                </div>
+            @endif
         </div>
     @elseif ($state === \App\Enums\WizardState::Expired)
         {{-- Reservation expired --}}

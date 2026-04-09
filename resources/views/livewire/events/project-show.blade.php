@@ -97,30 +97,100 @@
 
                 <flux:field>
                     <flux:label>{{ __('Projekt-Zeitzone') }}</flux:label>
-                    <flux:select wire:model="projectForm.timezone">
-                        @php
-                            $regions = [
-                                'Europe' => DateTimeZone::EUROPE,
-                                'America' => DateTimeZone::AMERICA,
-                                'Asia' => DateTimeZone::ASIA,
-                                'Africa' => DateTimeZone::AFRICA,
-                                'Pacific' => DateTimeZone::PACIFIC,
-                                'Atlantic' => DateTimeZone::ATLANTIC,
-                                'Australia' => DateTimeZone::AUSTRALIA,
-                                'Arctic' => DateTimeZone::ARCTIC,
-                                'Antarctica' => DateTimeZone::ANTARCTICA,
-                                'Indian' => DateTimeZone::INDIAN,
-                            ];
-                        @endphp
-                        <flux:select.option value="UTC">UTC</flux:select.option>
-                        @foreach ($regions as $label => $region)
-                            <optgroup label="{{ $label }}">
-                                @foreach (DateTimeZone::listIdentifiers($region) as $tz)
-                                    <flux:select.option :value="$tz">{{ str_replace('_', ' ', $tz) }}</flux:select.option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
-                    </flux:select>
+                    @php
+                        $allTimezones = array_merge(['UTC'], DateTimeZone::listIdentifiers(DateTimeZone::ALL));
+                    @endphp
+                    <div
+                        x-data="{
+                            open: false,
+                            search: '',
+                            timezones: @js($allTimezones),
+                            selected: @entangle('projectForm.timezone'),
+                            highlightIndex: -1,
+                            get filtered() {
+                                if (!this.search) return this.timezones.slice(0, 30);
+                                const q = this.search.toLowerCase().replace(/\s+/g, '_');
+                                return this.timezones.filter(tz => tz.toLowerCase().includes(q)).slice(0, 30);
+                            },
+                            selectTimezone(tz) {
+                                this.selected = tz;
+                                this.search = '';
+                                this.open = false;
+                                this.highlightIndex = -1;
+                            },
+                            onKeydown(e) {
+                                if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    this.highlightIndex = Math.min(this.highlightIndex + 1, this.filtered.length - 1);
+                                } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    this.highlightIndex = Math.max(this.highlightIndex - 1, 0);
+                                } else if (e.key === 'Enter' && this.highlightIndex >= 0) {
+                                    e.preventDefault();
+                                    this.selectTimezone(this.filtered[this.highlightIndex]);
+                                } else if (e.key === 'Escape') {
+                                    this.open = false;
+                                    this.highlightIndex = -1;
+                                }
+                            },
+                            displayName(tz) {
+                                return tz.replace(/_/g, ' ');
+                            }
+                        }"
+                        class="relative"
+                        @click.outside="open = false"
+                    >
+                        <button
+                            type="button"
+                            @click="open = !open; $nextTick(() => open && $refs.searchInput.focus())"
+                            class="flex w-full items-center justify-between rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white transition hover:border-zinc-600 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20"
+                        >
+                            <span x-text="displayName(selected)"></span>
+                            <flux:icon name="chevron-down" variant="mini" class="size-4 text-zinc-400" />
+                        </button>
+
+                        <div
+                            x-show="open"
+                            x-transition.opacity.duration.150ms
+                            x-cloak
+                            class="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 shadow-xl dark:border-white/10 dark:bg-zinc-900"
+                        >
+                            <div class="p-2">
+                                <input
+                                    x-ref="searchInput"
+                                    type="text"
+                                    x-model.debounce.200ms="search"
+                                    @keydown="onKeydown"
+                                    placeholder="{{ __('Search timezones...') }}"
+                                    class="w-full rounded-md border border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent dark:border-white/10 dark:bg-white/5"
+                                />
+                            </div>
+                            <ul class="max-h-60 overflow-y-auto px-1 pb-1" role="listbox">
+                                <template x-for="(tz, index) in filtered" :key="tz">
+                                    <li
+                                        @click="selectTimezone(tz)"
+                                        @mouseenter="highlightIndex = index"
+                                        role="option"
+                                        :aria-selected="selected === tz"
+                                        class="cursor-pointer rounded-md px-3 py-2 text-sm transition"
+                                        :class="{
+                                            'bg-accent/20 text-white': highlightIndex === index,
+                                            'text-zinc-300 hover:bg-zinc-700': highlightIndex !== index,
+                                            'font-semibold text-white': selected === tz,
+                                        }"
+                                    >
+                                        <span x-text="displayName(tz)"></span>
+                                        <template x-if="selected === tz">
+                                            <flux:icon name="check" variant="mini" class="inline-block size-4 ml-1 text-accent" />
+                                        </template>
+                                    </li>
+                                </template>
+                                <template x-if="filtered.length === 0">
+                                    <li class="px-3 py-2 text-sm text-zinc-500">{{ __('No timezones found.') }}</li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
                     <flux:description>{{ __('Alle Zeiten in Events, Schichten und Scannern werden in dieser Zeitzone angezeigt.') }}</flux:description>
                     <flux:error name="projectForm.timezone" />
                 </flux:field>
