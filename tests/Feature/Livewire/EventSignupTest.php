@@ -4,7 +4,6 @@ use App\Enums\WizardState;
 use App\Livewire\Public\EventSignup;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
-use App\Models\EmailVerificationToken;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
@@ -67,7 +66,7 @@ it('validates required custom fields on step 2', function () {
         ->assertHasErrors(['customFieldResponses.'.$field->id]);
 });
 
-it('completes signup flow with custom field responses through email verification', function () {
+it('completes signup flow with custom field responses for new volunteer', function () {
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
@@ -81,10 +80,10 @@ it('completes signup flow with custom field responses through email verification
         ->set('customFieldResponses.'.$field->id, 'Vegan')
         ->call('advanceToConfirmation')
         ->call('submitSignup')
-        ->assertSet('state', WizardState::PendingVerification);
+        ->assertSet('state', WizardState::Complete);
 
-    $token = EmailVerificationToken::first();
-    expect($token->custom_field_responses)->toBe([$field->id => 'Vegan']);
+    expect(CustomFieldResponse::count())->toBe(1)
+        ->and(CustomFieldResponse::first()->value)->toBe('Vegan');
 });
 
 it('completes signup with custom fields for verified volunteer', function () {

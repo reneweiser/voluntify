@@ -3,28 +3,23 @@
 namespace App\Actions;
 
 use App\Enums\EventStatus;
-use App\Events\Activity\VolunteerSignedUp;
 use App\Events\Activity\VolunteerVerified;
 use App\Exceptions\DomainException;
 use App\Exceptions\ExpiredVerificationException;
 use App\Models\EmailVerificationToken;
-use App\Models\Shift;
 use App\ValueObjects\HashedToken;
-use App\ValueObjects\ShiftSignupResult;
 
 class CompleteEmailVerification
 {
-    public function __construct(
-        private SignUpVolunteerForShifts $signUpAction,
-        private AssignGearToVolunteer $assignGear,
-        private RecordCustomFieldResponses $recordCustomFields,
-    ) {}
-
-    public function execute(string $plainToken): ShiftSignupResult
+    public function execute(string $plainToken): EmailVerificationToken
     {
         $hashed = HashedToken::fromPlaintext($plainToken);
 
         $token = EmailVerificationToken::where('token_hash', $hashed->hash)->firstOrFail();
+
+        if ($token->isVerified()) {
+            return $token;
+        }
 
         if ($token->expires_at->isPast()) {
             throw new ExpiredVerificationException('This verification link has expired. Please sign up again.');
@@ -36,34 +31,13 @@ class CompleteEmailVerification
             throw new DomainException('This event is no longer accepting signups.');
         }
 
-        $volunteer = $token->volunteer;
-        $volunteer->markEmailAsVerified();
+        $token->update(['verified_at' => now()]);
 
-        VolunteerVerified::dispatch($volunteer, $event);
-
-        $result = $this->signUpAction->execute(
-            volunteer: $volunteer,
-            event: $event,
-            shiftIds: $token->shift_ids,
-        );
-
-        $volunteerJobIds = collect($token->shift_ids)
-            ->map(fn ($id) => Shift::find($id)?->volunteerJob?->id)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        $this->assignGear->execute($volunteer, $event, $token->gear_selections ?? [], $volunteerJobIds);
-
-        if ($token->custom_field_responses) {
-            $this->recordCustomFields->execute($volunteer, $event, $token->custom_field_responses);
+        if ($token->volunteer_id) {
+            $token->volunteer->markEmailAsVerified();
+            VolunteerVerified::dispatch($token->volunteer, $event);
         }
 
-        VolunteerSignedUp::dispatch($volunteer, $event, count($token->shift_ids));
-
-        $token->delete();
-
-        return $result;
+        return $token->fresh();
     }
 }

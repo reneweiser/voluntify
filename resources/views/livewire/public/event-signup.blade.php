@@ -9,10 +9,11 @@
             announcement: '',
             init() {
                 const labels = {
-                    '{{ \App\Enums\WizardState::PersonalInfo->value }}': '{{ __('Step 1: Your Information') }}',
-                    '{{ \App\Enums\WizardState::SelectingShifts->value }}': '{{ __('Step 2: Choose Your Shifts') }}',
-                    '{{ \App\Enums\WizardState::GearAndFields->value }}': '{{ __('Step 3: Details') }}',
-                    '{{ \App\Enums\WizardState::Confirming->value }}': '{{ __('Step 4: Confirm Your Signup') }}',
+                    '{{ \App\Enums\WizardState::EmailEntry->value }}': '{{ __('Step 1: Enter Your Email') }}',
+                    '{{ \App\Enums\WizardState::PersonalInfo->value }}': '{{ __('Step 2: Your Information') }}',
+                    '{{ \App\Enums\WizardState::SelectingShifts->value }}': '{{ __('Step 3: Choose Your Shifts') }}',
+                    '{{ \App\Enums\WizardState::GearAndFields->value }}': '{{ __('Step 4: Details') }}',
+                    '{{ \App\Enums\WizardState::Confirming->value }}': '{{ __('Step 5: Confirm Your Signup') }}',
                 };
                 this.$watch(() => $wire.state, (state) => {
                     this.announcement = labels[state] || '';
@@ -59,14 +60,24 @@
     </div>
 
     @if ($state === \App\Enums\WizardState::PendingVerification)
-        {{-- Pending verification --}}
-        <div class="rounded-lg p-8 text-center animate-fade-in-up" style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2);">
+        {{-- Pending verification (polls for token.verified_at) --}}
+        <div wire:poll.3s="checkVerification" class="rounded-lg p-8 text-center animate-fade-in-up" style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2);">
             <div class="mx-auto flex size-16 items-center justify-center rounded-full mb-4" style="background: rgba(59,130,246,0.15);">
                 <flux:icon name="envelope" class="size-10" style="color: #60a5fa;" />
             </div>
             <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;" id="step-heading-{{ \App\Enums\WizardState::PendingVerification->value }}" tabindex="-1">{{ __('Check Your Email') }}</h2>
-            <p class="mt-2" style="color: #a1a1aa;">{{ __('We\'ve sent a verification link to :email. Click the link to confirm your signup.', ['email' => e($volunteerEmail)]) }}</p>
-            <p class="mt-4 text-sm" style="color: #9a9a9a;">{{ __('Your shifts are held for 20 minutes. Verify your email promptly to secure your spots.') }}</p>
+            <p class="mt-2" style="color: #a1a1aa;">{{ __('We\'ve sent a verification link to :email. Click the link to verify your email and continue your signup.', ['email' => e($volunteerEmail)]) }}</p>
+            <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button wire:click="resendVerification" wire:loading.attr="disabled" class="public-btn-secondary text-sm">
+                    {{ __('Resend Email') }}
+                </button>
+                <button wire:click="restartSignup" class="text-sm" style="color: #9a9a9a; text-decoration: underline;">
+                    {{ __('Use a different email') }}
+                </button>
+            </div>
+            @error('volunteerEmail')
+                <p class="mt-3 text-sm" style="color: #fca5a5;">{{ $message }}</p>
+            @enderror
         </div>
     @elseif ($state === \App\Enums\WizardState::Complete)
         {{-- Success --}}
@@ -130,9 +141,10 @@
             </div>
         @endif
 
-        {{-- Step progress — Info → Shifts → Details → Confirm --}}
+        {{-- Step progress — Email → Info → Shifts → Details → Confirm --}}
         @php
             $steps = [
+                \App\Enums\WizardState::EmailEntry->value => __('Email'),
                 \App\Enums\WizardState::PersonalInfo->value => __('Info'),
                 \App\Enums\WizardState::SelectingShifts->value => __('Shifts'),
             ];
@@ -191,6 +203,31 @@
             </div>
         @enderror
 
+        {{-- Step 0: Email Entry --}}
+        <div x-show="$wire.state === '{{ \App\Enums\WizardState::EmailEntry->value }}'" x-cloak>
+            <div class="space-y-4 mb-6">
+                <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;" id="step-heading-{{ \App\Enums\WizardState::EmailEntry->value }}" tabindex="-1">{{ __('Enter Your Email') }}</h2>
+
+                <flux:field>
+                    <flux:label>{{ __('Email') }}</flux:label>
+                    <flux:input type="email" wire:model="volunteerEmail" placeholder="{{ __('your@email.com') }}" />
+                    @if ($this->hintSignupEmail)
+                        <p class="mt-1 text-sm" style="color: #9a9a9a;">{{ $this->hintSignupEmail }}</p>
+                    @endif
+                    <flux:error name="volunteerEmail" />
+                </flux:field>
+            </div>
+
+            <p class="mb-4 text-xs flex items-center gap-1" style="color: #9a9a9a;">
+                <flux:icon name="lock-closed" variant="micro" class="size-3" />
+                {{ __('Deine Daten werden nur für die Event-Organisation verwendet.') }}
+            </p>
+
+            <button wire:click="submitEmail" wire:loading.attr="disabled" class="w-full public-btn-primary">
+                {{ __('Continue') }}
+            </button>
+        </div>
+
         {{-- Step 1: Personal Info --}}
         <div x-show="$wire.state === '{{ \App\Enums\WizardState::PersonalInfo->value }}'" x-cloak>
             <div class="space-y-4 mb-6">
@@ -210,10 +247,7 @@
 
                 <flux:field>
                     <flux:label>{{ __('Email') }}</flux:label>
-                    <flux:input type="email" wire:model="volunteerEmail" wire:blur="lookupVolunteer" placeholder="{{ __('your@email.com') }}" />
-                    @if ($this->hintSignupEmail)
-                        <p class="mt-1 text-sm" style="color: #9a9a9a;">{{ $this->hintSignupEmail }}</p>
-                    @endif
+                    <flux:input type="email" wire:model="volunteerEmail" disabled placeholder="{{ __('your@email.com') }}" />
                     @if ($lookupMessage)
                         <p class="mt-1 text-sm" style="color: #6ee7b7;">
                             <flux:icon name="check-circle" variant="mini" class="size-4 inline" />

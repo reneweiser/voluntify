@@ -69,6 +69,6 @@ it('includes verification action URL in German', function () {
     $mail = $notification->toMail($this->volunteer);
 
     // #81 - Updated to German button text
-    expect($mail->actionText)->toBe('E-Mail bestätigen & Anmeldung abschließen')
+    expect($mail->actionText)->toBe('E-Mail bestätigen')
         ->and($mail->actionUrl)->toBe($this->verificationUrl);
 });

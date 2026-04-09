@@ -11,7 +11,7 @@ use Carbon\CarbonInterface;
  *
  * Position in the signup pipeline:
  *   ReserveShifts -> ReservationResult (this class)
- *   ProcessVolunteerSignup -> SignupOutcome
+ *   ProcessVolunteerSignup -> ShiftSignupResult
  *   SignUpVolunteerForShifts -> ShiftSignupResult
  *
  * Contains the successfully reserved shifts, any shifts that were unavailable
