@@ -144,21 +144,23 @@
 
             <flux:field>
                 <flux:label>{{ __('Type') }}</flux:label>
-                <flux:select wire:model="form.type">
+                <flux:select wire:model.live="form.type">
                     <flux:select.option value="entry_staff">{{ __('Entry Staff') }}</flux:select.option>
                     <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>
                 </flux:select>
                 <flux:error name="form.type" />
             </flux:field>
 
-            <flux:field>
-                <flux:label>{{ __('Modes') }}</flux:label>
-                <div class="flex gap-4">
-                    <flux:checkbox wire:model="form.modes" value="checkin" label="{{ __('Check-in') }}" />
-                    <flux:checkbox wire:model="form.modes" value="gear_pickup" label="{{ __('Gear Pickup') }}" />
-                </div>
-                <flux:error name="form.modes" />
-            </flux:field>
+            @if ($form->type === 'volunteer_admin')
+                <flux:field>
+                    <flux:label>{{ __('Modes') }}</flux:label>
+                    <div class="flex gap-4">
+                        <flux:checkbox wire:model="form.modes" value="checkin" label="{{ __('Check-in') }}" />
+                        <flux:checkbox wire:model="form.modes" value="gear_pickup" label="{{ __('Gear Pickup') }}" />
+                    </div>
+                    <flux:error name="form.modes" />
+                </flux:field>
+            @endif
 
             <flux:field>
                 <flux:label>{{ __('Scope to Event (optional)') }}</flux:label>

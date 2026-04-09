@@ -8,6 +8,8 @@ use App\Actions\RegenerateAuthCode;
 use App\Actions\SendScannerLinks;
 use App\Actions\UpdateProjectScanner;
 use App\Concerns\ConvertsTimezone;
+use App\Enums\ScannerMode;
+use App\Enums\ScannerType;
 use App\Events\Activity\ScannerAssigneeAdded;
 use App\Events\Activity\ScannerAssigneeRemoved;
 use App\Exceptions\HasGuestListsException;
@@ -51,6 +53,13 @@ class ScannerManagement extends Component
         $this->projectId = $projectId;
 
         Gate::authorize('manageScanners', $this->project);
+    }
+
+    public function updatedFormType(string $value): void
+    {
+        if ($value === ScannerType::EntryStaff->value) {
+            $this->form->modes = [ScannerMode::Checkin->value];
+        }
     }
 
     /** @return Collection<int, ProjectScanner> */

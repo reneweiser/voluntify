@@ -108,7 +108,7 @@ export function scannerApp(config: ScannerAppConfig) {
         },
 
         get canConfirmArrival(): boolean {
-            return config.scannerType === 'entry_staff' || config.modes.includes('checkin');
+            return config.scannerType === 'entry_staff';
         },
 
         get canPickupGear(): boolean {

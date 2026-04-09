@@ -71,3 +71,53 @@ it('loads volunteer admin scanner properties correctly', function () {
         ->assertSet('scannerType', ScannerType::VolunteerAdmin->value)
         ->assertSet('modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value]);
 });
+
+it('hides shifts section for VA scanner with gear_pickup only mode', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::VolunteerAdmin,
+        'modes' => [ScannerMode::GearPickup->value],
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertDontSee(__('Shifts'));
+});
+
+it('shows shifts section for VA scanner with checkin mode', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::VolunteerAdmin,
+        'modes' => [ScannerMode::Checkin->value],
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSee(__('Shifts'));
+});
+
+it('shows both shifts and gear for VA scanner with both modes', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSee(__('Shifts'))
+        ->assertSee(__('Gear'));
+});
+
+it('hides gear section for VA scanner with checkin only mode', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::VolunteerAdmin,
+        'modes' => [ScannerMode::Checkin->value],
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertDontSeeHtml('<h3 class="mb-3 text-sm font-semibold text-zinc-300">Gear</h3>');
+});
+
+it('does not render global arrival button for VA scanner', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertDontSeeHtml('confirmArrival()');
+});

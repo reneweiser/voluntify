@@ -222,82 +222,75 @@
                     <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
                         <p class="text-lg font-semibold text-white" x-text="selectedVolunteer?.name"></p>
                         <p class="text-sm text-zinc-400" x-text="selectedVolunteer?.email"></p>
-
-                        {{-- Check-in button --}}
-                        <template x-if="canConfirmArrival && state === 'result'">
-                            <button
-                                type="button"
-                                class="mt-3 min-h-12 w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-medium text-white hover:bg-emerald-500 active:bg-emerald-700"
-                                @click="confirmArrival()"
-                            >
-                                {{ __('Check In') }}
-                            </button>
-                        </template>
                     </div>
 
-                    {{-- Shift signups --}}
-                    <template x-if="selectedVolunteer?.shift_signups?.length > 0">
-                        <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
-                            <h3 class="mb-3 text-sm font-semibold text-zinc-300">{{ __('Shifts') }}</h3>
-                            <div class="space-y-2">
-                                <template x-for="signup in selectedVolunteer.shift_signups" :key="signup.id">
-                                    <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3">
-                                        <div class="min-w-0 flex-1">
-                                            <p class="text-sm font-medium text-white" x-text="signup.shift.volunteer_job.name"></p>
-                                            <p class="text-xs text-zinc-400" x-text="signup.shift.display_text"></p>
+                    @if (in_array('checkin', $modes))
+                        {{-- Shift signups --}}
+                        <template x-if="selectedVolunteer?.shift_signups?.length > 0">
+                            <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
+                                <h3 class="mb-3 text-sm font-semibold text-zinc-300">{{ __('Shifts') }}</h3>
+                                <div class="space-y-2">
+                                    <template x-for="signup in selectedVolunteer.shift_signups" :key="signup.id">
+                                        <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3">
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-medium text-white" x-text="signup.shift.volunteer_job.name"></p>
+                                                <p class="text-xs text-zinc-400" x-text="signup.shift.display_text"></p>
+                                            </div>
+                                            <div class="ml-3 shrink-0">
+                                                <template x-if="isAttendanceRecorded(signup.id)">
+                                                    <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">{{ __('Recorded') }}</span>
+                                                </template>
+                                                <template x-if="!isAttendanceRecorded(signup.id) && canMarkAttendance && isOnline">
+                                                    <button
+                                                        type="button"
+                                                        class="min-h-10 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 active:bg-blue-700"
+                                                        @click="confirmAttendance(signup.id)"
+                                                        :aria-label="'{{ __('Record attendance for') }} ' + signup.shift.volunteer_job.name"
+                                                    >
+                                                        {{ __('Attendance') }}
+                                                    </button>
+                                                </template>
+                                            </div>
                                         </div>
-                                        <div class="ml-3 shrink-0">
-                                            <template x-if="isAttendanceRecorded(signup.id)">
-                                                <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">{{ __('Recorded') }}</span>
-                                            </template>
-                                            <template x-if="!isAttendanceRecorded(signup.id) && canMarkAttendance && isOnline">
-                                                <button
-                                                    type="button"
-                                                    class="min-h-10 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 active:bg-blue-700"
-                                                    @click="confirmAttendance(signup.id)"
-                                                    :aria-label="'{{ __('Record attendance for') }} ' + signup.shift.volunteer_job.name"
-                                                >
-                                                    {{ __('Attendance') }}
-                                                </button>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </template>
+                                    </template>
+                                </div>
                             </div>
-                        </div>
-                    </template>
+                        </template>
+                    @endif
 
-                    {{-- Gear assignments --}}
-                    <template x-if="canPickupGear && selectedVolunteer && getVolunteerGear(selectedVolunteer.id).length > 0">
-                        <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
-                            <h3 class="mb-3 text-sm font-semibold text-zinc-300">{{ __('Gear') }}</h3>
-                            <div class="space-y-2">
-                                <template x-for="gear in getVolunteerGear(selectedVolunteer.id)" :key="gear.id">
-                                    <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3">
-                                        <div class="min-w-0 flex-1">
-                                            <p class="text-sm font-medium text-white" x-text="getGearItemName(gear.project_gear_item_id)"></p>
-                                            <p x-show="gear.size" class="text-xs text-zinc-400" x-text="'{{ __('Size') }}: ' + gear.size"></p>
+                    @if (in_array('gear_pickup', $modes))
+                        {{-- Gear assignments --}}
+                        <template x-if="canPickupGear && selectedVolunteer && getVolunteerGear(selectedVolunteer.id).length > 0">
+                            <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
+                                <h3 class="mb-3 text-sm font-semibold text-zinc-300">{{ __('Gear') }}</h3>
+                                <div class="space-y-2">
+                                    <template x-for="gear in getVolunteerGear(selectedVolunteer.id)" :key="gear.id">
+                                        <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3">
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-medium text-white" x-text="getGearItemName(gear.project_gear_item_id)"></p>
+                                                <p x-show="gear.size" class="text-xs text-zinc-400" x-text="'{{ __('Size') }}: ' + gear.size"></p>
+                                            </div>
+                                            <div class="ml-3 shrink-0">
+                                                <template x-if="gear.picked_up">
+                                                    <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">{{ __('Picked up') }}</span>
+                                                </template>
+                                                <template x-if="!gear.picked_up && isOnline">
+                                                    <button
+                                                        type="button"
+                                                        class="min-h-10 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-500 active:bg-purple-700"
+                                                        @click="selectGearState(gear.id, 'picked_up')"
+                                                        :aria-label="'{{ __('Pick up') }} ' + getGearItemName(gear.project_gear_item_id)"
+                                                    >
+                                                        {{ __('Pick Up') }}
+                                                    </button>
+                                                </template>
+                                            </div>
                                         </div>
-                                        <div class="ml-3 shrink-0">
-                                            <template x-if="gear.picked_up">
-                                                <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">{{ __('Picked up') }}</span>
-                                            </template>
-                                            <template x-if="!gear.picked_up && isOnline">
-                                                <button
-                                                    type="button"
-                                                    class="min-h-10 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-500 active:bg-purple-700"
-                                                    @click="selectGearState(gear.id, 'picked_up')"
-                                                    :aria-label="'{{ __('Pick up') }} ' + getGearItemName(gear.project_gear_item_id)"
-                                                >
-                                                    {{ __('Pick Up') }}
-                                                </button>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </template>
+                                    </template>
+                                </div>
                             </div>
-                        </div>
-                    </template>
+                        </template>
+                    @endif
 
                     {{-- Dismiss button --}}
                     <button

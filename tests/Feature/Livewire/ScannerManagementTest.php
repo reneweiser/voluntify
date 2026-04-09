@@ -213,3 +213,28 @@ it('shows error when deleting scanner with guest lists', function () {
 
     expect(ProjectScanner::find($scanner->id))->not->toBeNull();
 });
+
+it('hides mode checkboxes when type is entry_staff', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->assertDontSeeHtml('value="checkin"')
+        ->assertDontSeeHtml('value="gear_pickup"');
+});
+
+it('shows mode checkboxes when type is volunteer_admin', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->set('form.type', ScannerType::VolunteerAdmin->value)
+        ->assertSeeHtml('value="checkin"')
+        ->assertSeeHtml('value="gear_pickup"');
+});
+
+it('resets modes to checkin when switching type from volunteer_admin to entry_staff', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->set('form.type', ScannerType::VolunteerAdmin->value)
+        ->set('form.modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value])
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->assertSet('form.modes', [ScannerMode::Checkin->value]);
+});
