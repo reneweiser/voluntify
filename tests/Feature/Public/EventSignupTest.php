@@ -756,6 +756,46 @@ it('renders without error when gear item has requires_size true but available_si
         ->assertSee('Broken T-Shirt');
 });
 
+it('prefills returning volunteer data on email lookup', function () {
+    Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'returning@example.com',
+        'first_name' => 'Returning',
+        'last_name' => 'Helper',
+        'phone' => '+15559876543',
+    ]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning@example.com')
+        ->call('lookupVolunteer')
+        ->assertSet('volunteerFirstName', 'Returning')
+        ->assertSet('volunteerLastName', 'Helper')
+        ->assertSet('volunteerPhone', '+15559876543')
+        ->assertNotSet('lookupMessage', '');
+});
+
+it('clears lookup message when no volunteer found', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'unknown@example.com')
+        ->call('lookupVolunteer')
+        ->assertSet('lookupMessage', '');
+});
+
+it('filters gear to SizeSelection items only in wizard', function () {
+    ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
+    ProjectGearItem::factory()->quantity(3)->for($this->project)->create(['name' => 'Water Bottle']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerFirstName', 'Test')
+        ->set('volunteerLastName', 'Person')
+        ->set('volunteerEmail', 'test@example.com')
+        ->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->assertSee('T-Shirt')
+        ->assertDontSee('Water Bottle');
+});
+
 it('shows back to project link on complete state [#140]', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'back@example.com', 'first_name' => 'Nav', 'last_name' => 'Test']);
 

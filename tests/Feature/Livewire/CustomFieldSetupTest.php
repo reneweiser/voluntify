@@ -161,3 +161,41 @@ it('skips warning for non-required field even when event has signups', function 
 
     expect(CustomRegistrationField::count())->toBe(1);
 });
+
+it('allows organizer to add a checkbox field with choices', function () {
+    Livewire::actingAs($this->user)
+        ->test(CustomFieldSetup::class, ['eventId' => $this->event->id])
+        ->set('newFieldLabel', 'Dietary Needs')
+        ->set('newFieldType', 'checkbox')
+        ->set('newFieldOptions', 'Opt A, Opt B')
+        ->call('addField')
+        ->assertHasNoErrors();
+
+    $field = CustomRegistrationField::first();
+    expect($field)->not->toBeNull()
+        ->and($field->type->value)->toBe('checkbox')
+        ->and($field->options['choices'])->toBe(['Opt A', 'Opt B']);
+});
+
+it('persists allow_multiple flag on field creation', function () {
+    Livewire::actingAs($this->user)
+        ->test(CustomFieldSetup::class, ['eventId' => $this->event->id])
+        ->set('newFieldLabel', 'Multi Select')
+        ->set('newFieldType', 'select')
+        ->set('newFieldOptions', 'A, B, C')
+        ->set('newFieldAllowMultiple', true)
+        ->call('addField')
+        ->assertHasNoErrors();
+
+    $field = CustomRegistrationField::first();
+    expect($field->allow_multiple)->toBeTrue();
+});
+
+it('applies dietary_restrictions template with allow_multiple', function () {
+    Livewire::actingAs($this->user)
+        ->test(CustomFieldSetup::class, ['eventId' => $this->event->id])
+        ->call('applyTemplate', 'dietary_restrictions')
+        ->assertSet('newFieldAllowMultiple', true)
+        ->assertSet('newFieldType', 'checkbox')
+        ->assertSet('newFieldLabel', 'Dietary Restrictions');
+});

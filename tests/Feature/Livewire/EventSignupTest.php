@@ -147,3 +147,20 @@ it('renders without error when gear item has requires_size true but available_si
         ->assertSuccessful()
         ->assertSee('Broken T-Shirt');
 });
+
+it('validates multi-choice custom field with array values', function () {
+    $field = CustomRegistrationField::factory()->select(['Red', 'Blue', 'Green'])->allowMultiple()->for($this->event)->create(['label' => 'Favorite Colors']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerFirstName', 'Test')
+        ->set('volunteerLastName', 'Person')
+        ->set('volunteerEmail', 'test@example.com')
+        ->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::GearAndFields)
+        ->set('customFieldResponses.'.$field->id, ['Red', 'Blue'])
+        ->call('advanceToConfirmation')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::Confirming);
+});

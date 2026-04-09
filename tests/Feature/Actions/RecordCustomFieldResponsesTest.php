@@ -70,3 +70,46 @@ it('validates select value against choices', function () {
         $field->id => 'C',
     ]))->toThrow(DomainException::class);
 });
+
+it('records multi-choice select field with array values as JSON', function () {
+    $field = CustomRegistrationField::factory()->select(['A', 'B', 'C'])->allowMultiple()->for($this->event)->create();
+
+    $action = app(RecordCustomFieldResponses::class);
+    $action->execute($this->volunteer, $this->event, [
+        $field->id => ['A', 'B'],
+    ]);
+
+    expect(CustomFieldResponse::first()->value)->toBe('["A","B"]');
+});
+
+it('throws DomainException for invalid item in multi-choice array', function () {
+    $field = CustomRegistrationField::factory()->select(['A', 'B'])->allowMultiple()->for($this->event)->create();
+
+    $action = app(RecordCustomFieldResponses::class);
+
+    expect(fn () => $action->execute($this->volunteer, $this->event, [
+        $field->id => ['A', 'INVALID'],
+    ]))->toThrow(DomainException::class);
+});
+
+it('rejects multi-choice array exceeding 50 items', function () {
+    $choices = array_map(fn ($i) => "Item{$i}", range(1, 60));
+    $field = CustomRegistrationField::factory()->select($choices)->allowMultiple()->for($this->event)->create();
+
+    $action = app(RecordCustomFieldResponses::class);
+
+    expect(fn () => $action->execute($this->volunteer, $this->event, [
+        $field->id => array_slice($choices, 0, 51),
+    ]))->toThrow(DomainException::class);
+});
+
+it('records checkbox field with choices as single value', function () {
+    $field = CustomRegistrationField::factory()->checkboxWithChoices(['X', 'Y'])->for($this->event)->create();
+
+    $action = app(RecordCustomFieldResponses::class);
+    $action->execute($this->volunteer, $this->event, [
+        $field->id => 'X',
+    ]);
+
+    expect(CustomFieldResponse::first()->value)->toBe('X');
+});
