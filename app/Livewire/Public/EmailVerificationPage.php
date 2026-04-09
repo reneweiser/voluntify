@@ -34,7 +34,7 @@ class EmailVerificationPage extends Component
             $event = $result->event;
             $this->eventName = $event->name;
             $this->eventPublicToken = $event->public_token;
-            $this->continueSignupUrl = route('events.public', $event->public_token).'?vt='.$result->id;
+            $this->continueSignupUrl = route('events.public', $event->public_token).'?vt='.$result->token_hash;
 
             if ($result->verified_at->lt(now()->subSeconds(5))) {
                 $this->alreadyVerified = true;

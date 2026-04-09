@@ -310,27 +310,34 @@
                                     $isFull = $spotsLeft === 0;
                                     $isSelected = in_array($shift->id, $selectedShiftIds);
                                     $isConflicting = in_array($shift->id, $this->overlappingShiftIds);
+                                    $isExisting = in_array($shift->id, $existingShiftIds);
                                     $shiftTimeLabel = $job->name.' — '.$shift->shift_date->setTimezone($tz)->format('M d').' '.$shift->displayTimeRange($tz);
                                 @endphp
                                 <label
-                                    class="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200"
-                                    style="border: 2px solid {{ $isSelected && $isConflicting ? 'var(--yellow)' : ($isSelected ? 'var(--brand)' : 'rgba(255,255,255,0.08)') }};
-                                           background: {{ $isSelected && $isConflicting ? 'rgba(244,208,63,0.08)' : ($isSelected ? 'rgba(5,150,105,0.08)' : 'transparent') }};
-                                           {{ $isFull ? 'opacity: 0.4; cursor: not-allowed;' : '' }}"
+                                    class="flex items-center justify-between p-3 rounded-lg transition-all duration-200"
+                                    style="border: 2px solid {{ $isExisting ? 'rgba(59,130,246,0.3)' : ($isSelected && $isConflicting ? 'var(--yellow)' : ($isSelected ? 'var(--brand)' : 'rgba(255,255,255,0.08)')) }};
+                                           background: {{ $isExisting ? 'rgba(59,130,246,0.08)' : ($isSelected && $isConflicting ? 'rgba(244,208,63,0.08)' : ($isSelected ? 'rgba(5,150,105,0.08)' : 'transparent')) }};
+                                           {{ $isExisting ? 'opacity: 0.7; cursor: default;' : ($isFull ? 'opacity: 0.4; cursor: not-allowed;' : 'cursor: pointer;') }}"
                                     wire:key="shift-{{ $shift->id }}"
                                 >
                                     <div class="flex items-center gap-3">
                                         <input type="checkbox" value="{{ $shift->id }}"
                                             wire:model.live="selectedShiftIds"
-                                            @disabled($isFull)
+                                            @disabled($isFull || $isExisting)
+                                            @checked($isExisting)
                                             @if ($isFull) aria-label="{{ $shiftTimeLabel }} — {{ __('Full, no spots available') }}" @endif
+                                            @if ($isExisting) aria-label="{{ $shiftTimeLabel }} — {{ __('Already signed up') }}" @endif
                                             class="accent-emerald-600"
                                         />
                                         <div>
                                             <span class="text-sm font-medium text-white">
                                                 {{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}
                                             </span>
-                                            @if ($spotsLeft <= 3 && $spotsLeft > 0)
+                                            @if ($isExisting)
+                                                <span class="block text-sm font-semibold" style="color: #93c5fd;">
+                                                    {{ __('Already signed up') }}
+                                                </span>
+                                            @elseif ($spotsLeft <= 3 && $spotsLeft > 0)
                                                 <span class="block text-sm font-semibold urgency-pulse" style="color: var(--yellow);">
                                                     {{ __('Nur noch :count Plätze!', ['count' => $spotsLeft]) }}
                                                 </span>
@@ -341,7 +348,9 @@
                                             @endif
                                         </div>
                                     </div>
-                                    @if ($isFull)
+                                    @if ($isExisting)
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(59,130,246,0.15); color: #93c5fd;">{{ __('Signed Up') }}</span>
+                                    @elseif ($isFull)
                                         <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(230,57,70,0.15); color: #fca5a5;">{{ __('Full') }}</span>
                                     @elseif ($isConflicting && $isSelected)
                                         <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(244,208,63,0.15); color: #fbbf24;">{{ __('Conflict') }}</span>
@@ -381,9 +390,21 @@
                         <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;">{{ __('Event Gear') }}</h2>
 
                         @foreach ($this->gearItems as $item)
-                            <div wire:key="gear-{{ $item->id }}" class="rounded-lg p-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-                                <div class="font-medium text-white mb-1">{{ $item->name }}</div>
-                                @if ($item->requires_size)
+                            @php $isExistingGear = array_key_exists($item->id, $existingGearSelections); @endphp
+                            <div wire:key="gear-{{ $item->id }}" class="rounded-lg p-4" style="background: rgba(255,255,255,0.05); border: 1px solid {{ $isExistingGear ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.08)' }};">
+                                <div class="flex items-center justify-between mb-1">
+                                    <div class="font-medium text-white">{{ $item->name }}</div>
+                                    @if ($isExistingGear)
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(59,130,246,0.15); color: #93c5fd;">{{ __('Already selected') }}</span>
+                                    @endif
+                                </div>
+                                @if ($isExistingGear)
+                                    @if ($item->requires_size)
+                                        <p class="text-sm" style="color: #93c5fd;">{{ __('Size') }}: {{ $existingGearSelections[$item->id] ?? '—' }}</p>
+                                    @else
+                                        <p class="text-sm" style="color: #93c5fd;">{{ __('Included with your signup') }}</p>
+                                    @endif
+                                @elseif ($item->requires_size)
                                     <flux:field>
                                         <flux:label>{{ __('Size') }}</flux:label>
                                         <flux:select wire:model="gearSelections.{{ $item->id }}">
@@ -518,9 +539,12 @@
                             @foreach ($job->shifts as $shift)
                                 @if (in_array($shift->id, $selectedShiftIds))
                                     <div class="flex items-center gap-2 text-sm" wire:key="confirm-shift-{{ $shift->id }}">
-                                        <flux:icon name="check" variant="mini" class="size-4" style="color: var(--brand);" />
+                                        <flux:icon name="check" variant="mini" class="size-4" style="color: {{ in_array($shift->id, $existingShiftIds) ? '#93c5fd' : 'var(--brand)' }};" />
                                         <span class="font-medium text-white">{{ $job->name }}:</span>
                                         <span style="color: #a1a1aa;">{{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}</span>
+                                        @if (in_array($shift->id, $existingShiftIds))
+                                            <span class="text-xs" style="color: #93c5fd;">({{ __('already signed up') }})</span>
+                                        @endif
                                     </div>
                                 @endif
                             @endforeach
@@ -534,9 +558,13 @@
                         <h3 class="text-sm font-semibold text-white mb-3">{{ __('Gear') }}</h3>
                         <div class="space-y-1">
                             @foreach ($this->gearItems as $item)
+                                @php $isExistingGear = array_key_exists($item->id, $existingGearSelections); @endphp
                                 <div class="flex items-center gap-2 text-sm" wire:key="confirm-gear-{{ $item->id }}">
-                                    <flux:icon name="check" variant="mini" class="size-4" style="color: var(--brand);" />
+                                    <flux:icon name="check" variant="mini" class="size-4" style="color: {{ $isExistingGear ? '#93c5fd' : 'var(--brand)' }};" />
                                     <span style="color: #a1a1aa;">{{ $item->name }}{{ $item->requires_size && isset($gearSelections[$item->id]) ? ' (' . $gearSelections[$item->id] . ')' : '' }}</span>
+                                    @if ($isExistingGear)
+                                        <span class="text-xs" style="color: #93c5fd;">({{ __('previously selected') }})</span>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>

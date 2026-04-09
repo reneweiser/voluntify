@@ -70,6 +70,10 @@ class EventSignup extends Component
     #[Locked]
     public array $existingShiftIds = [];
 
+    /** @var array<int, string|null> gear_item_id => size */
+    #[Locked]
+    public array $existingGearSelections = [];
+
     #[Locked]
     public bool $isReturningVolunteer = false;
 
@@ -83,10 +87,10 @@ class EventSignup extends Component
             ->where('status', EventStatus::PublishedOpen)
             ->firstOrFail();
 
-        // Cross-device verification: accept ?vt= query param with recently-verified token ID
+        // Cross-device verification: accept ?vt= query param with token hash (unguessable)
         $vt = request()->query('vt');
         if ($vt) {
-            $token = EmailVerificationToken::where('id', $vt)
+            $token = EmailVerificationToken::where('token_hash', $vt)
                 ->where('event_id', $this->event->id)
                 ->whereNotNull('verified_at')
                 ->where('verified_at', '>', now()->subMinutes(30))
@@ -211,9 +215,15 @@ class EventSignup extends Component
 
         $intIds = array_map('intval', $this->selectedShiftIds);
 
+        // Exclude existing shifts from overlap detection — they were already approved
+        $newOnly = array_diff($intIds, $this->existingShiftIds);
+        if (count($newOnly) < 1) {
+            return [];
+        }
+
         $selected = $this->jobs
             ->flatMap(fn ($job) => $job->shifts)
-            ->filter(fn ($shift) => in_array((int) $shift->id, $intIds, true)
+            ->filter(fn ($shift) => in_array((int) $shift->id, $newOnly, true)
                 && $shift->starts_at !== null
                 && $shift->ends_at !== null)
             ->values();
@@ -264,19 +274,7 @@ class EventSignup extends Component
             ->where('project_id', $this->event->project_id)
             ->first();
 
-        if ($volunteer && $volunteer->isEmailVerified()) {
-            // Branch A: existing + verified → skip verification
-            $this->prefillFromVolunteer($volunteer);
-            $this->state = WizardState::PersonalInfo;
-
-            return;
-        }
-
-        // Branch B (existing + unverified) or C (new email)
-        if ($volunteer) {
-            $this->prefillFromVolunteer($volunteer);
-        }
-
+        // ALL emails go through verification — no skip, no prefill before proof of ownership
         $token = app(SendEmailVerification::class)->execute(
             $this->volunteerEmail,
             $this->event,
@@ -352,7 +350,19 @@ class EventSignup extends Component
      */
     public function advanceToShifts(): void
     {
+        if ($this->state !== WizardState::PersonalInfo) {
+            return;
+        }
+
         $this->validatePersonalInfo();
+
+        // Pre-select existing shifts for returning volunteers
+        if (! empty($this->existingShiftIds)) {
+            $this->selectedShiftIds = array_map('intval', array_unique(
+                array_merge($this->selectedShiftIds, $this->existingShiftIds)
+            ));
+        }
+
         $this->state = WizardState::SelectingShifts;
     }
 
@@ -487,6 +497,7 @@ class EventSignup extends Component
                 ? collect($this->gearSelections)
                     ->filter()
                     ->only($this->gearItems->pluck('id')->all())
+                    ->except(array_keys($this->existingGearSelections))
                     ->all()
                 : null;
 
@@ -565,6 +576,9 @@ class EventSignup extends Component
         $this->verificationTokenId = null;
         $this->existingVolunteerId = null;
         $this->existingShiftIds = [];
+        $this->existingGearSelections = [];
+        $this->gearSelections = [];
+        $this->customFieldResponses = [];
         $this->isReturningVolunteer = false;
         $this->verificationStartedAt = null;
         unset($this->jobs, $this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
@@ -574,6 +588,9 @@ class EventSignup extends Component
     {
         $gearRules = [];
         foreach ($this->gearItems as $item) {
+            if (array_key_exists($item->id, $this->existingGearSelections)) {
+                continue;
+            }
             if ($item->requires_size) {
                 $gearRules['gearSelections.'.$item->id] = ['required', 'string', Rule::in($item->available_sizes ?? [])];
             }
@@ -629,7 +646,15 @@ class EventSignup extends Component
             ->pluck('shift_id')
             ->all();
 
-        if (! empty($this->existingShiftIds)) {
+        // Load existing gear selections (SizeSelection type only, project-scoped)
+        $this->existingGearSelections = $volunteer->volunteerGear()
+            ->whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id)
+                ->where('type', GearItemType::SizeSelection))
+            ->get()
+            ->pluck('size', 'project_gear_item_id')
+            ->all();
+
+        if (! empty($this->existingShiftIds) || ! empty($this->existingGearSelections)) {
             $this->lookupMessage = __('Details pre-filled from your previous signup.');
         }
     }
