@@ -57,6 +57,7 @@ export interface VolunteerGear {
     id: number;
     project_gear_item_id: number;
     size: string | null;
+    quantity_entitled: number | null;
     picked_up: boolean;
     pickups: VolunteerGearPickup[];
 }

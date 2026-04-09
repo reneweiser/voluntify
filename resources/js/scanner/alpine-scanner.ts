@@ -60,6 +60,7 @@ export function scannerApp(config: ScannerAppConfig) {
         outboxCount: 0,
         selectedVolunteer: null as Volunteer | null,
         scannerType: config.scannerType,
+        cameraPaused: false,
 
         // Internal state
         _scannerId: config.scannerId,
@@ -78,6 +79,11 @@ export function scannerApp(config: ScannerAppConfig) {
         _guestEntries: [] as GuestEntry[],
         _guestSyncUrl: config.guestSyncUrl,
         _guestGearPickupUrl: config.guestGearPickupUrl,
+        _gearCooldowns: {} as Record<number, boolean>,
+        _inactivityTimer: null as ReturnType<typeof setTimeout> | null,
+        _inactivityTimeout: 120000, // 2 minutes
+        _video: null as HTMLVideoElement | null,
+        _canvas: null as HTMLCanvasElement | null,
         activeTab: 'scanner' as 'scanner' | 'volunteers' | 'guests',
         guestSearchQuery: '' as string,
         guestResult: null as GuestEntry | null,
@@ -131,20 +137,28 @@ export function scannerApp(config: ScannerAppConfig) {
                 this.isOnline = false;
             });
 
+            // Page Visibility API: pause camera when tab goes to background
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    this._pauseCamera();
+                }
+            });
+
             // Load data
             this.state = 'loading';
             await this._loadScannerData();
 
             // Start camera
-            const video = document.getElementById('scanner-video') as HTMLVideoElement | null;
-            const canvas = document.createElement('canvas');
+            this._video = document.getElementById('scanner-video') as HTMLVideoElement | null;
+            this._canvas = document.createElement('canvas');
 
-            if (video) {
-                await startCamera(video, canvas, (data: string) => this._onQrDetected(data), (error: Error) => {
+            if (this._video) {
+                await startCamera(this._video, this._canvas, (data: string) => this._onQrDetected(data), (error: Error) => {
                     this.state = 'invalid';
                     this.errorMessage = `Camera error: ${error.message}`;
                 });
                 this.state = 'scanning';
+                this._resetInactivityTimer();
             }
         },
 
@@ -197,6 +211,7 @@ export function scannerApp(config: ScannerAppConfig) {
                 return;
             }
             this._processing = true;
+            this._resetInactivityTimer();
 
             try {
                 // Get keys from IndexedDB
@@ -371,9 +386,15 @@ export function scannerApp(config: ScannerAppConfig) {
          * Online-only gear pickup (D4/D10: no IDB buffering for gear state changes).
          */
         async selectGearState(volunteerGearId: number, state: string) {
-            if (!this.isOnline) {
+            if (!this.isOnline || this._gearCooldowns[volunteerGearId]) {
                 return;
             }
+
+            // Activate cooldown immediately
+            this._gearCooldowns[volunteerGearId] = true;
+            setTimeout(() => {
+                this._gearCooldowns[volunteerGearId] = false;
+            }, 2000);
 
             try {
                 const response = await fetch(this._gearPickupUrl, {
@@ -393,8 +414,11 @@ export function scannerApp(config: ScannerAppConfig) {
                     for (const [, gearList] of Object.entries(this._volunteerGear)) {
                         const gear = (gearList as VolunteerGear[]).find((g) => g.id === volunteerGearId);
                         if (gear) {
-                            gear.picked_up = true;
                             gear.pickups.push({ state, quantity: 1, picked_up_at: new Date().toISOString() });
+                            // Update picked_up status based on type
+                            if (gear.quantity_entitled === null) {
+                                gear.picked_up = true;
+                            }
                             break;
                         }
                     }
@@ -418,6 +442,25 @@ export function scannerApp(config: ScannerAppConfig) {
             return this._gearItems.find((g) => g.id === projectGearItemId)?.name ?? '';
         },
 
+        getGearItemType(projectGearItemId: number): string {
+            return this._gearItems.find((g) => g.id === projectGearItemId)?.type ?? 'size_selection';
+        },
+
+        getGearPickedUpCount(gear: VolunteerGear): number {
+            return gear.pickups.reduce((sum, p) => sum + p.quantity, 0);
+        },
+
+        isGearFullyPickedUp(gear: VolunteerGear): boolean {
+            if (gear.quantity_entitled === null) {
+                return gear.picked_up;
+            }
+            return this.getGearPickedUpCount(gear) >= gear.quantity_entitled;
+        },
+
+        isGearCooldown(gearId: number): boolean {
+            return this._gearCooldowns[gearId] ?? false;
+        },
+
         async _sync() {
             await syncOutbox(this._scannerId, this._syncUrl, this._scannerToken, this._guestSyncUrl);
             this.outboxCount = await getOutboxCount(this._scannerId);
@@ -430,6 +473,7 @@ export function scannerApp(config: ScannerAppConfig) {
             this.selectedVolunteer = null;
             this.resultMessage = '';
             this.errorMessage = '';
+            this._resetInactivityTimer();
         },
 
         _handleGuestQr(entry: GuestEntry) {
@@ -512,10 +556,48 @@ export function scannerApp(config: ScannerAppConfig) {
             await this._postGuestGear(guestEntryGearId, { quantity: 1 });
         },
 
+        _resetInactivityTimer() {
+            if (this._inactivityTimer) {
+                clearTimeout(this._inactivityTimer);
+            }
+            this._inactivityTimer = setTimeout(() => {
+                this._pauseCamera();
+            }, this._inactivityTimeout);
+        },
+
+        _pauseCamera() {
+            if (this.cameraPaused || !this._video) {
+                return;
+            }
+            stopCamera(this._video);
+            this.cameraPaused = true;
+            if (this._inactivityTimer) {
+                clearTimeout(this._inactivityTimer);
+                this._inactivityTimer = null;
+            }
+        },
+
+        async resumeCamera() {
+            if (!this.cameraPaused || !this._video || !this._canvas) {
+                return;
+            }
+            await startCamera(this._video, this._canvas, (data: string) => this._onQrDetected(data), (error: Error) => {
+                this.state = 'invalid';
+                this.errorMessage = `Camera error: ${error.message}`;
+            });
+            this.cameraPaused = false;
+            if (this.state === 'idle' || this.state === 'scanning') {
+                this.state = 'scanning';
+            }
+            this._resetInactivityTimer();
+        },
+
         destroy() {
-            const video = document.getElementById('scanner-video') as HTMLVideoElement | null;
-            if (video) {
-                stopCamera(video);
+            if (this._inactivityTimer) {
+                clearTimeout(this._inactivityTimer);
+            }
+            if (this._video) {
+                stopCamera(this._video);
             }
         },
     };

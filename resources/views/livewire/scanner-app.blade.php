@@ -77,8 +77,20 @@
 
             {{-- Scanner tab --}}
             <div id="tabpanel-scanner" role="tabpanel" aria-labelledby="tab-scanner" x-show="activeTab === 'scanner'" class="flex flex-1 flex-col items-center justify-center space-y-4">
-                <div id="scanner-viewfinder" class="aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black">
+                <div id="scanner-viewfinder" class="relative aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black" @click="cameraPaused && resumeCamera()">
                     <video id="scanner-video" class="h-full w-full object-cover" aria-label="{{ __('QR code camera viewfinder') }}" playsinline></video>
+                    <div
+                        x-show="cameraPaused"
+                        x-transition
+                        class="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/80"
+                        x-cloak
+                    >
+                        <div class="text-center">
+                            <svg class="mx-auto mb-2 h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg>
+                            <p class="text-sm font-medium text-zinc-300">{{ __('Camera paused') }}</p>
+                            <p class="mt-1 text-xs text-zinc-500">{{ __('Tap to resume') }}</p>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- Result panel (volunteer) --}}
@@ -190,8 +202,20 @@
         @else
             {{-- Volunteer Admin: QR viewfinder + volunteer panel + gear pickup --}}
             <div class="flex flex-1 flex-col items-center space-y-4">
-                <div id="scanner-viewfinder" class="aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black">
+                <div id="scanner-viewfinder" class="relative aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black" @click="cameraPaused && resumeCamera()">
                     <video id="scanner-video" class="h-full w-full object-cover" aria-label="{{ __('QR code camera viewfinder') }}" playsinline></video>
+                    <div
+                        x-show="cameraPaused"
+                        x-transition
+                        class="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/80"
+                        x-cloak
+                    >
+                        <div class="text-center">
+                            <svg class="mx-auto mb-2 h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg>
+                            <p class="text-sm font-medium text-zinc-300">{{ __('Camera paused') }}</p>
+                            <p class="mt-1 text-xs text-zinc-500">{{ __('Tap to resume') }}</p>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- Status message --}}
@@ -269,19 +293,22 @@
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-medium text-white" x-text="getGearItemName(gear.project_gear_item_id)"></p>
                                                 <p x-show="gear.size" class="text-xs text-zinc-400" x-text="'{{ __('Size') }}: ' + gear.size"></p>
+                                                <p x-show="gear.quantity_entitled !== null" class="text-xs text-zinc-400" x-text="getGearPickedUpCount(gear) + ' / ' + gear.quantity_entitled + ' {{ __('picked up') }}'"></p>
                                             </div>
                                             <div class="ml-3 shrink-0">
-                                                <template x-if="gear.picked_up">
+                                                <template x-if="isGearFullyPickedUp(gear)">
                                                     <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">{{ __('Picked up') }}</span>
                                                 </template>
-                                                <template x-if="!gear.picked_up && isOnline">
+                                                <template x-if="!isGearFullyPickedUp(gear) && isOnline">
                                                     <button
                                                         type="button"
-                                                        class="min-h-10 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-500 active:bg-purple-700"
+                                                        class="min-h-10 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-500 active:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
                                                         @click="selectGearState(gear.id, 'picked_up')"
+                                                        :disabled="isGearCooldown(gear.id)"
                                                         :aria-label="'{{ __('Pick up') }} ' + getGearItemName(gear.project_gear_item_id)"
                                                     >
-                                                        {{ __('Pick Up') }}
+                                                        <span x-show="!isGearCooldown(gear.id)">{{ __('Pick Up') }}</span>
+                                                        <span x-show="isGearCooldown(gear.id)" x-cloak>&#10003;</span>
                                                     </button>
                                                 </template>
                                             </div>
