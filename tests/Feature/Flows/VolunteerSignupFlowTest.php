@@ -27,20 +27,21 @@ beforeEach(function () {
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
 });
 
-it('completes full wizard flow: select → reserve → info → confirm → verify → ticket', function () {
-    // Step 1: Select shifts and reserve
+it('completes full wizard flow: info → select → reserve → confirm → verify → ticket', function () {
+    // Step 1: Personal info
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::PersonalInfo)
-        // Step 2 skipped (no gear/custom fields)
-        // Step 3: Personal info
         ->set('volunteerFirstName', 'Alice')
         ->set('volunteerLastName', 'Flow')
         ->set('volunteerEmail', 'alice@flow.test')
         ->set('volunteerPhone', '+1111111111')
-        ->call('advanceToConfirmation')
+        ->call('advanceToShifts')
+        ->assertSet('state', WizardState::SelectingShifts)
+        // Step 2: Select shifts and reserve
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::Confirming)
+        // Step 3 skipped (no gear/custom fields)
         // Step 4: Confirm & submit
         ->call('submitSignup')
         ->assertSet('state', WizardState::PendingVerification);
@@ -86,13 +87,13 @@ it('completes signup immediately for verified volunteer through wizard', functio
     ]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('reserveAndAdvance')
-        ->assertSet('state', WizardState::PersonalInfo)
         ->set('volunteerFirstName', 'Bob')
         ->set('volunteerLastName', 'Verified')
         ->set('volunteerEmail', 'bob@verified.test')
-        ->call('advanceToConfirmation')
+        ->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::Confirming)
         ->call('submitSignup')
         ->assertSet('state', WizardState::Complete);
 
@@ -102,18 +103,19 @@ it('completes signup immediately for verified volunteer through wizard', functio
 
 it('handles reservation expiry flow: reserve → expire → reset to step 1', function () {
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerFirstName', 'Expire')
+        ->set('volunteerLastName', 'Test')
+        ->set('volunteerEmail', 'expire@test.com')
+        ->call('advanceToShifts')
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
-        ->assertSet('state', WizardState::PersonalInfo)
+        ->assertSet('state', WizardState::Confirming)
         ->assertNotSet('reservationExpiresAt', '')
         ->call('handleReservationExpired')
         ->assertSet('state', WizardState::Expired)
         ->call('restartSignup')
-        ->assertSet('state', WizardState::SelectingShifts)
+        ->assertSet('state', WizardState::PersonalInfo)
         ->assertSet('selectedShiftIds', []);
-
-    // Reservations should still be in DB (cleanup is scheduled command's job)
-    // but the wizard state is reset
 });
 
 it('releases reservations after successful signup', function () {
@@ -124,12 +126,13 @@ it('releases reservations after successful signup', function () {
     ]);
 
     Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('selectedShiftIds', [$this->shift->id])
-        ->call('reserveAndAdvance')
         ->set('volunteerFirstName', 'Release')
         ->set('volunteerLastName', 'Test')
         ->set('volunteerEmail', 'release@test.com')
-        ->call('advanceToConfirmation')
+        ->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::Confirming)
         ->call('submitSignup')
         ->assertSet('state', WizardState::Complete);
 

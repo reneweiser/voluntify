@@ -9,9 +9,9 @@
             announcement: '',
             init() {
                 const labels = {
-                    '{{ \App\Enums\WizardState::SelectingShifts->value }}': '{{ __('Step 1: Choose Your Shifts') }}',
-                    '{{ \App\Enums\WizardState::GearAndFields->value }}': '{{ __('Step 2: Details') }}',
-                    '{{ \App\Enums\WizardState::PersonalInfo->value }}': '{{ __('Step 3: Your Information') }}',
+                    '{{ \App\Enums\WizardState::PersonalInfo->value }}': '{{ __('Step 1: Your Information') }}',
+                    '{{ \App\Enums\WizardState::SelectingShifts->value }}': '{{ __('Step 2: Choose Your Shifts') }}',
+                    '{{ \App\Enums\WizardState::GearAndFields->value }}': '{{ __('Step 3: Details') }}',
                     '{{ \App\Enums\WizardState::Confirming->value }}': '{{ __('Step 4: Confirm Your Signup') }}',
                 };
                 this.$watch(() => $wire.state, (state) => {
@@ -105,7 +105,7 @@
             </button>
         </div>
     @else
-        {{-- Reservation timer --}}
+        {{-- Reservation timer (visible after shift selection) --}}
         @if ($reservationExpiresAt)
             <div x-data="reservationTimer($wire)"
                  x-show="remaining > 0"
@@ -130,15 +130,15 @@
             </div>
         @endif
 
-        {{-- Step progress — numbered circles + dashed connectors (matches "How It Works") --}}
+        {{-- Step progress — Info → Shifts → Details → Confirm --}}
         @php
             $steps = [
+                \App\Enums\WizardState::PersonalInfo->value => __('Info'),
                 \App\Enums\WizardState::SelectingShifts->value => __('Shifts'),
             ];
             if ($this->hasGearOrFields) {
                 $steps[\App\Enums\WizardState::GearAndFields->value] = __('Details');
             }
-            $steps[\App\Enums\WizardState::PersonalInfo->value] = __('Info');
             $steps[\App\Enums\WizardState::Confirming->value] = __('Confirm');
 
             $stepValues = array_keys($steps);
@@ -191,7 +191,59 @@
             </div>
         @enderror
 
-        {{-- Step 1: Select Shifts --}}
+        {{-- Step 1: Personal Info --}}
+        <div x-show="$wire.state === '{{ \App\Enums\WizardState::PersonalInfo->value }}'" x-cloak>
+            <div class="space-y-4 mb-6">
+                <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;" id="step-heading-{{ \App\Enums\WizardState::PersonalInfo->value }}" tabindex="-1">{{ __('Your Information') }}</h2>
+
+                <flux:field>
+                    <flux:label>{{ __('First Name') }}</flux:label>
+                    <flux:input wire:model="volunteerFirstName" placeholder="{{ __('Your first name') }}" />
+                    <flux:error name="volunteerFirstName" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Last Name') }}</flux:label>
+                    <flux:input wire:model="volunteerLastName" placeholder="{{ __('Your last name') }}" />
+                    <flux:error name="volunteerLastName" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Email') }}</flux:label>
+                    <flux:input type="email" wire:model="volunteerEmail" wire:blur="lookupVolunteer" placeholder="{{ __('your@email.com') }}" />
+                    @if ($this->hintSignupEmail)
+                        <p class="mt-1 text-sm" style="color: #9a9a9a;">{{ $this->hintSignupEmail }}</p>
+                    @endif
+                    @if ($lookupMessage)
+                        <p class="mt-1 text-sm" style="color: #6ee7b7;">
+                            <flux:icon name="check-circle" variant="mini" class="size-4 inline" />
+                            {{ $lookupMessage }}
+                        </p>
+                    @endif
+                    <flux:error name="volunteerEmail" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Phone') }} @unless($event->phone_required)<span style="color: #9a9a9a; font-weight: 400;">({{ __('optional') }})</span>@endunless</flux:label>
+                    <flux:input type="tel" wire:model="volunteerPhone" placeholder="{{ __('+1 555 123 4567') }}" />
+                    @if ($this->hintSignupPhone)
+                        <p class="mt-1 text-sm" style="color: #9a9a9a;">{{ $this->hintSignupPhone }}</p>
+                    @endif
+                    <flux:error name="volunteerPhone" />
+                </flux:field>
+            </div>
+
+            <p class="mb-4 text-xs flex items-center gap-1" style="color: #9a9a9a;">
+                <flux:icon name="lock-closed" variant="micro" class="size-3" />
+                {{ __('Deine Daten werden nur für die Event-Organisation verwendet.') }}
+            </p>
+
+            <button wire:click="advanceToShifts" wire:loading.attr="disabled" class="w-full public-btn-primary">
+                {{ __('Continue') }}
+            </button>
+        </div>
+
+        {{-- Step 2: Select Shifts --}}
         <div x-show="$wire.state === '{{ \App\Enums\WizardState::SelectingShifts->value }}'" x-cloak>
             <div class="space-y-6 mb-8">
                 <div>
@@ -275,16 +327,21 @@
                 </div>
             @endif
 
-            <button wire:click="reserveAndAdvance" wire:loading.attr="disabled" class="w-full public-btn-primary">
-                {{ __('Continue') }}
-            </button>
+            <div class="flex gap-3">
+                <button wire:click="goBack" class="flex-1 public-btn-ghost">
+                    {{ __('Back') }}
+                </button>
+                <button wire:click="reserveAndAdvance" wire:loading.attr="disabled" class="flex-1 public-btn-primary">
+                    {{ __('Continue') }}
+                </button>
+            </div>
         </div>
 
-        {{-- Step 2: Gear & Custom Fields --}}
+        {{-- Step 3: Gear & Custom Fields --}}
         @if ($this->hasGearOrFields)
             <div x-show="$wire.state === '{{ \App\Enums\WizardState::GearAndFields->value }}'" x-cloak
                  id="step-heading-{{ \App\Enums\WizardState::GearAndFields->value }}" tabindex="-1">
-                {{-- Gear selection --}}
+                {{-- Gear selection (SizeSelection items only, filtered by selected jobs) --}}
                 @if ($this->gearItems->isNotEmpty())
                     <div class="space-y-4 mb-8">
                         <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;">{{ __('Event Gear') }}</h2>
@@ -303,8 +360,6 @@
                                         </flux:select>
                                         <flux:error name="gearSelections.{{ $item->id }}" />
                                     </flux:field>
-                                @elseif ($item->type === \App\Enums\GearItemType::Quantity)
-                                    <p class="text-sm" style="color: #9a9a9a;">{{ __('Qty: :count included', ['count' => $item->quantity_per_volunteer]) }}</p>
                                 @else
                                     <p class="text-sm" style="color: #9a9a9a;">{{ __('Included with your signup') }}</p>
                                 @endif
@@ -391,63 +446,12 @@
                     <button wire:click="goBack" class="flex-1 public-btn-ghost">
                         {{ __('Back') }}
                     </button>
-                    <button wire:click="advanceToPersonalInfo" class="flex-1 public-btn-primary">
+                    <button wire:click="advanceToConfirmation" class="flex-1 public-btn-primary">
                         {{ __('Continue') }}
                     </button>
                 </div>
             </div>
         @endif
-
-        {{-- Step 3: Personal Info --}}
-        <div x-show="$wire.state === '{{ \App\Enums\WizardState::PersonalInfo->value }}'" x-cloak>
-            <div class="space-y-4 mb-6">
-                <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;" id="step-heading-{{ \App\Enums\WizardState::PersonalInfo->value }}" tabindex="-1">{{ __('Your Information') }}</h2>
-
-                <flux:field>
-                    <flux:label>{{ __('First Name') }}</flux:label>
-                    <flux:input wire:model="volunteerFirstName" placeholder="{{ __('Your first name') }}" />
-                    <flux:error name="volunteerFirstName" />
-                </flux:field>
-
-                <flux:field>
-                    <flux:label>{{ __('Last Name') }}</flux:label>
-                    <flux:input wire:model="volunteerLastName" placeholder="{{ __('Your last name') }}" />
-                    <flux:error name="volunteerLastName" />
-                </flux:field>
-
-                <flux:field>
-                    <flux:label>{{ __('Email') }}</flux:label>
-                    <flux:input type="email" wire:model="volunteerEmail" placeholder="{{ __('your@email.com') }}" />
-                    @if ($this->hintSignupEmail)
-                        <p class="mt-1 text-sm" style="color: #9a9a9a;">{{ $this->hintSignupEmail }}</p>
-                    @endif
-                    <flux:error name="volunteerEmail" />
-                </flux:field>
-
-                <flux:field>
-                    <flux:label>{{ __('Phone') }} @unless($event->phone_required)<span style="color: #9a9a9a; font-weight: 400;">({{ __('optional') }})</span>@endunless</flux:label>
-                    <flux:input type="tel" wire:model="volunteerPhone" placeholder="{{ __('+1 555 123 4567') }}" />
-                    @if ($this->hintSignupPhone)
-                        <p class="mt-1 text-sm" style="color: #9a9a9a;">{{ $this->hintSignupPhone }}</p>
-                    @endif
-                    <flux:error name="volunteerPhone" />
-                </flux:field>
-            </div>
-
-            <p class="mb-4 text-xs flex items-center gap-1" style="color: #9a9a9a;">
-                <flux:icon name="lock-closed" variant="micro" class="size-3" />
-                {{ __('Deine Daten werden nur für die Event-Organisation verwendet.') }}
-            </p>
-
-            <div class="flex gap-3">
-                <button wire:click="goBack" class="flex-1 public-btn-ghost">
-                    {{ __('Back') }}
-                </button>
-                <button wire:click="advanceToConfirmation" class="flex-1 public-btn-primary">
-                    {{ __('Continue') }}
-                </button>
-            </div>
-        </div>
 
         {{-- Step 4: Confirm --}}
         <div x-show="$wire.state === '{{ \App\Enums\WizardState::Confirming->value }}'" x-cloak>
@@ -459,6 +463,18 @@
                         {{ $this->hintSignupSummary }}
                     </div>
                 @endif
+
+                {{-- Personal info summary --}}
+                <div class="rounded-lg p-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
+                    <h3 class="text-sm font-semibold text-white mb-3">{{ __('Your Information') }}</h3>
+                    <div class="space-y-1 text-sm">
+                        <div><span class="font-medium text-white">{{ __('Name') }}:</span> <span style="color: #a1a1aa;">{{ $volunteerFirstName }} {{ $volunteerLastName }}</span></div>
+                        <div><span class="font-medium text-white">{{ __('Email') }}:</span> <span style="color: #a1a1aa;">{{ $volunteerEmail }}</span></div>
+                        @if ($volunteerPhone)
+                            <div><span class="font-medium text-white">{{ __('Phone') }}:</span> <span style="color: #a1a1aa;">{{ $volunteerPhone }}</span></div>
+                        @endif
+                    </div>
+                </div>
 
                 {{-- Selected shifts summary --}}
                 <div class="rounded-lg p-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
@@ -517,18 +533,6 @@
                         </div>
                     </div>
                 @endif
-
-                {{-- Personal info summary --}}
-                <div class="rounded-lg p-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
-                    <h3 class="text-sm font-semibold text-white mb-3">{{ __('Your Information') }}</h3>
-                    <div class="space-y-1 text-sm">
-                        <div><span class="font-medium text-white">{{ __('Name') }}:</span> <span style="color: #a1a1aa;">{{ $volunteerFirstName }} {{ $volunteerLastName }}</span></div>
-                        <div><span class="font-medium text-white">{{ __('Email') }}:</span> <span style="color: #a1a1aa;">{{ $volunteerEmail }}</span></div>
-                        @if ($volunteerPhone)
-                            <div><span class="font-medium text-white">{{ __('Phone') }}:</span> <span style="color: #a1a1aa;">{{ $volunteerPhone }}</span></div>
-                        @endif
-                    </div>
-                </div>
             </div>
 
             <div class="flex gap-3">

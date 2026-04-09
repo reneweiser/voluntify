@@ -5,11 +5,13 @@ namespace App\Livewire\Public;
 use App\Actions\ProcessVolunteerSignup;
 use App\Actions\ReserveShifts;
 use App\Enums\EventStatus;
+use App\Enums\GearItemType;
 use App\Enums\HintLocation;
 use App\Enums\WizardState;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\ShiftReservation;
+use App\Models\Volunteer;
 use App\Services\HintTextResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\RateLimiter;
@@ -27,7 +29,7 @@ class EventSignup extends Component
     #[Locked]
     public Event $event;
 
-    public WizardState $state = WizardState::SelectingShifts;
+    public WizardState $state = WizardState::PersonalInfo;
 
     /** @var array<int> */
     public array $selectedShiftIds = [];
@@ -51,6 +53,8 @@ class EventSignup extends Component
 
     public string $warningMessage = '';
 
+    public string $lookupMessage = '';
+
     public function mount(string $publicToken): void
     {
         $this->event = Event::with('project')
@@ -59,10 +63,24 @@ class EventSignup extends Component
             ->firstOrFail();
     }
 
+    /**
+     * Visible gear items: SizeSelection only, filtered by selected jobs.
+     */
     #[Computed]
     public function gearItems(): Collection
     {
-        return $this->event->project?->gearItems()->get() ?? new Collection;
+        $items = $this->event->project?->gearItems()->get() ?? new Collection;
+
+        // Only show SizeSelection items in the signup form (Quantity auto-assigned in backend)
+        $items = $items->filter(fn ($item) => $item->type === GearItemType::SizeSelection);
+
+        // Filter by selected jobs (only after shifts are selected)
+        if (! empty($this->selectedShiftIds)) {
+            $jobIds = $this->selectedJobIds;
+            $items = $items->filter(fn ($item) => $item->job_ids === null || ! empty(array_intersect($item->job_ids, $jobIds)));
+        }
+
+        return $items->values();
     }
 
     #[Computed]
@@ -80,6 +98,28 @@ class EventSignup extends Component
         return $this->event->volunteerJobs()
             ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('shift_date')->orderBy('starts_at')])
             ->get();
+    }
+
+    /**
+     * Job IDs derived from the selected shifts. Uses the cached jobs computed.
+     *
+     * @return array<int>
+     */
+    #[Computed]
+    public function selectedJobIds(): array
+    {
+        if (empty($this->selectedShiftIds)) {
+            return [];
+        }
+
+        $intIds = array_map('intval', $this->selectedShiftIds);
+
+        return $this->jobs
+            ->filter(fn ($job) => $job->shifts->contains(fn ($s) => in_array((int) $s->id, $intIds, true)))
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
     }
 
     #[Computed]
@@ -110,7 +150,8 @@ class EventSignup extends Component
     }
 
     /**
-     * Whether step 2 (gear & custom fields) should be shown in the wizard.
+     * Whether the gear & fields step should be shown. Uses filtered gear list
+     * (SizeSelection + job-matched) to prevent empty step for Quantity-only events.
      */
     #[Computed]
     public function hasGearOrFields(): bool
@@ -120,12 +161,7 @@ class EventSignup extends Component
 
     /**
      * Returns the IDs of selected shifts that overlap with at least one other
-     * selected shift. Uses the half-open interval rule on full datetime columns:
-     * A.start < B.end && A.end > B.start. No shift_date guard — this correctly
-     * handles cross-midnight shifts (shift_date is used only for display/ordering).
-     *
-     * Shifts with null times are excluded — organizers should set explicit
-     * times on all shifts if overlap prevention is desired.
+     * selected shift.
      *
      * @return array<int>
      */
@@ -152,7 +188,6 @@ class EventSignup extends Component
                 $a = $selected[$i];
                 $b = $selected[$j];
 
-                // No date guard — full datetime comparison handles cross-midnight shifts correctly.
                 if ($a->starts_at < $b->ends_at && $a->ends_at > $b->starts_at) {
                     $conflicting[] = $a->id;
                     $conflicting[] = $b->id;
@@ -164,7 +199,49 @@ class EventSignup extends Component
     }
 
     /**
-     * Step 1 -> Step 2 (or 3): Validate shift selection, reserve shifts, and advance.
+     * Look up existing volunteer by email to pre-fill returning volunteer data.
+     */
+    public function lookupVolunteer(): void
+    {
+        if (! $this->volunteerEmail || ! $this->event->project_id) {
+            $this->lookupMessage = '';
+
+            return;
+        }
+
+        $key = 'signup-lookup:'.request()->ip();
+        if (RateLimiter::tooManyAttempts($key, 10)) {
+            return;
+        }
+        RateLimiter::hit($key, 60);
+
+        $volunteer = Volunteer::where('email', $this->volunteerEmail)
+            ->where('project_id', $this->event->project_id)
+            ->first();
+
+        if ($volunteer) {
+            $this->volunteerFirstName = $volunteer->first_name;
+            $this->volunteerLastName = $volunteer->last_name;
+            if ($volunteer->phone) {
+                $this->volunteerPhone = $volunteer->phone;
+            }
+            $this->lookupMessage = __('Details pre-filled from your previous signup.');
+        } else {
+            $this->lookupMessage = '';
+        }
+    }
+
+    /**
+     * Step 1 -> Step 2: Validate personal info and advance to shift selection.
+     */
+    public function advanceToShifts(): void
+    {
+        $this->validatePersonalInfo();
+        $this->state = WizardState::SelectingShifts;
+    }
+
+    /**
+     * Step 2 -> Step 3 (or 4): Validate shift selection, reserve shifts, and advance.
      */
     public function reserveAndAdvance(): void
     {
@@ -204,7 +281,7 @@ class EventSignup extends Component
         }
 
         $this->selectedShiftIds = $result->reservedShiftIds();
-        unset($this->overlappingShiftIds);
+        unset($this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
         $this->reservationExpiresAt = $result->expiresAt->toISOString();
 
         if (count($result->unavailable) > 0) {
@@ -216,27 +293,12 @@ class EventSignup extends Component
         if ($this->hasGearOrFields) {
             $this->state = WizardState::GearAndFields;
         } else {
-            $this->state = WizardState::PersonalInfo;
+            $this->state = WizardState::Confirming;
         }
     }
 
     /**
-     * Step 2 -> Step 3: Validate gear/custom fields and advance.
-     */
-    public function advanceToPersonalInfo(): void
-    {
-        if (! ShiftReservation::forSession(session()->getId())->active()->exists()) {
-            $this->handleReservationExpired();
-
-            return;
-        }
-
-        $this->validateGearAndCustomFields();
-        $this->state = WizardState::PersonalInfo;
-    }
-
-    /**
-     * Step 3 -> Step 4: Validate personal info and show confirmation.
+     * Step 3 -> Step 4: Validate gear/custom fields and advance to confirmation.
      */
     public function advanceToConfirmation(): void
     {
@@ -246,25 +308,25 @@ class EventSignup extends Component
             return;
         }
 
-        $this->validatePersonalInfo();
+        $this->validateGearAndCustomFields();
         $this->state = WizardState::Confirming;
     }
 
     /**
-     * Navigate backward through the wizard. Cannot go before step 1.
+     * Navigate backward through the wizard.
      */
     public function goBack(): void
     {
         $this->state = match ($this->state) {
+            WizardState::SelectingShifts => WizardState::PersonalInfo,
             WizardState::GearAndFields => WizardState::SelectingShifts,
-            WizardState::PersonalInfo => $this->hasGearOrFields ? WizardState::GearAndFields : WizardState::SelectingShifts,
             WizardState::Confirming => WizardState::PersonalInfo,
             default => $this->state,
         };
     }
 
     /**
-     * Step 4: Final submit. Checks reservation DB existence (D13), then processes signup.
+     * Step 4: Final submit.
      */
     public function submitSignup(): void
     {
@@ -291,7 +353,6 @@ class EventSignup extends Component
         }
 
         // D13: Verify reservations still exist in DB, not just timestamp comparison.
-        // The scheduler may have cleaned them up even if the Alpine timer hasn't fired.
         if (! ShiftReservation::forSession(session()->getId())->active()->exists()) {
             $this->handleReservationExpired();
 
@@ -302,7 +363,6 @@ class EventSignup extends Component
 
         try {
             // Strip to only valid gear item IDs and custom field IDs for this event.
-            // Prevents storing attacker-injected keys from the client snapshot.
             $gearSelections = $this->gearItems->isNotEmpty()
                 ? collect($this->gearSelections)
                     ->filter()
@@ -376,11 +436,12 @@ class EventSignup extends Component
      */
     public function restartSignup(): void
     {
-        $this->state = WizardState::SelectingShifts;
+        $this->state = WizardState::PersonalInfo;
         $this->selectedShiftIds = [];
         $this->reservationExpiresAt = '';
         $this->warningMessage = '';
-        unset($this->jobs, $this->overlappingShiftIds);
+        $this->lookupMessage = '';
+        unset($this->jobs, $this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
     }
 
     private function validateGearAndCustomFields(): void
