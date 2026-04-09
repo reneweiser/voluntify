@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Public;
 
+use App\Actions\RefreshTicketJwt;
 use App\Actions\VerifyMagicLink;
 use App\Exceptions\InvalidMagicLinkException;
 use App\Models\Ticket;
@@ -47,6 +48,8 @@ class VolunteerTicket extends Component
         if (! $this->ticket) {
             throw new NotFoundHttpException;
         }
+
+        app(RefreshTicketJwt::class)->execute($this->ticket);
     }
 
     public function getShiftSignupsProperty(): Collection
