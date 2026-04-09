@@ -96,7 +96,7 @@ Draft --> Published Open <--> Published Closed --> Archived
 
 **Scanner** -- A mobile-first web interface used by Entry Staff and Volunteer Admins to process volunteers. Scanners are configured at project level, each with a type, scope, time window, and assigned operators.
 
-**Entry Staff Scanner** -- Scanner type for entrance control. Shows full-screen color-coded results:
+**Entry Staff Scanner** -- Scanner type for **Event Arrival** (entrance control). Records that a volunteer has entered the event venue. Shows full-screen color-coded results:
 - **Green** -- valid ticket, access granted (shows volunteer name).
 - **Yellow** -- already checked in (shows name + last scan time/location).
 - **Red** -- no access (shows reason + "Nächsten scannen" button).
@@ -105,7 +105,7 @@ After each result, a **manual "Nächsten scannen" button** must be tapped to pro
 
 > Why no auto-dismiss? At crowded entrances, accidental taps could dismiss results before the operator reads them. The manual button ensures every result is consciously acknowledged.
 
-**Volunteer Admin Scanner** -- Scanner type for shift management and gear pickup. Modes: check-in only, gear pickup only, or both. Shows a detailed volunteer view (name, shifts, gear status). Includes a **Schichtliste** tab for browsing all volunteers per shift.
+**Volunteer Admin Scanner** -- Scanner type for **Attendance** (shift check-in) and gear pickup. Modes: check-in only, gear pickup only, or both. Shows a detailed volunteer view (name, shifts with per-shift attendance status, gear status). Does **not** record Event Arrivals -- that is exclusively the Entry Staff Scanner's responsibility.
 
 **Scanner Time Window** -- Each scanner has a configured start and end time. The scanner is locked outside this window. A 10-minute countdown warning appears before expiry. Organizers can extend the time window after it expires (e.g. for late gear pickup).
 
@@ -115,9 +115,13 @@ After each result, a **manual "Nächsten scannen" button** must be tapped to pro
 
 ## Attendance
 
-**Event Arrival** -- The record that a volunteer physically showed up at the venue. Recorded by Entry Staff via QR scan or manual lookup. Distinct from shift attendance.
+**Event Arrival** -- The record that a volunteer entered a specific event venue. Recorded by Entry Staff Scanner via QR scan. Distinct from shift attendance. A volunteer can have multiple arrivals across different events -- e.g. free entry to a concert on May 3 and another on May 5 as a benefit for volunteering. Each Entry Staff Scanner is scoped to one event and records arrivals for that event only.
 
-**Attendance Record** -- Whether a volunteer reported to their assigned shift. Recorded by Volunteer Admin. Statuses: **On Time**, **Late**, **No Show**.
+> Example: A volunteer who helped at "Aufbautag" gets free entry to "Konzert Abend 1" (May 3, 15:00) and "Konzert Abend 2" (May 5, 22:00). Each entrance has its own Entry Staff Scanner that records a separate arrival.
+
+**Attendance Record** -- Whether a volunteer reported to their assigned shift. Recorded by Volunteer Admin Scanner or Organizer. Attendance states are **configurable per project** (not hardcoded). Default states: **Eingecheckt (pünktlich)**, **Verspätet**, **Entschuldigt**, **Nicht erschienen**. Organizers can rename, add additional states, or disable optional states in project settings. Core states (Eingecheckt, Nicht erschienen) cannot be removed. A configurable **Default-Status** (e.g. "Offen" or "Auf dem Weg") determines the initial state for all volunteers before any check-in occurs.
+
+> Why configurable? Different organisations have different workflows. A small club night may only need "da / nicht da", while a multi-day festival needs nuanced states like "Auf dem Weg" for volunteers in transit. The default status lets organizers control what "not yet checked in" means for their context.
 
 **Attendance Grace Period** -- An optional per-event setting defining how many minutes after a shift starts a scan is still "On Time". After the grace window: "Late". If not set, any arrival after shift start is "Late".
 
@@ -125,7 +129,9 @@ After each result, a **manual "Nächsten scannen" button** must be tapped to pro
 
 ## Gear
 
-**Gear** -- Equipment or materials provided to volunteers. Defined at **project level** (not per event) so a volunteer receives e.g. one T-shirt for the entire project, not one per event.
+**Gear** -- Equipment or materials provided to volunteers. Defined at **project level** (not per event) so a volunteer receives e.g. one T-shirt for the entire project, not one per event. Gear items can be scoped to specific events (`event_ids`) and/or specific jobs (`job_ids`). If neither is set, the gear applies project-wide. During signup, only gear matching the volunteer's selected events and jobs is shown.
+
+> Example: "Bar-Schürze" is scoped to `job_ids: [Bar]` -- only volunteers who select a Bar shift see the size selection. "Aufbau-Handschuhe" is scoped to `event_ids: [Aufbautag]` -- only volunteers signing up for the Aufbautag event receive them.
 
 **Typ 1 (Größenauswahl)** -- Gear with a selection option (e.g. T-shirt size, jacket color). One entitlement per volunteer. The volunteer chooses during signup (Schritt 3). States are **configurable by the Organizer** -- not hardcoded.
 

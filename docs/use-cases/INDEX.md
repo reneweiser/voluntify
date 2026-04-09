@@ -16,14 +16,16 @@ Alle Use Cases, gruppiert nach Bereich. Jeder Use Case beschreibt einen konkrete
 
 ## Scanner & Einlass
 
-- [UC-07: Entry Staff scannt Volunteer am Einlass](uc-07-einlass-scan.md)
-- [UC-08: Volunteer Admin checkt Schicht ein und gibt Gear aus](uc-08-checkin-gear.md)
+- [UC-07: Entry Staff scannt Volunteer am Einlass (Event Arrival)](uc-07-einlass-scan.md)
+- [UC-08: Volunteer Admin checkt Schicht ein und gibt Gear aus (Attendance)](uc-08-checkin-gear.md)
 - [UC-09: Gast von Gästeliste am Einlass](uc-09-gaesteliste-einlass.md)
+- [UC-20: Volunteer erhält Einlass zu mehreren Events (Benefit)](uc-20-arrival-mehrere-events.md)
 
 ## Gear
 
 - [UC-10: Gear Typ-1 Ausgabe mit fehlender Auswahl](uc-10-gear-typ1-auswahl-ausstehend.md)
 - [UC-11: Gear Typ-2 Ausgabe (Getränkemarken)](uc-11-gear-typ2-ausgabe.md)
+- [UC-19: Organizer verwaltet Volunteer-Gear im Event](uc-19-orga-verwaltet-gear.md)
 
 ## Kommunikation
 
@@ -34,3 +36,9 @@ Alle Use Cases, gruppiert nach Bereich. Jeder Use Case beschreibt einen konkrete
 - [UC-13: Organizer ändert Schichten eines Volunteers](uc-13-organizer-schicht-aendern.md)
 - [UC-14: Volunteer sagt Schicht selbst ab](uc-14-volunteer-absage.md)
 - [UC-15: Gästeliste erstellen und bestätigen](uc-15-gaesteliste-erstellen.md)
+- [UC-16: Volunteer fordert Ticket-Zugang erneut an](uc-16-ticket-zugang-anfordern.md)
+- [UC-17: Volunteer löscht eigenes Profil](uc-17-volunteer-profil-loeschen.md)
+
+## Konfiguration
+
+- [UC-18: Organizer konfiguriert Attendance-Stadien](uc-18-attendance-stadien-konfigurieren.md)

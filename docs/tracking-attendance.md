@@ -22,29 +22,29 @@ The primary way to mark attendance on-site:
 1. Go to the event's **Volunteers** page.
 2. Select a shift.
 3. You'll see a roster of all volunteers for that shift.
-4. For each volunteer, set status:
-   - **On Time** -- Arrived at the shift on time
-   - **Late** -- Arrived but after the shift started
-   - **No Show** -- Did not show up
+4. For each volunteer, set status from the configured attendance states.
 
-You can change a status at any time -- useful if someone marked as "No Show" arrives late.
+Default states (configurable per project under Einstellungen > Anwesenheit):
+   - **Eingecheckt (pünktlich)** -- Arrived at the shift on time
+   - **Verspätet** -- Arrived but after the shift started
+   - **Auf dem Weg** -- Volunteer is in transit, not yet arrived
+   - **Entschuldigt** -- Excused absence (communicated in advance)
+   - **Nicht erschienen** -- Did not show up
+
+You can change a status at any time -- useful if someone marked as "Nicht erschienen" arrives late. Organizers can customise state labels, add additional states, or disable optional states in project settings. Core states (Eingecheckt, Nicht erschienen) cannot be removed.
 
 ## Understanding Attendance vs. Arrival
 
 | Column | Meaning |
 |---|---|
 | **Ankunft** | Whether the volunteer was scanned at the venue entrance (Entry Staff Scanner). Informational only. |
-| **Anwesenheit** | The shift-level status: On Time, Late, or No Show. Set by Volunteer Admin. |
+| **Anwesenheit** | The shift-level status (configurable per project). Default: Eingecheckt, Verspätet, Auf dem Weg, Entschuldigt, Nicht erschienen. Set by Volunteer Admin or Organizer. |
 
 A **conflict indicator** highlights cases where a volunteer arrived at the venue (has an arrival record) but was marked No Show for their shift -- they came to the event but didn't report to their station.
 
 ### Status Summary
 
-At the top of the roster:
-- On Time count
-- Late count
-- No Show count
-- Unmarked (no status yet)
+At the top of the roster, counts are shown per configured attendance state. All states -- including default labels like "Eingecheckt", "Verspätet", "Nicht erschienen" -- can be renamed, added, or removed by the Organizer in project settings. Every volunteer starts with the **Default-Status** configured there (e.g. "Offen" or "Auf dem Weg" -- whatever the Organizer prefers).
 
 ## Attendance Grace Period
 
@@ -59,11 +59,11 @@ Configure in Event > Einstellungen > Anwesenheit > **Attendance Grace Period (Mi
 
 ## Automatic No-Show Detection
 
-Volunteers are automatically marked **No Show** if:
+Volunteers are automatically marked with the configured "Nicht erschienen" state if:
 - Their shift ended more than 2 hours ago
-- No attendance record exists
+- Their status is still the default state
 
-This runs hourly in the background. You can override an automatic No Show by changing the status manually.
+This runs hourly in the background. You can override an automatic No Show by changing the status manually. States like "Entschuldigt" or any custom state prevent auto-marking.
 
 ## Shifts Without Times
 
