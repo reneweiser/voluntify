@@ -11,12 +11,14 @@ use App\Support\CustomFieldTemplates;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Custom Fields')]
 class CustomFieldSetup extends Component
 {
+    #[Locked]
     public Event $event;
 
     public string $newFieldLabel = '';

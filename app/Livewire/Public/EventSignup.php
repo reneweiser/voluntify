@@ -51,8 +51,10 @@ class EventSignup extends Component
 
     public string $volunteerPhone = '';
 
+    #[Locked]
     public string $warningMessage = '';
 
+    #[Locked]
     public string $lookupMessage = '';
 
     public function mount(string $publicToken): void
@@ -209,11 +211,18 @@ class EventSignup extends Component
             return;
         }
 
-        $key = 'signup-lookup:'.request()->ip();
-        if (RateLimiter::tooManyAttempts($key, 10)) {
+        $ipKey = 'signup-lookup:'.request()->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 10)) {
             return;
         }
-        RateLimiter::hit($key, 60);
+        RateLimiter::hit($ipKey, 60);
+
+        // Per-email rate limit to mitigate distributed enumeration
+        $emailKey = 'signup-lookup-email:'.strtolower(trim($this->volunteerEmail));
+        if (RateLimiter::tooManyAttempts($emailKey, 3)) {
+            return;
+        }
+        RateLimiter::hit($emailKey, 300);
 
         $volunteer = Volunteer::where('email', $this->volunteerEmail)
             ->where('project_id', $this->event->project_id)

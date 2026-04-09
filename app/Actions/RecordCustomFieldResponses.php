@@ -46,6 +46,10 @@ class RecordCustomFieldResponses
         }
 
         if ($field->allow_multiple) {
+            if ($value !== null && $value !== '' && ! is_array($value)) {
+                throw new DomainException("Expected array for multi-choice field \"{$field->label}\".");
+            }
+
             if (is_array($value)) {
                 if (count($value) > 50) {
                     throw new DomainException("Too many selections for field \"{$field->label}\".");
