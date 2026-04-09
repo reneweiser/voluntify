@@ -16,7 +16,7 @@ class ScannerLinkMail extends Mailable
     public function __construct(
         public ProjectScanner $scanner,
         public string $url,
-        public ?string $authCode = null,
+        public string $authCode,
     ) {}
 
     public function envelope(): Envelope

@@ -19,16 +19,6 @@
         <flux:callout variant="danger" class="mb-4">{{ $message }}</flux:callout>
     @enderror
 
-    {{-- Raw auth code (shown once after creation) --}}
-    @if (session('rawAuthCode'))
-        @php $authCodeData = session('rawAuthCode'); @endphp
-        <flux:callout variant="warning" class="mb-4">
-            <strong>{{ __('Auth code for scanner #:id:', ['id' => $authCodeData['id']]) }}</strong>
-            <code class="ml-2 font-mono text-lg tracking-widest">{{ $authCodeData['code'] }}</code>
-            <flux:text size="sm" class="mt-1">{{ __('This code is shown only once. Share it securely with scanner operators.') }}</flux:text>
-        </flux:callout>
-    @endif
-
     {{-- Scanner list --}}
     @if ($this->scanners->isEmpty())
         <flux:card>
@@ -59,6 +49,16 @@
                             @if ($scanner->hint_text)
                                 <flux:text size="sm" class="mt-1">{{ $scanner->hint_text }}</flux:text>
                             @endif
+
+                            {{-- Auth code --}}
+                            <div class="mt-2 flex items-center gap-2">
+                                @if (strlen($scanner->auth_code) === 6)
+                                    <flux:text size="sm" class="font-medium">{{ __('Auth Code:') }}</flux:text>
+                                    <code class="font-mono text-sm tracking-widest">{{ $scanner->auth_code }}</code>
+                                @else
+                                    <flux:text size="sm" class="text-amber-400">{{ __('Auth code needs regeneration') }}</flux:text>
+                                @endif
+                            </div>
 
                             {{-- Assignees --}}
                             <div class="mt-3">

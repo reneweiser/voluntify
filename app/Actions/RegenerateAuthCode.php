@@ -3,7 +3,6 @@
 namespace App\Actions;
 
 use App\Models\ProjectScanner;
-use Illuminate\Support\Facades\Hash;
 
 class RegenerateAuthCode
 {
@@ -11,7 +10,7 @@ class RegenerateAuthCode
     {
         $rawCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        $scanner->update(['auth_code' => Hash::make($rawCode)]);
+        $scanner->update(['auth_code' => $rawCode]);
 
         return $rawCode;
     }

@@ -30,7 +30,6 @@ class ProjectScanner extends Model
     ];
 
     protected $hidden = [
-        'auth_code',
         'scanner_token',
     ];
 

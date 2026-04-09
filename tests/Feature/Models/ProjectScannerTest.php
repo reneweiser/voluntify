@@ -160,11 +160,11 @@ it('scopes window opens soon correctly', function () {
     Carbon::setTestNow();
 });
 
-it('hides auth_code and scanner_token in JSON serialization', function () {
+it('hides scanner_token but exposes auth_code in JSON serialization', function () {
     $scanner = ProjectScanner::factory()->create();
     $json = $scanner->toArray();
 
-    expect($json)->not->toHaveKey('auth_code')
+    expect($json)->toHaveKey('auth_code')
         ->and($json)->not->toHaveKey('scanner_token');
 });
 

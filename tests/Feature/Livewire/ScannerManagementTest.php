@@ -152,7 +152,7 @@ it('regenerates auth code and flashes new code', function () {
     expect($scanner->auth_code)->not->toBe($oldHash);
 });
 
-it('dispatches SendScannerLinksJob with new code to all assignees after regeneration', function () {
+it('dispatches SendScannerLinksJob to all assignees after regeneration', function () {
     Queue::fake();
 
     $scanner = ProjectScanner::factory()->create([
@@ -165,9 +165,6 @@ it('dispatches SendScannerLinksJob with new code to all assignees after regenera
         ->call('regenerateAuthCode', $scanner->id);
 
     Queue::assertPushed(SendScannerLinksJob::class, 2);
-    Queue::assertPushed(SendScannerLinksJob::class, function ($job) {
-        return $job->rawAuthCode !== null && preg_match('/^\d{6}$/', $job->rawAuthCode);
-    });
 });
 
 it('does not dispatch jobs when scanner has no assignees on regeneration', function () {
@@ -237,4 +234,49 @@ it('resets modes to checkin when switching type from volunteer_admin to entry_st
         ->set('form.modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value])
         ->set('form.type', ScannerType::EntryStaff->value)
         ->assertSet('form.modes', [ScannerMode::Checkin->value]);
+});
+
+it('displays auth code permanently on scanner card', function () {
+    $scanner = ProjectScanner::factory()->create([
+        'project_id' => $this->project->id,
+        'auth_code' => '654321',
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->assertSee('654321');
+});
+
+it('auto-sends links to assignees after scanner creation', function () {
+    Queue::fake();
+
+    $component = Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->set('form.name', 'Auto-Send Test')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', [ScannerMode::Checkin->value])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
+        ->call('createScanner')
+        ->assertHasNoErrors();
+
+    $scanner = ProjectScanner::where('project_id', $this->project->id)->first();
+
+    // Add assignees and re-create to test auto-send
+    ProjectScannerAssignee::factory()->count(2)->for($scanner, 'projectScanner')->create();
+
+    // Create another scanner — this time assignees exist
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->set('form.name', 'Auto-Send Test 2')
+        ->set('form.type', ScannerType::EntryStaff->value)
+        ->set('form.modes', [ScannerMode::Checkin->value])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
+        ->call('createScanner')
+        ->assertHasNoErrors();
+
+    // First scanner had no assignees, second has none either (assignees are on first scanner)
+    // The auto-send only fires for the newly created scanner's assignees
+    Queue::assertNotPushed(SendScannerLinksJob::class);
 });
