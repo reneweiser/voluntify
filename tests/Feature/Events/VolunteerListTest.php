@@ -165,3 +165,67 @@ it('shows attendance badge', function () {
         ->assertSee('Attended Bob')
         ->assertSee('1/1');
 });
+
+it('shows cancelled signup count separately from active shifts', function () {
+    $secondShift = Shift::factory()->for($this->job, 'volunteerJob')->create();
+    $thirdShift = Shift::factory()->for($this->job, 'volunteerJob')->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Cancelled', 'last_name' => 'Count']);
+
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $this->shift->id]);
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $secondShift->id]);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $thirdShift->id,
+        'cancelled_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerList::class, ['eventId' => $this->event->id])
+        ->assertSee('Cancelled Count')
+        ->assertSeeHtml('data-test="volunteer-active-shifts-'.$volunteer->id.'">2</span>')
+        ->assertSee('1 storniert');
+});
+
+it('excludes cancelled signups from attendance totals', function () {
+    $secondShift = Shift::factory()->for($this->job, 'volunteerJob')->create();
+    $volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Attendance', 'last_name' => 'Filtered']);
+
+    $activeSignup = ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $this->shift->id]);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $secondShift->id,
+        'cancelled_at' => now(),
+    ]);
+
+    AttendanceRecord::create([
+        'shift_signup_id' => $activeSignup->id,
+        'status' => AttendanceStatus::OnTime,
+        'recorded_by' => $this->user->id,
+        'recorded_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerList::class, ['eventId' => $this->event->id])
+        ->assertSee('Attendance Filtered')
+        ->assertSeeHtml('data-test="volunteer-attendance-'.$volunteer->id.'">')
+        ->assertSee('1/1')
+        ->assertDontSee('1/2')
+        ->assertSee('1 storniert');
+});
+
+it('keeps volunteers with only cancelled signups visible', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Only', 'last_name' => 'Cancelled']);
+
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $this->shift->id,
+        'cancelled_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerList::class, ['eventId' => $this->event->id])
+        ->assertSee('Only Cancelled')
+        ->assertSeeHtml('data-test="volunteer-active-shifts-'.$volunteer->id.'">0</span>')
+        ->assertSee('1 storniert')
+        ->assertSee('None');
+});
