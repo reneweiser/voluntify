@@ -42,6 +42,12 @@
                 </flux:table.columns>
                 <flux:table.rows>
                     @foreach ($this->volunteers as $volunteer)
+                        @php
+                            $activeSignups = $volunteer->shiftSignups->reject(fn ($signup) => $signup->isCancelled());
+                            $cancelledCount = $volunteer->shiftSignups->count() - $activeSignups->count();
+                            $total = $activeSignups->count();
+                            $marked = $activeSignups->filter(fn ($signup) => $signup->attendanceRecord)->count();
+                        @endphp
                         <flux:table.row :key="'volunteer-'.$volunteer->id">
                             <flux:table.cell>
                                 <a href="{{ route('events.volunteers.show', [$event, $volunteer]) }}" wire:navigate class="font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
@@ -49,7 +55,16 @@
                                 </a>
                             </flux:table.cell>
                             <flux:table.cell>{{ $volunteer->email }}</flux:table.cell>
-                            <flux:table.cell>{{ $volunteer->shiftSignups->count() }}</flux:table.cell>
+                            <flux:table.cell>
+                                <div class="flex flex-col gap-1">
+                                    <span data-test="volunteer-active-shifts-{{ $volunteer->id }}">{{ $total }}</span>
+                                    @if ($cancelledCount > 0)
+                                        <flux:text size="sm" class="text-zinc-500 dark:text-zinc-400" data-test="volunteer-cancelled-shifts-{{ $volunteer->id }}">
+                                            {{ __(':count storniert', ['count' => $cancelledCount]) }}
+                                        </flux:text>
+                                    @endif
+                                </div>
+                            </flux:table.cell>
                             <flux:table.cell>
                                 @if ($volunteer->eventArrivals->isNotEmpty())
                                     <flux:badge size="sm" color="emerald">{{ __('Yes') }}</flux:badge>
@@ -58,10 +73,7 @@
                                 @endif
                             </flux:table.cell>
                             <flux:table.cell>
-                                @php
-                                    $total = $volunteer->shiftSignups->count();
-                                    $marked = $volunteer->shiftSignups->filter(fn ($s) => $s->attendanceRecord)->count();
-                                @endphp
+                                <div data-test="volunteer-attendance-{{ $volunteer->id }}">
                                 @if ($total === 0)
                                     <flux:badge size="sm" color="zinc">{{ __('None') }}</flux:badge>
                                 @elseif ($marked === $total)
@@ -71,6 +83,7 @@
                                 @else
                                     <flux:badge size="sm" color="zinc">{{ __('0/:total', ['total' => $total]) }}</flux:badge>
                                 @endif
+                                </div>
                             </flux:table.cell>
                         </flux:table.row>
                     @endforeach
