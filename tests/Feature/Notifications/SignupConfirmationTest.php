@@ -75,7 +75,6 @@ it('includes ticket action URL in German', function () {
     $notification = new SignupConfirmation($this->event, [$this->shift->id], 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
-    // #81 - Updated to German button text
-    expect($mail->actionText)->toBe('Ticket anzeigen')
-        ->and($mail->actionUrl)->toBe(route('volunteer.ticket', 'test-token'));
+    expect($mail->actionText)->toBe('Portal öffnen')
+        ->and($mail->actionUrl)->toBe(route('volunteer.portal', 'test-token'));
 });
