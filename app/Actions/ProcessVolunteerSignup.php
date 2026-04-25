@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Events\Activity\VolunteerSignedUp;
+use App\Models\EmailVerificationToken;
 use App\Models\Event;
 use App\Models\Shift;
 use App\Models\Volunteer;
@@ -36,6 +37,19 @@ class ProcessVolunteerSignup
             ['email' => $email, 'project_id' => $event->project_id],
             ['first_name' => $firstName, 'last_name' => $lastName, 'phone' => $phone],
         );
+
+        if (! $volunteer->isEmailVerified()) {
+            $verifiedAt = EmailVerificationToken::query()
+                ->where('project_id', $event->project_id)
+                ->where('email', $email)
+                ->whereNotNull('verified_at')
+                ->latest('verified_at')
+                ->value('verified_at');
+
+            if ($verifiedAt !== null) {
+                $volunteer->update(['email_verified_at' => $verifiedAt]);
+            }
+        }
 
         if ($phone !== null && $volunteer->phone !== $phone) {
             $volunteer->update(['phone' => $phone]);

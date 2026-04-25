@@ -76,7 +76,8 @@ it('completes full flow: email → verify → info → shifts → confirm → co
     $volunteer = Volunteer::where('email', 'alice@flow.test')->first();
     expect($volunteer)->not->toBeNull()
         ->and($volunteer->first_name)->toBe('Alice')
-        ->and($volunteer->last_name)->toBe('Flow');
+        ->and($volunteer->last_name)->toBe('Flow')
+        ->and($volunteer->email_verified_at)->not->toBeNull();
 
     expect(ShiftSignup::where('volunteer_id', $volunteer->id)->where('shift_id', $this->shift->id)->exists())->toBeTrue();
     expect(Ticket::where('volunteer_id', $volunteer->id)->where('project_id', $this->project->id)->exists())->toBeTrue();

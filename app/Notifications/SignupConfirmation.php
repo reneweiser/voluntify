@@ -67,7 +67,7 @@ class SignupConfirmation extends Notification implements ShouldQueue
                 'shift_date' => $firstShift->shift_date->setTimezone($tz)->format('d.m.Y'),
                 'shift_time' => $firstShift->displayTimeRange($tz),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
-                'portal_link' => route('volunteer.ticket', $this->magicLinkToken),
+                'portal_link' => route('volunteer.portal', $this->magicLinkToken),
                 'project_name' => $this->event->project?->name ?? '',
                 'kontakt_email' => $this->event->project?->contact_email ?? $this->event->organization->smtp_from_address ?? '',
             ],
@@ -84,8 +84,8 @@ class SignupConfirmation extends Notification implements ShouldQueue
             }
         }
 
-        $ticketUrl = route('volunteer.ticket', $this->magicLinkToken);
-        $mail->action('Ticket anzeigen', $ticketUrl);
+        $portalUrl = route('volunteer.portal', $this->magicLinkToken);
+        $mail->action('Portal öffnen', $portalUrl);
 
         return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
     }

@@ -17,8 +17,10 @@ use App\Models\VolunteerGear;
 use App\Models\VolunteerJob;
 use App\Notifications\EmailVerification;
 use App\Notifications\SignupConfirmation;
+use App\ValueObjects\HashedToken;
 use App\ValueObjects\ShiftSignupResult;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Notification::fake();
@@ -86,6 +88,58 @@ it('creates volunteer and signups for new volunteer', function () {
         Volunteer::where('email', 'new@example.com')->first(),
         SignupConfirmation::class,
     );
+});
+
+it('marks a newly created volunteer as verified when a matching email token was already verified', function () {
+    EmailVerificationToken::factory()->create([
+        'event_id' => $this->event->id,
+        'project_id' => $this->project->id,
+        'email' => 'verified-new@example.com',
+        'token_hash' => HashedToken::fromPlaintext(Str::random(64))->hash,
+        'expires_at' => now()->addDay(),
+        'verified_at' => now()->subMinute(),
+    ]);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $action->execute(
+        firstName: 'Verified',
+        lastName: 'New',
+        email: 'verified-new@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+    );
+
+    expect(Volunteer::where('email', 'verified-new@example.com')->first())
+        ->not->toBeNull()
+        ->email_verified_at->not->toBeNull();
+});
+
+it('reuses verification from another event in the same project', function () {
+    $otherEvent = Event::factory()->for($this->org)->for($this->project)->published()->create();
+
+    EmailVerificationToken::factory()->create([
+        'event_id' => $otherEvent->id,
+        'project_id' => $this->project->id,
+        'email' => 'cross-event@example.com',
+        'token_hash' => HashedToken::fromPlaintext(Str::random(64))->hash,
+        'expires_at' => now()->addDay(),
+        'verified_at' => now()->subMinute(),
+    ]);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $action->execute(
+        firstName: 'Cross',
+        lastName: 'Event',
+        email: 'cross-event@example.com',
+        event: $this->event,
+        shiftIds: [$this->shift->id],
+    );
+
+    expect(Volunteer::where('email', 'cross-event@example.com')->first())
+        ->not->toBeNull()
+        ->email_verified_at->not->toBeNull();
 });
 
 it('completes signup for verified returning volunteer', function () {

@@ -145,3 +145,85 @@ it('does not re-send already sent announcement', function () {
 
     Notification::assertNothingSent();
 });
+
+it('sends one archive copy to the event notification email when present', function () {
+    $event = Event::factory()->for($this->org)->for($this->project)->published()->create([
+        'notification_email' => 'archive@example.com',
+    ]);
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create();
+    ShiftSignup::factory()->for($volunteer)->for($shift)->create();
+
+    $announcement = Announcement::factory()->for($this->project)->create([
+        'event_id' => $event->id,
+        'created_by' => $this->creator->id,
+    ]);
+
+    $this->action->execute($announcement);
+
+    Notification::assertSentTo($volunteer, AnnouncementNotification::class);
+    Notification::assertSentOnDemand(
+        AnnouncementNotification::class,
+        function (AnnouncementNotification $notification, array $channels, object $notifiable) {
+            return $notifiable->routes['mail'] === 'archive@example.com'
+                && $notification->archiveRecipientCount === 1
+                && $notification->isArchiveCopy;
+        }
+    );
+    expect($announcement->fresh()->recipient_count)->toBe(1);
+});
+
+it('does not send an archive copy when the event has no notification email', function () {
+    $event = Event::factory()->for($this->org)->for($this->project)->published()->create([
+        'notification_email' => null,
+    ]);
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create();
+    ShiftSignup::factory()->for($volunteer)->for($shift)->create();
+
+    $announcement = Announcement::factory()->for($this->project)->create([
+        'event_id' => $event->id,
+        'created_by' => $this->creator->id,
+    ]);
+
+    $this->action->execute($announcement);
+
+    Notification::assertSentTo($volunteer, AnnouncementNotification::class);
+    Notification::assertSentOnDemandTimes(AnnouncementNotification::class, 0);
+});
+
+it('does not send an archive copy when no volunteer recipients match', function () {
+    $event = Event::factory()->for($this->org)->for($this->project)->published()->create([
+        'notification_email' => 'archive@example.com',
+    ]);
+
+    $announcement = Announcement::factory()->for($this->project)->create([
+        'event_id' => $event->id,
+        'created_by' => $this->creator->id,
+    ]);
+
+    $this->action->execute($announcement);
+
+    Notification::assertNothingSent();
+    expect($announcement->fresh()->recipient_count)->toBe(0);
+});
+
+it('renders archive copies with a labeled subject and recipient summary', function () {
+    $announcement = Announcement::factory()->for($this->project)->create([
+        'subject' => 'Shift Update',
+        'body' => "Line one\nLine two",
+        'created_by' => $this->creator->id,
+    ]);
+
+    $mail = (new AnnouncementNotification($announcement, true, 3))
+        ->toMail((object) ['first_name' => 'Organizer']);
+
+    expect($mail->subject)->toBe('[Archiv-Kopie] Shift Update')
+        ->and(implode(' ', $mail->introLines))->toContain('Kopie einer Nachricht, die an 3 Volunteers versendet wurde.')
+        ->and(implode(' ', $mail->introLines))->toContain('Line one')
+        ->and(implode(' ', $mail->introLines))->toContain('Line two');
+});
