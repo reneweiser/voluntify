@@ -24,7 +24,25 @@ vendor/bin/sail artisan tinker --execute="
   echo 'EntranceStaff user created';
 "
 
-# 4. Clear Mailpit inbox
+# 4. Create deterministic volunteer for organizer deletion E2E
+echo "Creating organizer-delete E2E volunteer..."
+vendor/bin/sail artisan tinker --execute="
+  \$event = \App\Models\Event::where('name', 'Spring Community Fair')->firstOrFail();
+  \$shift = \App\Models\Shift::whereHas('volunteerJob', fn (\$q) => \$q->where('event_id', \$event->id))->firstOrFail();
+  \$volunteer = \App\Models\Volunteer::factory()->verified()->for(\$event->project)->create([
+    'first_name' => 'E2E',
+    'last_name' => 'Delete Volunteer',
+    'email' => 'e2e-delete-volunteer@example.com',
+    'phone' => '+15550001111',
+  ]);
+  \App\Models\ShiftSignup::factory()->create([
+    'volunteer_id' => \$volunteer->id,
+    'shift_id' => \$shift->id,
+  ]);
+  echo 'E2E volunteer created';
+ "
+
+# 5. Clear Mailpit inbox
 echo "Clearing Mailpit inbox..."
 curl -s -X DELETE http://localhost:8025/api/v1/messages
 

@@ -2,10 +2,12 @@
 
 namespace App\Actions;
 
+use App\Enums\ActivityCategory;
 use App\Enums\StaffRole;
 use App\Exceptions\DomainException;
 use App\Models\ActivityLog;
 use App\Models\Project;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Notifications\ProfileDeletionConfirmation;
 use App\Notifications\VolunteerProfileDeletedNotification;
@@ -14,19 +16,20 @@ use Illuminate\Support\Facades\Log;
 
 class DeleteVolunteerProfile
 {
-    public function execute(Volunteer $volunteer): void
+    public function execute(Volunteer $volunteer, bool $enforceCancellationGuard = true, ?User $initiatedBy = null): void
     {
         $volunteer->loadMissing('project.organization');
         $project = $volunteer->project;
 
-        $this->guardAgainstNonCancellableShifts($volunteer, $project);
+        if ($enforceCancellationGuard) {
+            $this->guardAgainstNonCancellableShifts($volunteer, $project);
+        }
 
         $volunteerName = $volunteer->full_name;
         $organization = $project->organization;
 
-        // 1. Send confirmation email synchronously (before deletion)
         try {
-            $volunteer->notifyNow(new ProfileDeletionConfirmation($project));
+            $volunteer->notifyNow(new ProfileDeletionConfirmation($project, $initiatedBy?->name));
         } catch (\Throwable $e) {
             Log::warning('Failed to send profile deletion confirmation email', [
                 'volunteer_id' => $volunteer->id,
@@ -34,12 +37,9 @@ class DeleteVolunteerProfile
             ]);
         }
 
-        // 2. Collect upcoming shift details for organizer notification (before deletion)
         $shiftSummary = $this->collectUpcomingShiftSummary($volunteer);
 
-        // 3. DB::transaction: clean up activity logs + delete volunteer
-        DB::transaction(function () use ($volunteer, $volunteerName) {
-            // Nullify causer references and preserve name in properties
+        DB::transaction(function () use ($initiatedBy, $organization, $project, $volunteer, $volunteerName) {
             ActivityLog::where('causer_type', Volunteer::class)
                 ->where('causer_id', $volunteer->id)
                 ->each(function (ActivityLog $log) use ($volunteerName) {
@@ -52,7 +52,6 @@ class DeleteVolunteerProfile
                     ]);
                 });
 
-            // Preserve name in subject references (subject columns are NOT nullable)
             ActivityLog::where('subject_type', Volunteer::class)
                 ->where('subject_id', $volunteer->id)
                 ->each(function (ActivityLog $log) use ($volunteerName) {
@@ -61,11 +60,28 @@ class DeleteVolunteerProfile
                     $log->update(['properties' => $properties]);
                 });
 
-            // Cascade handles child records (signups, tickets, gear, tokens, etc.)
+            if ($initiatedBy) {
+                ActivityLog::create([
+                    'organization_id' => $organization->id,
+                    'project_id' => $project->id,
+                    'causer_type' => User::class,
+                    'causer_id' => $initiatedBy->id,
+                    'subject_type' => Volunteer::class,
+                    'subject_id' => $volunteer->id,
+                    'action' => 'deleted',
+                    'category' => ActivityCategory::Volunteer,
+                    'description' => "{$initiatedBy->name} deleted volunteer profile {$volunteerName}",
+                    'properties' => [
+                        'volunteer_name' => $volunteerName,
+                        'deleted_volunteer_name' => $volunteerName,
+                        'initiated_by_name' => $initiatedBy->name,
+                    ],
+                ]);
+            }
+
             $volunteer->delete();
         });
 
-        // 4. Notify organizers (outside transaction, after successful delete)
         $organizers = $organization->users()
             ->wherePivot('role', StaffRole::Organizer)
             ->get();
@@ -76,6 +92,7 @@ class DeleteVolunteerProfile
                     $volunteerName,
                     $project,
                     $shiftSummary,
+                    $initiatedBy?->name,
                 ));
             } catch (\Throwable $e) {
                 Log::warning('Failed to notify organizer about volunteer deletion', [
