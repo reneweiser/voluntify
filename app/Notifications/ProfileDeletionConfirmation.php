@@ -13,6 +13,7 @@ class ProfileDeletionConfirmation extends Notification
 
     public function __construct(
         public Project $project,
+        public ?string $deletedByName = null,
     ) {}
 
     /**
@@ -25,10 +26,14 @@ class ProfileDeletionConfirmation extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $deletionLine = $this->deletedByName
+            ? "Dein Volunteer-Profil und alle zugehörigen Daten wurden durch {$this->deletedByName} gelöscht."
+            : 'Dein Volunteer-Profil und alle zugehörigen Daten wurden auf deine Anfrage hin gelöscht.';
+
         $mail = (new MailMessage)
             ->subject('Dein Profil wurde gelöscht')
             ->greeting("Hallo {$notifiable->first_name}!")
-            ->line('Dein Volunteer-Profil und alle zugehörigen Daten wurden auf deine Anfrage hin gelöscht.')
+            ->line($deletionLine)
             ->line('**Folgende Daten wurden unwiderruflich entfernt:**')
             ->line('- Alle Schicht-Anmeldungen')
             ->line('- Eventuelle Tickets und QR-Codes')

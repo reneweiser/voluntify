@@ -20,6 +20,7 @@ class VolunteerProfileDeletedNotification extends Notification implements Should
         public string $volunteerName,
         public Project $project,
         public string $shiftSummary,
+        public ?string $deletedByName = null,
     ) {}
 
     /**
@@ -32,10 +33,14 @@ class VolunteerProfileDeletedNotification extends Notification implements Should
 
     public function toMail(object $notifiable): MailMessage
     {
+        $deletionLine = $this->deletedByName
+            ? "**{$this->volunteerName}** wurde im Projekt **{$this->project->name}** durch **{$this->deletedByName}** gelöscht."
+            : "**{$this->volunteerName}** hat sein Volunteer-Profil im Projekt **{$this->project->name}** gelöscht.";
+
         $mail = (new MailMessage)
             ->subject("Volunteer-Profil gelöscht: {$this->volunteerName}")
             ->greeting("Hallo {$notifiable->name}!")
-            ->line("**{$this->volunteerName}** hat sein Volunteer-Profil im Projekt **{$this->project->name}** gelöscht.")
+            ->line($deletionLine)
             ->line('Alle zugehörigen Daten (Anmeldungen, Tickets, Gear) wurden unwiderruflich entfernt.');
 
         if ($this->shiftSummary !== '') {

@@ -6,7 +6,7 @@
 
     <x-events.layout :event="$event">
         {{-- Info card --}}
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-6 mb-6">
+            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-6 mb-6">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <flux:heading size="lg">{{ __('Volunteer Info') }}</flux:heading>
@@ -15,9 +15,14 @@
                     @endif
                 </div>
                 @if ($this->canPromote)
-                    <flux:button variant="primary" size="sm" icon="arrow-up-circle" wire:click="$set('showPromoteModal', true)">
-                        {{ __('Promote to Staff') }}
-                    </flux:button>
+                    <div class="flex items-center gap-2">
+                        <flux:button variant="danger" size="sm" icon="trash" wire:click="$set('showDeleteModal', true)">
+                            {{ __('Volunteer löschen') }}
+                        </flux:button>
+                        <flux:button variant="primary" size="sm" icon="arrow-up-circle" wire:click="$set('showPromoteModal', true)">
+                            {{ __('Promote to Staff') }}
+                        </flux:button>
+                    </div>
                 @endif
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
@@ -226,6 +231,29 @@
                     <flux:button variant="ghost" wire:click="$set('showPromoteModal', false)">{{ __('Abbrechen') }}</flux:button>
                     <flux:button variant="primary" wire:click="promoteVolunteer" :disabled="$promoteRole === 'volunteer_admin' && $this->vaScanners->isEmpty()">
                         {{ __('Befördern') }}
+                    </flux:button>
+                </div>
+            </div>
+        </flux:modal>
+
+        <flux:modal wire:model="showDeleteModal" focusable class="max-w-lg">
+            <div class="space-y-4">
+                <flux:heading size="lg">{{ __('Volunteer löschen') }}</flux:heading>
+                <flux:text>{{ __('Dieses Event öffnet nur den Einstiegspunkt. Gelöscht wird das gesamte Volunteer-Profil im Projekt :project.', ['project' => $event->project->name]) }}</flux:text>
+                <flux:callout variant="warning">
+                    {{ __('Alle zugehörigen Projekt-Daten werden unwiderruflich entfernt: Schicht-Anmeldungen, Tickets/QR-Codes, Gear-Zuweisungen und persönliche Daten.') }}
+                </flux:callout>
+                <flux:checkbox
+                    wire:model.live="deleteConfirmed"
+                    :label="__('Ich bestätige die endgültige Löschung des gesamten Volunteer-Profils.')"
+                />
+
+                <flux:error name="delete" />
+
+                <div class="flex justify-end gap-2">
+                    <flux:button variant="ghost" wire:click="$set('showDeleteModal', false)">{{ __('Abbrechen') }}</flux:button>
+                    <flux:button variant="danger" wire:click="deleteVolunteer" :disabled="! $deleteConfirmed">
+                        {{ __('Volunteer endgültig löschen') }}
                     </flux:button>
                 </div>
             </div>

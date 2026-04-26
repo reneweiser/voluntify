@@ -109,6 +109,7 @@ it('shows not arrived status when no arrival', function () {
 it('shows promote button for organizer when not promoted', function () {
     Livewire::actingAs($this->user)
         ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Volunteer löschen')
         ->assertSee('Promote to Staff');
 });
 
@@ -117,6 +118,20 @@ it('denies promotion for non-organizer', function () {
 
     $this->actingAs($outsider)
         ->get(route('events.volunteers.show', [$this->event, $this->volunteer]))
+        ->assertForbidden();
+});
+
+it('allows project members to view volunteer detail but forbids deletion', function () {
+    $member = User::factory()->create();
+    $this->project->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
+
+    $this->actingAs($member)
+        ->get(route('events.volunteers.show', [$this->event, $this->volunteer]))
+        ->assertOk();
+
+    Livewire::actingAs($member)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('deleteVolunteer')
         ->assertForbidden();
 });
 
@@ -190,6 +205,60 @@ it('promotes volunteer and creates user', function () {
 
     expect($this->volunteer->fresh()->user_id)->not->toBeNull();
     expect(User::where('email', $this->volunteer->email)->exists())->toBeTrue();
+});
+
+it('requires confirmation before deleting a volunteer profile', function () {
+    Notification::fake();
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->set('showDeleteModal', true)
+        ->call('deleteVolunteer');
+
+    expect(Volunteer::find($this->volunteer->id))->not->toBeNull();
+});
+
+it('deletes volunteer profile from detail page and redirects to event volunteer list', function () {
+    Notification::fake();
+
+    $expectedUrl = route('events.volunteers', $this->event);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->set('showDeleteModal', true)
+        ->set('deleteConfirmed', true)
+        ->call('deleteVolunteer')
+        ->assertRedirect($expectedUrl);
+
+    expect(Volunteer::find($this->volunteer->id))->toBeNull();
+});
+
+it('lets organizer delete volunteer even when self-service deletion would be blocked', function () {
+    Notification::fake();
+
+    $this->project->update([
+        'cancellation_enabled' => true,
+        'cancellation_cutoff_hours' => 24,
+    ]);
+
+    $blockingShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->addHours(12),
+        'ends_at' => now()->addHours(14),
+    ]);
+
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $blockingShift->id,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->set('showDeleteModal', true)
+        ->set('deleteConfirmed', true)
+        ->call('deleteVolunteer')
+        ->assertRedirect(route('events.volunteers', $this->event));
+
+    expect(Volunteer::find($this->volunteer->id))->toBeNull();
 });
 
 // --- Arrival management tests ---

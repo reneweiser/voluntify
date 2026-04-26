@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Events;
 
+use App\Actions\DeleteVolunteerProfile;
 use App\Actions\PromoteVolunteer;
 use App\Actions\RecordArrival;
 use App\Actions\RecordGearPickup;
@@ -17,6 +18,7 @@ use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -33,6 +35,10 @@ class VolunteerDetail extends Component
     public Volunteer $volunteer;
 
     public bool $showPromoteModal = false;
+
+    public bool $showDeleteModal = false;
+
+    public bool $deleteConfirmed = false;
 
     public string $promoteRole = 'organizer';
 
@@ -141,7 +147,7 @@ class VolunteerDetail extends Component
                 volunteer: $this->volunteer,
                 organization: $this->event->organization,
                 role: $role,
-                promotedBy: auth()->user(),
+                promotedBy: Auth::user(),
                 scannerId: $this->selectedScannerId !== '' ? (int) $this->selectedScannerId : null,
             );
 
@@ -154,6 +160,29 @@ class VolunteerDetail extends Component
         } catch (DomainException $e) {
             $this->addError('promote', $e->getMessage());
         }
+    }
+
+    public function deleteVolunteer(): void
+    {
+        Gate::authorize('update', $this->event);
+
+        if (! $this->deleteConfirmed) {
+            return;
+        }
+
+        try {
+            app(DeleteVolunteerProfile::class)->execute(
+                $this->volunteer,
+                enforceCancellationGuard: false,
+                initiatedBy: Auth::user(),
+            );
+        } catch (DomainException $e) {
+            $this->addError('delete', $e->getMessage());
+
+            return;
+        }
+
+        $this->redirect(route('events.volunteers', $this->event));
     }
 
     public function markAsArrived(): void
@@ -171,7 +200,7 @@ class VolunteerDetail extends Component
         app(RecordArrival::class)->execute(
             ticket: $ticket,
             event: $this->event,
-            scannedBy: auth()->user(),
+            scannedBy: Auth::user(),
             method: ArrivalMethod::ManualLookup,
         );
 
@@ -186,7 +215,7 @@ class VolunteerDetail extends Component
             ->findOrFail($gearId);
 
         try {
-            app(RecordGearPickup::class)->execute($gear, auth()->user());
+            app(RecordGearPickup::class)->execute($gear, Auth::user());
         } catch (DomainException $e) {
             $this->addError('gear', $e->getMessage());
         }

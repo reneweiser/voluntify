@@ -1,14 +1,17 @@
 <?php
 
 use App\Actions\DeleteVolunteerProfile;
+use App\Enums\StaffRole;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
+use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
@@ -19,10 +22,14 @@ beforeEach(function () {
     $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->volunteer = Volunteer::factory()->for($this->project)->verified()->create();
+    $this->organizer = User::factory()->create();
+    $this->project->users()->attach($this->organizer, ['role' => StaffRole::Organizer]);
     $this->action = new DeleteVolunteerProfile;
 });
 
 it('blocks deletion when volunteer has non-cancellable future shifts [#143]', function () {
+    Notification::fake();
+
     $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'starts_at' => now()->addHours(12),
         'ends_at' => now()->addHours(14),
@@ -37,6 +44,8 @@ it('blocks deletion when volunteer has non-cancellable future shifts [#143]', fu
 });
 
 it('allows deletion when all shifts are completed [#143]', function () {
+    Notification::fake();
+
     $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'starts_at' => now()->subHours(4),
         'ends_at' => now()->subHours(2),
@@ -52,6 +61,8 @@ it('allows deletion when all shifts are completed [#143]', function () {
 });
 
 it('allows deletion when all shifts are cancellable [#143]', function () {
+    Notification::fake();
+
     $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'starts_at' => now()->addDays(5),
         'ends_at' => now()->addDays(5)->addHours(2),
@@ -67,12 +78,16 @@ it('allows deletion when all shifts are cancellable [#143]', function () {
 });
 
 it('allows deletion when volunteer has no active signups [#143]', function () {
+    Notification::fake();
+
     $this->action->execute($this->volunteer);
 
     expect(Volunteer::find($this->volunteer->id))->toBeNull();
 });
 
 it('allows deletion when only cancelled signups exist [#143]', function () {
+    Notification::fake();
+
     $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'starts_at' => now()->addHours(12),
         'ends_at' => now()->addHours(14),
@@ -89,6 +104,8 @@ it('allows deletion when only cancelled signups exist [#143]', function () {
 });
 
 it('allows deletion when cancellation is disabled on project [#143]', function () {
+    Notification::fake();
+
     $this->project->update(['cancellation_enabled' => false, 'cancellation_cutoff_hours' => null]);
 
     $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
@@ -106,6 +123,8 @@ it('allows deletion when cancellation is disabled on project [#143]', function (
 });
 
 it('blocks deletion for shifts without defined times past cutoff [#143]', function () {
+    Notification::fake();
+
     $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'shift_date' => now()->toDateString(),
         'starts_at' => null,
@@ -119,4 +138,21 @@ it('blocks deletion for shifts without defined times past cutoff [#143]', functi
 
     expect(fn () => $this->action->execute($this->volunteer))
         ->toThrow(DomainException::class, 'Dein Profil kann gerade nicht gelöscht werden');
+});
+
+it('allows organizer-initiated deletion even when volunteer has non-cancellable future shifts [#148]', function () {
+    Notification::fake();
+
+    $shift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->addHours(12),
+        'ends_at' => now()->addHours(14),
+    ]);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $shift->id,
+    ]);
+
+    $this->action->execute($this->volunteer, false, $this->organizer);
+
+    expect(Volunteer::find($this->volunteer->id))->toBeNull();
 });

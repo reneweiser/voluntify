@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\DeleteVolunteerProfile;
+use App\Enums\ActivityCategory;
 use App\Enums\StaffRole;
 use App\Models\ActivityLog;
 use App\Models\Event;
@@ -80,6 +81,16 @@ it('sends confirmation email before deletion', function () {
     Notification::assertSentTo($this->volunteer, ProfileDeletionConfirmation::class);
 });
 
+it('uses self-service wording for volunteer deletion confirmation', function () {
+    Notification::fake();
+
+    app(DeleteVolunteerProfile::class)->execute($this->volunteer);
+
+    Notification::assertSentTo($this->volunteer, ProfileDeletionConfirmation::class, function ($notification) {
+        return $notification->deletedByName === null;
+    });
+});
+
 it('notifies organizer after deletion', function () {
     Notification::fake();
 
@@ -145,4 +156,32 @@ it('includes upcoming shifts in organizer notification', function () {
     Notification::assertSentTo($this->organizer, VolunteerProfileDeletedNotification::class, function ($notification) {
         return str_contains($notification->shiftSummary, 'Setup Crew');
     });
+});
+
+it('records organizer-initiated deletion context in notifications and activity logs', function () {
+    Notification::fake();
+
+    app(DeleteVolunteerProfile::class)->execute($this->volunteer, false, $this->organizer);
+
+    Notification::assertSentTo($this->volunteer, ProfileDeletionConfirmation::class, function ($notification) {
+        return $notification->deletedByName === $this->organizer->name;
+    });
+
+    Notification::assertSentTo($this->organizer, VolunteerProfileDeletedNotification::class, function ($notification) {
+        return $notification->deletedByName === $this->organizer->name;
+    });
+
+    $log = ActivityLog::query()
+        ->where('causer_type', User::class)
+        ->where('causer_id', $this->organizer->id)
+        ->where('subject_type', Volunteer::class)
+        ->where('subject_id', $this->volunteer->id)
+        ->where('action', 'deleted')
+        ->first();
+
+    expect($log)->not->toBeNull()
+        ->and($log->category)->toBe(ActivityCategory::Volunteer)
+        ->and($log->project_id)->toBe($this->project->id)
+        ->and($log->properties)->toHaveKey('initiated_by_name', $this->organizer->name)
+        ->and($log->properties)->toHaveKey('deleted_volunteer_name', 'Test Volunteer');
 });
