@@ -2,15 +2,20 @@
 
 namespace App\Livewire;
 
+use App\Actions\SetCurrentOrganization;
 use App\Enums\AttendanceStatus;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Project;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
+use App\Models\User;
 use App\Models\Volunteer;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -33,7 +38,10 @@ class Dashboard extends Component
     #[Computed]
     public function userRole(): ?string
     {
-        return auth()->user()->orgRoleFor($this->organization)?->value;
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user->orgRoleFor($this->organization)?->value;
     }
 
     #[Computed]
@@ -43,31 +51,69 @@ class Dashboard extends Component
     }
 
     /**
+     * Accessible organizations with safe cross-org previews.
+     *
+     * @return Collection<int, array{
+     *     organization: Organization,
+     *     is_active: bool,
+     *     role: string|null,
+     *     project_count: int,
+     *     projects: EloquentCollection<int, Project>,
+     *     remaining_project_count: int,
+     *     upcoming_events: EloquentCollection<int, Event>
+     * }>
+     */
+    #[Computed]
+    public function discoverableOrganizations(): Collection
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return Organization::query()
+            ->whereIn('id', $user->accessibleOrganizationIds())
+            ->orderByRaw('id = ? desc', [$this->organization->id])
+            ->orderBy('name')
+            ->get()
+            ->map(function (Organization $organization) use ($user): array {
+                $visibleProjects = $this->visibleProjectsQuery($organization)
+                    ->orderBy('name')
+                    ->get(['id', 'organization_id', 'name']);
+
+                $upcomingEvents = $this->scopedEventsFor($organization)
+                    ->active()
+                    ->published()
+                    ->with('project:id,name')
+                    ->where('starts_at', '>=', now())
+                    ->orderBy('starts_at')
+                    ->limit(3)
+                    ->get(['id', 'organization_id', 'project_id', 'name', 'starts_at']);
+
+                return [
+                    'organization' => $organization,
+                    'is_active' => $organization->is($this->organization),
+                    'role' => $user->orgRoleFor($organization)?->value,
+                    'project_count' => $visibleProjects->count(),
+                    'projects' => $visibleProjects->take(3)->values(),
+                    'remaining_project_count' => max($visibleProjects->count() - 3, 0),
+                    'upcoming_events' => $upcomingEvents,
+                ];
+            });
+    }
+
+    /**
      * Projects accessible to the current user, with aggregate metrics.
      */
     #[Computed]
-    public function projects(): Collection
+    public function projects(): EloquentCollection
     {
-        $user = auth()->user();
-
-        $query = $this->organization->projects()
-            ->active()
+        return $this->visibleProjectsQuery($this->organization)
             ->withCount([
                 'events' => fn ($q) => $q->published()->where('starts_at', '>=', now()),
                 'volunteers',
                 'scanners',
             ])
-            ->latest();
-
-        if (! $user->isOrgOrganizerFor($this->organization)) {
-            $assignedProjectIds = $user->projects()
-                ->where('projects.organization_id', $this->organization->id)
-                ->pluck('projects.id');
-
-            $query->whereIn('id', $assignedProjectIds);
-        }
-
-        return $query->get();
+            ->latest()
+            ->get();
     }
 
     /**
@@ -151,10 +197,10 @@ class Dashboard extends Component
      * Global volunteer search across all projects.
      */
     #[Computed]
-    public function searchResults(): Collection
+    public function searchResults(): EloquentCollection
     {
         if (strlen($this->search) < 2) {
-            return new Collection;
+            return new EloquentCollection;
         }
 
         $projectIds = $this->projects->pluck('id');
@@ -221,7 +267,7 @@ class Dashboard extends Component
     }
 
     #[Computed]
-    public function recentPastEvents(): Collection
+    public function recentPastEvents(): EloquentCollection
     {
         $events = $this->scopedEvents()
             ->published()
@@ -233,24 +279,59 @@ class Dashboard extends Component
             ->limit(5)
             ->get();
 
-        $user = auth()->user();
+        /** @var User $user */
+        $user = Auth::user();
         $projectIds = $events->pluck('project_id')->unique()->values()->all();
         $user->preloadProjectRoles($projectIds);
 
         return $events;
     }
 
-    private function scopedEvents(): HasMany
+    public function switchOrganization(int $organizationId, SetCurrentOrganization $action): void
     {
-        $user = auth()->user();
-        $query = $this->organization->events();
+        $organization = Organization::findOrFail($organizationId);
+        /** @var User $user */
+        $user = Auth::user();
 
-        if (! $user->isOrgOrganizerFor($this->organization)) {
+        Gate::authorize('view', $organization);
+
+        $action->execute($user, $organization);
+
+        $this->redirect(route('dashboard'), navigate: true);
+    }
+
+    private function visibleProjectsQuery(Organization $organization): HasMany
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $query = $organization->projects()->active();
+
+        if (! $user->isOrgOrganizerFor($organization)) {
             $projectIds = $user->projects()
-                ->where('projects.organization_id', $this->organization->id)
+                ->where('projects.organization_id', $organization->id)
                 ->pluck('projects.id');
 
-            $query->whereIn('project_id', $projectIds);
+            $query->whereIn('id', $projectIds);
+        }
+
+        return $query;
+    }
+
+    private function scopedEvents(): HasMany
+    {
+        return $this->scopedEventsFor($this->organization);
+    }
+
+    private function scopedEventsFor(Organization $organization): HasMany
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $query = $organization->events();
+
+        if (! $user->isOrgOrganizerFor($organization)) {
+            $query->whereIn('project_id', $this->visibleProjectsQuery($organization)->select('projects.id'));
         }
 
         return $query;

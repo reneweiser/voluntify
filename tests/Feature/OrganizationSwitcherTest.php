@@ -3,6 +3,7 @@
 use App\Enums\StaffRole;
 use App\Livewire\OrganizationSwitcher;
 use App\Models\Organization;
+use App\Models\Project;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -46,6 +47,21 @@ it('prevents switching to non-member organization', function () {
         ->test(OrganizationSwitcher::class)
         ->call('switchOrganization', $otherOrg->id)
         ->assertForbidden();
+});
+
+it('lists and switches to organizations accessible through project membership', function () {
+    $projectAccessOrg = Organization::factory()->create(['name' => 'Project Access Org']);
+    $project = Project::factory()->for($projectAccessOrg)->create();
+    $project->users()->attach($this->user, ['role' => StaffRole::Organizer]);
+
+    Livewire::actingAs($this->user)
+        ->test(OrganizationSwitcher::class)
+        ->assertSee('Project Access Org')
+        ->call('switchOrganization', $projectAccessOrg->id)
+        ->assertSessionHas('current_organization_id', $projectAccessOrg->id)
+        ->assertRedirect(route('dashboard'));
+
+    expect($this->user->fresh()->current_organization_id)->toBe($projectAccessOrg->id);
 });
 
 it('creates organization and auto-switches', function () {
