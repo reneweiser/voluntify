@@ -342,3 +342,55 @@ test('project organizer only sees events from assigned project', function () {
         ->assertSee('My Project Event')
         ->assertDontSee('Other Project Event');
 });
+
+test('shows cross-organization overview with safe scoped previews', function () {
+    ['user' => $user, 'organization' => $currentOrg] = createUserWithOrganization();
+    $directAccessOrg = Organization::factory()->create(['name' => 'Direct Access Org']);
+    $directAccessOrg->users()->attach($user, ['role' => StaffRole::VolunteerAdmin]);
+
+    $projectAccessOrg = Organization::factory()->create(['name' => 'Project Access Org']);
+    $visibleProject = Project::factory()->for($projectAccessOrg)->create(['name' => 'Visible Project']);
+    $hiddenProject = Project::factory()->for($projectAccessOrg)->create(['name' => 'Hidden Project']);
+    $visibleProject->users()->attach($user, ['role' => StaffRole::Organizer]);
+
+    Event::factory()->for($projectAccessOrg)->for($visibleProject)->published()->create([
+        'name' => 'Visible Cross-Org Event',
+        'starts_at' => now()->addDays(2),
+        'ends_at' => now()->addDays(2)->addHours(4),
+    ]);
+    Event::factory()->for($projectAccessOrg)->for($hiddenProject)->published()->create([
+        'name' => 'Hidden Cross-Org Event',
+        'starts_at' => now()->addDays(3),
+        'ends_at' => now()->addDays(3)->addHours(4),
+    ]);
+
+    app()->instance(Organization::class, $currentOrg);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->assertSee('Organisationen')
+        ->assertSee($currentOrg->name)
+        ->assertSee('Direct Access Org')
+        ->assertSee('Project Access Org')
+        ->assertSee('Projektzugang')
+        ->assertSee('Visible Project')
+        ->assertSee('Visible Cross-Org Event')
+        ->assertDontSee('Hidden Project')
+        ->assertDontSee('Hidden Cross-Org Event');
+});
+
+test('can switch organization from the dashboard overview', function () {
+    ['user' => $user, 'organization' => $currentOrg] = createUserWithOrganization();
+    $secondOrg = Organization::factory()->create();
+    $secondOrg->users()->attach($user, ['role' => StaffRole::Organizer]);
+
+    app()->instance(Organization::class, $currentOrg);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->call('switchOrganization', $secondOrg->id)
+        ->assertSessionHas('current_organization_id', $secondOrg->id)
+        ->assertRedirect(route('dashboard'));
+
+    expect($user->fresh()->current_organization_id)->toBe($secondOrg->id);
+});

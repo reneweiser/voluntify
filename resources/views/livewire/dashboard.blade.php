@@ -42,6 +42,91 @@
         </div>
     @endif
 
+    @if ($this->discoverableOrganizations->isNotEmpty())
+        <div class="mb-8">
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                    <flux:heading size="lg">{{ __('Organisationen') }}</flux:heading>
+                    <flux:text class="text-zinc-500">{{ __('Wechsle schnell zwischen deinen zugaenglichen Bereichen und sieh sichere Vorschauen auf Projekte und kommende Events.') }}</flux:text>
+                </div>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-2">
+                @foreach ($this->discoverableOrganizations as $organizationOverview)
+                    @php
+                        $organization = $organizationOverview['organization'];
+                        $role = $organizationOverview['role'];
+                    @endphp
+
+                    <div wire:key="discoverable-org-{{ $organization->id }}" class="rounded-xl border border-zinc-200 dark:border-zinc-700 p-5">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <flux:heading size="sm">{{ $organization->name }}</flux:heading>
+                                    @if ($organizationOverview['is_active'])
+                                        <flux:badge size="sm" color="emerald">{{ __('Aktiv') }}</flux:badge>
+                                    @endif
+                                    <flux:badge size="sm">{{ $role ? __(ucfirst(str_replace('_', ' ', $role))) : __('Projektzugang') }}</flux:badge>
+                                </div>
+                                <flux:text size="sm" class="mt-2 text-zinc-500">
+                                    {{ trans_choice(':count sichtbares Projekt|:count sichtbare Projekte', $organizationOverview['project_count'], ['count' => $organizationOverview['project_count']]) }}
+                                </flux:text>
+                            </div>
+
+                            @if ($organizationOverview['is_active'])
+                                <flux:button variant="subtle" size="sm" :href="route('projects.index')" wire:navigate>
+                                    {{ __('Oeffnen') }}
+                                </flux:button>
+                            @else
+                                <flux:button variant="outline" size="sm" wire:click="switchOrganization({{ $organization->id }})">
+                                    {{ __('Wechseln') }}
+                                </flux:button>
+                            @endif
+                        </div>
+
+                        <div class="mt-4 grid gap-4 md:grid-cols-2">
+                            <div>
+                                <flux:text size="sm" class="font-medium">{{ __('Projekte') }}</flux:text>
+                                @if ($organizationOverview['projects']->isEmpty())
+                                    <flux:text size="sm" class="mt-2 text-zinc-500">{{ __('Keine sichtbaren Projekte') }}</flux:text>
+                                @else
+                                    <div class="mt-2 space-y-2">
+                                        @foreach ($organizationOverview['projects'] as $project)
+                                            <div class="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200">
+                                                {{ $project->name }}
+                                            </div>
+                                        @endforeach
+                                        @if ($organizationOverview['remaining_project_count'] > 0)
+                                            <flux:text size="sm" class="text-zinc-500">
+                                                {{ trans_choice('+ :count weiteres Projekt|+ :count weitere Projekte', $organizationOverview['remaining_project_count'], ['count' => $organizationOverview['remaining_project_count']]) }}
+                                            </flux:text>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div>
+                                <flux:text size="sm" class="font-medium">{{ __('Kommende Events') }}</flux:text>
+                                @if ($organizationOverview['upcoming_events']->isEmpty())
+                                    <flux:text size="sm" class="mt-2 text-zinc-500">{{ __('Keine bevorstehenden Events') }}</flux:text>
+                                @else
+                                    <div class="mt-2 space-y-2">
+                                        @foreach ($organizationOverview['upcoming_events'] as $event)
+                                            <div class="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2">
+                                                <div class="text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ $event->name }}</div>
+                                                <div class="text-xs text-zinc-500">{{ $event->starts_at->format('d.m.Y H:i') }} @if ($event->project) &middot; {{ $event->project->name }} @endif</div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- Smart reminders --}}
     @if (count($this->reminders) > 0)
         <div class="mb-6 space-y-2">

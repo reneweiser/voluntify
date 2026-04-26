@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\SetCurrentOrganization;
 use App\Models\Organization;
 use Closure;
 use Illuminate\Http\Request;
@@ -58,11 +59,7 @@ class ResolveOrganization
             return $next($request);
         }
 
-        session(['current_organization_id' => $organization->id]);
-
-        if ($user->current_organization_id !== $organization->id) {
-            $user->updateQuietly(['current_organization_id' => $organization->id]);
-        }
+        app(SetCurrentOrganization::class)->execute($user, $organization);
 
         app()->instance(Organization::class, $organization);
 

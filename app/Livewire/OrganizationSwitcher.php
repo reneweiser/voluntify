@@ -4,9 +4,12 @@ namespace App\Livewire;
 
 use App\Actions\CreateOrganization;
 use App\Actions\LeaveOrganization;
+use App\Actions\SetCurrentOrganization;
 use App\Exceptions\DomainException;
 use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -27,7 +30,8 @@ class OrganizationSwitcher extends Component
     #[Computed]
     public function organizations(): Collection
     {
-        $user = auth()->user();
+        /** @var User $user */
+        $user = Auth::user();
         $orgIds = $user->accessibleOrganizationIds();
 
         return Organization::whereIn('id', $orgIds)->orderBy('name')->get();
@@ -49,14 +53,15 @@ class OrganizationSwitcher extends Component
         return $this->organizations->firstWhere('id', $this->leaveOrganizationId);
     }
 
-    public function switchOrganization(int $organizationId): void
+    public function switchOrganization(int $organizationId, SetCurrentOrganization $action): void
     {
         $organization = Organization::findOrFail($organizationId);
+        /** @var User $user */
+        $user = Auth::user();
 
         Gate::authorize('view', $organization);
 
-        session(['current_organization_id' => $organization->id]);
-        auth()->user()->updateQuietly(['current_organization_id' => $organization->id]);
+        $action->execute($user, $organization);
 
         $this->redirect(route('dashboard'), navigate: true);
     }
@@ -66,8 +71,11 @@ class OrganizationSwitcher extends Component
         $this->newOrgSlug = Str::slug($value);
     }
 
-    public function createOrganization(CreateOrganization $action): void
+    public function createOrganization(CreateOrganization $action, SetCurrentOrganization $setCurrentOrganization): void
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         Gate::authorize('create', Organization::class);
 
         $this->validate([
@@ -76,13 +84,12 @@ class OrganizationSwitcher extends Component
         ]);
 
         $organization = $action->execute(
-            user: auth()->user(),
+            user: $user,
             name: $this->newOrgName,
             slug: $this->newOrgSlug,
         );
 
-        session(['current_organization_id' => $organization->id]);
-        auth()->user()->updateQuietly(['current_organization_id' => $organization->id]);
+        $setCurrentOrganization->execute($user, $organization);
 
         $this->reset('showCreateModal', 'newOrgName', 'newOrgSlug');
 
@@ -99,13 +106,15 @@ class OrganizationSwitcher extends Component
     public function leaveOrganization(LeaveOrganization $action): void
     {
         $organization = $this->organizationToLeave;
+        /** @var User $user */
+        $user = Auth::user();
 
         if (! $organization) {
             return;
         }
 
         try {
-            $action->execute(auth()->user(), $organization);
+            $action->execute($user, $organization);
         } catch (DomainException $e) {
             $this->addError('leave', $e->getMessage());
 
