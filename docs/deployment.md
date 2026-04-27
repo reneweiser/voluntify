@@ -161,23 +161,24 @@ No manual image builds are needed — merging a PR to `main` is sufficient.
 Voluntify uses a single Docker image for all services. After CI pushes a new image to GHCR, update the VPS:
 
 ```bash
-# 1. Record the current image SHA (for rollback)
-docker inspect --format='{{.Config.Image}}' voluntify-app
+# 1. Deploy a specific CI-built image tag (recommended: Git commit SHA)
+./bin/deploy-prod 0123abcd4567ef89...
 
-# 2. Pull the new image
-docker compose -f docker-compose.prod.yml pull
-
-# 3. Take a DB snapshot before applying changes
-docker compose -f docker-compose.prod.yml exec mariadb \
-  mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" voluntify > backup_pre_update.sql
-
-# 4. Recreate containers (entrypoint.sh runs migrations automatically)
-docker compose -f docker-compose.prod.yml up -d
-
-# 5. Verify
+# 2. Verify
 docker compose -f docker-compose.prod.yml ps
 docker compose -f docker-compose.prod.yml logs --tail=50 app
+curl -f https://voluntify.example.com/up
 ```
+
+The deploy wrapper:
+
+- creates a pre-deploy database backup at `/opt/backups/voluntify/db/`
+- validates the gzip archive before marking it successful
+- prunes pre-deploy DB backups older than 14 days
+- pulls and recreates only `app`, `scheduler`, and `queue`
+- waits for `voluntify-app` to become healthy before returning success
+
+Run these scripts on the VPS from the Voluntify checkout. The user running them must have write access to `/opt/backups/voluntify/db`.
 
 **Note:** There is a brief downtime window while the app container restarts (FrankenPHP re-caches config and runs migrations on start). This is typically under 30 seconds.
 
@@ -186,16 +187,20 @@ docker compose -f docker-compose.prod.yml logs --tail=50 app
 If a migration fails or the new version has issues:
 
 ```bash
-# Roll back the last migration batch
-docker compose -f docker-compose.prod.yml exec app \
-  php artisan migrate:rollback --step=1
+# 1. Stop application services before restoring the database
+docker compose -f docker-compose.prod.yml stop app queue scheduler
 
-# Revert to the previous image
-IMAGE_TAG=previous-tag docker compose -f docker-compose.prod.yml up -d
+# 2. Restore the pre-deploy snapshot
+gunzip -c /opt/backups/voluntify/db/pre-deploy-20260427-153000.sql.gz | \
+  docker compose -f docker-compose.prod.yml exec -T mariadb sh -lc \
+  'exec mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"'
 
-# Or restore from DB snapshot
-docker compose -f docker-compose.prod.yml exec -T mariadb \
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" voluntify < backup_pre_update.sql
+# 3. Start the previous application image again
+IMAGE_TAG=previous-image-tag docker compose -f docker-compose.prod.yml up -d app scheduler queue
+
+# 4. Verify recovery
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs --tail=50 app
 ```
 
 ## Backups
@@ -203,9 +208,10 @@ docker compose -f docker-compose.prod.yml exec -T mariadb \
 ### Database
 
 ```bash
-docker compose -f docker-compose.prod.yml exec mariadb \
-  mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" voluntify > backup_$(date +%Y%m%d).sql
+./bin/backup-prod-db
 ```
+
+Database backups are stored on the VPS at `/opt/backups/voluntify/db/` as gzip-compressed SQL dumps named `pre-deploy-YYYYmmdd-HHMMSS.sql.gz`.
 
 ### File Storage
 
@@ -218,8 +224,8 @@ docker compose -f docker-compose.prod.yml cp app:/app/storage/app ./backup-stora
 Add to your VPS crontab (`crontab -e`):
 
 ```cron
-# Daily DB backup at 2am, keep 7 days
-0 2 * * * cd /path/to/voluntify && docker compose -f docker-compose.prod.yml exec -T mariadb mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" voluntify | gzip > /backups/voluntify/db_$(date +\%Y\%m\%d).sql.gz && find /backups/voluntify -name "db_*.sql.gz" -mtime +7 -delete
+# Daily DB backup at 2am, keep 14 days
+0 2 * * * cd /path/to/voluntify && ./bin/backup-prod-db >/dev/null
 
 # Weekly storage backup on Sunday at 3am, keep 4 weeks
 0 3 * * 0 cd /path/to/voluntify && docker compose -f docker-compose.prod.yml cp app:/app/storage/app /backups/voluntify/storage_$(date +\%Y\%m\%d)/ && find /backups/voluntify -maxdepth 1 -name "storage_*" -mtime +28 -exec rm -rf {} +
@@ -229,12 +235,15 @@ Add to your VPS crontab (`crontab -e`):
 
 ```bash
 # Database
-docker compose -f docker-compose.prod.yml exec -T mariadb \
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" voluntify < backup_20260325.sql
+gunzip -c /opt/backups/voluntify/db/pre-deploy-20260325-020000.sql.gz | \
+  docker compose -f docker-compose.prod.yml exec -T mariadb sh -lc \
+  'exec mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"'
 
 # Storage
 docker compose -f docker-compose.prod.yml cp ./backup-storage-20260325/. app:/app/storage/app/
 ```
+
+This database backup flow creates a local VPS rollback point before deploys. It does not replace storage backups or full-host disaster recovery.
 
 ## Logs and Debugging
 

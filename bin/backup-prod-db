@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+readonly COMPOSE_FILE="${REPO_ROOT}/docker-compose.prod.yml"
+readonly BACKUP_DIR="/opt/backups/voluntify/db"
+
+mkdir -p "${BACKUP_DIR}"
+
+if [[ ! -w "${BACKUP_DIR}" ]]; then
+    printf 'Backup directory is not writable: %s\n' "${BACKUP_DIR}" >&2
+    exit 1
+fi
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+readonly final_path="${BACKUP_DIR}/pre-deploy-${timestamp}.sql.gz"
+readonly temp_path="${final_path}.tmp"
+
+cleanup() {
+    rm -f "${temp_path}"
+}
+
+trap cleanup EXIT
+
+printf 'Creating database backup at %s\n' "${final_path}" >&2
+
+docker compose -f "${COMPOSE_FILE}" exec -T mariadb sh -lc '
+    exec mariadb-dump \
+        -u root \
+        -p"$MARIADB_ROOT_PASSWORD" \
+        "$MARIADB_DATABASE" \
+        --single-transaction --quick --routines --triggers
+' | gzip > "${temp_path}"
+
+if [[ ! -s "${temp_path}" ]]; then
+    printf 'Backup file is empty: %s\n' "${temp_path}" >&2
+    exit 1
+fi
+
+gzip -t "${temp_path}"
+mv "${temp_path}" "${final_path}"
+
+find "${BACKUP_DIR}" -maxdepth 1 -type f -name 'pre-deploy-*.sql.gz' -mtime +14 -delete
+
+printf '%s\n' "${final_path}"
