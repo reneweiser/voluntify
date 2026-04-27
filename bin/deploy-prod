@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+readonly COMPOSE_FILE="${REPO_ROOT}/docker-compose.prod.yml"
+readonly BACKUP_SCRIPT="${SCRIPT_DIR}/backup-prod-db"
+readonly APP_CONTAINER="voluntify-app"
+readonly HEALTH_TIMEOUT_SECONDS=120
+
+if [[ $# -ne 1 ]]; then
+    printf 'Usage: %s <image-tag>\n' "$0" >&2
+    exit 1
+fi
+
+readonly image_tag="$1"
+readonly previous_image="$(docker inspect --format='{{.Config.Image}}' "${APP_CONTAINER}" 2>/dev/null || true)"
+readonly previous_image_id="$(docker inspect --format='{{.Image}}' "${APP_CONTAINER}" 2>/dev/null || true)"
+
+backup_path="$(${BACKUP_SCRIPT})"
+
+printf 'Backup created: %s\n' "${backup_path}"
+
+IMAGE_TAG="${image_tag}" docker compose -f "${COMPOSE_FILE}" pull app scheduler queue
+IMAGE_TAG="${image_tag}" docker compose -f "${COMPOSE_FILE}" up -d app scheduler queue
+
+for ((elapsed_seconds = 0; elapsed_seconds < HEALTH_TIMEOUT_SECONDS; elapsed_seconds += 5)); do
+    health_status="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${APP_CONTAINER}" 2>/dev/null || true)"
+
+    if [[ "${health_status}" == "healthy" ]]; then
+        break
+    fi
+
+    sleep 5
+done
+
+health_status="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${APP_CONTAINER}" 2>/dev/null || true)"
+
+if [[ "${health_status}" != "healthy" ]]; then
+    printf 'App container did not become healthy within %s seconds. Current status: %s\n' "${HEALTH_TIMEOUT_SECONDS}" "${health_status:-unknown}" >&2
+    exit 1
+fi
+
+printf '\nDeployment complete for image tag: %s\n' "${image_tag}"
+
+if [[ -n "${previous_image}" ]]; then
+    printf 'Previous image: %s\n' "${previous_image}"
+
+    if [[ "${previous_image}" == *':latest' ]]; then
+        printf 'Warning: previous deployment used a mutable latest tag, so rollback should prefer the recorded image ID or a known CI tag.\n'
+    fi
+fi
+
+if [[ -n "${previous_image_id}" ]]; then
+    printf 'Previous image ID: %s\n' "${previous_image_id}"
+fi
+
+printf 'Verify:\n'
+printf '  docker compose -f %q ps\n' "${COMPOSE_FILE}"
+printf '  docker compose -f %q logs --tail=50 app\n' "${COMPOSE_FILE}"
+printf '  curl -f https://your-domain.example/up\n'
+
+printf 'Rollback:\n'
+printf '  docker compose -f %q stop app queue scheduler\n' "${COMPOSE_FILE}"
+printf '  gunzip -c %q | docker compose -f %q exec -T mariadb sh -lc %q\n' "${backup_path}" "${COMPOSE_FILE}" 'exec mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"'
+
+if [[ -n "${previous_image}" ]]; then
+    previous_tag="${previous_image##*:}"
+    printf '  IMAGE_TAG=%q docker compose -f %q up -d app scheduler queue\n' "${previous_tag}" "${COMPOSE_FILE}"
+fi
