@@ -26,6 +26,9 @@ RUN npm ci && npm run build
 # Stage 3 — Final FrankenPHP image
 FROM dunglas/frankenphp:1-php8.4-bookworm
 
+ARG APP_VERSION
+ENV APP_VERSION=${APP_VERSION}
+
 RUN install-php-extensions pcntl opcache pdo pdo_mysql intl zip gd exif ftp bcmath redis
 
 RUN echo "opcache.enable=1" > /usr/local/etc/php/conf.d/custom.ini \

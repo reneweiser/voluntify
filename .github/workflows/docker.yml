@@ -49,6 +49,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            APP_VERSION=${{ github.sha }}
           tags: |
             ghcr.io/reneweiser/voluntify:latest
             ghcr.io/reneweiser/voluntify:${{ github.sha }}

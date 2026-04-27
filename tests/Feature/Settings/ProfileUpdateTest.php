@@ -12,6 +12,29 @@ test('profile page is displayed', function () {
         ->assertOk();
 });
 
+test('profile page shows a linked running version in settings', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+
+    config()->set('app.version', 'abc1234def567890');
+
+    $this->actingAs($user)
+        ->get(route('profile.edit'))
+        ->assertOk()
+        ->assertSee('Version abc1234')
+        ->assertSeeHtml('href="https://github.com/reneweiser/voluntify/commit/abc1234def567890"');
+});
+
+test('profile page hides running version when it is missing', function () {
+    ['user' => $user, 'organization' => $org] = createUserWithOrganization();
+
+    config()->set('app.version', null);
+
+    $this->actingAs($user)
+        ->get(route('profile.edit'))
+        ->assertOk()
+        ->assertDontSee('Version');
+});
+
 test('profile information can be updated', function () {
     ['user' => $user, 'organization' => $org] = createUserWithOrganization();
     app()->instance(Organization::class, $org);
