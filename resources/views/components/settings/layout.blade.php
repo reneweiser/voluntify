@@ -13,6 +13,14 @@
             @if (auth()->user()->can('update', currentOrganization()))
                 <flux:navlist.item :href="route('settings.email')" wire:navigate>{{ __('Email') }}</flux:navlist.item>
             @endif
+            @if (filled(config('app.version')))
+                <flux:navlist.item
+                    :href="'https://github.com/reneweiser/voluntify/commit/'.config('app.version')"
+                    target="_blank"
+                >
+                    {{ __('Version') }} {{ str(config('app.version'))->limit(7, '') }}
+                </flux:navlist.item>
+            @endif
         </flux:navlist>
     </div>
 
