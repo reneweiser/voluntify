@@ -57,6 +57,22 @@ it('renders successfully with valid magic link', function () {
         ->assertSeeLivewire(VolunteerPortal::class);
 });
 
+it('renders successfully for a backfilled non-expiring magic link', function () {
+    $plainToken = 'legacy-non-expiring-token';
+
+    MagicLinkToken::create([
+        'volunteer_id' => $this->volunteer->id,
+        'token_hash' => HashedToken::fromPlaintext($plainToken)->hash,
+        'expires_at' => null,
+        'created_at' => now()->subYear(),
+        'updated_at' => now()->subYear(),
+    ]);
+
+    $this->get(route('volunteer.portal', $plainToken))
+        ->assertOk()
+        ->assertSeeLivewire(VolunteerPortal::class);
+});
+
 it('shows expired state for expired magic link', function () {
     $this->mock(VerifyMagicLink::class)
         ->shouldReceive('execute')
@@ -664,7 +680,14 @@ it('resends ticket email on button click', function () {
     Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
         ->call('resendTicketEmail');
 
-    Notification::assertSentTo($this->volunteer, TicketResendNotification::class);
+    Notification::assertSentTo($this->volunteer, TicketResendNotification::class, function ($notification) {
+        $mail = $notification->toMail($this->volunteer);
+        $body = collect([...$mail->introLines, ...$mail->outroLines])->implode(' ');
+
+        expect($body)->not->toContain('72 Stunden gültig');
+
+        return true;
+    });
 });
 
 it('rate limits resend to once per 5 minutes', function () {

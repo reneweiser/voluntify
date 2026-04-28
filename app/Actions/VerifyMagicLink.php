@@ -19,7 +19,7 @@ class VerifyMagicLink
             throw new InvalidMagicLinkException('Invalid magic link token.');
         }
 
-        if ($magicLink->expires_at->isPast()) {
+        if ($magicLink->expires_at !== null && $magicLink->expires_at->isPast()) {
             throw new InvalidMagicLinkException('This magic link has expired.');
         }
 

@@ -40,7 +40,6 @@ class PortalAccessLink extends Notification implements ShouldQueue
             ->line("Du hast einen neuen Zugangslink für **{$projectName}** angefordert.")
             ->line('Klicke auf den Button, um dein Volunteer-Portal zu öffnen.')
             ->action('Portal öffnen', $portalUrl)
-            ->line('Dieser Link ist 72 Stunden gültig.')
             ->line('Falls du keinen Zugangslink angefordert hast, kannst du diese E-Mail ignorieren.');
 
         return $this->applyOrgMailer($mail, $this->project->organization, $this->project);

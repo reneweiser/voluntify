@@ -8,7 +8,7 @@ use App\ValueObjects\HashedToken;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\MagicLinkToken>
+ * @extends Factory<MagicLinkToken>
  */
 class MagicLinkTokenFactory extends Factory
 {
@@ -19,7 +19,21 @@ class MagicLinkTokenFactory extends Factory
         return [
             'volunteer_id' => Volunteer::factory(),
             'token_hash' => HashedToken::fromPlaintext(fake()->sha256())->hash,
-            'expires_at' => now()->addHours(24),
+            'expires_at' => null,
         ];
+    }
+
+    public function expiring(): static
+    {
+        return $this->state(fn () => [
+            'expires_at' => now()->addHours(24),
+        ]);
+    }
+
+    public function expired(): static
+    {
+        return $this->state(fn () => [
+            'expires_at' => now()->subHour(),
+        ]);
     }
 }

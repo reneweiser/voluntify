@@ -1,9 +1,9 @@
 ---
 pipeline_status: in_progress
 current_stage: complete
-current_focus: "M18 complete — all stages done, security audit passed"
-current_milestone: m18-signup-custom-fields
-entry_point: plan
+current_focus: "M19 complete — issue #185 implemented and fully tested"
+current_milestone: m19-non-expiring-magic-links
+entry_point: implement
 stages_to_run:
   - plan
   - implement
@@ -14,7 +14,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-09T12:00:00"
+last_updated: "2026-04-28T15:50:40+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -35,6 +35,7 @@ last_updated: "2026-04-09T12:00:00"
 | m16-bugfixes | Bug Fixes | #132 scanner modes, #133 gear-only shifts, #138 VA arrival button, #141 dropdown placeholder, #142 portal cancel errors | m15 | complete |
 | m17-reliability-quick-wins | Reliability & Quick Wins | #112 immed. cancel notify, #113 retry strategy, #114 idempotency, #122 tz picker, #135 gear counter, #136 camera pause, #140 signup nav, #143 deletion guard | m16 | complete |
 | m18-signup-custom-fields | Signup & Custom Fields Rework | #139 checkbox options + single/multi choice, #134 signup step rework | m17 | complete |
+| m19-non-expiring-magic-links | Non-Expiring Volunteer Magic Links | #185 make volunteer portal/ticket magic links non-expiring | m15, m17 | complete |
 
 ## Artifacts
 
@@ -52,6 +53,7 @@ last_updated: "2026-04-09T12:00:00"
 
 | `.tall-pipeline/m17-reliability-quick-wins.md` | plan+impl | m17 | M17 plan + implementation tracking | complete |
 | `.tall-pipeline/m18-signup-custom-fields.md` | all | m18 | M18 plan+implement+test+security: custom field enhancements + signup step rework | complete |
+| `.tall-pipeline/m19-non-expiring-magic-links.md` | plan+implement+test | m19 | Issue #185 plan + implementation tracking for volunteer magic link expiry removal | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

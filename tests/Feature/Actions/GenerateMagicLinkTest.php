@@ -28,13 +28,10 @@ it('hashes the token with SHA-256', function () {
     expect($result['token']->token_hash)->toBe($hashedToken->hash);
 });
 
-it('sets expiry to 72 hours', function () {
-    $this->freezeSecond();
-
+it('creates a non-expiring magic link token', function () {
     $result = $this->action->execute($this->volunteer);
 
-    expect($result['token']->fresh()->expires_at->toDateTimeString())
-        ->toBe(now()->addHours(72)->toDateTimeString());
+    expect($result['token']->fresh()->expires_at)->toBeNull();
 });
 
 it('returns the plain token for email URL', function () {

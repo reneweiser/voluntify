@@ -42,8 +42,7 @@ class TicketResendNotification extends Notification implements ShouldQueue
             ->line('Klicke auf den Button, um dein Ticket mit QR-Code anzuzeigen.')
             ->action('Ticket anzeigen', $ticketUrl)
             ->line('Du kannst auch dein Volunteer-Portal über folgenden Link erreichen:')
-            ->line("[Portal öffnen]({$portalUrl})")
-            ->line('Dieser Link ist 72 Stunden gültig.');
+            ->line("[Portal öffnen]({$portalUrl})");
 
         return $this->applyOrgMailer($mail, $this->project->organization, $this->project);
     }
