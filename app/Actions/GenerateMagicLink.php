@@ -22,7 +22,7 @@ class GenerateMagicLink
         $token = MagicLinkToken::create([
             'volunteer_id' => $volunteer->id,
             'token_hash' => $hashed->hash,
-            'expires_at' => now()->addHours(72),
+            'expires_at' => null,
         ]);
 
         return [

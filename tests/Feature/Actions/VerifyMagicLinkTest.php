@@ -13,11 +13,23 @@ beforeEach(function () {
     $this->magicLink = MagicLinkToken::factory()->create([
         'volunteer_id' => $this->volunteer->id,
         'token_hash' => HashedToken::fromPlaintext($this->plainToken)->hash,
-        'expires_at' => now()->addHours(24),
+        'expires_at' => null,
     ]);
 });
 
 it('returns volunteer for valid token', function () {
+    $volunteer = $this->action->execute($this->plainToken);
+
+    expect($volunteer->id)->toBe($this->volunteer->id);
+});
+
+it('returns volunteer for a backfilled non-expiring token', function () {
+    $this->magicLink->forceFill([
+        'created_at' => now()->subMonths(6),
+        'updated_at' => now()->subMonths(6),
+        'expires_at' => null,
+    ])->save();
+
     $volunteer = $this->action->execute($this->plainToken);
 
     expect($volunteer->id)->toBe($this->volunteer->id);

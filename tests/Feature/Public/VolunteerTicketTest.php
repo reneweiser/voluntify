@@ -26,7 +26,7 @@ beforeEach(function () {
     $this->magicLink = MagicLinkToken::factory()->create([
         'volunteer_id' => $this->volunteer->id,
         'token_hash' => HashedToken::fromPlaintext($this->plainToken)->hash,
-        'expires_at' => now()->addHours(24),
+        'expires_at' => null,
     ]);
 
     $this->job = VolunteerJob::factory()->for($this->event)->create(['name' => 'Gate Security']);
@@ -38,6 +38,18 @@ beforeEach(function () {
 });
 
 it('renders for valid magic link', function () {
+    $this->get(route('volunteer.ticket', $this->plainToken))
+        ->assertOk()
+        ->assertSeeLivewire(VolunteerTicket::class);
+});
+
+it('renders for a backfilled non-expiring magic link', function () {
+    $this->magicLink->forceFill([
+        'created_at' => now()->subYear(),
+        'updated_at' => now()->subYear(),
+        'expires_at' => null,
+    ])->save();
+
     $this->get(route('volunteer.ticket', $this->plainToken))
         ->assertOk()
         ->assertSeeLivewire(VolunteerTicket::class);
