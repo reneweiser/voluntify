@@ -186,7 +186,33 @@ it('sends announcement immediately', function () {
         ->call('send')
         ->assertDispatched('announcement-sent');
 
-    expect(Announcement::count())->toBe(1);
+    expect(Announcement::count())->toBe(1)
+        ->and(Announcement::query()->sole()->is_project_wide)->toBeTrue();
+
+    Queue::assertPushed(SendAnnouncementJob::class);
+});
+
+it('stores targeted announcements as not project-wide', function () {
+    Queue::fake();
+
+    $event = Event::factory()->for($this->org)->for($this->project)->published()->create();
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+
+    Livewire::actingAs($this->organizer)
+        ->test(AnnouncementComposer::class, ['projectId' => $this->project->id])
+        ->set('selectedEventId', (string) $event->id)
+        ->set('selectedJobId', (string) $job->id)
+        ->set('selectedShiftId', (string) $shift->id)
+        ->set('subject', 'Shift-only announcement')
+        ->set('body', 'Bring safety shoes.')
+        ->call('confirmSend')
+        ->call('send')
+        ->assertDispatched('announcement-sent');
+
+    expect(Announcement::count())->toBe(1)
+        ->and(Announcement::query()->sole()->is_project_wide)->toBeFalse();
+
     Queue::assertPushed(SendAnnouncementJob::class);
 });
 

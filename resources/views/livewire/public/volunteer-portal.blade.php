@@ -210,7 +210,10 @@
                             <div class="font-medium text-white">{{ $announcement->subject }}</div>
                             <p class="mt-2 text-sm" style="color: #a1a1aa;">{{ $announcement->body }}</p>
                             <div class="mt-2 text-xs" style="color: #9a9a9a;">
-                                {{ $announcement->event->name }} &middot; {{ $announcement->sent_at->diffForHumans() }}
+                                @if ($announcement->event)
+                                    {{ $announcement->event->name }} &middot;
+                                @endif
+                                {{ $announcement->sent_at->diffForHumans() }}
                             </div>
                         </div>
                     @endforeach

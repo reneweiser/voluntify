@@ -24,6 +24,7 @@ use App\Models\VolunteerGearPickup;
 use App\Models\VolunteerJob;
 use App\Notifications\TicketResendNotification;
 use App\ValueObjects\HashedToken;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
@@ -45,6 +46,8 @@ beforeEach(function () {
     ]);
     $this->volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Test', 'last_name' => 'Volunteer']);
 });
+
+afterEach(fn () => Carbon::setTestNow());
 
 it('renders successfully with valid magic link', function () {
     $this->mock(VerifyMagicLink::class)
@@ -341,6 +344,167 @@ it('shows announcements for volunteers events', function () {
     Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
         ->assertSee('Important Parking Update')
         ->assertSee('Parking has moved to lot B.');
+});
+
+it('shows project-wide announcements without signups and renders timestamp-only metadata', function () {
+    Carbon::setTestNow('2026-04-28 18:14:49');
+
+    Announcement::factory()->create([
+        'project_id' => $this->project->id,
+        'subject' => 'General Update',
+        'body' => 'Please check your email before arrival.',
+        'sent_at' => now()->subHour(),
+        'created_by' => User::factory(),
+        'is_project_wide' => true,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('General Update')
+        ->assertSee('Please check your email before arrival.')
+        ->assertSee(now()->subHour()->diffForHumans())
+        ->assertDontSee($this->event->name);
+});
+
+it('shows announcements targeted to a volunteers matching event job and shift', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    Announcement::factory()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+        'job_id' => $this->job->id,
+        'shift_id' => $this->futureShift->id,
+        'subject' => 'Matched Shift Update',
+        'body' => 'Bring work gloves.',
+        'sent_at' => now(),
+        'created_by' => User::factory(),
+        'is_project_wide' => false,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertSee('Matched Shift Update')
+        ->assertSee('Bring work gloves.');
+});
+
+it('hides announcements targeted to a different event', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    $otherEvent = Event::factory()->for($this->org)->for($this->project)->published()->create();
+
+    Announcement::factory()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $otherEvent->id,
+        'subject' => 'Other Event Update',
+        'body' => 'Wrong audience.',
+        'sent_at' => now(),
+        'created_by' => User::factory(),
+        'is_project_wide' => false,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('Other Event Update')
+        ->assertDontSee('Wrong audience.');
+});
+
+it('hides announcements targeted to a different job within the same event', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    $otherJob = VolunteerJob::factory()->for($this->event)->create(['name' => 'Cleanup Crew']);
+
+    Announcement::factory()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+        'job_id' => $otherJob->id,
+        'subject' => 'Cleanup Update',
+        'body' => 'Only for cleanup crew.',
+        'sent_at' => now(),
+        'created_by' => User::factory(),
+        'is_project_wide' => false,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('Cleanup Update')
+        ->assertDontSee('Only for cleanup crew.');
+});
+
+it('hides announcements targeted to a different shift within the same event and job', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    $otherShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'starts_at' => now()->addDays(5),
+        'ends_at' => now()->addDays(5)->addHours(2),
+    ]);
+
+    Announcement::factory()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+        'job_id' => $this->job->id,
+        'shift_id' => $otherShift->id,
+        'subject' => 'Other Shift Update',
+        'body' => 'Only for another shift.',
+        'sent_at' => now(),
+        'created_by' => User::factory(),
+        'is_project_wide' => false,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('Other Shift Update')
+        ->assertDontSee('Only for another shift.');
+});
+
+it('hides orphaned targeted announcements after their target ids are nulled', function () {
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $this->volunteer->id,
+        'shift_id' => $this->futureShift->id,
+    ]);
+
+    Announcement::factory()->create([
+        'project_id' => $this->project->id,
+        'subject' => 'Formerly Targeted Update',
+        'body' => 'This should stay hidden.',
+        'sent_at' => now(),
+        'created_by' => User::factory(),
+        'is_project_wide' => false,
+    ]);
+
+    $this->mock(VerifyMagicLink::class)
+        ->shouldReceive('execute')
+        ->andReturn($this->volunteer);
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
+        ->assertDontSee('Formerly Targeted Update')
+        ->assertDontSee('This should stay hidden.');
 });
 
 it('shows empty states when no upcoming shifts and no announcements', function () {
