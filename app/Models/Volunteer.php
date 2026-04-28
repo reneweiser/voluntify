@@ -114,6 +114,47 @@ class Volunteer extends Model
         $query->where('project_id', $projectId);
     }
 
+    public function scopeForAnnouncementRecipients(
+        Builder $query,
+        int $projectId,
+        ?int $eventId = null,
+        ?int $jobId = null,
+        ?int $shiftId = null,
+    ): void {
+        $query
+            ->forProject($projectId)
+            ->where(function (Builder $verificationQuery) {
+                $verificationQuery
+                    ->whereNotNull('email_verified_at')
+                    ->orWhereExists(function ($tokenQuery) {
+                        $tokenQuery->selectRaw('1')
+                            ->from('email_verification_tokens')
+                            ->whereColumn('email_verification_tokens.project_id', 'volunteers.project_id')
+                            ->whereColumn('email_verification_tokens.email', 'volunteers.email')
+                            ->whereNotNull('email_verification_tokens.verified_at');
+                    });
+            });
+
+        if ($eventId === null) {
+            return;
+        }
+
+        $query->whereHas('shiftSignups', function (Builder $signupQuery) use ($eventId, $jobId, $shiftId) {
+            $signupQuery->active()
+                ->whereHas('shift.volunteerJob', function (Builder $jobQuery) use ($eventId, $jobId) {
+                    $jobQuery->where('event_id', $eventId);
+
+                    if ($jobId !== null) {
+                        $jobQuery->where('id', $jobId);
+                    }
+                });
+
+            if ($shiftId !== null) {
+                $signupQuery->where('shift_id', $shiftId);
+            }
+        });
+    }
+
     public function scopeForEvent(Builder $query, int $eventId): void
     {
         $query->where(function (Builder $q) use ($eventId) {

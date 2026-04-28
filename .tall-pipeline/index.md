@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: complete
-current_focus: "M19 complete — issue #185 implemented and fully tested"
-current_milestone: m19-non-expiring-magic-links
+current_focus: "Issue #175 complete — announcement recipients now honor verified token history and all tests are green"
+current_milestone: issue-175-announcement-recipient-resilience
 entry_point: implement
 stages_to_run:
   - plan
@@ -14,7 +14,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-28T15:50:40+02:00"
+last_updated: "2026-04-28T16:46:00+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -36,6 +36,7 @@ last_updated: "2026-04-28T15:50:40+02:00"
 | m17-reliability-quick-wins | Reliability & Quick Wins | #112 immed. cancel notify, #113 retry strategy, #114 idempotency, #122 tz picker, #135 gear counter, #136 camera pause, #140 signup nav, #143 deletion guard | m16 | complete |
 | m18-signup-custom-fields | Signup & Custom Fields Rework | #139 checkbox options + single/multi choice, #134 signup step rework | m17 | complete |
 | m19-non-expiring-magic-links | Non-Expiring Volunteer Magic Links | #185 make volunteer portal/ticket magic links non-expiring | m15, m17 | complete |
+| issue-175-announcement-recipient-resilience | Announcement Recipient Resilience | #175 token-backed verified recipient resolution for announcements | m13, m18, m19 | complete |
 
 ## Artifacts
 
@@ -54,6 +55,7 @@ last_updated: "2026-04-28T15:50:40+02:00"
 | `.tall-pipeline/m17-reliability-quick-wins.md` | plan+impl | m17 | M17 plan + implementation tracking | complete |
 | `.tall-pipeline/m18-signup-custom-fields.md` | all | m18 | M18 plan+implement+test+security: custom field enhancements + signup step rework | complete |
 | `.tall-pipeline/m19-non-expiring-magic-links.md` | plan+implement+test | m19 | Issue #185 plan + implementation tracking for volunteer magic link expiry removal | complete |
+| `.tall-pipeline/issue-175-announcement-recipient-resilience.md` | plan+implement+test | issue-175 | Issue #175 plan + implementation tracking for resilient announcement recipients | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

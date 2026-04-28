@@ -15,26 +15,14 @@ class SendAnnouncement
             return;
         }
 
-        $query = Volunteer::where('project_id', $announcement->project_id)
-            ->whereNotNull('email_verified_at');
-
-        if ($announcement->event_id) {
-            $query->whereHas('shiftSignups', function ($q) use ($announcement) {
-                $q->active()->whereHas('shift.volunteerJob', function ($jq) use ($announcement) {
-                    $jq->where('event_id', $announcement->event_id);
-
-                    if ($announcement->job_id) {
-                        $jq->where('id', $announcement->job_id);
-                    }
-                });
-
-                if ($announcement->shift_id) {
-                    $q->where('shift_id', $announcement->shift_id);
-                }
-            });
-        }
-
-        $volunteers = $query->get();
+        $volunteers = Volunteer::query()
+            ->forAnnouncementRecipients(
+                projectId: $announcement->project_id,
+                eventId: $announcement->event_id,
+                jobId: $announcement->job_id,
+                shiftId: $announcement->shift_id,
+            )
+            ->get();
 
         foreach ($volunteers as $volunteer) {
             $volunteer->notify(new AnnouncementNotification($announcement));
