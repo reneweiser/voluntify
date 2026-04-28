@@ -178,10 +178,29 @@ class VolunteerPortal extends Component
             return new Collection;
         }
 
-        $eventIds = $this->volunteerEventIds();
+        $activeSignups = $this->activeVolunteerSignups();
+
+        $eventIds = array_values(array_unique($activeSignups->pluck('shift.volunteerJob.event_id')->filter()->all()));
+        $jobIds = array_values(array_unique($activeSignups->pluck('shift.volunteerJob.id')->filter()->all()));
+        $shiftIds = array_values(array_unique($activeSignups->pluck('shift_id')->filter()->all()));
 
         return Announcement::where('project_id', $this->volunteer->project_id)
             ->whereNotNull('sent_at')
+            ->where(function ($query) use ($eventIds, $jobIds, $shiftIds) {
+                $query->where('is_project_wide', true)
+                    ->orWhere(function ($targetedQuery) use ($eventIds, $jobIds, $shiftIds) {
+                        $targetedQuery->where('is_project_wide', false)
+                            ->whereIn('event_id', $eventIds)
+                            ->where(function ($jobQuery) use ($jobIds) {
+                                $jobQuery->whereNull('job_id')
+                                    ->orWhereIn('job_id', $jobIds);
+                            })
+                            ->where(function ($shiftQuery) use ($shiftIds) {
+                                $shiftQuery->whereNull('shift_id')
+                                    ->orWhereIn('shift_id', $shiftIds);
+                            });
+                    });
+            })
             ->with('event')
             ->latest('sent_at')
             ->get();
@@ -208,15 +227,26 @@ class VolunteerPortal extends Component
         return app(HintTextResolver::class)->resolve($location, $this->volunteer->project);
     }
 
-    /** @return \Illuminate\Support\Collection<int, int> */
-    private function volunteerEventIds(): \Illuminate\Support\Collection
+    private function activeVolunteerSignups(): Collection
     {
+        if (! $this->volunteer) {
+            return new Collection;
+        }
+
         return $this->volunteer->shiftSignups()
             ->active()
             ->with('shift.volunteerJob')
-            ->get()
+            ->get();
+    }
+
+    /** @return \Illuminate\Support\Collection<int, int> */
+    private function volunteerEventIds(): \Illuminate\Support\Collection
+    {
+        return $this->activeVolunteerSignups()
             ->pluck('shift.volunteerJob.event_id')
-            ->unique();
+            ->filter()
+            ->unique()
+            ->values();
     }
 
     public function confirmCancel(int $signupId): void

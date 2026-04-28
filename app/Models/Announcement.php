@@ -17,6 +17,7 @@ class Announcement extends Model
         'event_id',
         'job_id',
         'shift_id',
+        'is_project_wide',
         'subject',
         'body',
         'send_at',
@@ -28,10 +29,24 @@ class Announcement extends Model
     protected function casts(): array
     {
         return [
+            'is_project_wide' => 'boolean',
             'send_at' => 'datetime',
             'sent_at' => 'datetime',
             'recipient_count' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Announcement $announcement): void {
+            if ($announcement->is_project_wide !== null) {
+                return;
+            }
+
+            $announcement->is_project_wide = $announcement->event_id === null
+                && $announcement->job_id === null
+                && $announcement->shift_id === null;
+        });
     }
 
     public function project(): BelongsTo
