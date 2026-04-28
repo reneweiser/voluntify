@@ -2,6 +2,7 @@
 
 use App\Actions\SendAnnouncement;
 use App\Models\Announcement;
+use App\Models\EmailVerificationToken;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
@@ -11,7 +12,9 @@ use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use App\Notifications\AnnouncementNotification;
+use App\ValueObjects\HashedToken;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Notification::fake();
@@ -105,6 +108,78 @@ it('filters by event + job + shift', function () {
 
     Notification::assertSentTo($included, AnnouncementNotification::class);
     Notification::assertNotSentTo($excluded, AnnouncementNotification::class);
+});
+
+it('sends to token-backed eligible volunteers with active matching signups', function () {
+    $event = Event::factory()->for($this->org)->for($this->project)->published()->create();
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+
+    $eligibleVolunteer = Volunteer::factory()->for($this->project)->create([
+        'email' => 'token-backed@example.com',
+        'email_verified_at' => null,
+    ]);
+    ShiftSignup::factory()->for($eligibleVolunteer)->for($shift)->create();
+
+    EmailVerificationToken::factory()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $event->id,
+        'email' => $eligibleVolunteer->email,
+        'token_hash' => HashedToken::fromPlaintext(Str::random(64))->hash,
+        'expires_at' => now()->addDay(),
+        'verified_at' => now()->subMinute(),
+    ]);
+
+    $excludedVolunteer = Volunteer::factory()->for($this->project)->create([
+        'email' => 'still-unverified@example.com',
+        'email_verified_at' => null,
+    ]);
+    ShiftSignup::factory()->for($excludedVolunteer)->for($shift)->create();
+
+    $announcement = Announcement::factory()->for($this->project)->create([
+        'event_id' => $event->id,
+        'job_id' => $job->id,
+        'shift_id' => $shift->id,
+        'created_by' => $this->creator->id,
+    ]);
+
+    $this->action->execute($announcement);
+
+    Notification::assertSentTo($eligibleVolunteer, AnnouncementNotification::class);
+    Notification::assertNotSentTo($excludedVolunteer, AnnouncementNotification::class);
+    expect($announcement->fresh()->recipient_count)->toBe(1);
+});
+
+it('sends to token-backed volunteers only once when multiple verified tokens exist', function () {
+    $event = Event::factory()->for($this->org)->for($this->project)->published()->create();
+    $job = VolunteerJob::factory()->for($event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->create();
+
+    $eligibleVolunteer = Volunteer::factory()->for($this->project)->create([
+        'email' => 'duplicate-token@example.com',
+        'email_verified_at' => null,
+    ]);
+    ShiftSignup::factory()->for($eligibleVolunteer)->for($shift)->create();
+
+    EmailVerificationToken::factory()->count(2)->create([
+        'project_id' => $this->project->id,
+        'event_id' => $event->id,
+        'email' => $eligibleVolunteer->email,
+        'expires_at' => now()->addDay(),
+        'verified_at' => now()->subMinute(),
+    ]);
+
+    $announcement = Announcement::factory()->for($this->project)->create([
+        'event_id' => $event->id,
+        'job_id' => $job->id,
+        'shift_id' => $shift->id,
+        'created_by' => $this->creator->id,
+    ]);
+
+    $this->action->execute($announcement);
+
+    Notification::assertSentToTimes($eligibleVolunteer, AnnouncementNotification::class, 1);
+    expect($announcement->fresh()->recipient_count)->toBe(1);
 });
 
 it('skips unverified volunteers', function () {

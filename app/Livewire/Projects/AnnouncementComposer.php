@@ -81,26 +81,14 @@ class AnnouncementComposer extends Component
     #[Computed]
     public function recipientCount(): int
     {
-        $query = Volunteer::where('project_id', $this->project->id)
-            ->whereNotNull('email_verified_at');
-
-        if ($this->selectedEventId) {
-            $query->whereHas('shiftSignups', function ($q) {
-                $q->active()->whereHas('shift.volunteerJob', function ($jq) {
-                    $jq->where('event_id', (int) $this->selectedEventId);
-
-                    if ($this->selectedJobId) {
-                        $jq->where('id', (int) $this->selectedJobId);
-                    }
-                });
-
-                if ($this->selectedShiftId) {
-                    $q->where('shift_id', (int) $this->selectedShiftId);
-                }
-            });
-        }
-
-        return $query->count();
+        return Volunteer::query()
+            ->forAnnouncementRecipients(
+                projectId: $this->project->id,
+                eventId: $this->selectedEventId !== '' ? (int) $this->selectedEventId : null,
+                jobId: $this->selectedJobId !== '' ? (int) $this->selectedJobId : null,
+                shiftId: $this->selectedShiftId !== '' ? (int) $this->selectedShiftId : null,
+            )
+            ->count();
     }
 
     #[Computed]
