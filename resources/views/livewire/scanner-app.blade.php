@@ -45,7 +45,7 @@
                     aria-controls="tabpanel-scanner"
                     class="min-h-12 flex-1 px-4 py-3 text-sm font-medium transition-colors"
                     :class="activeTab === 'scanner' ? 'text-white border-b-2 border-emerald-500' : 'text-zinc-400 hover:text-zinc-200'"
-                    @click="activeTab = 'scanner'"
+                    @click="setActiveTab('scanner')"
                 >
                     Scanner
                 </button>
@@ -57,7 +57,7 @@
                     aria-controls="tabpanel-volunteers"
                     class="min-h-12 flex-1 px-4 py-3 text-sm font-medium transition-colors"
                     :class="activeTab === 'volunteers' ? 'text-white border-b-2 border-emerald-500' : 'text-zinc-400 hover:text-zinc-200'"
-                    @click="activeTab = 'volunteers'"
+                    @click="setActiveTab('volunteers')"
                 >
                     Volunteers
                 </button>
@@ -69,7 +69,7 @@
                     aria-controls="tabpanel-guests"
                     class="min-h-12 flex-1 px-4 py-3 text-sm font-medium transition-colors"
                     :class="activeTab === 'guests' ? 'text-white border-b-2 border-emerald-500' : 'text-zinc-400 hover:text-zinc-200'"
-                    @click="activeTab = 'guests'"
+                    @click="setActiveTab('guests')"
                 >
                     Gastliste
                 </button>
@@ -240,8 +240,37 @@
                 </div>
             </div>
         @else
+            @if (in_array('checkin', $modes))
+                <div role="tablist" class="mb-4 flex border-b border-zinc-700">
+                    <button
+                        type="button"
+                        role="tab"
+                        id="tab-va-scanner"
+                        :aria-selected="activeTab === 'scanner'"
+                        aria-controls="tabpanel-va-scanner"
+                        class="min-h-12 flex-1 px-4 py-3 text-sm font-medium transition-colors"
+                        :class="activeTab === 'scanner' ? 'text-white border-b-2 border-emerald-500' : 'text-zinc-400 hover:text-zinc-200'"
+                        @click="setActiveTab('scanner')"
+                    >
+                        Scanner
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        id="tab-shifts"
+                        :aria-selected="activeTab === 'shifts'"
+                        aria-controls="tabpanel-shifts"
+                        class="min-h-12 flex-1 px-4 py-3 text-sm font-medium transition-colors"
+                        :class="activeTab === 'shifts' ? 'text-white border-b-2 border-emerald-500' : 'text-zinc-400 hover:text-zinc-200'"
+                        @click="setActiveTab('shifts')"
+                    >
+                        Schichtliste
+                    </button>
+                </div>
+            @endif
+
             {{-- Volunteer Admin: QR viewfinder + volunteer panel + gear pickup --}}
-            <div class="flex flex-1 flex-col items-center space-y-4">
+            <div id="tabpanel-va-scanner" role="tabpanel" aria-labelledby="tab-va-scanner" x-show="activeTab === 'scanner'" x-cloak class="flex flex-1 flex-col items-center space-y-4">
                 <div id="scanner-viewfinder" class="relative aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black" @click="cameraPaused && resumeCamera()">
                     <video id="scanner-video" class="h-full w-full object-cover" aria-label="{{ __('QR code camera viewfinder') }}" playsinline></video>
                     <div
@@ -296,8 +325,8 @@
                             <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
                                 <h3 class="mb-3 text-sm font-semibold text-zinc-300">{{ __('Shifts') }}</h3>
                                 <div class="space-y-2">
-                                    <template x-for="signup in selectedVolunteer.shift_signups" :key="signup.id">
-                                        <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3">
+                                    <template x-for="signup in selectedVolunteerShiftSignups" :key="signup.id">
+                                        <div class="flex min-h-12 items-center justify-between rounded-lg bg-zinc-900 px-4 py-3" :class="isSelectedShiftSignup(signup.id) ? 'ring-1 ring-emerald-500/60' : ''">
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-medium text-white" x-text="signup.shift.volunteer_job.name"></p>
                                                 <p class="text-xs text-zinc-400" x-text="signup.shift.display_text"></p>
@@ -371,6 +400,96 @@
                     </button>
                 </div>
             </div>
+
+            @if (in_array('checkin', $modes))
+                <div id="tabpanel-shifts" role="tabpanel" aria-labelledby="tab-shifts" x-show="activeTab === 'shifts'" x-cloak class="flex flex-1 flex-col space-y-4">
+                    <div class="space-y-3 px-1">
+                        <input
+                            type="text"
+                            x-model.debounce.300ms="shiftSearchQuery"
+                            placeholder="{{ __('Search shifts or volunteers...') }}"
+                            aria-label="{{ __('Search volunteers in shift list') }}"
+                            class="min-h-12 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-base text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+
+                        <button
+                            type="button"
+                            class="min-h-12 w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-medium text-white hover:bg-blue-500 active:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            @click="jumpToNextShift()"
+                            :disabled="nextUpcomingShiftGroupId === null"
+                        >
+                            Jetzt
+                        </button>
+
+                        <template x-if="scannerDataSource === 'cache'">
+                            <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                                Offline - showing cached shift data.
+                            </div>
+                        </template>
+
+                        <template x-if="shiftListNotice">
+                            <div class="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-300" x-text="shiftListNotice"></div>
+                        </template>
+                    </div>
+
+                    <div class="space-y-3 overflow-y-auto px-1">
+                        <template x-if="scannerDataSource === 'unavailable'">
+                            <p class="py-8 text-center text-sm text-zinc-500">Shift data is unavailable right now.</p>
+                        </template>
+
+                        <template x-if="scannerDataSource !== 'unavailable' && shouldShowShiftSearchHint">
+                            <p class="py-8 text-center text-sm text-zinc-500">Mindestens 2 Zeichen eingeben.</p>
+                        </template>
+
+                        <template x-if="scannerDataSource !== 'unavailable' && !shouldShowShiftSearchHint && filteredShiftGroups.length === 0 && shiftSearchQuery.trim().length === 0">
+                            <p class="py-8 text-center text-sm text-zinc-500">No active or upcoming shifts.</p>
+                        </template>
+
+                        <template x-if="scannerDataSource !== 'unavailable' && !shouldShowShiftSearchHint && filteredShiftGroups.length === 0 && shiftSearchQuery.trim().length >= 2">
+                            <p class="py-8 text-center text-sm text-zinc-500">No matching volunteers found.</p>
+                        </template>
+
+                        <template x-for="group in filteredShiftGroups" :key="group.shiftId">
+                            <div :id="`shift-group-${group.shiftId}`" class="rounded-xl border border-zinc-700 bg-zinc-800 p-3">
+                                <div class="mb-3 flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-white" x-text="group.jobName"></p>
+                                        <p class="text-xs text-zinc-400" x-text="group.displayText"></p>
+                                    </div>
+                                    <template x-if="shiftGroupBadgeLabel(group)">
+                                        <span class="rounded-full px-3 py-1 text-xs font-medium" :class="group.groupStatus === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'" x-text="shiftGroupBadgeLabel(group)"></span>
+                                    </template>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <template x-for="row in group.volunteers" :key="`${row.signupId}-${row.volunteerId}`">
+                                        <button
+                                            type="button"
+                                            class="flex min-h-12 w-full items-center justify-between rounded-lg bg-zinc-900 px-4 py-3 text-left transition hover:bg-zinc-950"
+                                            @click="selectVolunteerFromShift(row)"
+                                        >
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-medium text-white" x-text="row.name"></p>
+                                                <p class="text-xs text-zinc-400" x-text="row.email"></p>
+                                            </div>
+                                            <span
+                                                class="ml-3 shrink-0 rounded-full px-3 py-1 text-xs font-medium"
+                                                :class="{
+                                                    'bg-emerald-500/20 text-emerald-300': row.status === 'attended',
+                                                    'bg-amber-500/20 text-amber-300': row.status === 'active',
+                                                    'bg-zinc-700 text-zinc-200': row.status === 'upcoming',
+                                                    'bg-red-500/20 text-red-300': row.status === 'missed'
+                                                }"
+                                                x-text="shiftStatusLabel(row.status)"
+                                            ></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            @endif
         @endif
     </main>
 </div>

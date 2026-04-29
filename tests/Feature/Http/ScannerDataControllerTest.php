@@ -5,10 +5,13 @@ use App\Models\Event;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\ProjectScanner;
+use App\Models\Shift;
+use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use App\Models\VolunteerGearPickup;
+use App\Models\VolunteerJob;
 use Carbon\Carbon;
 
 beforeEach(function () {
@@ -105,6 +108,70 @@ it('includes attendance_states in data response', function () {
     $response->assertOk()
         ->assertJsonStructure(['attendance_states'])
         ->assertJsonCount(5, 'attendance_states');
+});
+
+it('returns volunteer shift payload fields required for volunteer admin shift list', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
+        'project_id' => $this->project->id,
+        'event_id' => $this->event->id,
+    ]);
+
+    $volunteer = Volunteer::factory()->create([
+        'project_id' => $this->project->id,
+        'first_name' => 'Lisa',
+        'last_name' => 'Mueller',
+        'email' => 'lisa@example.com',
+        'phone' => '+4911111111',
+    ]);
+
+    Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $job = VolunteerJob::factory()->create([
+        'event_id' => $this->event->id,
+        'name' => 'Stage Setup',
+    ]);
+
+    $shift = Shift::factory()->create([
+        'volunteer_job_id' => $job->id,
+        'shift_date' => '2026-07-01',
+        'starts_at' => Carbon::parse('2026-07-01 13:00:00'),
+        'ends_at' => Carbon::parse('2026-07-01 17:00:00'),
+        'display_text' => 'Jul 01, 13:00 - 17:00',
+    ]);
+
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $shift->id,
+    ]);
+
+    $this->postJson(route('scanner-api.attendance', $scanner->id), [
+        'shift_signup_id' => $signup->id,
+        'status' => 'on_time',
+        'scanned_at' => now()->toISOString(),
+    ], [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ])->assertOk();
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('volunteers.0.id', $volunteer->id)
+        ->assertJsonPath('volunteers.0.first_name', 'Lisa')
+        ->assertJsonPath('volunteers.0.last_name', 'Mueller')
+        ->assertJsonPath('volunteers.0.email', 'lisa@example.com')
+        ->assertJsonPath('volunteers.0.phone', '+4911111111')
+        ->assertJsonPath('volunteers.0.shift_signups.0.id', $signup->id)
+        ->assertJsonPath('volunteers.0.shift_signups.0.shift.id', $shift->id)
+        ->assertJsonPath('volunteers.0.shift_signups.0.shift.starts_at', Carbon::parse('2026-07-01 13:00:00')->toJSON())
+        ->assertJsonPath('volunteers.0.shift_signups.0.shift.ends_at', Carbon::parse('2026-07-01 17:00:00')->toJSON())
+        ->assertJsonPath('volunteers.0.shift_signups.0.shift.display_text', 'Jul 01, 13:00 - 17:00')
+        ->assertJsonPath('volunteers.0.shift_signups.0.shift.volunteer_job.name', 'Stage Setup')
+        ->assertJsonPath('volunteers.0.shift_signups.0.attendance_record.status', 'on_time');
 });
 
 it('returns default states for projects with null attendance_states', function () {

@@ -19,15 +19,33 @@ import {
     getKeys,
     getVolunteers,
     getGuestEntries,
+    getAttendanceRecords,
     addOutboxEntry,
     getOutboxCount,
 } from './idb-store';
 import { validateJwt } from './jwt-validator';
-import { classifyShifts, type ClassifiedShift } from './shift-context';
+import {
+    classifyShifts,
+    filterShiftGroups,
+    findNextUpcomingShiftGroup,
+    groupSignupsByShift,
+    requiresShiftSearchHint,
+    type ClassifiedShift,
+    type ShiftGroup,
+    type ShiftGroupVolunteerRow,
+} from './shift-context';
 import { syncOutbox } from './sync';
 import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear, VolunteerGearPickup, GuestEntry } from './types';
 
 type ScannerState = 'idle' | 'loading' | 'scanning' | 'result' | 'duplicate' | 'invalid' | 'confirmed';
+type ScannerTab = 'scanner' | 'volunteers' | 'guests' | 'shifts';
+type ScannerDataSource = 'network' | 'cache' | 'unavailable';
+
+interface SelectedShiftContext {
+    volunteerId: number;
+    signupId: number;
+    shiftId: number;
+}
 
 interface ScannerResult {
     name: string;
@@ -59,8 +77,11 @@ export function scannerApp(config: ScannerAppConfig) {
         isOnline: navigator.onLine,
         outboxCount: 0,
         selectedVolunteer: null as Volunteer | null,
+        selectedShiftContext: null as SelectedShiftContext | null,
         scannerType: config.scannerType,
         cameraPaused: false,
+        scannerDataSource: 'unavailable' as ScannerDataSource,
+        shiftListNotice: '' as string,
 
         // Internal state
         _scannerId: config.scannerId,
@@ -84,8 +105,9 @@ export function scannerApp(config: ScannerAppConfig) {
         _inactivityTimeout: 120000, // 2 minutes
         _video: null as HTMLVideoElement | null,
         _canvas: null as HTMLCanvasElement | null,
-        activeTab: 'scanner' as 'scanner' | 'volunteers' | 'guests',
+        activeTab: 'scanner' as ScannerTab,
         guestSearchQuery: '' as string,
+        shiftSearchQuery: '' as string,
         guestResult: null as GuestEntry | null,
 
         get filteredGuestGroups(): { label: string; guestCount: number; entries: GuestEntry[] }[] {
@@ -113,6 +135,49 @@ export function scannerApp(config: ScannerAppConfig) {
             return Array.from(groups.values());
         },
 
+        get hasShiftListTab(): boolean {
+            return this.scannerType === 'volunteer_admin' && config.modes.includes('checkin');
+        },
+
+        get hasGuestListTab(): boolean {
+            return this.scannerType === 'entry_staff';
+        },
+
+        get visibleShiftGroups(): ShiftGroup[] {
+            if (!this.hasShiftListTab) {
+                return [];
+            }
+
+            return groupSignupsByShift(this._volunteers, new Date()).filter((group) => group.groupStatus !== 'past');
+        },
+
+        get filteredShiftGroups(): ShiftGroup[] {
+            return filterShiftGroups(this.visibleShiftGroups, this.shiftSearchQuery);
+        },
+
+        get shouldShowShiftSearchHint(): boolean {
+            return requiresShiftSearchHint(this.shiftSearchQuery);
+        },
+
+        get nextUpcomingShiftGroupId(): number | null {
+            return findNextUpcomingShiftGroup(this.filteredShiftGroups, new Date())?.shiftId ?? null;
+        },
+
+        get selectedVolunteerShiftSignups() {
+            if (!this.selectedVolunteer) {
+                return [];
+            }
+
+            return [...this.selectedVolunteer.shift_signups].sort((left, right) => {
+                const leftIsSelected = this.selectedShiftContext?.signupId === left.id ? 1 : 0;
+                const rightIsSelected = this.selectedShiftContext?.signupId === right.id ? 1 : 0;
+
+                return rightIsSelected - leftIsSelected
+                    || new Date(left.shift.starts_at).getTime() - new Date(right.shift.starts_at).getTime()
+                    || left.id - right.id;
+            });
+        },
+
         get canConfirmArrival(): boolean {
             return config.scannerType === 'entry_staff';
         },
@@ -125,13 +190,20 @@ export function scannerApp(config: ScannerAppConfig) {
             return config.scannerType === 'volunteer_admin';
         },
 
+        get canReloadScannerData(): boolean {
+            return this.hasShiftListTab;
+        },
+
         async init() {
             await openScannerDb();
 
             // Online/offline listeners
-            window.addEventListener('online', () => {
+            window.addEventListener('online', async () => {
                 this.isOnline = true;
-                this._sync();
+                await this._sync();
+                if (this.canReloadScannerData && (this.activeTab === 'shifts' || this.selectedShiftContext !== null)) {
+                    await this.reloadScannerData({ preserveUiState: true });
+                }
             });
             window.addEventListener('offline', () => {
                 this.isOnline = false;
@@ -146,7 +218,7 @@ export function scannerApp(config: ScannerAppConfig) {
 
             // Load data
             this.state = 'loading';
-            await this._loadScannerData();
+            await this.reloadScannerData({ preserveUiState: false });
 
             // Start camera
             this._video = document.getElementById('scanner-video') as HTMLVideoElement | null;
@@ -162,7 +234,140 @@ export function scannerApp(config: ScannerAppConfig) {
             }
         },
 
+        buildVolunteerResult(volunteer: Volunteer): ScannerResult {
+            return {
+                name: volunteer.name,
+                email: volunteer.email,
+                volunteerId: volunteer.id,
+                ticketId: volunteer.ticket.id,
+                shifts: classifyShifts(volunteer.shift_signups, new Date()),
+                shiftSignups: volunteer.shift_signups.map((signup) => ({
+                    id: signup.id,
+                    shiftId: signup.shift.id,
+                    startsAt: signup.shift.starts_at,
+                })),
+            };
+        },
+
+        selectVolunteer(volunteer: Volunteer, options: { fromQr?: boolean; shiftContext?: SelectedShiftContext | null } = {}) {
+            this.selectedVolunteer = volunteer;
+            this.selectedShiftContext = options.shiftContext ?? null;
+            this.result = this.buildVolunteerResult(volunteer);
+            this.guestResult = null;
+
+            if (options.fromQr) {
+                const alreadyArrived = this._arrivals.some((arrival) => arrival.volunteer_id === volunteer.id);
+
+                if (alreadyArrived) {
+                    const arrival = this._arrivals.find((entry) => entry.volunteer_id === volunteer.id);
+                    const lastScan = arrival?.scanned_at
+                        ? new Date(arrival.scanned_at).toLocaleTimeString()
+                        : '';
+
+                    this.state = 'duplicate';
+                    this.resultMessage = lastScan
+                        ? `Already checked in at ${lastScan}.`
+                        : 'Already checked in.';
+
+                    return;
+                }
+
+                this.state = 'result';
+                this.resultMessage = 'Ready to check in.';
+
+                return;
+            }
+
+            this.state = 'scanning';
+            this.resultMessage = '';
+            this.errorMessage = '';
+        },
+
+        selectVolunteerFromShift(row: ShiftGroupVolunteerRow) {
+            const volunteer = this._volunteers.find((entry) => entry.id === row.volunteerId);
+            if (!volunteer) {
+                this.shiftListNotice = 'Volunteer details are no longer available. Reload scanner data and try again.';
+                return;
+            }
+
+            this.shiftListNotice = '';
+            this.selectVolunteer(volunteer, {
+                shiftContext: {
+                    volunteerId: row.volunteerId,
+                    signupId: row.signupId,
+                    shiftId: row.shiftId,
+                },
+            });
+            this.activeTab = 'scanner';
+        },
+
+        async setActiveTab(tab: ScannerTab) {
+            if (tab === 'shifts' && !this.hasShiftListTab) {
+                return;
+            }
+
+            this.activeTab = tab;
+
+            if (tab === 'shifts' && this.canReloadScannerData && this.isOnline) {
+                await this.reloadScannerData({ preserveUiState: true });
+            }
+        },
+
+        async reloadScannerData(options: { preserveUiState: boolean }) {
+            this.shiftListNotice = '';
+
+            const preservedState = options.preserveUiState ? {
+                activeTab: this.activeTab,
+                shiftSearchQuery: this.shiftSearchQuery,
+                selectedVolunteerId: this.selectedVolunteer?.id ?? null,
+                selectedShiftContext: this.selectedShiftContext,
+            } : null;
+
+            await this._loadScannerData();
+
+            if (!preservedState) {
+                return;
+            }
+
+            this.activeTab = preservedState.activeTab === 'shifts' && !this.hasShiftListTab
+                ? 'scanner'
+                : preservedState.activeTab;
+            this.shiftSearchQuery = preservedState.shiftSearchQuery;
+
+            if (!preservedState.selectedVolunteerId) {
+                return;
+            }
+
+            const volunteer = this._volunteers.find((entry) => entry.id === preservedState.selectedVolunteerId);
+            if (!volunteer) {
+                this.selectedVolunteer = null;
+                this.selectedShiftContext = null;
+                this.result = null;
+                this.shiftListNotice = 'Selected volunteer is no longer available in the latest scanner data.';
+                return;
+            }
+
+            const shiftContext = preservedState.selectedShiftContext;
+            if (shiftContext) {
+                const hasMatchingSignup = volunteer.shift_signups.some((signup) => {
+                    return signup.id === shiftContext.signupId && signup.shift.id === shiftContext.shiftId;
+                });
+
+                if (!hasMatchingSignup) {
+                    this.shiftListNotice = 'Selected shift is no longer available in the latest scanner data.';
+                    this.selectVolunteer(volunteer);
+                    return;
+                }
+            }
+
+            this.selectVolunteer(volunteer, {
+                shiftContext: shiftContext ?? null,
+            });
+        },
+
         async _loadScannerData() {
+            let loadedFromNetwork = false;
+
             if (this.isOnline) {
                 try {
                     const headers: Record<string, string> = {
@@ -173,6 +378,7 @@ export function scannerApp(config: ScannerAppConfig) {
                     const response = await fetch(this._dataUrl, { headers });
                     if (response.ok) {
                         const data = await response.json();
+                        loadedFromNetwork = true;
                         this._volunteers = data.volunteers;
                         this._arrivals = data.arrivals;
                         this._attendanceRecords = data.attendance_records ?? [];
@@ -189,6 +395,8 @@ export function scannerApp(config: ScannerAppConfig) {
                         if (data.attendance_records) {
                             await storeAttendanceRecords(this._scannerId, data.attendance_records);
                         }
+
+                        this.scannerDataSource = 'network';
                     }
                 } catch {
                     // Network error — fall through to IDB cache
@@ -196,11 +404,13 @@ export function scannerApp(config: ScannerAppConfig) {
             }
 
             // Fallback: load from IndexedDB
-            if (this._volunteers.length === 0) {
+            if (!loadedFromNetwork) {
                 this._volunteers = await getVolunteers(this._scannerId);
-            }
-            if (this._guestEntries.length === 0) {
                 this._guestEntries = await getGuestEntries(this._scannerId);
+                this._attendanceRecords = await getAttendanceRecords(this._scannerId);
+                this.scannerDataSource = this._volunteers.length > 0 || this._guestEntries.length > 0
+                    ? 'cache'
+                    : 'unavailable';
             }
 
             this.outboxCount = await getOutboxCount(this._scannerId);
@@ -246,36 +456,7 @@ export function scannerApp(config: ScannerAppConfig) {
                     return;
                 }
 
-                // Check for existing arrival
-                const alreadyArrived = this._arrivals.some((a) => a.volunteer_id === volunteer.id);
-
-                this.selectedVolunteer = volunteer;
-                this.result = {
-                    name: volunteer.name,
-                    email: volunteer.email,
-                    volunteerId: volunteer.id,
-                    ticketId: volunteer.ticket.id,
-                    shifts: classifyShifts(volunteer.shift_signups, new Date()),
-                    shiftSignups: volunteer.shift_signups.map((s) => ({
-                        id: s.id,
-                        shiftId: s.shift.id,
-                        startsAt: s.shift.starts_at,
-                    })),
-                };
-
-                if (alreadyArrived) {
-                    const arrival = this._arrivals.find((a) => a.volunteer_id === volunteer.id);
-                    const lastScan = arrival?.scanned_at
-                        ? new Date(arrival.scanned_at).toLocaleTimeString()
-                        : '';
-                    this.state = 'duplicate';
-                    this.resultMessage = lastScan
-                        ? `Already checked in at ${lastScan}.`
-                        : 'Already checked in.';
-                } else {
-                    this.state = 'result';
-                    this.resultMessage = 'Ready to check in.';
-                }
+                this.selectVolunteer(volunteer, { fromQr: true });
             } finally {
                 // Brief cooldown to prevent rapid re-scans
                 setTimeout(() => {
@@ -376,6 +557,15 @@ export function scannerApp(config: ScannerAppConfig) {
                 status,
             });
 
+            const selectedSignup = this.selectedVolunteer?.shift_signups.find((entry) => entry.id === shiftSignupId);
+            if (selectedSignup) {
+                selectedSignup.attendance_record = {
+                    id: 0,
+                    shift_signup_id: shiftSignupId,
+                    status,
+                };
+            }
+
             if (this.result) {
                 const shift = this.result.shifts.find((s) => s.signupId === shiftSignupId);
                 if (shift) {
@@ -463,6 +653,50 @@ export function scannerApp(config: ScannerAppConfig) {
             return this._gearCooldowns[gearId] ?? false;
         },
 
+        isSelectedShiftSignup(shiftSignupId: number): boolean {
+            return this.selectedShiftContext?.signupId === shiftSignupId;
+        },
+
+        shiftGroupBadgeLabel(group: ShiftGroup): string {
+            if (group.groupStatus === 'active') {
+                return 'Laeuft jetzt';
+            }
+
+            if (group.isNextUpcoming) {
+                return 'Als Naechstes';
+            }
+
+            return '';
+        },
+
+        shiftStatusLabel(status: ClassifiedShift['status']): string {
+            switch (status) {
+                case 'attended':
+                    return 'Recorded';
+                case 'missed':
+                    return 'Missed';
+                case 'active':
+                    return 'Active';
+                default:
+                    return 'Upcoming';
+            }
+        },
+
+        async jumpToNextShift() {
+            const nextShiftGroupId = this.nextUpcomingShiftGroupId;
+            if (!nextShiftGroupId) {
+                return;
+            }
+
+            const element = document.getElementById(`shift-group-${nextShiftGroupId}`);
+            if (!element) {
+                console.warn('Shift jump target missing from DOM.', nextShiftGroupId);
+                return;
+            }
+
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+
         async _sync() {
             await syncOutbox(this._scannerId, this._syncUrl, this._scannerToken, this._guestSyncUrl);
             this.outboxCount = await getOutboxCount(this._scannerId);
@@ -473,6 +707,7 @@ export function scannerApp(config: ScannerAppConfig) {
             this.result = null;
             this.guestResult = null;
             this.selectedVolunteer = null;
+            this.selectedShiftContext = null;
             this.resultMessage = '';
             this.errorMessage = '';
             this._resetInactivityTimer();
@@ -480,6 +715,9 @@ export function scannerApp(config: ScannerAppConfig) {
 
         _handleGuestQr(entry: GuestEntry) {
             const alreadyCheckedIn = entry.checked_in_at !== null;
+            this.selectedVolunteer = null;
+            this.selectedShiftContext = null;
+            this.result = null;
             this.guestResult = entry;
 
             const label = `${entry.group_label} ${entry.number}/${entry.group_guest_count}`;

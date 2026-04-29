@@ -154,6 +154,14 @@ export async function storeAttendanceRecords(scannerId: number, records: Attenda
     }
 }
 
+export async function getAttendanceRecords(scannerId: number): Promise<AttendanceRecord[]> {
+    const store = await tx('attendance', 'readonly');
+    const index = store.index('byScanner');
+    const results = await reqToPromise(index.getAll(scannerId));
+
+    return results.map(({ scannerId: _, ...record }) => record as AttendanceRecord);
+}
+
 export async function storeGuestEntries(scannerId: number, entries: GuestEntry[]): Promise<void> {
     const store = await tx('guest_entries', 'readwrite');
     const index = store.index('byScanner');
