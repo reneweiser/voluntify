@@ -9,6 +9,7 @@ use App\Models\EventArrival;
 use App\Models\Ticket;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class RecordArrival
 {
@@ -19,25 +20,39 @@ class RecordArrival
         ArrivalMethod $method,
         ?Carbon $scannedAt = null,
     ): EventArrival {
-        $existingArrival = EventArrival::where('ticket_id', $ticket->id)
-            ->where('event_id', $event->id)
-            ->first();
+        return DB::transaction(function () use ($ticket, $event, $scannedBy, $method, $scannedAt) {
+            $lockedTicket = Ticket::query()
+                ->whereKey($ticket->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $flagged = $existingArrival !== null;
+            $existingArrival = EventArrival::query()
+                ->where('ticket_id', $lockedTicket->id)
+                ->where('event_id', $event->id)
+                ->lockForUpdate()
+                ->first();
 
-        $arrival = EventArrival::create([
-            'ticket_id' => $ticket->id,
-            'volunteer_id' => $ticket->volunteer_id,
-            'event_id' => $event->id,
-            'scanned_by' => $scannedBy?->id,
-            'scanned_at' => $scannedAt ?? now(),
-            'method' => $method,
-            'flagged' => $flagged,
-            'flag_reason' => $flagged ? 'Duplicate scan — volunteer already checked in.' : null,
-        ]);
+            if ($existingArrival instanceof EventArrival) {
+                $existingArrival->setAttribute('duplicate_detected', true);
+                $existingArrival->setAttribute('duplicate_message', 'Duplicate scan - volunteer already checked in.');
 
-        ArrivalScanned::dispatch($arrival, $scannedBy);
+                return $existingArrival;
+            }
 
-        return $arrival;
+            $arrival = EventArrival::create([
+                'ticket_id' => $lockedTicket->id,
+                'volunteer_id' => $lockedTicket->volunteer_id,
+                'event_id' => $event->id,
+                'scanned_by' => $scannedBy?->id,
+                'scanned_at' => $scannedAt ?? now(),
+                'method' => $method,
+                'flagged' => false,
+                'flag_reason' => null,
+            ]);
+
+            ArrivalScanned::dispatch($arrival, $scannedBy);
+
+            return $arrival;
+        });
     }
 }

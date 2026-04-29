@@ -9,8 +9,11 @@ use App\Models\ProjectScanner;
 
 beforeEach(function () {
     $this->project = Project::factory()->create();
+    $this->event = Event::factory()->for($this->project)->create();
     $this->scanner = ProjectScanner::factory()->create([
         'project_id' => $this->project->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
         'name' => 'Original Name',
         'type' => ScannerType::EntryStaff,
         'modes' => [ScannerMode::Checkin->value],
@@ -56,11 +59,8 @@ it('updates time window', function () {
         ->and($result->ends_at->format('Y-m-d H:i:s'))->toBe('2026-08-01 20:00:00');
 });
 
-it('clears nullable fields when explicitly set to null', function () {
-    $event = Event::factory()->for($this->project)->create();
-
+it('clears nullable metadata fields', function () {
     $this->scanner->update([
-        'event_id' => $event->id,
         'gear_item_ids' => [1, 2],
         'hint_text' => 'Some hint',
     ]);
@@ -68,25 +68,41 @@ it('clears nullable fields when explicitly set to null', function () {
     $action = new UpdateProjectScanner;
 
     $result = $action->execute($this->scanner, [
-        'event_id' => null,
         'gear_item_ids' => null,
         'hint_text' => null,
     ]);
 
-    expect($result->event_id)->toBeNull()
-        ->and($result->gear_item_ids)->toBeNull()
+    expect($result->gear_item_ids)->toBeNull()
         ->and($result->hint_text)->toBeNull();
 });
 
-it('sets event_id when provided', function () {
+it('sets entry_event_id when provided', function () {
     $event = Event::factory()->for($this->project)->create();
     $action = new UpdateProjectScanner;
 
     $result = $action->execute($this->scanner, [
-        'event_id' => $event->id,
+        'entry_event_id' => $event->id,
+        'pool_event_ids' => [$event->id],
     ]);
 
-    expect($result->event_id)->toBe($event->id);
+    expect($result->entry_event_id)->toBe($event->id);
+});
+
+it('updates entry and pool events while clearing the review flag', function () {
+    $entryEvent = Event::factory()->for($this->project)->create();
+    $poolEvent = Event::factory()->for($this->project)->create();
+    $this->scanner->update(['requires_configuration_review' => true]);
+
+    $action = new UpdateProjectScanner;
+
+    $result = $action->execute($this->scanner, [
+        'entry_event_id' => $entryEvent->id,
+        'pool_event_ids' => [$entryEvent->id, $poolEvent->id],
+    ]);
+
+    expect($result->entry_event_id)->toBe($entryEvent->id)
+        ->and($result->pool_event_ids)->toBe([$entryEvent->id, $poolEvent->id])
+        ->and($result->requires_configuration_review)->toBeFalse();
 });
 
 it('persists changes to database', function () {

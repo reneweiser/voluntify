@@ -3,6 +3,9 @@
         scannerId: {{ $scannerId }},
         scannerType: '{{ $scannerType }}',
         modes: @js($modes),
+        entryEventId: @js($eventId),
+        contractVersion: {{ $contractVersion }},
+        requiresConfigurationReview: @js($requiresConfigurationReview),
         scannerToken: '{{ $scannerToken }}',
         dataUrl: '{{ $this->dataUrl }}',
         syncUrl: '{{ $this->syncUrl }}',
@@ -114,7 +117,7 @@
                     <p class="mt-1 text-center text-sm text-white" x-text="state === 'invalid' ? errorMessage : resultMessage"></p>
 
                     {{-- Confirm Arrival button (result state only) --}}
-                    <template x-if="state === 'result' && !guestResult">
+                    <template x-if="state === 'result' && !guestResult && canSubmitArrival">
                         <div class="mt-3 flex justify-center">
                             <button
                                 type="button"
@@ -124,6 +127,12 @@
                                 {{ __('Confirm Arrival') }}
                             </button>
                         </div>
+                    </template>
+
+                    <template x-if="state === 'result' && !guestResult && !canSubmitArrival">
+                        <p class="mt-3 text-center text-sm text-amber-300">
+                            {{ __('Scanner configuration must be reviewed before volunteer check-in can be used.') }}
+                        </p>
                     </template>
 
                     {{-- Next Scan button (terminal states) --}}

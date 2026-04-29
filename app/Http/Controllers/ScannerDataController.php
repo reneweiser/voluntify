@@ -40,20 +40,15 @@ class ScannerDataController extends Controller
         }
 
         $projectId = $scanner->project_id;
-        $eventId = $scanner->event_id;
+        $entryEventId = $scanner->entry_event_id;
+        $poolEventIds = $scanner->configuredPoolEventIds();
 
-        $volunteerQuery = $eventId
-            ? Volunteer::forEvent($eventId)
-            : Volunteer::where('project_id', $projectId);
+        $volunteerQuery = Volunteer::forEvents($poolEventIds);
 
         $eagerLoads = [
             'tickets' => fn ($q) => $q->where('project_id', $projectId),
-            'shiftSignups' => function ($q) use ($eventId, $projectId) {
-                if ($eventId) {
-                    $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->where('event_id', $eventId));
-                } else {
-                    $q->whereHas('shift.volunteerJob.event', fn ($sq) => $sq->where('project_id', $projectId));
-                }
+            'shiftSignups' => function ($q) use ($poolEventIds) {
+                $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->whereIn('event_id', $poolEventIds));
             },
             'shiftSignups.shift.volunteerJob',
             'shiftSignups.attendanceRecord',
@@ -67,12 +62,12 @@ class ScannerDataController extends Controller
 
         $volunteers = $volunteerQuery->with($eagerLoads)->get();
 
-        $events = $eventId
-            ? Event::where('id', $eventId)->get()
-            : Event::where('project_id', $projectId)->get();
+        $events = Event::whereIn('id', $poolEventIds)
+            ->orderBy('starts_at')
+            ->orderBy('name')
+            ->get();
 
-        $eventIds = $events->pluck('id');
-        $arrivals = EventArrival::whereIn('event_id', $eventIds)->get();
+        $arrivals = EventArrival::where('event_id', $entryEventId)->get();
 
         $shiftSignupIds = $volunteers->flatMap(fn ($v) => $v->shiftSignups->pluck('id'));
         $attendanceRecords = AttendanceRecord::whereIn('shift_signup_id', $shiftSignupIds)->get();
@@ -116,6 +111,10 @@ class ScannerDataController extends Controller
                 'id' => $scanner->id,
                 'type' => $scanner->type->value,
                 'modes' => $scanner->modes,
+                'entry_event_id' => $entryEventId,
+                'pool_event_ids' => $poolEventIds,
+                'contract_version' => ProjectScanner::CONTRACT_VERSION,
+                'requires_configuration_review' => $scanner->requires_configuration_review,
             ],
             'events' => $events->map(fn ($e) => [
                 'id' => $e->id,
@@ -177,6 +176,7 @@ class ScannerDataController extends Controller
         }
 
         $validated = $request->validate([
+            'contract_version' => ['required', 'integer', Rule::in([ProjectScanner::CONTRACT_VERSION])],
             'arrivals' => ['required', 'array', 'min:1'],
             'arrivals.*.ticket_id' => ['required', 'integer', 'exists:tickets,id'],
             'arrivals.*.event_id' => ['nullable', 'integer', 'exists:events,id'],
@@ -184,16 +184,17 @@ class ScannerDataController extends Controller
             'arrivals.*.scanned_at' => ['required', 'date'],
         ]);
 
-        $eventIds = $scanner->event_id
-            ? [$scanner->event_id]
-            : Event::where('project_id', $scanner->project_id)->pluck('id')->toArray();
+        if ($scanner->requires_configuration_review) {
+            return response()->json([
+                'error' => 'Scanner configuration must be reviewed before volunteer check-in can be used.',
+            ], 409);
+        }
+
+        $event = Event::where('project_id', $scanner->project_id)->findOrFail($scanner->entry_event_id);
 
         foreach ($validated['arrivals'] as $arrivalData) {
             $ticket = Ticket::where('project_id', $scanner->project_id)
                 ->findOrFail($arrivalData['ticket_id']);
-
-            $eventId = $arrivalData['event_id'] ?? $scanner->event_id;
-            $event = Event::whereIn('id', $eventIds)->findOrFail($eventId);
 
             $recordArrival->execute(
                 ticket: $ticket,
@@ -204,7 +205,7 @@ class ScannerDataController extends Controller
             );
         }
 
-        $arrivals = EventArrival::whereIn('event_id', $eventIds)->get();
+        $arrivals = EventArrival::where('event_id', $event->id)->get();
 
         return response()->json([
             'arrivals' => $arrivals,

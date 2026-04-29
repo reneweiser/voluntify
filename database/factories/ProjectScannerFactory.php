@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\ScannerMode;
 use App\Enums\ScannerType;
+use App\Models\Event;
 use App\Models\Project;
 use App\Models\ProjectScanner;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -13,13 +14,30 @@ class ProjectScannerFactory extends Factory
 {
     protected $model = ProjectScanner::class;
 
+    public function configure(): static
+    {
+        return $this->afterMaking(function (ProjectScanner $scanner): void {
+            if ($scanner->entry_event_id !== null && is_array($scanner->pool_event_ids) && $scanner->pool_event_ids !== []) {
+                return;
+            }
+
+            $project = Project::query()->findOrFail($scanner->project_id);
+            $event = Event::factory()->for($project)->create();
+
+            $scanner->entry_event_id = $scanner->entry_event_id ?? $event->id;
+            $scanner->pool_event_ids = $scanner->pool_event_ids ?? [$scanner->entry_event_id];
+        });
+    }
+
     public function definition(): array
     {
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         return [
             'project_id' => Project::factory(),
-            'event_id' => null,
+            'entry_event_id' => null,
+            'pool_event_ids' => null,
+            'requires_configuration_review' => false,
             'name' => fake()->words(2, true),
             'type' => ScannerType::EntryStaff,
             'modes' => [ScannerMode::Checkin->value],
@@ -61,6 +79,32 @@ class ProjectScannerFactory extends Factory
         return $this->state(fn () => [
             'type' => ScannerType::VolunteerAdmin,
             'modes' => [ScannerMode::Checkin->value, ScannerMode::GearPickup->value],
+        ]);
+    }
+
+    public function forEntryEvent(Event $event): static
+    {
+        return $this->state(fn () => [
+            'project_id' => $event->project_id,
+            'entry_event_id' => $event->id,
+            'pool_event_ids' => [$event->id],
+        ]);
+    }
+
+    /** @param  array<int, int>  $poolEventIds */
+    public function withPoolEvents(Event $entryEvent, array $poolEventIds): static
+    {
+        return $this->state(fn () => [
+            'project_id' => $entryEvent->project_id,
+            'entry_event_id' => $entryEvent->id,
+            'pool_event_ids' => array_values(array_unique(array_map('intval', $poolEventIds))),
+        ]);
+    }
+
+    public function requiresConfigurationReview(): static
+    {
+        return $this->state(fn () => [
+            'requires_configuration_review' => true,
         ]);
     }
 

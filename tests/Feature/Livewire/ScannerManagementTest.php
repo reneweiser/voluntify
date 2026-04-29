@@ -5,6 +5,7 @@ use App\Enums\ScannerType;
 use App\Enums\StaffRole;
 use App\Jobs\SendScannerLinksJob;
 use App\Livewire\Projects\ScannerManagement;
+use App\Models\Event;
 use App\Models\GuestList;
 use App\Models\Organization;
 use App\Models\Project;
@@ -18,6 +19,7 @@ use Livewire\Livewire;
 beforeEach(function () {
     ['user' => $this->organizer, 'organization' => $this->org] = createUserWithOrganization(StaffRole::Organizer);
     $this->project = Project::factory()->for($this->org)->create();
+    $this->event = Event::factory()->for($this->project)->create();
     app()->instance(Organization::class, $this->org);
 });
 

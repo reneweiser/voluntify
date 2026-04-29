@@ -40,7 +40,8 @@ it('completes full entry staff flow: create scanner, auth, fetch data, sync arri
         ->set('form.name', 'Main Entrance')
         ->set('form.type', ScannerType::EntryStaff->value)
         ->set('form.modes', [ScannerMode::Checkin->value])
-        ->set('form.eventId', $event->id)
+        ->set('form.entryEventId', $event->id)
+        ->set('form.poolEventIds', [$event->id])
         ->set('form.startsAt', '2026-07-01T10:00')
         ->set('form.endsAt', '2026-07-01T18:00')
         ->call('createScanner')
@@ -83,6 +84,7 @@ it('completes full entry staff flow: create scanner, auth, fetch data, sync arri
 
     // Step 5: Sync an arrival
     $syncResponse = $this->postJson(route('scanner-api.sync', $scanner->id), [
+        'contract_version' => ProjectScanner::CONTRACT_VERSION,
         'arrivals' => [
             [
                 'ticket_id' => $ticket->id,
@@ -161,6 +163,7 @@ it('completes full volunteer admin flow: create scanner, auth, fetch data, gear 
     ]);
 
     $this->postJson(route('scanner-api.sync', $scanner->id), [
+        'contract_version' => ProjectScanner::CONTRACT_VERSION,
         'arrivals' => [
             [
                 'ticket_id' => $ticket->id,

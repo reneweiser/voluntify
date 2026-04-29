@@ -106,10 +106,12 @@ it('does not copy volunteers or signups', function () {
     expect($cloned->volunteers)->toHaveCount(0);
 });
 
-it('clones scanners with event_id cleared and new token', function () {
-    $event = Event::factory()->for($this->org)->for($this->project)->create();
+it('clones scanners with remapped event configuration and new token', function () {
+    $event = Event::factory()->for($this->org)->for($this->project)->create(['name' => 'Day 1']);
+    $poolEvent = Event::factory()->for($this->org)->for($this->project)->create(['name' => 'Day 2']);
     $originalScanner = ProjectScanner::factory()->for($this->project)->create([
-        'event_id' => $event->id,
+        'entry_event_id' => $event->id,
+        'pool_event_ids' => [$event->id, $poolEvent->id],
         'name' => 'Main Scanner',
     ]);
 
@@ -120,7 +122,11 @@ it('clones scanners with event_id cleared and new token', function () {
     expect($clonedScanner)->not->toBeNull()
         ->and($clonedScanner->name)->toBe('Main Scanner')
         ->and($clonedScanner->project_id)->toBe($cloned->id)
-        ->and($clonedScanner->event_id)->toBeNull()
+        ->and($clonedScanner->entry_event_id)->toBe($cloned->events->firstWhere('name', 'Day 1 (Copy)')?->id)
+        ->and($clonedScanner->pool_event_ids)->toBe([
+            $cloned->events->firstWhere('name', 'Day 1 (Copy)')?->id,
+            $cloned->events->firstWhere('name', 'Day 2 (Copy)')?->id,
+        ])
         ->and($clonedScanner->scanner_token)->not->toBe($originalScanner->scanner_token);
 });
 

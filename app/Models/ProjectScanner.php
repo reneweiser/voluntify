@@ -15,9 +15,13 @@ class ProjectScanner extends Model
     /** @use HasFactory<ProjectScannerFactory> */
     use HasFactory;
 
+    public const CONTRACT_VERSION = 1;
+
     protected $fillable = [
         'project_id',
-        'event_id',
+        'entry_event_id',
+        'pool_event_ids',
+        'requires_configuration_review',
         'name',
         'type',
         'modes',
@@ -39,6 +43,8 @@ class ProjectScanner extends Model
             'type' => ScannerType::class,
             'modes' => 'array',
             'gear_item_ids' => 'array',
+            'pool_event_ids' => 'array',
+            'requires_configuration_review' => 'boolean',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
         ];
@@ -49,9 +55,9 @@ class ProjectScanner extends Model
         return $this->belongsTo(Project::class);
     }
 
-    public function event(): BelongsTo
+    public function entryEvent(): BelongsTo
     {
-        return $this->belongsTo(Event::class);
+        return $this->belongsTo(Event::class, 'entry_event_id');
     }
 
     public function assignees(): HasMany
@@ -101,6 +107,17 @@ class ProjectScanner extends Model
     public function hasMode(string $mode): bool
     {
         return in_array($mode, $this->modes ?? [], true);
+    }
+
+    /** @return array<int, int> */
+    public function configuredPoolEventIds(): array
+    {
+        return array_values(array_map('intval', $this->pool_event_ids ?? []));
+    }
+
+    public function includesEvent(int $eventId): bool
+    {
+        return in_array($eventId, $this->configuredPoolEventIds(), true);
     }
 
     /**

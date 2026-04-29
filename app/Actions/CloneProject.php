@@ -16,6 +16,7 @@ class CloneProject
     {
         return DB::transaction(function () use ($project, $causer, $dateOffsetDays) {
             $project->load(['events', 'gearItems', 'customRegistrationFields', 'hintTexts', 'scanners']);
+            $eventMap = [];
 
             $clonedProject = $project->replicate([
                 'id',
@@ -32,7 +33,8 @@ class CloneProject
             $clonedProject->save();
 
             foreach ($project->events as $event) {
-                $this->cloneEvent->execute($event, $causer, targetProjectId: $clonedProject->id, dateOffsetDays: $dateOffsetDays);
+                $clonedEvent = $this->cloneEvent->execute($event, $causer, targetProjectId: $clonedProject->id, dateOffsetDays: $dateOffsetDays);
+                $eventMap[$event->id] = $clonedEvent->id;
             }
 
             foreach ($project->gearItems as $gearItem) {
@@ -65,7 +67,14 @@ class CloneProject
                 ]);
                 $clonedScanner->project_id = $clonedProject->id;
                 $clonedScanner->scanner_token = bin2hex(random_bytes(32));
-                $clonedScanner->event_id = null;
+                $clonedScanner->entry_event_id = $scanner->entry_event_id !== null ? ($eventMap[$scanner->entry_event_id] ?? null) : null;
+                $clonedScanner->pool_event_ids = is_array($scanner->pool_event_ids)
+                    ? collect($scanner->pool_event_ids)
+                        ->map(fn ($eventId) => $eventMap[(int) $eventId] ?? null)
+                        ->filter()
+                        ->values()
+                        ->all()
+                    : null;
                 $clonedScanner->save();
             }
 

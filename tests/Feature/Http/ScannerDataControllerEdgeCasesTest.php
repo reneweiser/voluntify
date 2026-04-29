@@ -48,6 +48,7 @@ it('returns 403 when scanner ID in sync URL does not match token', function () {
     ]);
 
     $this->postJson(route('scanner-api.sync', $scanner2->id), [
+        'contract_version' => ProjectScanner::CONTRACT_VERSION,
         'arrivals' => [],
     ], [
         'X-Scanner-Token' => $scanner1->scanner_token,
@@ -127,11 +128,13 @@ it('returns 404 when syncing arrival for ticket from different project', functio
 
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
         'type' => ScannerType::EntryStaff,
     ]);
 
     $this->postJson(route('scanner-api.sync', $scanner->id), [
+        'contract_version' => ProjectScanner::CONTRACT_VERSION,
         'arrivals' => [
             [
                 'ticket_id' => $otherTicket->id,
@@ -145,14 +148,41 @@ it('returns 404 when syncing arrival for ticket from different project', functio
     ])->assertNotFound();
 });
 
-// --- Data: returns data scoped to scanner's event ---
-
-it('returns only volunteers for scanner event when event_id is set', function () {
-    $event2 = Event::factory()->for($this->project)->create();
-
+it('rejects arrival sync when the contract version is missing', function () {
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
+        'type' => ScannerType::EntryStaff,
+    ]);
+
+    $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
+    $ticket = Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $this->postJson(route('scanner-api.sync', $scanner->id), [
+        'arrivals' => [
+            [
+                'ticket_id' => $ticket->id,
+                'event_id' => $this->event->id,
+                'method' => 'qr_scan',
+                'scanned_at' => now()->toISOString(),
+            ],
+        ],
+    ], [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ])->assertUnprocessable();
+});
+
+// --- Data: returns data scoped to scanner's configured pool ---
+
+it('returns only configured pool events', function () {
+    $event2 = Event::factory()->for($this->project)->create();
+
+    $scanner = ProjectScanner::factory()->active()->forEntryEvent($this->event)->create([
+        'project_id' => $this->project->id,
     ]);
 
     $response = $this->getJson(route('scanner-api.data', $scanner->id), [
@@ -164,14 +194,16 @@ it('returns only volunteers for scanner event when event_id is set', function ()
         ->assertJsonPath('events.0.id', $this->event->id);
 });
 
-// --- Data: project-wide scanner returns all events ---
+// --- Data: multi-event pool returns all configured events ---
 
-it('returns all project events when scanner has no event_id', function () {
-    Event::factory()->count(2)->for($this->project)->create();
+it('returns all configured pool events for a multi-event scanner', function () {
+    $additionalEvents = Event::factory()->count(2)->for($this->project)->create();
+    $poolEventIds = collect([$this->event->id])
+        ->merge($additionalEvents->pluck('id'))
+        ->all();
 
-    $scanner = ProjectScanner::factory()->active()->create([
+    $scanner = ProjectScanner::factory()->active()->withPoolEvents($this->event, $poolEventIds)->create([
         'project_id' => $this->project->id,
-        'event_id' => null,
     ]);
 
     $response = $this->getJson(route('scanner-api.data', $scanner->id), [
@@ -180,8 +212,7 @@ it('returns all project events when scanner has no event_id', function () {
 
     $response->assertOk();
 
-    $eventCount = Event::where('project_id', $this->project->id)->count();
-    $response->assertJsonCount($eventCount, 'events');
+    $response->assertJsonCount(count($poolEventIds), 'events');
 });
 
 // --- Gear pickup validation ---

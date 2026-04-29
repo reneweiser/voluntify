@@ -10,9 +10,13 @@ class CreateProjectScanner
     public function execute(Project $project, array $data): ProjectScanner
     {
         $rawCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $entryEventId = (int) $data['entry_event_id'];
+        $poolEventIds = array_values(array_unique(array_map('intval', $data['pool_event_ids'])));
 
         return $project->scanners()->create([
-            'event_id' => $data['event_id'] ?? null,
+            'entry_event_id' => $entryEventId,
+            'pool_event_ids' => $poolEventIds,
+            'requires_configuration_review' => false,
             'name' => $data['name'],
             'type' => $data['type'],
             'modes' => $data['modes'] ?? null,
