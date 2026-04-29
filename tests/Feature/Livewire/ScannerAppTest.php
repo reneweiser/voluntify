@@ -196,6 +196,20 @@ it('renders phone display in entry staff template', function () {
         ->assertSee(__('No phone number'));
 });
 
+it('renders volunteer lookup UI for entry staff scanners', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::EntryStaff,
+        'modes' => [ScannerMode::Checkin->value],
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSee('Search volunteers...')
+        ->assertSee('Mindestens 2 Zeichen eingeben.')
+        ->assertSeeHtml('selectVolunteerFromLookup(volunteer.id)')
+        ->assertDontSee('Use QR scanner or manual lookup for volunteer check-in.');
+});
+
 it('renders phone display in volunteer admin template', function () {
     $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
     session(['scanner_id' => $scanner->id]);

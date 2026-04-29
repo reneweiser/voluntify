@@ -34,12 +34,20 @@ import {
     type ShiftGroup,
     type ShiftGroupVolunteerRow,
 } from './shift-context';
+import {
+    filterVolunteers,
+    hasVolunteerArrivalForEvent,
+    hasVolunteerArrivalInScope,
+    resolveManualArrivalTarget,
+    type ManualArrivalTarget,
+} from './volunteer-lookup';
 import { syncOutbox } from './sync';
-import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear, VolunteerGearPickup, GuestEntry } from './types';
+import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear, GuestEntry, ScannerEvent } from './types';
 
 type ScannerState = 'idle' | 'loading' | 'scanning' | 'result' | 'duplicate' | 'invalid' | 'confirmed';
 type ScannerTab = 'scanner' | 'volunteers' | 'guests' | 'shifts';
 type ScannerDataSource = 'network' | 'cache' | 'unavailable';
+type VolunteerSelectionContext = 'scanner' | 'volunteers' | null;
 
 interface SelectedShiftContext {
     volunteerId: number;
@@ -78,14 +86,18 @@ export function scannerApp(config: ScannerAppConfig) {
         outboxCount: 0,
         selectedVolunteer: null as Volunteer | null,
         selectedShiftContext: null as SelectedShiftContext | null,
+        selectedVolunteerContext: null as VolunteerSelectionContext,
+        selectedVolunteerEventId: null as number | null,
         scannerType: config.scannerType,
         cameraPaused: false,
         scannerDataSource: 'unavailable' as ScannerDataSource,
         shiftListNotice: '' as string,
+        volunteerLookupNotice: '' as string,
 
         // Internal state
         _scannerId: config.scannerId,
         _scannerToken: config.scannerToken,
+        _events: [] as ScannerEvent[],
         _volunteers: [] as Volunteer[],
         _arrivals: [] as ArrivalRecord[],
         _attendanceRecords: [] as AttendanceRecord[],
@@ -101,12 +113,14 @@ export function scannerApp(config: ScannerAppConfig) {
         _guestSyncUrl: config.guestSyncUrl,
         _guestGearPickupUrl: config.guestGearPickupUrl,
         _gearCooldowns: {} as Record<number, boolean>,
+        _submittingArrival: false,
         _inactivityTimer: null as ReturnType<typeof setTimeout> | null,
         _inactivityTimeout: 120000, // 2 minutes
         _video: null as HTMLVideoElement | null,
         _canvas: null as HTMLCanvasElement | null,
         activeTab: 'scanner' as ScannerTab,
         guestSearchQuery: '' as string,
+        volunteerSearchQuery: '' as string,
         shiftSearchQuery: '' as string,
         guestResult: null as GuestEntry | null,
 
@@ -143,6 +157,16 @@ export function scannerApp(config: ScannerAppConfig) {
             return this.scannerType === 'entry_staff';
         },
 
+        get filteredVolunteers(): Volunteer[] {
+            return filterVolunteers(this._volunteers, this.volunteerSearchQuery);
+        },
+
+        get shouldShowVolunteerSearchHint(): boolean {
+            const trimmedQuery = this.volunteerSearchQuery.trim();
+
+            return trimmedQuery.length > 0 && trimmedQuery.length < 2;
+        },
+
         get visibleShiftGroups(): ShiftGroup[] {
             if (!this.hasShiftListTab) {
                 return [];
@@ -176,6 +200,66 @@ export function scannerApp(config: ScannerAppConfig) {
                     || new Date(left.shift.starts_at).getTime() - new Date(right.shift.starts_at).getTime()
                     || left.id - right.id;
             });
+        },
+
+        get selectedVolunteerManualArrivalTarget(): ManualArrivalTarget | null {
+            if (!this.selectedVolunteer || this.selectedVolunteerContext !== 'volunteers') {
+                return null;
+            }
+
+            return resolveManualArrivalTarget(this.selectedVolunteer, this._events);
+        },
+
+        get selectedVolunteerEventOptions(): ScannerEvent[] {
+            const target = this.selectedVolunteerManualArrivalTarget;
+            if (!target || target.kind === 'unavailable') {
+                return [];
+            }
+
+            return target.eventIds
+                .map((eventId) => this._events.find((event) => event.id === eventId))
+                .filter((event): event is ScannerEvent => event !== undefined);
+        },
+
+        get resolvedSelectedVolunteerEventId(): number | null {
+            const target = this.selectedVolunteerManualArrivalTarget;
+            if (!target) {
+                return null;
+            }
+
+            if (target.kind === 'resolved') {
+                return target.eventId;
+            }
+
+            if (target.kind === 'choice_required' && this.selectedVolunteerEventId !== null && target.eventIds.includes(this.selectedVolunteerEventId)) {
+                return this.selectedVolunteerEventId;
+            }
+
+            return null;
+        },
+
+        get resolvedSelectedVolunteerEvent(): ScannerEvent | null {
+            const eventId = this.resolvedSelectedVolunteerEventId;
+            if (eventId === null) {
+                return null;
+            }
+
+            return this._events.find((event) => event.id === eventId) ?? null;
+        },
+
+        get isSelectedVolunteerCheckedInForResolvedEvent(): boolean {
+            if (!this.selectedVolunteer) {
+                return false;
+            }
+
+            return hasVolunteerArrivalForEvent(this._arrivals, this.selectedVolunteer.id, this.resolvedSelectedVolunteerEventId);
+        },
+
+        get canConfirmSelectedVolunteerArrival(): boolean {
+            return this.selectedVolunteerContext === 'volunteers'
+                && this.resolvedSelectedVolunteerEventId !== null
+                && !this.isSelectedVolunteerCheckedInForResolvedEvent
+                && !this._submittingArrival;
         },
 
         get canConfirmArrival(): boolean {
@@ -249,11 +333,14 @@ export function scannerApp(config: ScannerAppConfig) {
             };
         },
 
-        selectVolunteer(volunteer: Volunteer, options: { fromQr?: boolean; shiftContext?: SelectedShiftContext | null } = {}) {
+        selectVolunteer(volunteer: Volunteer, options: { fromQr?: boolean; shiftContext?: SelectedShiftContext | null; volunteerContext?: VolunteerSelectionContext } = {}) {
             this.selectedVolunteer = volunteer;
             this.selectedShiftContext = options.shiftContext ?? null;
+            this.selectedVolunteerContext = options.volunteerContext ?? 'scanner';
+            this.selectedVolunteerEventId = null;
             this.result = this.buildVolunteerResult(volunteer);
             this.guestResult = null;
+            this.volunteerLookupNotice = '';
 
             if (options.fromQr) {
                 const alreadyArrived = this._arrivals.some((arrival) => arrival.volunteer_id === volunteer.id);
@@ -283,6 +370,56 @@ export function scannerApp(config: ScannerAppConfig) {
             this.errorMessage = '';
         },
 
+        applySelectedVolunteerArrivalTarget() {
+            const target = this.selectedVolunteerManualArrivalTarget;
+
+            if (!target) {
+                this.selectedVolunteerEventId = null;
+                this.volunteerLookupNotice = '';
+                return;
+            }
+
+            if (target.kind === 'resolved') {
+                this.selectedVolunteerEventId = target.eventId;
+                this.volunteerLookupNotice = '';
+
+                return;
+            }
+
+            if (target.kind === 'choice_required') {
+                const missingEventOptions = target.eventIds.some((eventId) => !this._events.some((event) => event.id === eventId));
+                if (missingEventOptions) {
+                    this.selectedVolunteerEventId = null;
+                    this.volunteerLookupNotice = 'Event choices are unavailable in cached scanner data. Go online to refresh before confirming arrival.';
+
+                    return;
+                }
+
+                this.selectedVolunteerEventId = target.eventIds.length === 1 ? target.eventIds[0] : this.selectedVolunteerEventId;
+                this.volunteerLookupNotice = '';
+
+                return;
+            }
+
+            this.selectedVolunteerEventId = null;
+            this.volunteerLookupNotice = target.reason === 'missing_event_metadata'
+                ? 'Event context is missing in cached scanner data. Go online to refresh before confirming arrival.'
+                : 'No event is available for this volunteer.';
+        },
+
+        selectVolunteerFromLookup(volunteerId: number) {
+            const volunteer = this._volunteers.find((entry) => entry.id === volunteerId);
+            if (!volunteer) {
+                this.volunteerLookupNotice = 'Volunteer not found in scanner data.';
+                return;
+            }
+
+            this.selectVolunteer(volunteer, {
+                volunteerContext: 'volunteers',
+            });
+            this.applySelectedVolunteerArrivalTarget();
+        },
+
         selectVolunteerFromShift(row: ShiftGroupVolunteerRow) {
             const volunteer = this._volunteers.find((entry) => entry.id === row.volunteerId);
             if (!volunteer) {
@@ -297,6 +434,7 @@ export function scannerApp(config: ScannerAppConfig) {
                     signupId: row.signupId,
                     shiftId: row.shiftId,
                 },
+                volunteerContext: 'scanner',
             });
             this.activeTab = 'scanner';
         },
@@ -319,7 +457,10 @@ export function scannerApp(config: ScannerAppConfig) {
             const preservedState = options.preserveUiState ? {
                 activeTab: this.activeTab,
                 shiftSearchQuery: this.shiftSearchQuery,
+                volunteerSearchQuery: this.volunteerSearchQuery,
                 selectedVolunteerId: this.selectedVolunteer?.id ?? null,
+                selectedVolunteerContext: this.selectedVolunteerContext,
+                selectedVolunteerEventId: this.selectedVolunteerEventId,
                 selectedShiftContext: this.selectedShiftContext,
             } : null;
 
@@ -333,6 +474,7 @@ export function scannerApp(config: ScannerAppConfig) {
                 ? 'scanner'
                 : preservedState.activeTab;
             this.shiftSearchQuery = preservedState.shiftSearchQuery;
+            this.volunteerSearchQuery = preservedState.volunteerSearchQuery;
 
             if (!preservedState.selectedVolunteerId) {
                 return;
@@ -362,7 +504,13 @@ export function scannerApp(config: ScannerAppConfig) {
 
             this.selectVolunteer(volunteer, {
                 shiftContext: shiftContext ?? null,
+                volunteerContext: preservedState.selectedVolunteerContext,
             });
+
+            if (preservedState.selectedVolunteerContext === 'volunteers') {
+                this.selectedVolunteerEventId = preservedState.selectedVolunteerEventId;
+                this.applySelectedVolunteerArrivalTarget();
+            }
         },
 
         async _loadScannerData() {
@@ -379,12 +527,13 @@ export function scannerApp(config: ScannerAppConfig) {
                     if (response.ok) {
                         const data = await response.json();
                         loadedFromNetwork = true;
+                        this._events = data.events ?? [];
                         this._volunteers = data.volunteers;
                         this._arrivals = data.arrivals;
                         this._attendanceRecords = data.attendance_records ?? [];
                         this._gearItems = data.gear_items ?? [];
                         this._volunteerGear = data.volunteer_gear ?? {};
-                        this._eventIds = (data.events ?? []).map((e: { id: number }) => e.id);
+                        this._eventIds = this._events.map((event: ScannerEvent) => event.id);
                         this._graceMinutes = data.events?.[0]?.attendance_grace_minutes ?? null;
 
                         // Persist to IndexedDB for offline use
@@ -466,46 +615,80 @@ export function scannerApp(config: ScannerAppConfig) {
         },
 
         async confirmArrival() {
+            await this._confirmArrival('qr_scan');
+        },
+
+        async confirmSelectedVolunteerArrival() {
+            await this._confirmArrival('manual_lookup', this.resolvedSelectedVolunteerEventId);
+        },
+
+        async _confirmArrival(method: 'qr_scan' | 'manual_lookup', eventIdOverride: number | null = null) {
             if (!this.result) {
                 return;
             }
 
-            const eventId = this._eventIds[0] ?? 0;
+            const eventId = eventIdOverride ?? this._eventIds[0] ?? 0;
+            if (!eventId) {
+                if (method === 'manual_lookup') {
+                    this.volunteerLookupNotice = 'Choose an event before confirming arrival.';
+                    return;
+                }
 
-            const entry = {
-                type: 'arrival' as const,
-                ticket_id: this.result.ticketId,
-                volunteer_id: this.result.volunteerId,
-                event_id: eventId,
-                method: 'qr_scan' as const,
-                scanned_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-            };
-
-            // Add to local arrivals tracking
-            this._arrivals.push({
-                id: 0,
-                ticket_id: entry.ticket_id,
-                volunteer_id: entry.volunteer_id,
-                event_id: eventId,
-                scanned_by: null,
-                scanned_at: entry.scanned_at,
-                method: entry.method,
-                flagged: false,
-                flag_reason: null,
-            });
-
-            // Save to outbox
-            await addOutboxEntry(this._scannerId, entry);
-            this.outboxCount = await getOutboxCount(this._scannerId);
-
-            this.state = 'confirmed';
-            this.resultMessage = `${this.result.name} checked in successfully.`;
-
-            // Try to sync immediately if online
-            if (this.isOnline) {
-                await this._sync();
+                this.state = 'invalid';
+                this.errorMessage = 'No event available for arrival.';
+                return;
             }
 
+            if (method === 'manual_lookup' && this.selectedVolunteer && hasVolunteerArrivalForEvent(this._arrivals, this.selectedVolunteer.id, eventId)) {
+                this.volunteerLookupNotice = 'Volunteer is already checked in for the selected event.';
+                return;
+            }
+
+            this._submittingArrival = true;
+
+            try {
+                const entry = {
+                    type: 'arrival' as const,
+                    ticket_id: this.result.ticketId,
+                    volunteer_id: this.result.volunteerId,
+                    event_id: eventId,
+                    method,
+                    scanned_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+                };
+
+                await addOutboxEntry(this._scannerId, entry);
+                this.outboxCount = await getOutboxCount(this._scannerId);
+
+                this._arrivals.push({
+                    id: 0,
+                    ticket_id: entry.ticket_id,
+                    volunteer_id: entry.volunteer_id,
+                    event_id: eventId,
+                    scanned_by: null,
+                    scanned_at: entry.scanned_at,
+                    method: entry.method,
+                    flagged: false,
+                    flag_reason: null,
+                });
+
+                this.state = 'confirmed';
+                this.resultMessage = `${this.result.name} checked in successfully.`;
+                this.volunteerLookupNotice = '';
+
+                if (this.isOnline) {
+                    await this._sync();
+                }
+            } catch (error) {
+                if (method === 'manual_lookup') {
+                    this.volunteerLookupNotice = 'Arrival could not be saved locally. Please try again.';
+                } else {
+                    this.state = 'invalid';
+                    this.errorMessage = 'Arrival could not be saved locally. Please try again.';
+                }
+                console.error('Arrival confirmation failed:', error);
+            } finally {
+                this._submittingArrival = false;
+            }
         },
 
         async confirmAttendance(shiftSignupId: number) {
@@ -657,6 +840,10 @@ export function scannerApp(config: ScannerAppConfig) {
             return this.selectedShiftContext?.signupId === shiftSignupId;
         },
 
+        isVolunteerCheckedInInScope(volunteerId: number): boolean {
+            return hasVolunteerArrivalInScope(this._arrivals, volunteerId, this._eventIds);
+        },
+
         shiftGroupBadgeLabel(group: ShiftGroup): string {
             if (group.groupStatus === 'active') {
                 return 'Laeuft jetzt';
@@ -707,7 +894,10 @@ export function scannerApp(config: ScannerAppConfig) {
             this.result = null;
             this.guestResult = null;
             this.selectedVolunteer = null;
+            this.selectedVolunteerContext = null;
+            this.selectedVolunteerEventId = null;
             this.selectedShiftContext = null;
+            this.volunteerLookupNotice = '';
             this.resultMessage = '';
             this.errorMessage = '';
             this._resetInactivityTimer();
@@ -716,7 +906,10 @@ export function scannerApp(config: ScannerAppConfig) {
         _handleGuestQr(entry: GuestEntry) {
             const alreadyCheckedIn = entry.checked_in_at !== null;
             this.selectedVolunteer = null;
+            this.selectedVolunteerContext = null;
+            this.selectedVolunteerEventId = null;
             this.selectedShiftContext = null;
+            this.volunteerLookupNotice = '';
             this.result = null;
             this.guestResult = entry;
 

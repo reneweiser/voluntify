@@ -95,7 +95,7 @@
 
                 {{-- Result panel (volunteer) --}}
                 <div
-                    x-show="['result', 'duplicate', 'invalid', 'confirmed', 'loading'].includes(state) && !guestResult"
+                    x-show="selectedVolunteerContext === 'scanner' && ['result', 'duplicate', 'invalid', 'confirmed', 'loading'].includes(state) && !guestResult"
                     x-transition
                     role="alert"
                     aria-live="assertive"
@@ -181,9 +181,111 @@
                 </div>
             </div>
 
-            {{-- Volunteers tab (placeholder) --}}
-            <div id="tabpanel-volunteers" role="tabpanel" aria-labelledby="tab-volunteers" x-show="activeTab === 'volunteers'" x-cloak class="flex flex-1 flex-col items-center justify-center">
-                <p class="text-sm text-zinc-400">{{ __('Use QR scanner or manual lookup for volunteer check-in.') }}</p>
+            {{-- Volunteers tab --}}
+            <div id="tabpanel-volunteers" role="tabpanel" aria-labelledby="tab-volunteers" x-show="activeTab === 'volunteers'" x-cloak class="flex flex-1 flex-col space-y-4">
+                <div class="px-1">
+                    <input
+                        type="text"
+                        x-model.debounce.300ms="volunteerSearchQuery"
+                        placeholder="Search volunteers..."
+                        aria-label="{{ __('Search volunteers') }}"
+                        class="min-h-12 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-base text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                </div>
+
+                <div class="space-y-3 overflow-y-auto px-1">
+                    <template x-if="shouldShowVolunteerSearchHint">
+                        <p class="py-8 text-center text-sm text-zinc-500">Mindestens 2 Zeichen eingeben.</p>
+                    </template>
+
+                    <template x-if="!shouldShowVolunteerSearchHint && volunteerSearchQuery.trim().length >= 2 && filteredVolunteers.length === 0">
+                        <p class="py-8 text-center text-sm text-zinc-500">No volunteers found.</p>
+                    </template>
+
+                    <template x-for="volunteer in filteredVolunteers" :key="volunteer.id">
+                        <button
+                            type="button"
+                            class="flex min-h-12 w-full items-center justify-between rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-left transition hover:bg-zinc-700"
+                            @click="selectVolunteerFromLookup(volunteer.id)"
+                        >
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-semibold text-white" x-text="volunteer.name"></p>
+                                <p class="text-xs text-zinc-400" x-text="volunteer.email"></p>
+                                <p class="text-xs text-zinc-500" x-show="volunteer.phone" x-text="volunteer.phone"></p>
+                            </div>
+
+                            <template x-if="isVolunteerCheckedInInScope(volunteer.id)">
+                                <span class="ml-3 shrink-0 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-300">Bereits eingecheckt</span>
+                            </template>
+                        </button>
+                    </template>
+                </div>
+
+                <template x-if="selectedVolunteer && selectedVolunteerContext === 'volunteers'">
+                    <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-4">
+                        <p class="text-center text-lg font-semibold text-white" x-text="selectedVolunteer.name"></p>
+                        <p class="mt-1 text-center text-sm text-zinc-300" x-text="selectedVolunteer.email"></p>
+                        <p class="mt-1 text-center text-xs text-zinc-400" x-show="selectedVolunteer.phone" x-text="selectedVolunteer.phone"></p>
+                        <p class="mt-1 text-center text-xs text-zinc-400" x-show="!selectedVolunteer.phone">{{ __('No phone number') }}</p>
+
+                        <div class="mt-4 space-y-3">
+                            <template x-if="selectedVolunteerEventOptions.length === 1 && resolvedSelectedVolunteerEvent">
+                                <div class="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3">
+                                    <p class="text-xs uppercase tracking-wide text-zinc-500">Target event</p>
+                                    <p class="mt-1 text-sm font-medium text-white" x-text="resolvedSelectedVolunteerEvent.name"></p>
+                                </div>
+                            </template>
+
+                            <template x-if="selectedVolunteerEventOptions.length > 1">
+                                <label class="block text-sm text-zinc-300">
+                                    <span class="mb-2 block">Choose event</span>
+                                    <select
+                                        x-model.number="selectedVolunteerEventId"
+                                        class="min-h-12 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-base text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    >
+                                        <option value="">Select event...</option>
+                                        <template x-for="event in selectedVolunteerEventOptions" :key="event.id">
+                                            <option :value="event.id" x-text="event.name"></option>
+                                        </template>
+                                    </select>
+                                </label>
+                            </template>
+
+                            <template x-if="volunteerLookupNotice">
+                                <div class="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-300" x-text="volunteerLookupNotice"></div>
+                            </template>
+
+                            <template x-if="isSelectedVolunteerCheckedInForResolvedEvent">
+                                <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                                    Volunteer is already checked in for the selected event.
+                                </div>
+                            </template>
+
+                            <template x-if="state === 'confirmed' && resultMessage">
+                                <div class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200" x-text="resultMessage"></div>
+                            </template>
+                        </div>
+
+                        <div class="mt-4 flex flex-col gap-3">
+                            <button
+                                type="button"
+                                class="min-h-12 w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-medium text-white hover:bg-emerald-500 active:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                @click="confirmSelectedVolunteerArrival()"
+                                :disabled="!canConfirmSelectedVolunteerArrival"
+                            >
+                                {{ __('Confirm Arrival') }}
+                            </button>
+
+                            <button
+                                type="button"
+                                class="min-h-12 w-full rounded-lg border border-zinc-600 px-4 py-3 text-base font-medium text-zinc-300 hover:bg-zinc-700 active:bg-zinc-600"
+                                @click="dismiss()"
+                            >
+                                {{ __('Done') }}
+                            </button>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             {{-- Gastliste tab --}}

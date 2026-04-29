@@ -167,11 +167,90 @@ it('returns volunteer shift payload fields required for volunteer admin shift li
         ->assertJsonPath('volunteers.0.phone', '+4911111111')
         ->assertJsonPath('volunteers.0.shift_signups.0.id', $signup->id)
         ->assertJsonPath('volunteers.0.shift_signups.0.shift.id', $shift->id)
+        ->assertJsonPath('volunteers.0.shift_signups.0.shift.event_id', $this->event->id)
         ->assertJsonPath('volunteers.0.shift_signups.0.shift.starts_at', Carbon::parse('2026-07-01 13:00:00')->toJSON())
         ->assertJsonPath('volunteers.0.shift_signups.0.shift.ends_at', Carbon::parse('2026-07-01 17:00:00')->toJSON())
         ->assertJsonPath('volunteers.0.shift_signups.0.shift.display_text', 'Jul 01, 13:00 - 17:00')
         ->assertJsonPath('volunteers.0.shift_signups.0.shift.volunteer_job.name', 'Stage Setup')
         ->assertJsonPath('volunteers.0.shift_signups.0.attendance_record.status', 'on_time');
+});
+
+it('includes project-wide volunteers from past events and volunteers without shifts', function () {
+    $pastEvent = Event::factory()->for($this->project)->create([
+        'name' => 'Past Event',
+        'starts_at' => Carbon::parse('2025-07-01 12:00:00'),
+        'ends_at' => Carbon::parse('2025-07-01 18:00:00'),
+    ]);
+
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'event_id' => null,
+        'type' => ScannerType::EntryStaff,
+    ]);
+
+    $pastVolunteer = Volunteer::factory()->create([
+        'project_id' => $this->project->id,
+        'first_name' => 'Past',
+        'last_name' => 'Volunteer',
+        'email' => 'past-volunteer@example.com',
+    ]);
+    Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $pastVolunteer->id,
+    ]);
+
+    $pastJob = VolunteerJob::factory()->create([
+        'event_id' => $pastEvent->id,
+        'name' => 'Legacy Shift',
+    ]);
+
+    $pastShift = Shift::factory()->create([
+        'volunteer_job_id' => $pastJob->id,
+        'shift_date' => '2025-07-01',
+        'starts_at' => Carbon::parse('2025-07-01 13:00:00'),
+        'ends_at' => Carbon::parse('2025-07-01 15:00:00'),
+        'display_text' => 'Jul 01, 13:00 - 15:00',
+    ]);
+
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $pastVolunteer->id,
+        'shift_id' => $pastShift->id,
+    ]);
+
+    $noShiftVolunteer = Volunteer::factory()->create([
+        'project_id' => $this->project->id,
+        'first_name' => 'NoShift',
+        'last_name' => 'Volunteer',
+        'email' => 'noshift@example.com',
+    ]);
+    Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $noShiftVolunteer->id,
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $pastVolunteerPayload = collect($response->json('volunteers'))
+        ->firstWhere('id', $pastVolunteer->id);
+
+    $response->assertOk()
+        ->assertJsonFragment([
+            'id' => $pastVolunteer->id,
+            'first_name' => 'Past',
+            'last_name' => 'Volunteer',
+            'email' => 'past-volunteer@example.com',
+        ])
+        ->assertJsonFragment([
+            'id' => $noShiftVolunteer->id,
+            'first_name' => 'NoShift',
+            'last_name' => 'Volunteer',
+            'email' => 'noshift@example.com',
+        ]);
+
+    expect($pastVolunteerPayload)->not->toBeNull();
+    expect($pastVolunteerPayload['shift_signups'][0]['shift']['event_id'])->toBe($pastEvent->id);
 });
 
 it('returns default states for projects with null attendance_states', function () {

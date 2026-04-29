@@ -3,8 +3,15 @@ export interface VolunteerJob {
     name: string;
 }
 
+export interface ScannerEvent {
+    id: number;
+    name: string;
+    attendance_grace_minutes: number | null;
+}
+
 export interface Shift {
     id: number;
+    event_id?: number | null;
     shift_date: string;
     starts_at: string;
     ends_at: string;

@@ -322,6 +322,147 @@ vendor/bin/sail artisan tinker --execute="
   echo 'Volunteer admin shift-list fixture created';
 "
 
+# 8. Create deterministic Entry Staff scanner fixture for volunteer lookup E2E
+echo "Creating entry-staff volunteer lookup E2E fixture..."
+vendor/bin/sail artisan tinker --execute="
+  use App\Enums\ScannerMode;
+  use App\Enums\ScannerType;
+  use App\Models\Event;
+  use App\Models\Organization;
+  use App\Models\Project;
+  use App\Models\ProjectScanner;
+  use App\Models\Shift;
+  use App\Models\ShiftSignup;
+  use App\Models\Ticket;
+  use App\Models\Volunteer;
+  use App\Models\VolunteerJob;
+
+  \Carbon\Carbon::setTestNow(now());
+
+  \DB::transaction(function () {
+    \App\Models\ProjectScanner::where('scanner_token', 'e2e-entry-volunteer-lookup-token')->delete();
+
+    \App\Models\Project::where('name', 'E2E Entry Volunteer Lookup Project')->delete();
+
+    \App\Models\Volunteer::whereIn('email', [
+      'entry-past@example.com',
+      'entry-ambiguous@example.com',
+      'entry-noshift@example.com',
+    ])->delete();
+
+    \$organization = Organization::firstOrFail();
+
+    \$project = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Entry Volunteer Lookup Project',
+    ]);
+
+    \$currentEvent = Event::factory()->for(\$organization)->for(\$project)->published()->create([
+      'name' => 'E2E Entry Current Event',
+      'slug' => 'e2e-entry-current-event',
+      'starts_at' => now()->addHours(2),
+      'ends_at' => now()->addHours(8),
+    ]);
+
+    \$pastEvent = Event::factory()->for(\$organization)->for(\$project)->published()->create([
+      'name' => 'E2E Entry Past Event',
+      'slug' => 'e2e-entry-past-event',
+      'starts_at' => now()->subDays(30),
+      'ends_at' => now()->subDays(30)->addHours(4),
+    ]);
+
+    \$currentJob = VolunteerJob::factory()->create([
+      'event_id' => \$currentEvent->id,
+      'name' => 'Current Event Desk',
+    ]);
+
+    \$pastJob = VolunteerJob::factory()->create([
+      'event_id' => \$pastEvent->id,
+      'name' => 'Past Event Gate',
+    ]);
+
+    \$currentShift = Shift::factory()->create([
+      'volunteer_job_id' => \$currentJob->id,
+      'shift_date' => now()->toDateString(),
+      'starts_at' => now()->addHours(2),
+      'ends_at' => now()->addHours(4),
+      'display_text' => now()->addHours(2)->format('M d, H:i').' - '.now()->addHours(4)->format('H:i'),
+    ]);
+
+    \$pastShift = Shift::factory()->create([
+      'volunteer_job_id' => \$pastJob->id,
+      'shift_date' => now()->subDays(30)->toDateString(),
+      'starts_at' => now()->subDays(30)->addHours(1),
+      'ends_at' => now()->subDays(30)->addHours(3),
+      'display_text' => now()->subDays(30)->addHours(1)->format('M d, H:i').' - '.now()->subDays(30)->addHours(3)->format('H:i'),
+    ]);
+
+    \$pastVolunteer = Volunteer::factory()->verified()->for(\$project)->create([
+      'first_name' => 'Past',
+      'last_name' => 'Volunteer',
+      'email' => 'entry-past@example.com',
+      'phone' => '+491701010101',
+    ]);
+
+    Ticket::factory()->create([
+      'project_id' => \$project->id,
+      'volunteer_id' => \$pastVolunteer->id,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$pastVolunteer->id,
+      'shift_id' => \$pastShift->id,
+    ]);
+
+    \$ambiguousVolunteer = Volunteer::factory()->verified()->for(\$project)->create([
+      'first_name' => 'Ambiguous',
+      'last_name' => 'Volunteer',
+      'email' => 'entry-ambiguous@example.com',
+      'phone' => '+491702020202',
+    ]);
+
+    Ticket::factory()->create([
+      'project_id' => \$project->id,
+      'volunteer_id' => \$ambiguousVolunteer->id,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$ambiguousVolunteer->id,
+      'shift_id' => \$pastShift->id,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$ambiguousVolunteer->id,
+      'shift_id' => \$currentShift->id,
+    ]);
+
+    \$noShiftVolunteer = Volunteer::factory()->verified()->for(\$project)->create([
+      'first_name' => 'NoShift',
+      'last_name' => 'Volunteer',
+      'email' => 'entry-noshift@example.com',
+      'phone' => '+491703030303',
+    ]);
+
+    Ticket::factory()->create([
+      'project_id' => \$project->id,
+      'volunteer_id' => \$noShiftVolunteer->id,
+    ]);
+
+    ProjectScanner::factory()->active()->create([
+      'project_id' => \$project->id,
+      'event_id' => null,
+      'name' => 'E2E Entry Volunteer Lookup Scanner',
+      'type' => ScannerType::EntryStaff,
+      'modes' => [ScannerMode::Checkin->value],
+      'scanner_token' => 'e2e-entry-volunteer-lookup-token',
+      'auth_code' => '333333',
+      'starts_at' => now()->subHour(),
+      'ends_at' => now()->addHours(4),
+    ]);
+  });
+
+  echo 'Entry staff volunteer lookup fixture created';
+"
+
 echo ""
 echo "=== Setup complete ==="
 echo "Users available:"
@@ -330,3 +471,4 @@ echo "  EntranceStaff:  entrance@example.com / password"
 echo "  Dashboard user: dashboard@example.com / password"
 echo "  VA scanner:     /s/e2e-va-shift-list-token with code 222222"
 echo "  VA all past:    /s/e2e-va-all-past-token with code 444444"
+echo "  Entry scanner:  /s/e2e-entry-volunteer-lookup-token with code 333333"

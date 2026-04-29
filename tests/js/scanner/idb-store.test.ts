@@ -74,6 +74,17 @@ describe('idb-store (DB_VERSION 3 — scannerId keys)', () => {
         expect(result[0].name).toBe('Alice Johnson');
     });
 
+    it('searches volunteers by first name, last name, and email substring', async () => {
+        await storeVolunteers(1, [
+            makeVolunteer(),
+            makeVolunteer({ id: 2, first_name: 'Bob', last_name: 'Smith', name: 'Bob Smith', email: 'bob@example.com' }),
+        ]);
+
+        await expect(searchVolunteers(1, 'ali')).resolves.toHaveLength(1);
+        await expect(searchVolunteers(1, 'smi')).resolves.toHaveLength(1);
+        await expect(searchVolunteers(1, 'bob@example')).resolves.toHaveLength(1);
+    });
+
     it('adds and retrieves outbox entries by scannerId', async () => {
         const entry: OutboxEntry = {
             type: 'arrival',
