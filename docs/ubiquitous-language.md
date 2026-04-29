@@ -28,6 +28,8 @@ This glossary defines the shared vocabulary used throughout Voluntify. Consisten
 
 > Example: A volunteer signs up for "Hochschulball 2026" and selects shifts at both the "Aufbautag" and "Hauptabend" events -- they remain one volunteer record in the project.
 
+> **Wann existiert ein Volunteer-Record?** Erst, wenn der Signup-Flow vollständig abgeschlossen wird (Schritt 5 "Verbindlich anmelden" in UC-04). Wer nur die E-Mail verifiziert, danach aber abbricht, hat **keinen** Volunteer-Record im Projekt. Folge: Magic-Link-Anfragen für solche E-Mails laufen ins Leere (siehe UC-16, Sonderfall "Verifiziert, aber nicht angemeldet"). Der `EmailVerificationToken` wird nach 7 Tagen automatisch geprunt -- es bleibt also kein Datenmüll.
+
 ## Projects & Events
 
 **Project** -- The mandatory top-level container for organising events. Every event belongs to a project. A project groups related events (e.g. all events for a festival), holds shared resources (Gear, Custom Fields, Scanner configs, Volunteers), and has its own public website.

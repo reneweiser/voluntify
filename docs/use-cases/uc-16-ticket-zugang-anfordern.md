@@ -5,7 +5,7 @@
 
 ## Vorbedingungen
 
-- Volunteer ist im Projekt registriert
+- Volunteer ist im Projekt registriert (= Signup-Flow vollständig abgeschlossen, siehe UC-04 Schritt 5)
 - Volunteer hat keinen Zugang mehr (E-Mail gelöscht, Link abgelaufen)
 
 ## Ablauf
@@ -28,6 +28,12 @@
 
 - Rate-Limiting: max. 3 Anfragen pro E-Mail pro Stunde
 - Keine Info-Leaks (immer gleiche Meldung)
+
+## Sonderfall: "Verifiziert, aber nicht angemeldet"
+
+Hat ein Interessent zwar die E-Mail-Verifikation durchlaufen (UC-04 Schritt 1), den Signup-Flow danach aber nicht bis Schritt 5 abgeschlossen, existiert **kein Volunteer-Record**. Die Magic-Link-Anfrage greift dann den Privacy-Stillegang in [`RequestPortalAccessLink`](../../app/Actions/RequestPortalAccessLink.php) -- der User sieht die generische Bestätigungsmeldung, bekommt aber keine E-Mail.
+
+Support-Antwort in dem Fall: "Deine Anmeldung wurde nicht abgeschlossen, du bist nicht im System -- bitte den Signup-Flow erneut starten." Es gibt nichts zu löschen und nichts an Schichten anzuzeigen.
 
 ## Referenz
 
