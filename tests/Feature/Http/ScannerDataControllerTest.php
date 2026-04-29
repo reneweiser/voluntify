@@ -2,6 +2,7 @@
 
 use App\Enums\ScannerType;
 use App\Models\Event;
+use App\Models\EventArrival;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\ProjectScanner;
@@ -25,9 +26,8 @@ afterEach(function () {
 });
 
 it('returns scanner data with valid token', function () {
-    $scanner = ProjectScanner::factory()->active()->create([
+    $scanner = ProjectScanner::factory()->active()->forEntryEvent($this->event)->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
     ]);
 
     $volunteer = Volunteer::factory()->create([
@@ -44,7 +44,7 @@ it('returns scanner data with valid token', function () {
 
     $response->assertOk()
         ->assertJsonStructure([
-            'scanner' => ['id', 'type', 'modes'],
+            'scanner' => ['id', 'type', 'modes', 'entry_event_id', 'pool_event_ids', 'contract_version'],
             'events',
             'volunteers',
             'arrivals',
@@ -52,18 +52,32 @@ it('returns scanner data with valid token', function () {
             'keys',
         ])
         ->assertJsonPath('scanner.id', $scanner->id)
-        ->assertJsonPath('scanner.type', ScannerType::EntryStaff->value);
+        ->assertJsonPath('scanner.type', ScannerType::EntryStaff->value)
+        ->assertJsonPath('scanner.entry_event_id', $this->event->id)
+        ->assertJsonPath('scanner.pool_event_ids.0', $this->event->id)
+        ->assertJsonPath('scanner.contract_version', ProjectScanner::CONTRACT_VERSION);
 });
 
 it('includes phone in volunteer data when phone exists', function () {
-    $scanner = ProjectScanner::factory()->active()->create([
+    $scanner = ProjectScanner::factory()->active()->forEntryEvent($this->event)->create([
         'project_id' => $this->project->id,
-        'event_id' => null,
     ]);
 
-    Volunteer::factory()->create([
+    $volunteer = Volunteer::factory()->create([
         'project_id' => $this->project->id,
         'phone' => '+49123456789',
+    ]);
+    $ticket = Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+    EventArrival::create([
+        'ticket_id' => $ticket->id,
+        'volunteer_id' => $volunteer->id,
+        'event_id' => $this->event->id,
+        'scanned_by' => null,
+        'scanned_at' => now(),
+        'method' => 'qr_scan',
     ]);
 
     $response = $this->getJson(route('scanner-api.data', $scanner->id), [
@@ -75,14 +89,25 @@ it('includes phone in volunteer data when phone exists', function () {
 });
 
 it('includes null phone when volunteer has no phone', function () {
-    $scanner = ProjectScanner::factory()->active()->create([
+    $scanner = ProjectScanner::factory()->active()->forEntryEvent($this->event)->create([
         'project_id' => $this->project->id,
-        'event_id' => null,
     ]);
 
-    Volunteer::factory()->create([
+    $volunteer = Volunteer::factory()->create([
         'project_id' => $this->project->id,
         'phone' => null,
+    ]);
+    $ticket = Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+    EventArrival::create([
+        'ticket_id' => $ticket->id,
+        'volunteer_id' => $volunteer->id,
+        'event_id' => $this->event->id,
+        'scanned_by' => null,
+        'scanned_at' => now(),
+        'method' => 'qr_scan',
     ]);
 
     $response = $this->getJson(route('scanner-api.data', $scanner->id), [
@@ -98,7 +123,8 @@ it('includes attendance_states in data response', function () {
 
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
     ]);
 
     $response = $this->getJson(route('scanner-api.data', $scanner->id), [
@@ -113,7 +139,8 @@ it('includes attendance_states in data response', function () {
 it('returns volunteer shift payload fields required for volunteer admin shift list', function () {
     $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
     ]);
 
     $volunteer = Volunteer::factory()->create([
@@ -179,7 +206,8 @@ it('returns default states for projects with null attendance_states', function (
 
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
     ]);
 
     $response = $this->getJson(route('scanner-api.data', $scanner->id), [
@@ -212,7 +240,8 @@ it('returns 401 without token', function () {
 it('syncs arrivals for entry staff scanner', function () {
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
         'type' => ScannerType::EntryStaff,
     ]);
 
@@ -223,6 +252,7 @@ it('syncs arrivals for entry staff scanner', function () {
     ]);
 
     $response = $this->postJson(route('scanner-api.sync', $scanner->id), [
+        'contract_version' => ProjectScanner::CONTRACT_VERSION,
         'arrivals' => [
             [
                 'ticket_id' => $ticket->id,
@@ -242,7 +272,8 @@ it('syncs arrivals for entry staff scanner', function () {
 it('returns 403 when VA scanner tries to sync arrivals', function () {
     $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
     ]);
 
     $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
@@ -252,6 +283,7 @@ it('returns 403 when VA scanner tries to sync arrivals', function () {
     ]);
 
     $this->postJson(route('scanner-api.sync', $scanner->id), [
+        'contract_version' => ProjectScanner::CONTRACT_VERSION,
         'arrivals' => [
             [
                 'ticket_id' => $ticket->id,
@@ -263,6 +295,39 @@ it('returns 403 when VA scanner tries to sync arrivals', function () {
     ], [
         'X-Scanner-Token' => $scanner->scanner_token,
     ])->assertForbidden();
+});
+
+it('syncs arrivals to the scanner entry event instead of the client payload event', function () {
+    $poolEvent = Event::factory()->for($this->project)->create();
+    $scanner = ProjectScanner::factory()->active()->withPoolEvents($this->event, [$this->event->id, $poolEvent->id])->create([
+        'project_id' => $this->project->id,
+        'type' => ScannerType::EntryStaff,
+    ]);
+
+    $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
+    $ticket = Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $response = $this->postJson(route('scanner-api.sync', $scanner->id), [
+        'contract_version' => ProjectScanner::CONTRACT_VERSION,
+        'arrivals' => [
+            [
+                'ticket_id' => $ticket->id,
+                'event_id' => $poolEvent->id,
+                'method' => 'qr_scan',
+                'scanned_at' => now()->toISOString(),
+            ],
+        ],
+    ], [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk();
+
+    expect($response->json('arrivals'))->toHaveCount(1)
+        ->and($response->json('arrivals.0.event_id'))->toBe($this->event->id);
 });
 
 it('records gear pickup for VA scanner', function () {
@@ -302,9 +367,8 @@ it('returns 403 when entry staff scanner tries gear pickup', function () {
 });
 
 it('returns gear_items for volunteer admin scanner', function () {
-    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->forEntryEvent($this->event)->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
     ]);
     $gearItem = ProjectGearItem::factory()->sized(['S', 'M', 'L'])->create([
         'project_id' => $this->project->id,
@@ -324,12 +388,21 @@ it('returns gear_items for volunteer admin scanner', function () {
 it('returns volunteer_gear keyed by volunteer id for VA scanner', function () {
     $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
         'project_id' => $this->project->id,
-        'event_id' => null,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
     ]);
     $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
     Ticket::factory()->create([
         'project_id' => $this->project->id,
         'volunteer_id' => $volunteer->id,
+    ]);
+    EventArrival::create([
+        'ticket_id' => Ticket::where('volunteer_id', $volunteer->id)->firstOrFail()->id,
+        'volunteer_id' => $volunteer->id,
+        'event_id' => $this->event->id,
+        'scanned_by' => null,
+        'scanned_at' => now(),
+        'method' => 'qr_scan',
     ]);
     $gearItem = ProjectGearItem::factory()->create(['project_id' => $this->project->id]);
     $gear = VolunteerGear::factory()->create([
@@ -352,7 +425,8 @@ it('returns volunteer_gear keyed by volunteer id for VA scanner', function () {
 it('returns empty gear data for entry staff scanner', function () {
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
         'type' => ScannerType::EntryStaff,
     ]);
     ProjectGearItem::factory()->create(['project_id' => $this->project->id]);
@@ -369,12 +443,21 @@ it('returns empty gear data for entry staff scanner', function () {
 it('returns volunteer gear with pickup information', function () {
     $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
         'project_id' => $this->project->id,
-        'event_id' => null,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
     ]);
     $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
-    Ticket::factory()->create([
+    $ticket = Ticket::factory()->create([
         'project_id' => $this->project->id,
         'volunteer_id' => $volunteer->id,
+    ]);
+    EventArrival::create([
+        'ticket_id' => $ticket->id,
+        'volunteer_id' => $volunteer->id,
+        'event_id' => $this->event->id,
+        'scanned_by' => null,
+        'scanned_at' => now(),
+        'method' => 'qr_scan',
     ]);
     $gearItem = ProjectGearItem::factory()->create(['project_id' => $this->project->id]);
     $gear = VolunteerGear::factory()->create([
@@ -400,11 +483,21 @@ it('returns volunteer gear with pickup information', function () {
 it('includes quantity_entitled in volunteer gear payload for Typ 2 gear', function () {
     $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
         'project_id' => $this->project->id,
-        'event_id' => null,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
     ]);
 
     $item = ProjectGearItem::factory()->quantity(3)->for($this->project)->create();
     $volunteer = Volunteer::factory()->for($this->project)->create();
+    $ticket = Ticket::factory()->for($this->project)->create(['volunteer_id' => $volunteer->id]);
+    EventArrival::create([
+        'ticket_id' => $ticket->id,
+        'volunteer_id' => $volunteer->id,
+        'event_id' => $this->event->id,
+        'scanned_by' => null,
+        'scanned_at' => now(),
+        'method' => 'qr_scan',
+    ]);
     VolunteerGear::factory()->withQuantity(3)->create([
         'project_gear_item_id' => $item->id,
         'volunteer_id' => $volunteer->id,
@@ -422,7 +515,8 @@ it('includes quantity_entitled in volunteer gear payload for Typ 2 gear', functi
 it('includes quantity_per_volunteer in gear items payload', function () {
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
         'type' => ScannerType::VolunteerAdmin,
     ]);
 
@@ -440,7 +534,8 @@ it('includes quantity_per_volunteer in gear items payload', function () {
 it('rejects gear pickup when quantity exceeded via scanner API', function () {
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
         'type' => ScannerType::VolunteerAdmin,
     ]);
 
@@ -467,7 +562,8 @@ it('rejects gear pickup when quantity exceeded via scanner API', function () {
 it('allows gear pickup within quantity limit via scanner API', function () {
     $scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
         'type' => ScannerType::VolunteerAdmin,
     ]);
 

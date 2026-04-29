@@ -2,6 +2,7 @@
 
 use App\Enums\ScannerMode;
 use App\Enums\ScannerType;
+use App\Models\Event;
 use App\Models\Project;
 use App\Models\ProjectScanner;
 use App\Models\ProjectScannerAssignee;
@@ -25,6 +26,14 @@ it('belongs to a project', function () {
     $scanner = ProjectScanner::factory()->for($project)->create();
 
     expect($scanner->project->id)->toBe($project->id);
+});
+
+it('belongs to an entry event', function () {
+    $project = Project::factory()->create();
+    $event = Event::factory()->for($project)->create();
+    $scanner = ProjectScanner::factory()->forEntryEvent($event)->create();
+
+    expect($scanner->entryEvent->id)->toBe($event->id);
 });
 
 it('has many assignees', function () {

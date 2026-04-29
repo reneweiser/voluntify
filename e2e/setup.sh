@@ -92,6 +92,8 @@ vendor/bin/sail artisan tinker --execute="
   use App\Enums\GearItemType;
   use App\Enums\ScannerMode;
   use App\Enums\ScannerType;
+  use App\Actions\GenerateTicket;
+  use App\Actions\RefreshTicketJwt;
   use App\Models\Event;
   use App\Models\Organization;
   use App\Models\Project;
@@ -254,7 +256,8 @@ vendor/bin/sail artisan tinker --execute="
 
     ProjectScanner::factory()->active()->create([
       'project_id' => \$project->id,
-      'event_id' => \$event->id,
+      'entry_event_id' => \$event->id,
+      'pool_event_ids' => [\$event->id],
       'name' => 'E2E Volunteer Admin Scanner',
       'type' => ScannerType::VolunteerAdmin,
       'modes' => [ScannerMode::Checkin->value, ScannerMode::GearPickup->value],
@@ -308,7 +311,8 @@ vendor/bin/sail artisan tinker --execute="
 
     ProjectScanner::factory()->active()->create([
       'project_id' => \$pastProject->id,
-      'event_id' => \$pastEvent->id,
+      'entry_event_id' => \$pastEvent->id,
+      'pool_event_ids' => [\$pastEvent->id],
       'name' => 'E2E Volunteer Admin Past Scanner',
       'type' => ScannerType::VolunteerAdmin,
       'modes' => [ScannerMode::Checkin->value, ScannerMode::GearPickup->value],
@@ -317,6 +321,81 @@ vendor/bin/sail artisan tinker --execute="
       'starts_at' => now()->subHour(),
       'ends_at' => now()->addHours(4),
     ]);
+
+    \App\Models\ProjectScanner::where('scanner_token', 'e2e-entry-pool-scanner-token')->delete();
+    \App\Models\Event::whereIn('name', [
+      'E2E Entry Event',
+      'E2E Pool Event',
+    ])->delete();
+    \App\Models\Project::where('name', 'E2E Entry Pool Scanner Project')->delete();
+    \App\Models\Volunteer::where('email', 'entry-pool@example.com')->delete();
+
+    \$entryPoolProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Entry Pool Scanner Project',
+    ]);
+
+    \$entryEvent = Event::factory()->for(\$organization)->for(\$entryPoolProject)->published()->create([
+      'name' => 'E2E Entry Event',
+      'slug' => 'e2e-entry-event',
+      'starts_at' => now()->subHours(2),
+      'ends_at' => now()->addHours(8),
+      'attendance_grace_minutes' => 10,
+    ]);
+
+    \$poolEvent = Event::factory()->for(\$organization)->for(\$entryPoolProject)->published()->create([
+      'name' => 'E2E Pool Event',
+      'slug' => 'e2e-pool-event',
+      'starts_at' => now()->subHour(),
+      'ends_at' => now()->addHours(6),
+      'attendance_grace_minutes' => 10,
+    ]);
+
+    \$poolJob = VolunteerJob::factory()->create([
+      'event_id' => \$poolEvent->id,
+      'name' => 'Pool Event Team',
+    ]);
+
+    \$poolShift = Shift::factory()->create([
+      'volunteer_job_id' => \$poolJob->id,
+      'shift_date' => now()->toDateString(),
+      'starts_at' => now()->subMinutes(30),
+      'ends_at' => now()->addHours(2),
+      'display_text' => now()->subMinutes(30)->format('M d, H:i').' - '.now()->addHours(2)->format('H:i'),
+    ]);
+
+    \$poolVolunteer = Volunteer::factory()->verified()->for(\$entryPoolProject)->create([
+      'first_name' => 'Entry',
+      'last_name' => 'Pool',
+      'email' => 'entry-pool@example.com',
+      'phone' => '+491701112233',
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$poolVolunteer->id,
+      'shift_id' => \$poolShift->id,
+    ]);
+
+    \$ticket = app(GenerateTicket::class)->execute(\$poolVolunteer, \$entryEvent);
+    app(RefreshTicketJwt::class)->execute(\$ticket);
+
+    \$entryPoolScanner = ProjectScanner::factory()->active()->create([
+      'project_id' => \$entryPoolProject->id,
+      'entry_event_id' => \$entryEvent->id,
+      'pool_event_ids' => [\$entryEvent->id, \$poolEvent->id],
+      'name' => 'E2E Entry Pool Scanner',
+      'type' => ScannerType::EntryStaff,
+      'modes' => [ScannerMode::Checkin->value],
+      'scanner_token' => 'e2e-entry-pool-scanner-token',
+      'auth_code' => '333333',
+      'starts_at' => now()->subHour(),
+      'ends_at' => now()->addHours(4),
+    ]);
+
+    file_put_contents(base_path('public/e2e-fixtures.json'), json_encode([
+      'entryPoolProjectId' => \$entryPoolProject->id,
+      'entryPoolEntryEventId' => \$entryEvent->id,
+      'entryPoolPoolEventId' => \$poolEvent->id,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
   });
 
   echo 'Volunteer admin shift-list fixture created';
@@ -330,3 +409,4 @@ echo "  EntranceStaff:  entrance@example.com / password"
 echo "  Dashboard user: dashboard@example.com / password"
 echo "  VA scanner:     /s/e2e-va-shift-list-token with code 222222"
 echo "  VA all past:    /s/e2e-va-all-past-token with code 444444"
+echo "  Entry/pool:     /s/e2e-entry-pool-scanner-token with code 333333"

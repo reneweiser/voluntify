@@ -34,7 +34,7 @@ import {
     type ShiftGroup,
     type ShiftGroupVolunteerRow,
 } from './shift-context';
-import { syncOutbox } from './sync';
+import { ScannerContractVersionError, syncOutbox } from './sync';
 import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGear, VolunteerGearPickup, GuestEntry } from './types';
 
 type ScannerState = 'idle' | 'loading' | 'scanning' | 'result' | 'duplicate' | 'invalid' | 'confirmed';
@@ -60,6 +60,9 @@ interface ScannerAppConfig {
     scannerId: number;
     scannerType: 'entry_staff' | 'volunteer_admin';
     modes: string[];
+    entryEventId: number | null;
+    contractVersion: number;
+    requiresConfigurationReview: boolean;
     scannerToken: string;
     dataUrl: string;
     syncUrl: string;
@@ -92,7 +95,10 @@ export function scannerApp(config: ScannerAppConfig) {
         _gearItems: [] as GearItem[],
         _volunteerGear: {} as Record<number, VolunteerGear[]>,
         _graceMinutes: null as number | null,
+        _contractVersion: config.contractVersion as number | null,
+        _entryEventId: config.entryEventId as number | null,
         _eventIds: [] as number[],
+        _requiresConfigurationReview: config.requiresConfigurationReview,
         _syncUrl: config.syncUrl,
         _dataUrl: config.dataUrl,
         _gearPickupUrl: config.gearPickupUrl,
@@ -182,6 +188,13 @@ export function scannerApp(config: ScannerAppConfig) {
             return config.scannerType === 'entry_staff';
         },
 
+        get canSubmitArrival(): boolean {
+            return this.canConfirmArrival
+                && this._entryEventId !== null
+                && this._contractVersion !== null
+                && !this._requiresConfigurationReview;
+        },
+
         get canPickupGear(): boolean {
             return config.modes.includes('gear_pickup');
         },
@@ -256,10 +269,14 @@ export function scannerApp(config: ScannerAppConfig) {
             this.guestResult = null;
 
             if (options.fromQr) {
-                const alreadyArrived = this._arrivals.some((arrival) => arrival.volunteer_id === volunteer.id);
+                const alreadyArrived = this._entryEventId !== null && this._arrivals.some((arrival) => {
+                    return arrival.volunteer_id === volunteer.id && arrival.event_id === this._entryEventId;
+                });
 
                 if (alreadyArrived) {
-                    const arrival = this._arrivals.find((entry) => entry.volunteer_id === volunteer.id);
+                    const arrival = this._arrivals.find((entry) => {
+                        return entry.volunteer_id === volunteer.id && entry.event_id === this._entryEventId;
+                    });
                     const lastScan = arrival?.scanned_at
                         ? new Date(arrival.scanned_at).toLocaleTimeString()
                         : '';
@@ -384,6 +401,9 @@ export function scannerApp(config: ScannerAppConfig) {
                         this._attendanceRecords = data.attendance_records ?? [];
                         this._gearItems = data.gear_items ?? [];
                         this._volunteerGear = data.volunteer_gear ?? {};
+                        this._contractVersion = data.scanner?.contract_version ?? this._contractVersion;
+                        this._entryEventId = data.scanner?.entry_event_id ?? this._entryEventId;
+                        this._requiresConfigurationReview = data.scanner?.requires_configuration_review ?? false;
                         this._eventIds = (data.events ?? []).map((e: { id: number }) => e.id);
                         this._graceMinutes = data.events?.[0]?.attendance_grace_minutes ?? null;
 
@@ -470,13 +490,22 @@ export function scannerApp(config: ScannerAppConfig) {
                 return;
             }
 
-            const eventId = this._eventIds[0] ?? 0;
+            if (!this.canSubmitArrival || this._entryEventId === null || this._contractVersion === null) {
+                this.state = 'invalid';
+                this.errorMessage = 'Scanner configuration needs review before volunteer check-in can be used.';
+
+                return;
+            }
+
+            const eventId = this._entryEventId;
 
             const entry = {
                 type: 'arrival' as const,
                 ticket_id: this.result.ticketId,
                 volunteer_id: this.result.volunteerId,
                 event_id: eventId,
+                entry_event_id: eventId,
+                contract_version: this._contractVersion,
                 method: 'qr_scan' as const,
                 scanned_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
             };
@@ -698,8 +727,36 @@ export function scannerApp(config: ScannerAppConfig) {
         },
 
         async _sync() {
-            await syncOutbox(this._scannerId, this._syncUrl, this._scannerToken, this._guestSyncUrl);
-            this.outboxCount = await getOutboxCount(this._scannerId);
+            try {
+                await syncOutbox(this._scannerId, this._syncUrl, this._scannerToken, this._guestSyncUrl);
+                this.outboxCount = await getOutboxCount(this._scannerId);
+            } catch (error) {
+                if (error instanceof ScannerContractVersionError) {
+                    if (this.isOnline) {
+                        await this.reloadScannerData({ preserveUiState: true });
+
+                        try {
+                            await syncOutbox(this._scannerId, this._syncUrl, this._scannerToken, this._guestSyncUrl);
+                            this.outboxCount = await getOutboxCount(this._scannerId);
+
+                            return;
+                        } catch (retryError) {
+                            if (!(retryError instanceof ScannerContractVersionError)) {
+                                throw retryError;
+                            }
+                        }
+                    }
+
+                    this.state = 'invalid';
+                    this.result = null;
+                    this.selectedVolunteer = null;
+                    this.errorMessage = 'Queued arrivals need organizer review before they can be synced.';
+
+                    return;
+                }
+
+                throw error;
+            }
         },
 
         dismiss() {

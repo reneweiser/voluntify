@@ -19,6 +19,8 @@ describe('sync (M11 — scanner token auth)', () => {
             type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
+            entry_event_id: 5,
+            contract_version: 1,
             method: 'qr_scan',
             scanned_at: '2026-03-02 10:00:00',
         });
@@ -38,8 +40,10 @@ describe('sync (M11 — scanner token auth)', () => {
         expect(options.headers['X-Scanner-Token']).toBe('test-scanner-token');
 
         const body = JSON.parse(options.body);
+        expect(body.contract_version).toBe(1);
         expect(body.arrivals).toHaveLength(1);
         expect(body.arrivals[0].ticket_id).toBe(10);
+        expect(body.arrivals[0].event_id).toBe(5);
 
         vi.unstubAllGlobals();
     });
@@ -49,6 +53,8 @@ describe('sync (M11 — scanner token auth)', () => {
             type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
+            entry_event_id: 5,
+            contract_version: 1,
             method: 'qr_scan',
             scanned_at: '2026-03-02 10:00:00',
         });
@@ -71,6 +77,8 @@ describe('sync (M11 — scanner token auth)', () => {
             type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
+            entry_event_id: 5,
+            contract_version: 1,
             method: 'qr_scan',
             scanned_at: '2026-03-02 10:00:00',
         });
@@ -90,6 +98,8 @@ describe('sync (M11 — scanner token auth)', () => {
             type: 'arrival',
             ticket_id: 10,
             volunteer_id: 1,
+            entry_event_id: 5,
+            contract_version: 1,
             method: 'qr_scan',
             scanned_at: '2026-03-02 10:00:00',
         });
@@ -118,5 +128,19 @@ describe('sync (M11 — scanner token auth)', () => {
         expect(mockFetch).not.toHaveBeenCalled();
 
         vi.unstubAllGlobals();
+    });
+
+    it('rejects stale arrival entries that are missing contract metadata', async () => {
+        await addOutboxEntry(1, {
+            type: 'arrival',
+            ticket_id: 10,
+            volunteer_id: 1,
+            method: 'qr_scan',
+            scanned_at: '2026-03-02 10:00:00',
+        });
+
+        await expect(syncOutbox(1, '/api/scanner/1/sync', 'test-token'))
+            .rejects
+            .toThrow('Queued arrivals require fresh scanner data before they can be synced.');
     });
 });

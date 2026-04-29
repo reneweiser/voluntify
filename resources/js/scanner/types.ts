@@ -116,6 +116,8 @@ export interface OutboxEntry {
     ticket_id?: number;
     volunteer_id?: number;
     event_id?: number;
+    entry_event_id?: number | null;
+    contract_version?: number;
     method?: 'qr_scan' | 'manual_lookup';
     scanned_at: string;
     shift_signup_id?: number;

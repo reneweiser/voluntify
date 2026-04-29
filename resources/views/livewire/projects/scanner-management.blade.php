@@ -4,7 +4,7 @@
             <flux:button variant="ghost" icon="arrow-left" :href="route('projects.index')" wire:navigate aria-label="{{ __('Back to projects') }}" />
             <flux:heading size="xl">{{ $project->name }}</flux:heading>
         </div>
-        <flux:button variant="primary" icon="plus" wire:click="$set('showCreateModal', true)">
+        <flux:button variant="primary" icon="plus" wire:click="showCreateScannerModal" :disabled="$this->events->isEmpty()">
             {{ __('New Scanner') }}
         </flux:button>
     </div>
@@ -19,6 +19,12 @@
         <flux:callout variant="danger" class="mb-4">{{ $message }}</flux:callout>
     @enderror
 
+    @if ($this->events->isEmpty())
+        <flux:callout variant="warning" class="mb-4">
+            {{ __('Create at least one event before configuring scanners.') }}
+        </flux:callout>
+    @endif
+
     {{-- Scanner list --}}
     @if ($this->scanners->isEmpty())
         <flux:card>
@@ -32,6 +38,12 @@
                 <flux:card wire:key="scanner-{{ $scanner->id }}">
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0 flex-1">
+                            @php
+                                $poolEventNames = collect($scanner->configuredPoolEventIds())
+                                    ->map(fn ($eventId) => $this->eventNamesById[$eventId] ?? ('#'.$eventId))
+                                    ->implode(', ');
+                            @endphp
+
                             <div class="flex items-center gap-2 mb-1">
                                 <flux:heading size="lg">{{ $scanner->name }}</flux:heading>
                                 @php $status = $scanner->status; @endphp
@@ -48,6 +60,21 @@
                             </flux:text>
                             @if ($scanner->hint_text)
                                 <flux:text size="sm" class="mt-1">{{ $scanner->hint_text }}</flux:text>
+                            @endif
+
+                            <div class="mt-2 space-y-1">
+                                <flux:text size="sm" class="text-zinc-500">
+                                    {{ __('Entry Event: :event', ['event' => $scanner->entryEvent?->name ?? __('Needs review')]) }}
+                                </flux:text>
+                                <flux:text size="sm" class="text-zinc-500">
+                                    {{ __('Pool Events: :events', ['events' => $poolEventNames !== '' ? $poolEventNames : __('Needs review')]) }}
+                                </flux:text>
+                            </div>
+
+                            @if ($scanner->requires_configuration_review)
+                                <flux:callout variant="warning" class="mt-3">
+                                    {{ __('Configuration review required before volunteer check-in can be used.') }}
+                                </flux:callout>
                             @endif
 
                             {{-- Auth code --}}
@@ -163,13 +190,36 @@
             @endif
 
             <flux:field>
-                <flux:label>{{ __('Scope to Event (optional)') }}</flux:label>
-                <flux:select wire:model="form.eventId">
-                    <flux:select.option value="">{{ __('Project-wide') }}</flux:select.option>
+                <flux:label>{{ __('Entry Event') }}</flux:label>
+                <flux:select wire:model.live="form.entryEventId">
                     @foreach ($this->events as $event)
                         <flux:select.option :value="$event->id">{{ $event->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
+                <flux:error name="form.entryEventId" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Pool Events') }}</flux:label>
+
+                @if ($form->type === 'volunteer_admin')
+                    <flux:text size="sm" class="text-zinc-500">
+                        {{ __('Volunteer Admin scanners always use the selected entry event as their only pool event.') }}
+                    </flux:text>
+                @else
+                    <div class="space-y-2">
+                        @foreach ($this->events as $event)
+                            <flux:checkbox
+                                wire:key="pool-event-{{ $event->id }}"
+                                wire:model="form.poolEventIds"
+                                :value="$event->id"
+                                :label="$event->name"
+                            />
+                        @endforeach
+                    </div>
+                @endif
+
+                <flux:error name="form.poolEventIds" />
             </flux:field>
 
             <div class="grid grid-cols-2 gap-4">

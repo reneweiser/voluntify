@@ -53,13 +53,55 @@ class ScannerManagement extends Component
         $this->projectId = $projectId;
 
         Gate::authorize('manageScanners', $this->project);
+
+        $this->resetForm();
     }
 
     public function updatedFormType(string $value): void
     {
         if ($value === ScannerType::EntryStaff->value) {
             $this->form->modes = [ScannerMode::Checkin->value];
+
+            $this->ensureEntryEventIsIncludedInPool();
+
+            return;
         }
+
+        $this->synchronizeVolunteerAdminPool();
+    }
+
+    public function updatedFormEntryEventId(?int $value): void
+    {
+        if ($value === null) {
+            $this->form->poolEventIds = [];
+
+            return;
+        }
+
+        if ($this->form->type === ScannerType::VolunteerAdmin->value) {
+            $this->form->poolEventIds = [$value];
+
+            return;
+        }
+
+        $poolEventIds = array_values(array_unique(array_map('intval', $this->form->poolEventIds)));
+
+        if (! in_array($value, $poolEventIds, true)) {
+            $poolEventIds[] = $value;
+        }
+
+        $this->form->poolEventIds = $poolEventIds;
+    }
+
+    public function updatedFormPoolEventIds(): void
+    {
+        if ($this->form->type === ScannerType::VolunteerAdmin->value) {
+            $this->synchronizeVolunteerAdminPool();
+
+            return;
+        }
+
+        $this->ensureEntryEventIsIncludedInPool();
     }
 
     /** @return Collection<int, ProjectScanner> */
@@ -67,7 +109,7 @@ class ScannerManagement extends Component
     public function scanners(): Collection
     {
         return ProjectScanner::where('project_id', $this->projectId)
-            ->with('assignees')
+            ->with(['assignees', 'entryEvent'])
             ->orderBy('starts_at')
             ->get();
     }
@@ -76,7 +118,19 @@ class ScannerManagement extends Component
     #[Computed]
     public function events(): Collection
     {
-        return Event::where('project_id', $this->projectId)->orderBy('name')->get();
+        return Event::where('project_id', $this->projectId)
+            ->orderBy('starts_at')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /** @return array<int, string> */
+    #[Computed]
+    public function eventNamesById(): array
+    {
+        return $this->events
+            ->mapWithKeys(fn (Event $event) => [$event->id => $event->name])
+            ->all();
     }
 
     /** @return Collection<int, ProjectGearItem> */
@@ -88,6 +142,12 @@ class ScannerManagement extends Component
 
     public function createScanner(): void
     {
+        if ($this->events->isEmpty()) {
+            $this->addError('form.entryEventId', 'Create an event before configuring scanners.');
+
+            return;
+        }
+
         $this->form->validate();
 
         $tz = $this->project->timezone ?? 'UTC';
@@ -104,9 +164,15 @@ class ScannerManagement extends Component
             (new SendScannerLinks)->execute($scanner);
         }
 
-        $this->form->reset();
+        $this->resetForm();
         $this->showCreateModal = false;
         unset($this->scanners);
+    }
+
+    public function showCreateScannerModal(): void
+    {
+        $this->resetForm();
+        $this->showCreateModal = true;
     }
 
     public function editScanner(int $scannerId): void
@@ -115,11 +181,15 @@ class ScannerManagement extends Component
 
         $this->editingScannerId = $scannerId;
         $tz = $this->project->timezone ?? 'UTC';
+        $entryEventId = $scanner->entry_event_id;
+        $poolEventIds = $scanner->configuredPoolEventIds();
+
         $this->form->fillFromScanner([
             'name' => $scanner->name,
             'type' => $scanner->type->value,
             'modes' => $scanner->modes ?? ['checkin'],
-            'eventId' => $scanner->event_id,
+            'entryEventId' => $entryEventId,
+            'poolEventIds' => $poolEventIds,
             'gearItemIds' => $scanner->gear_item_ids ?? [],
             'hintText' => $scanner->hint_text ?? '',
             'startsAt' => $this->toLocal($scanner->starts_at, $tz),
@@ -143,7 +213,7 @@ class ScannerManagement extends Component
         $action = new UpdateProjectScanner;
         $action->execute($scanner, $data);
 
-        $this->form->reset();
+        $this->resetForm();
         $this->showCreateModal = false;
         $this->editingScannerId = null;
         unset($this->scanners);
@@ -239,5 +309,46 @@ class ScannerManagement extends Component
         ScannerAssigneeRemoved::dispatch($scanner, $email, auth()->user());
 
         unset($this->scanners);
+    }
+
+    private function resetForm(): void
+    {
+        $this->form->reset();
+        $this->editingScannerId = null;
+        $this->form->type = ScannerType::EntryStaff->value;
+        $this->form->modes = [ScannerMode::Checkin->value];
+        $this->form->setDefaultScope($this->firstEventId());
+        $this->ensureEntryEventIsIncludedInPool();
+    }
+
+    private function firstEventId(): ?int
+    {
+        return $this->events->first()?->id;
+    }
+
+    private function ensureEntryEventIsIncludedInPool(): void
+    {
+        if ($this->form->entryEventId === null) {
+            return;
+        }
+
+        $poolEventIds = array_values(array_unique(array_map('intval', $this->form->poolEventIds)));
+
+        if (! in_array($this->form->entryEventId, $poolEventIds, true)) {
+            $poolEventIds[] = $this->form->entryEventId;
+        }
+
+        $this->form->poolEventIds = $poolEventIds;
+    }
+
+    private function synchronizeVolunteerAdminPool(): void
+    {
+        if ($this->form->entryEventId === null) {
+            $this->form->entryEventId = $this->firstEventId();
+        }
+
+        $this->form->poolEventIds = $this->form->entryEventId !== null
+            ? [$this->form->entryEventId]
+            : [];
     }
 }

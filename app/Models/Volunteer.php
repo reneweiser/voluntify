@@ -157,9 +157,23 @@ class Volunteer extends Model
 
     public function scopeForEvent(Builder $query, int $eventId): void
     {
-        $query->where(function (Builder $q) use ($eventId) {
-            $q->whereHas('shiftSignups', fn (Builder $sq) => $sq->whereHas('shift.volunteerJob', fn (Builder $jq) => $jq->where('event_id', $eventId))
-            )->orWhereHas('eventArrivals', fn (Builder $eq) => $eq->where('event_id', $eventId));
+        $query->forEvents([$eventId]);
+    }
+
+    /** @param  array<int, int>  $eventIds */
+    public function scopeForEvents(Builder $query, array $eventIds): void
+    {
+        $eventIds = array_values(array_unique(array_map('intval', $eventIds)));
+
+        if ($eventIds === []) {
+            $query->whereRaw('0 = 1');
+
+            return;
+        }
+
+        $query->where(function (Builder $builder) use ($eventIds) {
+            $builder->whereHas('shiftSignups', fn (Builder $signupQuery) => $signupQuery->whereHas('shift.volunteerJob', fn (Builder $jobQuery) => $jobQuery->whereIn('event_id', $eventIds))
+            )->orWhereHas('eventArrivals', fn (Builder $arrivalQuery) => $arrivalQuery->whereIn('event_id', $eventIds));
         });
     }
 

@@ -30,7 +30,8 @@ beforeEach(function () {
     ]);
     $this->scanner = ProjectScanner::factory()->active()->create([
         'project_id' => $this->project->id,
-        'event_id' => $this->event->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
         'type' => ScannerType::VolunteerAdmin,
     ]);
 });

@@ -87,23 +87,23 @@ it('scopes scheduled scanners correctly', function () {
     Carbon::setTestNow();
 });
 
-// --- Event relationship ---
+// --- Entry event relationship ---
 
-it('belongs to an event when event_id is set', function () {
+it('belongs to an entry event', function () {
     $project = Project::factory()->create();
     $event = Event::factory()->for($project)->create();
-    $scanner = ProjectScanner::factory()->create([
-        'project_id' => $project->id,
-        'event_id' => $event->id,
-    ]);
+    $scanner = ProjectScanner::factory()->forEntryEvent($event)->create();
 
-    expect($scanner->event->id)->toBe($event->id);
+    expect($scanner->entryEvent->id)->toBe($event->id);
 });
 
-it('has null event when event_id is null', function () {
-    $scanner = ProjectScanner::factory()->create(['event_id' => null]);
+it('returns configured pool event ids', function () {
+    $project = Project::factory()->create();
+    $entryEvent = Event::factory()->for($project)->create();
+    $poolEvent = Event::factory()->for($project)->create();
+    $scanner = ProjectScanner::factory()->withPoolEvents($entryEvent, [$entryEvent->id, $poolEvent->id])->create();
 
-    expect($scanner->event)->toBeNull();
+    expect($scanner->configuredPoolEventIds())->toBe([$entryEvent->id, $poolEvent->id]);
 });
 
 // --- Type casting ---

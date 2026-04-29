@@ -31,6 +31,12 @@ class ScannerApp extends Component
     #[Locked]
     public ?int $eventId = null;
 
+    #[Locked]
+    public int $contractVersion = ProjectScanner::CONTRACT_VERSION;
+
+    #[Locked]
+    public bool $requiresConfigurationReview = false;
+
     public string $scannerName = '';
 
     public ?string $hintText = null;
@@ -52,7 +58,9 @@ class ScannerApp extends Component
         $this->projectId = $scanner->project_id;
         $this->scannerType = $scanner->type->value;
         $this->modes = $scanner->modes ?? [];
-        $this->eventId = $scanner->event_id;
+        $this->eventId = $scanner->entry_event_id;
+        $this->contractVersion = ProjectScanner::CONTRACT_VERSION;
+        $this->requiresConfigurationReview = $scanner->requires_configuration_review;
         $this->scannerName = $scanner->name;
         $this->hintText = $scanner->hint_text;
     }

@@ -84,9 +84,10 @@ it('returns flagged duplicate on re-scan', function () {
     );
 
     expect($first->flagged)->toBeFalse()
-        ->and($second->flagged)->toBeTrue()
-        ->and($second->flag_reason)->toContain('Duplicate')
-        ->and(EventArrival::count())->toBe(2);
+        ->and($second->id)->toBe($first->id)
+        ->and($second->duplicate_detected)->toBeTrue()
+        ->and($second->duplicate_message)->toContain('Duplicate')
+        ->and(EventArrival::count())->toBe(1);
 });
 
 it('preserves original scan time on duplicate', function () {
@@ -107,7 +108,7 @@ it('preserves original scan time on duplicate', function () {
     );
 
     expect($first->fresh()->scanned_at->toDateTimeString())->toBe('2025-06-15 10:00:00')
-        ->and($second->scanned_at->toDateTimeString())->toBe('2025-06-15 10:30:00');
+        ->and($second->scanned_at->toDateTimeString())->toBe('2025-06-15 10:00:00');
 
     Carbon::setTestNow();
 });

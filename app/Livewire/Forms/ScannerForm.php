@@ -17,7 +17,9 @@ class ScannerForm extends Form
     #[Validate('required|array|min:1')]
     public array $modes = ['checkin'];
 
-    public ?int $eventId = null;
+    public ?int $entryEventId = null;
+
+    public array $poolEventIds = [];
 
     public array $gearItemIds = [];
 
@@ -38,7 +40,19 @@ class ScannerForm extends Form
     {
         return [
             'modes.*' => ['string', 'in:checkin,gear_pickup'],
-            'eventId' => ['nullable', Rule::exists('events', 'id')->where('project_id', $this->component->projectId)],
+            'entryEventId' => ['required', 'integer', Rule::exists('events', 'id')->where('project_id', $this->component->projectId)],
+            'poolEventIds' => ['required', 'array', 'min:1', function (string $attribute, mixed $value, $fail): void {
+                if (! is_array($value)) {
+                    return;
+                }
+
+                $poolEventIds = array_values(array_unique(array_map('intval', $value)));
+
+                if ($this->entryEventId === null || ! in_array($this->entryEventId, $poolEventIds, true)) {
+                    $fail('The selected entry event must be included in the pool events.');
+                }
+            }],
+            'poolEventIds.*' => ['integer', Rule::exists('events', 'id')->where('project_id', $this->component->projectId)],
         ];
     }
 
@@ -52,11 +66,25 @@ class ScannerForm extends Form
         $this->name = $data['name'];
         $this->type = $data['type'];
         $this->modes = $data['modes'];
-        $this->eventId = $data['eventId'];
+        $this->entryEventId = $data['entryEventId'];
+        $this->poolEventIds = $data['poolEventIds'];
         $this->gearItemIds = $data['gearItemIds'];
         $this->hintText = $data['hintText'];
         $this->startsAt = $data['startsAt'];
         $this->endsAt = $data['endsAt'];
+    }
+
+    public function setDefaultScope(?int $eventId): void
+    {
+        if ($eventId === null) {
+            return;
+        }
+
+        $this->entryEventId ??= $eventId;
+
+        if ($this->poolEventIds === []) {
+            $this->poolEventIds = [$this->entryEventId];
+        }
     }
 
     /**
@@ -70,7 +98,8 @@ class ScannerForm extends Form
             'name' => $this->name,
             'type' => $this->type,
             'modes' => $this->modes,
-            'event_id' => $this->eventId,
+            'entry_event_id' => $this->entryEventId,
+            'pool_event_ids' => array_values(array_unique(array_map('intval', $this->poolEventIds))),
             'gear_item_ids' => ! empty($this->gearItemIds) ? $this->gearItemIds : null,
             'hint_text' => $this->hintText ?: null,
             'starts_at' => $this->startsAt,
