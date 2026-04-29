@@ -95,6 +95,10 @@ class Project extends Model
                 $project->public_token = PublicToken::generate()->value;
             }
         });
+
+        static::deleting(function (Project $project): void {
+            $project->guestLists()->delete();
+        });
     }
 
     public function organization(): BelongsTo

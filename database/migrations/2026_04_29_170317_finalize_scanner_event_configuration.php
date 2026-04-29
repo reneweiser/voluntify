@@ -26,7 +26,7 @@ return new class extends Migration
         });
 
         Schema::table('project_scanners', function (Blueprint $table) {
-            $table->foreign('entry_event_id')->references('id')->on('events')->restrictOnDelete();
+            $table->foreign('entry_event_id')->references('id')->on('events')->cascadeOnDelete();
             $table->dropConstrainedForeignId('event_id');
         });
 
