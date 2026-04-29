@@ -7,6 +7,8 @@ import {
     searchVolunteers,
     storeKeys,
     getKeys,
+    storeAttendanceRecords,
+    getAttendanceRecords,
     addOutboxEntry,
     getOutboxEntries,
     clearOutbox,
@@ -138,5 +140,18 @@ describe('idb-store (DB_VERSION 3 — scannerId keys)', () => {
         });
 
         expect(await getOutboxCount(1)).toBe(2);
+    });
+
+    it('stores and retrieves attendance records by scannerId', async () => {
+        await storeAttendanceRecords(1, [
+            { id: 1, shift_signup_id: 10, status: 'on_time' },
+            { id: 2, shift_signup_id: 11, status: 'late' },
+        ]);
+
+        const records = await getAttendanceRecords(1);
+
+        expect(records).toHaveLength(2);
+        expect(records[0].shift_signup_id).toBe(10);
+        expect(records[1].status).toBe('late');
     });
 });

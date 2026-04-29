@@ -5,8 +5,10 @@ export interface VolunteerJob {
 
 export interface Shift {
     id: number;
+    shift_date: string;
     starts_at: string;
     ends_at: string;
+    display_text: string;
     volunteer_job: VolunteerJob;
 }
 
@@ -120,4 +122,3 @@ export interface OutboxEntry {
     status?: 'on_time' | 'late' | 'no_show';
     guest_entry_id?: number;
 }
-

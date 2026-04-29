@@ -72,6 +72,16 @@ it('loads volunteer admin scanner properties correctly', function () {
         ->assertSet('modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value]);
 });
 
+it('renders scanner and shift-list tabs for volunteer admin scanners with checkin mode', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSee('Scanner')
+        ->assertSee('Schichtliste')
+        ->assertSeeHtml("setActiveTab('shifts')");
+});
+
 it('hides shifts section for VA scanner with gear_pickup only mode', function () {
     $scanner = ProjectScanner::factory()->active()->create([
         'type' => ScannerType::VolunteerAdmin,
@@ -81,6 +91,18 @@ it('hides shifts section for VA scanner with gear_pickup only mode', function ()
 
     Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
         ->assertDontSee(__('Shifts'));
+});
+
+it('does not render shift-list tab for gear-only volunteer admin scanners', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::VolunteerAdmin,
+        'modes' => [ScannerMode::GearPickup->value],
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertDontSee('Schichtliste')
+        ->assertDontSeeHtml('tabpanel-shifts');
 });
 
 it('shows shifts section for VA scanner with checkin mode', function () {
@@ -181,4 +203,16 @@ it('renders phone display in volunteer admin template', function () {
     Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
         ->assertSeeHtml('selectedVolunteer?.phone')
         ->assertSee(__('No phone number'));
+});
+
+it('renders shift-list states and shared scanner helpers in volunteer admin template', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSee('Mindestens 2 Zeichen eingeben.')
+        ->assertSee('Offline - showing cached shift data.')
+        ->assertSeeHtml('selectedVolunteerShiftSignups')
+        ->assertSeeHtml('selectVolunteerFromShift(row)')
+        ->assertSeeHtml('jumpToNextShift()');
 });
