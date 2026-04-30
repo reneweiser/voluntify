@@ -151,6 +151,17 @@ it('shows correct available placeholders for new types [#55]', function () {
         ->and($placeholders)->toContain('portal_link');
 });
 
+it('shows relativer_tag in pre-shift reminder placeholders', function (EmailTemplateType $type) {
+    $component = Livewire::actingAs($this->user)
+        ->test(EmailTemplateEditor::class, ['eventId' => $this->event->id])
+        ->set('selectedType', $type->value);
+
+    expect($component->instance()->availablePlaceholders())->toContain('relativer_tag');
+})->with([
+    EmailTemplateType::PreShiftReminder24h,
+    EmailTemplateType::PreShiftReminder4h,
+]);
+
 it('preview renders with German sample data for new types [#55]', function () {
     Livewire::actingAs($this->user)
         ->test(EmailTemplateEditor::class, ['eventId' => $this->event->id])

@@ -37,6 +37,8 @@ class PreShiftReminder extends Notification implements ShouldQueue
     {
         $this->shift->loadMissing('volunteerJob');
         $job = $this->shift->volunteerJob;
+        $timezone = $this->event->project->timezone ?? 'UTC';
+        $shiftStartsAt = $this->shift->starts_at?->copy()->setTimezone($timezone);
 
         $cheatSheetUrl = $job->instructions
             ? route('events.jobs.cheat-sheet', ['publicToken' => $this->event->public_token, 'jobId' => $job->id])
@@ -53,9 +55,10 @@ class PreShiftReminder extends Notification implements ShouldQueue
                 // Legacy placeholders (backwards compatibility)
                 'volunteer_name' => $notifiable->full_name,
                 'event_name' => $this->event->name,
+                'relativer_tag' => $this->relativeDayLabel($timezone),
                 'job_name' => $job->name,
-                'shift_date' => $this->shift->shift_date->setTimezone($this->event->project->timezone ?? 'UTC')->format('d.m.Y'),
-                'shift_time' => $this->shift->displayTimeRange($this->event->project->timezone ?? 'UTC'),
+                'shift_date' => ($shiftStartsAt ?? $this->shift->shift_date->copy()->setTimezone($timezone))->format('d.m.Y'),
+                'shift_time' => $this->shift->displayTimeRange($timezone),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
                 'cheat_sheet_url' => $cheatSheetUrl ? "[Aufgaben-Infos anzeigen]({$cheatSheetUrl})" : '',
                 'portal_link' => '', // Will be set when portal URL is available
@@ -76,5 +79,26 @@ class PreShiftReminder extends Notification implements ShouldQueue
         }
 
         return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
+    }
+
+    private function relativeDayLabel(string $timezone): string
+    {
+        $shiftStartsAt = $this->shift->starts_at?->copy()->setTimezone($timezone);
+
+        if ($shiftStartsAt === null) {
+            return 'am '.$this->shift->shift_date->copy()->setTimezone($timezone)->format('d.m.Y');
+        }
+
+        $today = now()->setTimezone($timezone);
+
+        if ($shiftStartsAt->isSameDay($today)) {
+            return 'heute';
+        }
+
+        if ($shiftStartsAt->isSameDay($today->copy()->addDay())) {
+            return 'morgen';
+        }
+
+        return 'am '.$shiftStartsAt->format('d.m.Y');
     }
 }

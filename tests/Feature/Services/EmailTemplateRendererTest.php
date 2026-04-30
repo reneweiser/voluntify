@@ -134,8 +134,10 @@ it('has German default for pre-shift reminder 24h [#81]', function () {
     $defaults = $this->renderer->getDefaults(EmailTemplateType::PreShiftReminder24h);
 
     expect($defaults['subject'])->toContain('Erinnerung')
-        ->and($defaults['subject'])->toContain('morgen')
-        ->and($defaults['body'])->toContain('Hallo {{vorname}}');
+        ->and($defaults['subject'])->toContain('{{relativer_tag}}')
+        ->and($defaults['body'])->toContain('Hallo {{vorname}}')
+        ->and($defaults['body'])->toContain('{{relativer_tag}} stattfindet')
+        ->and($defaults['body'])->toContain('Bis bald!');
 });
 
 it('has German default for pre-shift reminder 4h [#81]', function () {
@@ -143,7 +145,8 @@ it('has German default for pre-shift reminder 4h [#81]', function () {
 
     expect($defaults['subject'])->toContain('Erinnerung')
         ->and($defaults['subject'])->toContain('bald')
-        ->and($defaults['body'])->toContain('Hallo {{vorname}}');
+        ->and($defaults['body'])->toContain('Hallo {{vorname}}')
+        ->and($defaults['body'])->toContain('{{relativer_tag}} in wenigen Stunden');
 });
 
 it('has German default for email verification [#81]', function () {
@@ -298,6 +301,15 @@ it('returns placeholders for event updated [#81]', function () {
         ->and($placeholders)->toContain('organizer_note')
         ->and($placeholders)->toContain('portal_link');
 });
+
+it('returns relativer_tag for pre-shift reminder placeholders', function (EmailTemplateType $type) {
+    $placeholders = $this->renderer->availablePlaceholders($type);
+
+    expect($placeholders)->toContain('relativer_tag');
+})->with([
+    EmailTemplateType::PreShiftReminder24h,
+    EmailTemplateType::PreShiftReminder4h,
+]);
 
 // ============================================================================
 // #104 Cancellation Confirmation
