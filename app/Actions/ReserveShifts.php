@@ -29,8 +29,9 @@ class ReserveShifts
      */
     public function execute(array $shiftIds, string $sessionId, Event $event): ReservationResult
     {
-        $eventJobIds = $event->volunteerJobs()->pluck('id');
+        $eventJobIds = $event->volunteerJobs()->active()->pluck('id');
         $validShiftIds = Shift::whereIn('volunteer_job_id', $eventJobIds)
+            ->active()
             ->whereIn('id', $shiftIds)
             ->pluck('id')
             ->all();

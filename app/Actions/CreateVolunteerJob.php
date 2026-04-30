@@ -14,12 +14,14 @@ class CreateVolunteerJob
         string $name,
         ?string $description,
         ?string $instructions,
+        bool $isActive,
         User $causer,
     ): VolunteerJob {
         $job = $event->volunteerJobs()->create([
             'name' => $name,
             'description' => $description,
             'instructions' => $instructions,
+            'is_active' => $isActive,
         ]);
 
         JobCreated::dispatch($job, $causer);

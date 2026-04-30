@@ -13,12 +13,14 @@ class UpdateVolunteerJob
         string $name,
         ?string $description,
         ?string $instructions,
+        bool $isActive,
         User $causer,
     ): VolunteerJob {
         $updateData = [
             'name' => $name,
             'description' => $description,
             'instructions' => $instructions,
+            'is_active' => $isActive,
         ];
 
         $changed = collect($updateData)

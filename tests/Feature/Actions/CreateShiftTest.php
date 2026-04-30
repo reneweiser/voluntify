@@ -24,6 +24,7 @@ it('creates a shift with date and times', function () {
         startsAt: Carbon::parse('2026-07-01 09:00'),
         endsAt: Carbon::parse('2026-07-01 13:00'),
         capacity: 10,
+        isActive: true,
         causer: $this->user,
     );
 
@@ -43,6 +44,7 @@ it('creates a shift with date only and no times', function () {
         startsAt: null,
         endsAt: null,
         capacity: 5,
+        isActive: true,
         displayText: 'Ganzer Tag',
         causer: $this->user,
     );
@@ -62,6 +64,7 @@ it('creates a shift with custom display text overriding time display', function 
         startsAt: Carbon::parse('2026-07-01 09:00'),
         endsAt: Carbon::parse('2026-07-01 13:00'),
         capacity: 10,
+        isActive: true,
         displayText: 'Vormittag',
         causer: $this->user,
     );
@@ -79,8 +82,23 @@ it('dispatches ShiftCreated activity event with causer', function () {
         startsAt: Carbon::parse('2026-07-01 09:00'),
         endsAt: Carbon::parse('2026-07-01 13:00'),
         capacity: 10,
+        isActive: true,
         causer: $this->user,
     );
 
     EventFacade::assertDispatched(ShiftCreated::class, fn ($e) => $e->causer->id === $this->user->id);
+});
+
+it('creates inactive shifts when requested', function () {
+    $shift = $this->action->execute(
+        job: $this->job,
+        shiftDate: Carbon::parse('2026-07-01'),
+        startsAt: Carbon::parse('2026-07-01 09:00'),
+        endsAt: Carbon::parse('2026-07-01 13:00'),
+        capacity: 10,
+        isActive: false,
+        causer: $this->user,
+    );
+
+    expect($shift->is_active)->toBeFalse();
 });

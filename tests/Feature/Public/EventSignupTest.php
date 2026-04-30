@@ -64,6 +64,17 @@ it('shows event info on public page', function () {
         ->assertSee('Litter Pickup');
 });
 
+it('hides inactive jobs and shifts from public signup', function () {
+    $inactiveJob = VolunteerJob::factory()->for($this->event)->inactive()->create(['name' => 'Hidden Job']);
+    Shift::factory()->for($inactiveJob, 'volunteerJob')->create(['capacity' => 10]);
+    Shift::factory()->for($this->job, 'volunteerJob')->inactive()->create(['capacity' => 10, 'display_text' => 'Hidden Shift']);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSee('Litter Pickup')
+        ->assertDontSee('Hidden Job')
+        ->assertDontSee('Hidden Shift');
+});
+
 it('displays title image on public page', function () {
     Storage::fake('public');
 
@@ -312,6 +323,22 @@ it('shows warning and advances with partial availability', function () {
         ->assertSet('state', WizardState::Confirming)
         ->assertSet('warningMessage', '1 shift(s) were full and removed from your selection.')
         ->assertSet('selectedShiftIds', [$this->shift->id]);
+});
+
+it('rejects inactive shifts during reservation even if submitted directly', function () {
+    $inactiveShift = Shift::factory()->for($this->job, 'volunteerJob')->inactive()->create(['capacity' => 10]);
+
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'test@example.com', 'first_name' => 'Test', 'last_name' => 'Person']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'test@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'test@example.com');
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$inactiveShift->id])
+        ->call('reserveAndAdvance')
+        ->assertHasErrors(['selectedShiftIds.0'])
+        ->assertSet('state', WizardState::SelectingShifts);
 });
 
 it('blocks reserveAndAdvance when selected shifts overlap in time', function () {

@@ -45,13 +45,25 @@
                         {{-- Job header --}}
                         <div class="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
                             <div>
-                                <flux:heading size="sm">{{ $job->name }}</flux:heading>
+                                <div class="flex items-center gap-2">
+                                    <flux:heading size="sm">{{ $job->name }}</flux:heading>
+                                    @unless ($job->is_active)
+                                        <flux:badge size="sm" color="zinc">{{ __('Inactive') }}</flux:badge>
+                                    @endunless
+                                </div>
                                 @if ($job->description)
                                     <flux:text size="sm" class="mt-1">{{ $job->description }}</flux:text>
                                 @endif
                             </div>
                             @if ($this->canManage)
                                 <div class="flex items-center gap-2">
+                                    <flux:button
+                                        variant="ghost"
+                                        size="sm"
+                                        icon="power"
+                                        wire:click="toggleJobActive({{ $job->id }})"
+                                        wire:confirm="{{ $job->is_active ? __('Deactivate this job? It will disappear from public signup but remain available for existing signups.') : __('Reactivate this job for public signup?') }}"
+                                    />
                                     <flux:button variant="ghost" size="sm" icon="pencil" wire:click="openEditJob({{ $job->id }})" />
                                     <flux:button variant="ghost" size="sm" icon="square-2-stack"
                                         wire:click="cloneJob({{ $job->id }})"
@@ -73,7 +85,7 @@
                                     <flux:table.columns>
                                         <flux:table.column>{{ __('Time') }}</flux:table.column>
                                         <flux:table.column>{{ __('Signups') }}</flux:table.column>
-                                        <flux:table.column>{{ __('Capacity') }}</flux:table.column>
+                                        <flux:table.column>{{ __('Status') }}</flux:table.column>
                                         @if ($this->canManage)
                                             <flux:table.column align="end">{{ __('Actions') }}</flux:table.column>
                                         @endif
@@ -89,7 +101,9 @@
                                                     {{ $shift->signups_count }} / {{ $shift->capacity }}
                                                 </flux:table.cell>
                                                 <flux:table.cell>
-                                                    @if ($shift->signups_count >= $shift->capacity)
+                                                    @if (! $shift->is_active)
+                                                        <flux:badge size="sm" color="zinc">{{ __('Inactive') }}</flux:badge>
+                                                    @elseif ($shift->signups_count >= $shift->capacity)
                                                         <flux:badge size="sm" color="red">{{ __('Full') }}</flux:badge>
                                                     @else
                                                         <flux:badge size="sm" color="emerald">{{ __('Open') }}</flux:badge>
@@ -98,6 +112,13 @@
                                                 @if ($this->canManage)
                                                     <flux:table.cell align="end">
                                                         <div class="flex items-center justify-end gap-1">
+                                                            <flux:button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                icon="power"
+                                                                wire:click="toggleShiftActive({{ $shift->id }})"
+                                                                wire:confirm="{{ $shift->is_active ? __('Deactivate this shift? It will disappear from public signup but remain on existing signups.') : __('Reactivate this shift for public signup?') }}"
+                                                            />
                                                             <flux:button variant="ghost" size="sm" icon="pencil" wire:click="openEditShift({{ $shift->id }})" />
                                                             <flux:button variant="ghost" size="sm" icon="trash" wire:click="deleteShift({{ $shift->id }})"
                                                                 wire:confirm="{{ __('Delete this shift?') }}" />
@@ -150,6 +171,14 @@
                     <flux:error name="jobInstructions" />
                 </flux:field>
 
+                <div class="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                    <div>
+                        <flux:text class="font-medium">{{ __('Active') }}</flux:text>
+                        <flux:text size="sm">{{ __('Inactive jobs stay visible in admin but are hidden from public signup.') }}</flux:text>
+                    </div>
+                    <flux:switch wire:model="jobIsActive" />
+                </div>
+
                 <div class="flex">
                     <flux:spacer />
                     <flux:button type="submit" variant="primary">{{ $editingJobId ? __('Save Changes') : __('Add Job') }}</flux:button>
@@ -200,6 +229,14 @@
                     <flux:input type="number" wire:model="shiftCapacity" min="1" />
                     <flux:error name="shiftCapacity" />
                 </flux:field>
+
+                <div class="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                    <div>
+                        <flux:text class="font-medium">{{ __('Active') }}</flux:text>
+                        <flux:text size="sm">{{ __('Inactive shifts stay visible in admin but are hidden from public signup.') }}</flux:text>
+                    </div>
+                    <flux:switch wire:model="shiftIsActive" />
+                </div>
 
                 <div class="flex">
                     <flux:spacer />

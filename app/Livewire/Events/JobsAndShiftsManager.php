@@ -10,11 +10,14 @@ use App\Actions\DeleteVolunteerJob;
 use App\Actions\UpdateShift;
 use App\Actions\UpdateVolunteerJob;
 use App\Concerns\ConvertsTimezone;
+use App\Exceptions\DomainException;
 use App\Exceptions\HasSignupsException;
 use App\Models\Event;
 use App\Models\Shift;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -38,6 +41,8 @@ class JobsAndShiftsManager extends Component
 
     public string $jobInstructions = '';
 
+    public bool $jobIsActive = true;
+
     // Shift form
     public bool $showShiftModal = false;
 
@@ -54,6 +59,8 @@ class JobsAndShiftsManager extends Component
     public string $shiftDisplayText = '';
 
     public int $shiftCapacity = 10;
+
+    public bool $shiftIsActive = true;
 
     public function mount(int $eventId): void
     {
@@ -83,6 +90,7 @@ class JobsAndShiftsManager extends Component
         Gate::authorize('manageJobs', $this->event);
 
         $this->reset('editingJobId', 'jobName', 'jobDescription', 'jobInstructions');
+        $this->jobIsActive = true;
         $this->showJobModal = true;
     }
 
@@ -95,6 +103,7 @@ class JobsAndShiftsManager extends Component
         $this->jobName = $job->name;
         $this->jobDescription = $job->description ?? '';
         $this->jobInstructions = $job->instructions ?? '';
+        $this->jobIsActive = $job->isActive();
         $this->showJobModal = true;
     }
 
@@ -102,10 +111,14 @@ class JobsAndShiftsManager extends Component
     {
         Gate::authorize('manageJobs', $this->event);
 
+        /** @var User $user */
+        $user = Auth::user();
+
         $this->validate([
             'jobName' => ['required', 'string', 'max:255'],
             'jobDescription' => ['nullable', 'string'],
             'jobInstructions' => ['nullable', 'string'],
+            'jobIsActive' => ['required', 'boolean'],
         ]);
 
         if ($this->editingJobId) {
@@ -115,7 +128,8 @@ class JobsAndShiftsManager extends Component
                 name: $this->jobName,
                 description: $this->jobDescription ?: null,
                 instructions: $this->jobInstructions ?: null,
-                causer: auth()->user(),
+                isActive: $this->jobIsActive,
+                causer: $user,
             );
         } else {
             app(CreateVolunteerJob::class)->execute(
@@ -123,12 +137,35 @@ class JobsAndShiftsManager extends Component
                 name: $this->jobName,
                 description: $this->jobDescription ?: null,
                 instructions: $this->jobInstructions ?: null,
-                causer: auth()->user(),
+                isActive: $this->jobIsActive,
+                causer: $user,
             );
         }
 
         $this->showJobModal = false;
         $this->reset('editingJobId', 'jobName', 'jobDescription', 'jobInstructions');
+        $this->jobIsActive = true;
+        unset($this->jobs);
+    }
+
+    public function toggleJobActive(int $jobId): void
+    {
+        Gate::authorize('manageJobs', $this->event);
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        $job = $this->event->volunteerJobs()->findOrFail($jobId);
+
+        app(UpdateVolunteerJob::class)->execute(
+            job: $job,
+            name: $job->name,
+            description: $job->description,
+            instructions: $job->instructions,
+            isActive: ! $job->isActive(),
+            causer: $user,
+        );
+
         unset($this->jobs);
     }
 
@@ -153,10 +190,13 @@ class JobsAndShiftsManager extends Component
     {
         Gate::authorize('manageJobs', $this->event);
 
+        /** @var User $user */
+        $user = Auth::user();
+
         $job = $this->event->volunteerJobs()->findOrFail($jobId);
 
         try {
-            app(DeleteVolunteerJob::class)->execute($job, auth()->user());
+            app(DeleteVolunteerJob::class)->execute($job, $user);
         } catch (HasSignupsException $e) {
             $this->addError('job', $e->getMessage());
 
@@ -174,6 +214,7 @@ class JobsAndShiftsManager extends Component
 
         $this->reset('editingShiftId', 'shiftDate', 'shiftStartsAt', 'shiftEndsAt', 'shiftDisplayText');
         $this->shiftCapacity = 10;
+        $this->shiftIsActive = true;
         $this->shiftJobId = $jobId;
         $this->showShiftModal = true;
     }
@@ -191,6 +232,7 @@ class JobsAndShiftsManager extends Component
         $this->shiftEndsAt = $shift->ends_at ? $this->toLocal($shift->ends_at, $tz) : '';
         $this->shiftDisplayText = $shift->display_text ?? '';
         $this->shiftCapacity = $shift->capacity;
+        $this->shiftIsActive = $shift->isActive();
         $this->showShiftModal = true;
     }
 
@@ -198,12 +240,16 @@ class JobsAndShiftsManager extends Component
     {
         Gate::authorize('manageJobs', $this->event);
 
+        /** @var User $user */
+        $user = Auth::user();
+
         $rules = [
             'shiftDate' => ['required', 'date'],
             'shiftStartsAt' => ['nullable', 'date'],
             'shiftEndsAt' => ['nullable', 'date', 'after:shiftStartsAt', 'required_with:shiftStartsAt'],
             'shiftCapacity' => ['required', 'integer', 'min:1'],
             'shiftDisplayText' => [empty($this->shiftStartsAt) ? 'required' : 'nullable', 'string', 'max:255'],
+            'shiftIsActive' => ['required', 'boolean'],
         ];
 
         $this->validate($rules);
@@ -215,15 +261,22 @@ class JobsAndShiftsManager extends Component
 
         if ($this->editingShiftId) {
             $shift = $this->findShift($this->editingShiftId);
-            app(UpdateShift::class)->execute(
-                shift: $shift,
-                shiftDate: Carbon::parse($this->shiftDate),
-                startsAt: $startsAt,
-                endsAt: $endsAt,
-                capacity: $this->shiftCapacity,
-                displayText: $displayText,
-                causer: auth()->user(),
-            );
+            try {
+                app(UpdateShift::class)->execute(
+                    shift: $shift,
+                    shiftDate: Carbon::parse($this->shiftDate),
+                    startsAt: $startsAt,
+                    endsAt: $endsAt,
+                    capacity: $this->shiftCapacity,
+                    isActive: $this->shiftIsActive,
+                    displayText: $displayText,
+                    causer: $user,
+                );
+            } catch (DomainException $e) {
+                $this->addError('shift', $e->getMessage());
+
+                return;
+            }
         } else {
             $job = $this->event->volunteerJobs()->findOrFail($this->shiftJobId);
             app(CreateShift::class)->execute(
@@ -232,14 +285,45 @@ class JobsAndShiftsManager extends Component
                 startsAt: $startsAt,
                 endsAt: $endsAt,
                 capacity: $this->shiftCapacity,
+                isActive: $this->shiftIsActive,
                 displayText: $displayText,
-                causer: auth()->user(),
+                causer: $user,
             );
         }
 
         $this->showShiftModal = false;
         $this->reset('editingShiftId', 'shiftJobId', 'shiftDate', 'shiftStartsAt', 'shiftEndsAt', 'shiftDisplayText');
         $this->shiftCapacity = 10;
+        $this->shiftIsActive = true;
+        unset($this->jobs);
+    }
+
+    public function toggleShiftActive(int $shiftId): void
+    {
+        Gate::authorize('manageJobs', $this->event);
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        $shift = $this->findShift($shiftId);
+
+        try {
+            app(UpdateShift::class)->execute(
+                shift: $shift,
+                shiftDate: $shift->shift_date,
+                startsAt: $shift->starts_at,
+                endsAt: $shift->ends_at,
+                capacity: $shift->capacity,
+                isActive: ! $shift->isActive(),
+                displayText: $shift->display_text,
+                causer: $user,
+            );
+        } catch (DomainException $e) {
+            $this->addError('shift', $e->getMessage());
+
+            return;
+        }
+
         unset($this->jobs);
     }
 
@@ -247,10 +331,13 @@ class JobsAndShiftsManager extends Component
     {
         Gate::authorize('manageJobs', $this->event);
 
+        /** @var User $user */
+        $user = Auth::user();
+
         $shift = $this->findShift($shiftId);
 
         try {
-            app(DeleteShift::class)->execute($shift, auth()->user());
+            app(DeleteShift::class)->execute($shift, $user);
         } catch (HasSignupsException $e) {
             $this->addError('shift', $e->getMessage());
 

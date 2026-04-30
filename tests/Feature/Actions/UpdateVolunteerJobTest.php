@@ -23,6 +23,7 @@ it('updates job fields', function () {
         name: 'Updated Job',
         description: 'New description',
         instructions: 'New instructions',
+        isActive: true,
         causer: $this->user,
     );
 
@@ -41,8 +42,24 @@ it('dispatches JobUpdated activity event with causer', function () {
         name: 'Changed Name',
         description: 'New description',
         instructions: 'New instructions',
+        isActive: true,
         causer: $this->user,
     );
 
     EventFacade::assertDispatched(JobUpdated::class, fn ($e) => $e->causer->id === $this->user->id);
+});
+
+it('can deactivate a job', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create(['is_active' => true]);
+
+    $updated = $this->action->execute(
+        job: $job,
+        name: $job->name,
+        description: $job->description,
+        instructions: $job->instructions,
+        isActive: false,
+        causer: $this->user,
+    );
+
+    expect($updated->is_active)->toBeFalse();
 });

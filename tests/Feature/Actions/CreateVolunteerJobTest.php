@@ -20,6 +20,7 @@ it('creates a job for the event', function () {
         name: 'Ticket Scanner',
         description: 'Scan tickets at the gate',
         instructions: 'Use the app to scan QR codes',
+        isActive: true,
         causer: $this->user,
     );
 
@@ -36,6 +37,7 @@ it('allows nullable description and instructions', function () {
         name: 'Setup Crew',
         description: null,
         instructions: null,
+        isActive: true,
         causer: $this->user,
     );
 
@@ -51,8 +53,22 @@ it('dispatches JobCreated activity event with causer', function () {
         name: 'Dispatch Test',
         description: null,
         instructions: null,
+        isActive: true,
         causer: $this->user,
     );
 
     EventFacade::assertDispatched(JobCreated::class, fn ($e) => $e->causer->id === $this->user->id);
+});
+
+it('creates inactive jobs when requested', function () {
+    $job = $this->action->execute(
+        event: $this->event,
+        name: 'Hidden Job',
+        description: null,
+        instructions: null,
+        isActive: false,
+        causer: $this->user,
+    );
+
+    expect($job->is_active)->toBeFalse();
 });

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AttendanceStatus;
 use Carbon\CarbonInterface;
 use Database\Factories\ShiftFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ class Shift extends Model
         'ends_at',
         'display_text',
         'capacity',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -31,6 +33,7 @@ class Shift extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'capacity' => 'integer',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -66,6 +69,21 @@ class Shift extends Model
     public function activeReservations(): HasMany
     {
         return $this->hasMany(ShiftReservation::class)->active();
+    }
+
+    public function scopeActive(Builder $query): void
+    {
+        $query->where('is_active', true);
+    }
+
+    public function scopeInactive(Builder $query): void
+    {
+        $query->where('is_active', false);
+    }
+
+    public function isActive(): bool
+    {
+        return $this->is_active;
     }
 
     public function isFull(): bool

@@ -88,6 +88,27 @@ it('throws DomainException for shifts not belonging to event', function () {
     ))->toThrow(DomainException::class, 'One or more shifts do not belong to this event.');
 });
 
+it('throws DomainException for inactive shifts', function () {
+    $inactiveShift = Shift::factory()->for($this->job, 'volunteerJob')->inactive()->create(['capacity' => 5]);
+
+    expect(fn () => $this->action->execute(
+        shiftIds: [$inactiveShift->id],
+        sessionId: 'test-session',
+        event: $this->event,
+    ))->toThrow(DomainException::class, 'One or more shifts do not belong to this event.');
+});
+
+it('throws DomainException for shifts on inactive jobs', function () {
+    $inactiveJob = VolunteerJob::factory()->for($this->event)->inactive()->create();
+    $inactiveJobShift = Shift::factory()->for($inactiveJob, 'volunteerJob')->create(['capacity' => 5]);
+
+    expect(fn () => $this->action->execute(
+        shiftIds: [$inactiveJobShift->id],
+        sessionId: 'test-session',
+        event: $this->event,
+    ))->toThrow(DomainException::class, 'One or more shifts do not belong to this event.');
+});
+
 it('replaces existing reservations for same session on re-selection', function () {
     // First reservation
     $this->action->execute(

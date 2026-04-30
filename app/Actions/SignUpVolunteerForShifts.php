@@ -29,8 +29,9 @@ class SignUpVolunteerForShifts
         bool $sendNotification = true,
         ?string $sessionId = null,
     ): ShiftSignupResult {
-        $eventJobIds = $event->volunteerJobs()->pluck('id');
+        $eventJobIds = $event->volunteerJobs()->active()->pluck('id');
         $validShiftIds = Shift::whereIn('volunteer_job_id', $eventJobIds)
+            ->active()
             ->whereIn('id', $shiftIds)
             ->pluck('id')
             ->all();

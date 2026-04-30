@@ -16,6 +16,7 @@ class CreateShift
         ?CarbonInterface $startsAt,
         ?CarbonInterface $endsAt,
         int $capacity,
+        bool $isActive,
         ?string $displayText = null,
         ?User $causer = null,
     ): Shift {
@@ -24,6 +25,7 @@ class CreateShift
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             'capacity' => $capacity,
+            'is_active' => $isActive,
             'display_text' => $displayText,
         ]);
 

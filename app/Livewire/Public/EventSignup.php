@@ -137,7 +137,12 @@ class EventSignup extends Component
     public function jobs(): Collection
     {
         return $this->event->volunteerJobs()
-            ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('shift_date')->orderBy('starts_at')])
+            ->active()
+            ->whereHas('shifts', fn ($query) => $query->active())
+            ->with(['shifts' => fn ($query) => $query->active()
+                ->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])
+                ->orderBy('shift_date')
+                ->orderBy('starts_at')])
             ->get();
     }
 
@@ -396,8 +401,8 @@ class EventSignup extends Component
                 'integer',
                 Rule::exists('shifts', 'id')->where(fn ($q) => $q->whereIn(
                     'volunteer_job_id',
-                    $this->event->volunteerJobs()->select('id'),
-                )),
+                    $this->event->volunteerJobs()->active()->select('id'),
+                )->where('is_active', true)),
             ],
         ]);
 

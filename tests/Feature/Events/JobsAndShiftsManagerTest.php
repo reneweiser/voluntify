@@ -46,11 +46,13 @@ it('allows organizer to create a job', function () {
         ->call('openCreateJob')
         ->set('jobName', 'Setup Crew')
         ->set('jobDescription', 'Help set up the event')
+        ->set('jobIsActive', false)
         ->call('saveJob')
         ->assertHasNoErrors()
         ->assertSee('Setup Crew');
 
-    expect(VolunteerJob::where('name', 'Setup Crew')->exists())->toBeTrue();
+    expect(VolunteerJob::where('name', 'Setup Crew')->exists())->toBeTrue()
+        ->and(VolunteerJob::where('name', 'Setup Crew')->first()->is_active)->toBeFalse();
 });
 
 it('allows organizer to edit a job', function () {
@@ -101,10 +103,12 @@ it('allows organizer to create a shift', function () {
         ->set('shiftStartsAt', '2026-07-01T09:00')
         ->set('shiftEndsAt', '2026-07-01T13:00')
         ->set('shiftCapacity', 20)
+        ->set('shiftIsActive', false)
         ->call('saveShift')
         ->assertHasNoErrors();
 
-    expect(Shift::where('volunteer_job_id', $job->id)->count())->toBe(1);
+    expect(Shift::where('volunteer_job_id', $job->id)->count())->toBe(1)
+        ->and(Shift::where('volunteer_job_id', $job->id)->first()->is_active)->toBeFalse();
 });
 
 it('allows organizer to edit a shift', function () {
@@ -153,6 +157,39 @@ it('shows full badge when shift is at capacity', function () {
     Livewire::actingAs($this->user)
         ->test(JobsAndShiftsManager::class, ['eventId' => $this->event->id])
         ->assertSee('Full');
+});
+
+it('shows inactive badges for jobs and shifts in admin', function () {
+    $job = VolunteerJob::factory()->for($this->event)->inactive()->create(['name' => 'Info Desk']);
+    Shift::factory()->for($job, 'volunteerJob')->inactive()->create();
+
+    Livewire::actingAs($this->user)
+        ->test(JobsAndShiftsManager::class, ['eventId' => $this->event->id])
+        ->assertSee('Info Desk')
+        ->assertSee('Inactive');
+});
+
+it('allows organizer to toggle a job back active', function () {
+    $job = VolunteerJob::factory()->for($this->event)->inactive()->create();
+
+    Livewire::actingAs($this->user)
+        ->test(JobsAndShiftsManager::class, ['eventId' => $this->event->id])
+        ->call('toggleJobActive', $job->id)
+        ->assertHasNoErrors();
+
+    expect($job->fresh()->is_active)->toBeTrue();
+});
+
+it('allows organizer to toggle a shift back active', function () {
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $shift = Shift::factory()->for($job, 'volunteerJob')->inactive()->create();
+
+    Livewire::actingAs($this->user)
+        ->test(JobsAndShiftsManager::class, ['eventId' => $this->event->id])
+        ->call('toggleShiftActive', $shift->id)
+        ->assertHasNoErrors();
+
+    expect($shift->fresh()->is_active)->toBeTrue();
 });
 
 it('denies non-member access', function () {

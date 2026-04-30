@@ -213,6 +213,29 @@ it('throws DomainException when a shift does not belong to the event', function 
     ))->toThrow(DomainException::class, 'One or more shifts do not belong to this event.');
 });
 
+it('throws DomainException when a shift is inactive', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $inactiveShift = Shift::factory()->for($this->job, 'volunteerJob')->inactive()->create(['capacity' => 5]);
+
+    expect(fn () => $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$inactiveShift->id],
+    ))->toThrow(DomainException::class, 'One or more shifts do not belong to this event.');
+});
+
+it('throws DomainException when a shift belongs to an inactive job', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $inactiveJob = VolunteerJob::factory()->for($this->event)->inactive()->create();
+    $inactiveJobShift = Shift::factory()->for($inactiveJob, 'volunteerJob')->create(['capacity' => 5]);
+
+    expect(fn () => $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$inactiveJobShift->id],
+    ))->toThrow(DomainException::class, 'One or more shifts do not belong to this event.');
+});
+
 it('cancelled signups do not count toward capacity', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
     $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
