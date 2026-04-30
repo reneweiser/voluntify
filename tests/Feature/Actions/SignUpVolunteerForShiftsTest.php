@@ -24,8 +24,18 @@ beforeEach(function () {
     $this->project = Project::factory()->for($this->org)->create();
     $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
-    $this->shift1 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
-    $this->shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
+    $this->shift1 = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 5,
+    ]);
+    $this->shift2 = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 14:00:00'),
+        'capacity' => 5,
+    ]);
 
     $this->action = app(SignUpVolunteerForShifts::class);
 });
@@ -51,7 +61,12 @@ it('signs up for multiple shifts in one call', function () {
 it('signs up for shifts across different jobs', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
     $job2 = VolunteerJob::factory()->for($this->event)->create();
-    $shift3 = Shift::factory()->for($job2, 'volunteerJob')->create(['capacity' => 5]);
+    $shift3 = Shift::factory()->for($job2, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 14:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 16:00:00'),
+        'capacity' => 5,
+    ]);
 
     $result = $this->action->execute(
         volunteer: $volunteer,
@@ -125,7 +140,12 @@ it('skips already-signed-up shifts gracefully', function () {
 
 it('skips full shifts gracefully', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
-    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
+    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 14:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 16:00:00'),
+        'capacity' => 1,
+    ]);
     $otherVolunteer = Volunteer::factory()->create();
     ShiftSignup::factory()->create(['shift_id' => $fullShift->id, 'volunteer_id' => $otherVolunteer->id]);
 
