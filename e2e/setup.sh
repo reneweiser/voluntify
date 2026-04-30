@@ -322,9 +322,9 @@ vendor/bin/sail artisan tinker --execute="
       'ends_at' => now()->addHours(4),
     ]);
 
-    \App\Models\ProjectScanner::where('scanner_token', 'e2e-entry-pool-scanner-token')->delete();
-    \App\Models\Event::whereIn('name', [
-      'E2E Entry Event',
+  \App\Models\ProjectScanner::where('scanner_token', 'e2e-entry-pool-scanner-token')->delete();
+  \App\Models\Event::whereIn('name', [
+    'E2E Entry Event',
       'E2E Pool Event',
     ])->delete();
     \App\Models\Project::where('name', 'E2E Entry Pool Scanner Project')->delete();
@@ -396,6 +396,77 @@ vendor/bin/sail artisan tinker --execute="
       'entryPoolEntryEventId' => \$entryEvent->id,
       'entryPoolPoolEventId' => \$poolEvent->id,
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+    \App\Models\ProjectScanner::where('scanner_token', 'e2e-entry-manual-lookup-token')->delete();
+    \App\Models\Event::whereIn('name', [
+      'E2E Entry Manual Event',
+      'E2E Entry Manual Past Event',
+    ])->delete();
+    \App\Models\Project::where('name', 'E2E Entry Manual Lookup Project')->delete();
+    \App\Models\Volunteer::where('email', 'past-manual-lookup@example.com')->delete();
+
+    \$manualLookupProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Entry Manual Lookup Project',
+    ]);
+
+    \$manualEntryEvent = Event::factory()->for(\$organization)->for(\$manualLookupProject)->published()->create([
+      'name' => 'E2E Entry Manual Event',
+      'slug' => 'e2e-entry-manual-event',
+      'starts_at' => now()->subHour(),
+      'ends_at' => now()->addHours(6),
+      'attendance_grace_minutes' => 10,
+    ]);
+
+    \$manualPastEvent = Event::factory()->for(\$organization)->for(\$manualLookupProject)->published()->create([
+      'name' => 'E2E Entry Manual Past Event',
+      'slug' => 'e2e-entry-manual-past-event',
+      'starts_at' => now()->subDays(30),
+      'ends_at' => now()->subDays(30)->addHours(6),
+      'attendance_grace_minutes' => 10,
+    ]);
+
+    \$manualPastJob = VolunteerJob::factory()->create([
+      'event_id' => \$manualPastEvent->id,
+      'name' => 'Past Event Team',
+    ]);
+
+    \$manualPastShift = Shift::factory()->create([
+      'volunteer_job_id' => \$manualPastJob->id,
+      'shift_date' => now()->subDays(30)->toDateString(),
+      'starts_at' => now()->subDays(30)->setTime(10, 0),
+      'ends_at' => now()->subDays(30)->setTime(14, 0),
+      'display_text' => now()->subDays(30)->setTime(10, 0)->format('M d, H:i').' - '.now()->subDays(30)->setTime(14, 0)->format('H:i'),
+    ]);
+
+    \$manualVolunteer = Volunteer::factory()->verified()->for(\$manualLookupProject)->create([
+      'first_name' => 'Past',
+      'last_name' => 'Lookup',
+      'email' => 'past-manual-lookup@example.com',
+      'phone' => '+491701234999',
+    ]);
+
+    Ticket::factory()->create([
+      'project_id' => \$manualLookupProject->id,
+      'volunteer_id' => \$manualVolunteer->id,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$manualVolunteer->id,
+      'shift_id' => \$manualPastShift->id,
+    ]);
+
+    ProjectScanner::factory()->active()->create([
+      'project_id' => \$manualLookupProject->id,
+      'entry_event_id' => \$manualEntryEvent->id,
+      'pool_event_ids' => [\$manualEntryEvent->id, \$manualPastEvent->id],
+      'name' => 'E2E Entry Manual Lookup Scanner',
+      'type' => ScannerType::EntryStaff,
+      'modes' => [ScannerMode::Checkin->value],
+      'scanner_token' => 'e2e-entry-manual-lookup-token',
+      'auth_code' => '555555',
+      'starts_at' => now()->subHour(),
+      'ends_at' => now()->addHours(4),
+    ]);
   });
 
   echo 'Volunteer admin shift-list fixture created';
@@ -410,3 +481,4 @@ echo "  Dashboard user: dashboard@example.com / password"
 echo "  VA scanner:     /s/e2e-va-shift-list-token with code 222222"
 echo "  VA all past:    /s/e2e-va-all-past-token with code 444444"
 echo "  Entry/pool:     /s/e2e-entry-pool-scanner-token with code 333333"
+echo "  Entry lookup:   /s/e2e-entry-manual-lookup-token with code 555555"

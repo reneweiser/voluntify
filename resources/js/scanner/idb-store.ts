@@ -97,7 +97,12 @@ export async function getVolunteers(scannerId: number): Promise<Volunteer[]> {
 export async function searchVolunteers(scannerId: number, query: string): Promise<Volunteer[]> {
     const volunteers = await getVolunteers(scannerId);
     const lowerQuery = query.toLowerCase();
-    return volunteers.filter((v) => v.name.toLowerCase().includes(lowerQuery));
+
+    return volunteers.filter((volunteer) => {
+        return volunteer.first_name.toLowerCase().includes(lowerQuery)
+            || volunteer.last_name.toLowerCase().includes(lowerQuery)
+            || volunteer.email.toLowerCase().includes(lowerQuery);
+    });
 }
 
 export async function storeKeys(scannerId: number, keys: ScannerKeys): Promise<void> {

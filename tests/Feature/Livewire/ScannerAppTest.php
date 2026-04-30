@@ -63,6 +63,21 @@ it('loads entry staff scanner properties correctly', function () {
         ->assertSee('Scan tickets here');
 });
 
+it('renders manual volunteer lookup UI for entry staff scanners', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'type' => ScannerType::EntryStaff,
+    ]);
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSee('Volunteers')
+        ->assertSee('Search volunteers...')
+        ->assertSeeHtml('volunteerSearchQuery')
+        ->assertSeeHtml('selectVolunteerFromSearch(volunteer)')
+        ->assertSee('Bereits eingecheckt')
+        ->assertSee('Close Details');
+});
+
 it('loads volunteer admin scanner properties correctly', function () {
     $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
     session(['scanner_id' => $scanner->id]);
@@ -70,6 +85,16 @@ it('loads volunteer admin scanner properties correctly', function () {
     Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
         ->assertSet('scannerType', ScannerType::VolunteerAdmin->value)
         ->assertSet('modes', [ScannerMode::Checkin->value, ScannerMode::GearPickup->value]);
+});
+
+it('does not render entry staff volunteer lookup UI for volunteer admin scanners', function () {
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertDontSee('Search volunteers...')
+        ->assertDontSeeHtml('selectVolunteerFromSearch(volunteer)')
+        ->assertDontSee('Close Details');
 });
 
 it('renders scanner and shift-list tabs for volunteer admin scanners with checkin mode', function () {
