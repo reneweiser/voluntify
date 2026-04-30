@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: complete
-current_focus: "Issue #190 complete — volunteer portal announcements are null-safe and scoped to the volunteer's actual targeting"
-current_milestone: issue-190-portal-announcement-visibility
+current_focus: "Issue #193 complete — guest invitation emails now include per-entry signed browser fallback links with a read-only public guest pass page"
+current_milestone: issue-193-guest-mail-magic-link
 entry_point: implement
 stages_to_run:
   - plan
@@ -14,7 +14,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-28T20:41:27+02:00"
+last_updated: "2026-04-30T11:47:11+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -38,6 +38,7 @@ last_updated: "2026-04-28T20:41:27+02:00"
 | m19-non-expiring-magic-links | Non-Expiring Volunteer Magic Links | #185 make volunteer portal/ticket magic links non-expiring | m15, m17 | complete |
 | issue-175-announcement-recipient-resilience | Announcement Recipient Resilience | #175 token-backed verified recipient resolution for announcements | m13, m18, m19 | complete |
 | issue-190-portal-announcement-visibility | Portal Announcement Visibility | #190 null-safe volunteer portal announcements + targeted visibility filtering | m15, issue-175-announcement-recipient-resilience | complete |
+| issue-193-guest-mail-magic-link | Guest Mail Magic-Link Fallback | #193 signed browser fallback page for guest invitation QR codes | m12, m15, m19 | complete |
 
 ## Artifacts
 
@@ -58,6 +59,7 @@ last_updated: "2026-04-28T20:41:27+02:00"
 | `.tall-pipeline/m19-non-expiring-magic-links.md` | plan+implement+test | m19 | Issue #185 plan + implementation tracking for volunteer magic link expiry removal | complete |
 | `.tall-pipeline/issue-175-announcement-recipient-resilience.md` | plan+implement+test | issue-175 | Issue #175 plan + implementation tracking for resilient announcement recipients | complete |
 | `.tall-pipeline/issue-190-portal-announcement-visibility.md` | plan+implement+test | issue-190 | Issue #190 tracking for null-safe volunteer portal announcements and targeted visibility | complete |
+| `.tall-pipeline/issue-193-guest-mail-magic-link.md` | plan+implement+test | issue-193 | Issue #193 tracking for guest invitation magic-link QR fallbacks | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

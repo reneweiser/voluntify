@@ -3,7 +3,15 @@
 use App\Models\GuestEntry;
 use App\Models\GuestEntryGear;
 use App\Models\GuestGroup;
+use App\Models\GuestList;
+use App\Models\Project;
+use App\Models\ProjectScanner;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\URL;
+
+use function Pest\Laravel\travelTo;
 
 it('creates a guest entry with correct attributes', function () {
     $group = GuestGroup::factory()->create(['label' => 'DJ Soundwave', 'guest_count' => 3]);
@@ -74,4 +82,52 @@ it('nullifies checked_in_by when user is deleted', function () {
     $user->delete();
 
     expect($entry->fresh()->checked_in_by)->toBeNull();
+});
+
+it('generates a signed guest pass URL using scanner end time plus buffer', function () {
+    travelTo(Carbon::parse('2026-04-30 12:00:00'));
+
+    $project = Project::factory()->create();
+    $scanner = ProjectScanner::factory()->for($project)->create([
+        'ends_at' => Carbon::parse('2026-05-02 01:00:00'),
+    ]);
+    $guestList = GuestList::factory()
+        ->for($project)
+        ->for($scanner, 'scanner')
+        ->confirmed()
+        ->create();
+    $group = GuestGroup::factory()->for($guestList)->create(['guest_count' => 1, 'label' => 'Artist']);
+    $entry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create(['number' => 1]);
+
+    $url = $entry->guestPassUrl();
+
+    parse_str(parse_url($url, PHP_URL_QUERY) ?? '', $query);
+
+    expect(URL::hasValidSignature(Request::create($url)))->toBeTrue()
+        ->and($query['expires'] ?? null)->toBe((string) $scanner->ends_at->addHours(12)->timestamp)
+        ->and($url)->toContain('/guest-pass/'.$entry->id);
+});
+
+it('falls back to a seven-day guest pass expiry when scanner end time is unavailable', function () {
+    travelTo(Carbon::parse('2026-04-30 12:00:00'));
+
+    $project = Project::factory()->create();
+    $scanner = ProjectScanner::factory()->for($project)->create();
+    $guestList = GuestList::factory()
+        ->for($project)
+        ->for($scanner, 'scanner')
+        ->confirmed()
+        ->create();
+    $group = GuestGroup::factory()->for($guestList)->create(['guest_count' => 1, 'label' => 'Artist']);
+    $entry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create(['number' => 1]);
+
+    $entry->load('group.guestList.scanner');
+    $entry->group->guestList->scanner->forceFill(['ends_at' => null]);
+
+    $url = $entry->guestPassUrl();
+
+    parse_str(parse_url($url, PHP_URL_QUERY) ?? '', $query);
+
+    expect(URL::hasValidSignature(Request::create($url)))->toBeTrue()
+        ->and($query['expires'] ?? null)->toBe((string) now()->addDays(7)->timestamp);
 });

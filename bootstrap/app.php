@@ -7,6 +7,8 @@ use App\Http\Middleware\ScannerAuthMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -31,4 +33,19 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         Integration::handles($exceptions);
+
+        $exceptions->render(function (InvalidSignatureException $exception, Request $request) {
+            if (! $request->routeIs('guest.pass.show')) {
+                return null;
+            }
+
+            return response()->view('public.guest-pass', [
+                'entry' => null,
+                'message' => 'This guest pass link is invalid or has expired.',
+                'title' => 'Guest Pass Unavailable',
+            ], 403, [
+                'Cache-Control' => 'no-store, private',
+                'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+            ]);
+        });
     })->create();

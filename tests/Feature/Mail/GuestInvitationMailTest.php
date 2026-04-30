@@ -51,6 +51,25 @@ it('renders markdown with project name and entry labels', function () {
         ->assertSeeInHtml('present your QR code');
 });
 
+it('renders a browser fallback link for each guest entry', function () {
+    $entry1 = GuestEntry::factory()->for($this->group, 'group')->withQrToken()->create([
+        'number' => 1,
+        'name' => 'DJ Soundwave',
+        'email' => 'dj@example.com',
+    ]);
+    $entry2 = GuestEntry::factory()->for($this->group, 'group')->withQrToken()->create([
+        'number' => 2,
+        'email' => 'dj@example.com',
+    ]);
+
+    $mail = new GuestInvitationMail($this->guestList, new Collection([$entry1, $entry2]));
+
+    $mail->assertSeeInHtml('If the QR code is not visible in your email app, open this pass in your browser.')
+        ->assertSeeInHtml(e($entry1->guestPassUrl()), escape: false)
+        ->assertSeeInHtml(e($entry2->guestPassUrl()), escape: false)
+        ->assertSeeInHtml('<svg', escape: false);
+});
+
 it('renders entry name when present', function () {
     $entry = GuestEntry::factory()->for($this->group, 'group')->withQrToken()->create([
         'number' => 1,

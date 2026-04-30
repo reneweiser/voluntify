@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\URL;
 
 class GuestEntry extends Model
 {
@@ -71,5 +72,15 @@ class GuestEntry extends Model
     public function qrCodeSvg(): string
     {
         return app(QrCodeGenerator::class)->generate($this->qr_token);
+    }
+
+    public function guestPassUrl(): string
+    {
+        $this->loadMissing('group.guestList.scanner');
+
+        $expiresAt = $this->group->guestList->scanner?->ends_at?->copy()->addHours(12)
+            ?? now()->addDays(7);
+
+        return URL::temporarySignedRoute('guest.pass.show', $expiresAt, ['entry' => $this->id]);
     }
 }

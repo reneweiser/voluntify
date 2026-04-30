@@ -27,6 +27,7 @@ class SendGuestInvitationsJob implements ShouldQueue
     public function handle(): void
     {
         $entries = $this->guestList->entries()
+            ->with(['group.guestList.project', 'group.guestList.scanner'])
             ->where('email', $this->email)
             ->whereNotNull('qr_token')
             ->get();
