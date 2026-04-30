@@ -28,6 +28,7 @@ class CancelShiftSignup
 
         $signup->cancelled_at = now();
         $signup->save();
+        $event->refresh()->evaluatePriorityGate();
 
         SignupCancelled::dispatch($signup, $signup->volunteer);
     }

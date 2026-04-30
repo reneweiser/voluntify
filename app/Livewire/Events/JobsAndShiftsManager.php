@@ -62,6 +62,8 @@ class JobsAndShiftsManager extends Component
 
     public bool $shiftIsActive = true;
 
+    public bool $shiftIsPriority = false;
+
     public function mount(int $eventId): void
     {
         $this->event = currentOrganization()->events()->findOrFail($eventId);
@@ -215,6 +217,7 @@ class JobsAndShiftsManager extends Component
         $this->reset('editingShiftId', 'shiftDate', 'shiftStartsAt', 'shiftEndsAt', 'shiftDisplayText');
         $this->shiftCapacity = 10;
         $this->shiftIsActive = true;
+        $this->shiftIsPriority = false;
         $this->shiftJobId = $jobId;
         $this->showShiftModal = true;
     }
@@ -233,6 +236,7 @@ class JobsAndShiftsManager extends Component
         $this->shiftDisplayText = $shift->display_text ?? '';
         $this->shiftCapacity = $shift->capacity;
         $this->shiftIsActive = $shift->isActive();
+        $this->shiftIsPriority = $shift->is_priority;
         $this->showShiftModal = true;
     }
 
@@ -250,6 +254,7 @@ class JobsAndShiftsManager extends Component
             'shiftCapacity' => ['required', 'integer', 'min:1'],
             'shiftDisplayText' => [empty($this->shiftStartsAt) ? 'required' : 'nullable', 'string', 'max:255'],
             'shiftIsActive' => ['required', 'boolean'],
+            'shiftIsPriority' => ['required', 'boolean'],
         ];
 
         $this->validate($rules);
@@ -269,6 +274,7 @@ class JobsAndShiftsManager extends Component
                     endsAt: $endsAt,
                     capacity: $this->shiftCapacity,
                     isActive: $this->shiftIsActive,
+                    isPriority: $this->shiftIsPriority,
                     displayText: $displayText,
                     causer: $user,
                 );
@@ -286,6 +292,7 @@ class JobsAndShiftsManager extends Component
                 endsAt: $endsAt,
                 capacity: $this->shiftCapacity,
                 isActive: $this->shiftIsActive,
+                isPriority: $this->shiftIsPriority,
                 displayText: $displayText,
                 causer: $user,
             );
@@ -295,6 +302,7 @@ class JobsAndShiftsManager extends Component
         $this->reset('editingShiftId', 'shiftJobId', 'shiftDate', 'shiftStartsAt', 'shiftEndsAt', 'shiftDisplayText');
         $this->shiftCapacity = 10;
         $this->shiftIsActive = true;
+        $this->shiftIsPriority = false;
         unset($this->jobs);
     }
 
@@ -315,6 +323,7 @@ class JobsAndShiftsManager extends Component
                 endsAt: $shift->ends_at,
                 capacity: $shift->capacity,
                 isActive: ! $shift->isActive(),
+                isPriority: $shift->is_priority,
                 displayText: $shift->display_text,
                 causer: $user,
             );

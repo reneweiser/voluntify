@@ -82,11 +82,21 @@ it('can update signup settings', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
         ->set('form.visibility', 'private')
+        ->set('form.priorityUnlockThresholdPercent', 80)
         ->call('saveEvent')
         ->assertHasNoErrors();
 
     $this->event->refresh();
-    expect($this->event->visibility)->toBe(EventVisibility::Private);
+    expect($this->event->visibility)->toBe(EventVisibility::Private)
+        ->and($this->event->priority_unlock_threshold_percent)->toBe(80);
+});
+
+it('validates priority threshold range', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventSettings::class, ['eventId' => $this->event->id])
+        ->set('form.priorityUnlockThresholdPercent', 101)
+        ->call('saveEvent')
+        ->assertHasErrors(['form.priorityUnlockThresholdPercent']);
 });
 
 it('can set notification email', function () {

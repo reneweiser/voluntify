@@ -26,6 +26,7 @@ class UpdateEvent
         ?int $attendanceGraceMinutes = null,
         ?EventVisibility $visibility = null,
         ?string $notificationEmail = null,
+        ?int $priorityUnlockThresholdPercent = null,
         ?User $causer = null,
     ): Event {
         if ($event->status === EventStatus::Archived) {
@@ -44,6 +45,7 @@ class UpdateEvent
             'attendance_grace_minutes' => $attendanceGraceMinutes,
             'visibility' => $visibility ?? $event->visibility,
             'notification_email' => $notificationEmail,
+            'priority_unlock_threshold_percent' => $priorityUnlockThresholdPercent,
         ];
 
         if ($titleImage) {
@@ -60,6 +62,7 @@ class UpdateEvent
             ->all();
 
         $event->update($updateData);
+        $event->refresh()->evaluatePriorityGate();
 
         if ($changed && $causer) {
             EventUpdatedActivity::dispatch($event->refresh(), $causer, $changed);

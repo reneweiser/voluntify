@@ -86,6 +86,7 @@
                                         <flux:table.column>{{ __('Time') }}</flux:table.column>
                                         <flux:table.column>{{ __('Signups') }}</flux:table.column>
                                         <flux:table.column>{{ __('Status') }}</flux:table.column>
+                                        <flux:table.column>{{ __('Priority') }}</flux:table.column>
                                         @if ($this->canManage)
                                             <flux:table.column align="end">{{ __('Actions') }}</flux:table.column>
                                         @endif
@@ -107,6 +108,13 @@
                                                         <flux:badge size="sm" color="red">{{ __('Full') }}</flux:badge>
                                                     @else
                                                         <flux:badge size="sm" color="emerald">{{ __('Open') }}</flux:badge>
+                                                    @endif
+                                                </flux:table.cell>
+                                                <flux:table.cell>
+                                                    @if ($shift->is_priority)
+                                                        <flux:badge size="sm" color="amber">{{ __('Priority') }}</flux:badge>
+                                                    @else
+                                                        <flux:text size="sm" variant="subtle">{{ __('Regular') }}</flux:text>
                                                     @endif
                                                 </flux:table.cell>
                                                 @if ($this->canManage)
@@ -236,6 +244,14 @@
                         <flux:text size="sm">{{ __('Inactive shifts stay visible in admin but are hidden from public signup.') }}</flux:text>
                     </div>
                     <flux:switch wire:model="shiftIsActive" />
+                </div>
+
+                <div class="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                    <div>
+                        <flux:text class="font-medium">{{ __('Priority Shift') }}</flux:text>
+                        <flux:text size="sm">{{ __('Priority shifts must fill first before regular shifts unlock on the public signup page.') }}</flux:text>
+                    </div>
+                    <flux:switch wire:model="shiftIsPriority" />
                 </div>
 
                 <div class="flex">

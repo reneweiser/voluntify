@@ -85,6 +85,7 @@ class EventSettings extends Component
                 attendanceGraceMinutes: $this->form->attendanceGraceMinutes !== '' ? (int) $this->form->attendanceGraceMinutes : null,
                 visibility: EventVisibility::from($this->form->visibility),
                 notificationEmail: $this->form->notificationEmail ?: null,
+                priorityUnlockThresholdPercent: $this->form->priorityUnlockThresholdPercent !== '' ? (int) $this->form->priorityUnlockThresholdPercent : null,
                 causer: auth()->user(),
             );
 
@@ -116,6 +117,7 @@ class EventSettings extends Component
             'attendanceGraceMinutes' => $this->event->attendance_grace_minutes ?? '',
             'visibility' => $this->event->visibility?->value ?? 'public',
             'notificationEmail' => $this->event->notification_email ?? '',
+            'priorityUnlockThresholdPercent' => $this->event->priority_unlock_threshold_percent ?? '',
         ]);
         $this->selectedProjectId = $this->event->project_id ? (string) $this->event->project_id : '';
     }

@@ -149,3 +149,14 @@ it('displays event details in read-only mode', function () {
         ->assertSee('Berlin')
         ->assertSee('Date & Time');
 });
+
+it('shows priority gate status when configured', function () {
+    $this->event->update(['priority_unlock_threshold_percent' => 80]);
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    Shift::factory()->for($job, 'volunteerJob')->priority()->create(['capacity' => 5]);
+
+    Livewire::actingAs($this->user)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->assertSee('Priority Shift Gate')
+        ->assertSee('Gate closed until the priority threshold is reached.');
+});

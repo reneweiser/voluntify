@@ -104,11 +104,13 @@ it('allows organizer to create a shift', function () {
         ->set('shiftEndsAt', '2026-07-01T13:00')
         ->set('shiftCapacity', 20)
         ->set('shiftIsActive', false)
+        ->set('shiftIsPriority', true)
         ->call('saveShift')
         ->assertHasNoErrors();
 
     expect(Shift::where('volunteer_job_id', $job->id)->count())->toBe(1)
-        ->and(Shift::where('volunteer_job_id', $job->id)->first()->is_active)->toBeFalse();
+        ->and(Shift::where('volunteer_job_id', $job->id)->first()->is_active)->toBeFalse()
+        ->and(Shift::where('volunteer_job_id', $job->id)->first()->is_priority)->toBeTrue();
 });
 
 it('allows organizer to edit a shift', function () {
@@ -120,10 +122,12 @@ it('allows organizer to edit a shift', function () {
         ->call('openEditShift', $shift->id)
         ->assertSet('shiftCapacity', 5)
         ->set('shiftCapacity', 25)
+        ->set('shiftIsPriority', true)
         ->call('saveShift')
         ->assertHasNoErrors();
 
-    expect($shift->fresh()->capacity)->toBe(25);
+    expect($shift->fresh()->capacity)->toBe(25)
+        ->and($shift->fresh()->is_priority)->toBeTrue();
 });
 
 it('allows organizer to delete a shift', function () {

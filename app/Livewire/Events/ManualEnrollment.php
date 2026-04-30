@@ -120,6 +120,7 @@ class ManualEnrollment extends Component
             event: $this->event,
             shiftIds: $this->selectedShifts,
             sendNotification: $this->sendNotification,
+            bypassPriorityGate: true,
         );
 
         $this->enrollmentResult = [

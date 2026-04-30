@@ -24,6 +24,7 @@ class Shift extends Model
         'display_text',
         'capacity',
         'is_active',
+        'is_priority',
     ];
 
     protected function casts(): array
@@ -34,6 +35,7 @@ class Shift extends Model
             'ends_at' => 'datetime',
             'capacity' => 'integer',
             'is_active' => 'boolean',
+            'is_priority' => 'boolean',
         ];
     }
 
@@ -79,6 +81,16 @@ class Shift extends Model
     public function scopeInactive(Builder $query): void
     {
         $query->where('is_active', false);
+    }
+
+    public function scopePriority(Builder $query): void
+    {
+        $query->where('is_priority', true);
+    }
+
+    public function scopeNonPriority(Builder $query): void
+    {
+        $query->where('is_priority', false);
     }
 
     public function isActive(): bool

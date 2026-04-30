@@ -28,16 +28,23 @@ class SignUpVolunteerForShifts
         array $shiftIds,
         bool $sendNotification = true,
         ?string $sessionId = null,
+        bool $bypassPriorityGate = false,
     ): ShiftSignupResult {
+        $event = $event->fresh();
         $eventJobIds = $event->volunteerJobs()->active()->pluck('id');
-        $validShiftIds = Shift::whereIn('volunteer_job_id', $eventJobIds)
+        $selectedShifts = Shift::whereIn('volunteer_job_id', $eventJobIds)
             ->active()
             ->whereIn('id', $shiftIds)
-            ->pluck('id')
-            ->all();
+            ->get(['id', 'is_priority']);
+
+        $validShiftIds = $selectedShifts->pluck('id')->all();
 
         if (count($validShiftIds) !== count($shiftIds)) {
             throw new DomainException('One or more shifts do not belong to this event.');
+        }
+
+        if (! $bypassPriorityGate && ! $event->isPriorityGateOpen() && $selectedShifts->contains(fn (Shift $shift) => ! $shift->is_priority)) {
+            throw new DomainException($event->priorityGateMessage());
         }
 
         $sortedShiftIds = $shiftIds;
@@ -156,6 +163,8 @@ class SignUpVolunteerForShifts
             skippedDuplicate: $result['skippedDuplicate'],
             skippedOverlap: $result['skippedOverlap'],
         );
+
+        $event->fresh()->evaluatePriorityGate();
 
         if ($sendNotification && $batchResult->hasNewSignups()) {
             $shiftIds = collect($result['newSignups'])

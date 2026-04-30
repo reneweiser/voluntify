@@ -147,6 +147,26 @@ class EventSignup extends Component
     }
 
     /**
+     * @return array{is_open: bool, is_closed: bool, threshold_percent: ?int, filled_spots: int, total_spots: int, progress_percent: int}
+     */
+    #[Computed]
+    public function priorityGateStatus(): array
+    {
+        $event = $this->event->fresh();
+        $filledSpots = $event->priorityFilledSpots();
+        $totalSpots = $event->priorityCapacityTotal();
+
+        return [
+            'is_open' => $event->isPriorityGateOpen(),
+            'is_closed' => ! $event->isPriorityGateOpen(),
+            'threshold_percent' => $event->priority_unlock_threshold_percent,
+            'filled_spots' => $filledSpots,
+            'total_spots' => $totalSpots,
+            'progress_percent' => $totalSpots === 0 ? 100 : min(100, (int) round(($filledSpots / $totalSpots) * 100)),
+        ];
+    }
+
+    /**
      * Job IDs derived from the selected shifts. Uses the cached jobs computed.
      *
      * @return array<int>
@@ -422,11 +442,17 @@ class EventSignup extends Component
             return;
         }
 
-        $result = app(ReserveShifts::class)->execute(
-            shiftIds: $newShiftIds,
-            sessionId: session()->getId(),
-            event: $this->event,
-        );
+        try {
+            $result = app(ReserveShifts::class)->execute(
+                shiftIds: $newShiftIds,
+                sessionId: session()->getId(),
+                event: $this->event,
+            );
+        } catch (DomainException $e) {
+            $this->addError('selectedShiftIds', $e->getMessage());
+
+            return;
+        }
 
         if (! $result->hasReservations()) {
             $this->addError('selectedShiftIds', __('All selected shifts are full.'));

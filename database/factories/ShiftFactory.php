@@ -25,6 +25,7 @@ class ShiftFactory extends Factory
             'ends_at' => $endsAt,
             'capacity' => fake()->numberBetween(5, 30),
             'is_active' => true,
+            'is_priority' => false,
         ];
     }
 
@@ -47,5 +48,10 @@ class ShiftFactory extends Factory
     public function inactive(): static
     {
         return $this->state(fn () => ['is_active' => false]);
+    }
+
+    public function priority(): static
+    {
+        return $this->state(fn () => ['is_priority' => true]);
     }
 }

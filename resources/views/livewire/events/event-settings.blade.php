@@ -90,6 +90,13 @@
                             </flux:select>
                         </flux:field>
                     @endif
+
+                    <flux:field>
+                        <flux:label>{{ __('Priority Shift Unlock Threshold (%)') }}</flux:label>
+                        <flux:input type="number" wire:model="form.priorityUnlockThresholdPercent" min="0" max="100" placeholder="{{ __('Disabled') }}" />
+                        <flux:description>{{ __('Leave empty to disable shift priority gating for this event. 80 means regular shifts unlock once 80% of priority slots are filled.') }}</flux:description>
+                        <flux:error name="form.priorityUnlockThresholdPercent" />
+                    </flux:field>
                 </div>
             </flux:card>
 

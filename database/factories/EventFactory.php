@@ -33,6 +33,8 @@ class EventFactory extends Factory
             'ends_at' => $endsAt,
             'status' => EventStatus::Draft,
             'visibility' => EventVisibility::Public,
+            'priority_unlock_threshold_percent' => null,
+            'priority_gate_unlocked_at' => null,
         ];
     }
 

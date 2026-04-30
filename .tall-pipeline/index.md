@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: complete
-current_focus: "Issue #168 complete — inactive jobs and shifts are hidden from public signup while remaining manageable in admin"
-current_milestone: issue-168-shifts-jobs-active-state
+current_focus: "Issue #203 complete — event-level priority gating now locks regular signup until priority shifts hit the configured threshold, with organizer overrides and UI progress"
+current_milestone: issue-203-priority-shift-gate
 entry_point: implement
 stages_to_run:
   - plan
@@ -14,7 +14,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-30T14:05:00+02:00"
+last_updated: "2026-04-30T15:05:00+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -41,6 +41,7 @@ last_updated: "2026-04-30T14:05:00+02:00"
 | issue-193-guest-mail-magic-link | Guest Mail Magic-Link Fallback | #193 signed browser fallback page for guest invitation QR codes | m12, m15, m19 | complete |
 | issue-196-scanner-arrival-duplicate-status | Scanner Arrival Duplicate Status | #196 volunteer-admin scanners should skip arrival duplicate status while entry-staff behavior stays unchanged | m11, m16 | complete |
 | issue-168-shifts-jobs-active-state | Jobs & Shifts Active State | #168 active/inactive controls for jobs and shifts with public signup filtering | m10-signup | complete |
+| issue-203-priority-shift-gate | Priority Shift Gate | #203 event-level priority gating for public signup with organizer override and progress UI | m10-signup, issue-168-shifts-jobs-active-state | complete |
 
 ## Artifacts
 
@@ -64,6 +65,7 @@ last_updated: "2026-04-30T14:05:00+02:00"
 | `.tall-pipeline/issue-193-guest-mail-magic-link.md` | plan+implement+test | issue-193 | Issue #193 tracking for guest invitation magic-link QR fallbacks | complete |
 | `.tall-pipeline/issue-196-scanner-arrival-duplicate-status.md` | plan+implement+test | issue-196 | Issue #196 tracking for volunteer-admin scanner duplicate-status regression | complete |
 | `.tall-pipeline/issue-168-shifts-jobs-active-state.md` | plan+implement+test | issue-168 | Issue #168 tracking for active/inactive jobs and shifts plus signup filtering | complete |
+| `.tall-pipeline/issue-203-priority-shift-gate.md` | plan+implement+test | issue-203 | Issue #203 tracking for event-level priority shift gating, organizer override, and signup UI progress | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

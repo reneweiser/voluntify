@@ -17,6 +17,7 @@ class CreateShift
         ?CarbonInterface $endsAt,
         int $capacity,
         bool $isActive,
+        bool $isPriority = false,
         ?string $displayText = null,
         ?User $causer = null,
     ): Shift {
@@ -26,8 +27,11 @@ class CreateShift
             'ends_at' => $endsAt,
             'capacity' => $capacity,
             'is_active' => $isActive,
+            'is_priority' => $isPriority,
             'display_text' => $displayText,
         ]);
+
+        $shift->volunteerJob->event->refresh()->evaluatePriorityGate();
 
         if ($causer) {
             ShiftCreated::dispatch($shift, $causer);

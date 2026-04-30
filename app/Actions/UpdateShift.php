@@ -17,6 +17,7 @@ class UpdateShift
         ?CarbonInterface $endsAt,
         int $capacity,
         bool $isActive,
+        bool $isPriority = false,
         ?string $displayText = null,
         ?User $causer = null,
     ): Shift {
@@ -30,6 +31,7 @@ class UpdateShift
             'ends_at' => $endsAt,
             'capacity' => $capacity,
             'is_active' => $isActive,
+            'is_priority' => $isPriority,
             'display_text' => $displayText,
         ];
 
@@ -39,6 +41,7 @@ class UpdateShift
             ->all();
 
         $shift->update($updateData);
+        $shift->volunteerJob->event->refresh()->evaluatePriorityGate();
 
         if ($changed && $causer) {
             ShiftUpdated::dispatch($shift->refresh(), $causer, $changed);

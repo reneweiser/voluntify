@@ -127,6 +127,41 @@ it('shows full badge for shifts at capacity', function () {
         ->assertSee('Full');
 });
 
+it('shows a priority gate banner and locks regular shifts while the gate is closed', function () {
+    $this->event->update(['priority_unlock_threshold_percent' => 80]);
+    $priorityShift = Shift::factory()->for($this->job, 'volunteerJob')->priority()->create(['capacity' => 5]);
+    $regularShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 10, 'display_text' => 'Regular Shift']);
+
+    collect(range(1, 3))->each(fn () => ShiftSignup::factory()->create([
+        'shift_id' => $priorityShift->id,
+        'volunteer_id' => Volunteer::factory()->for($this->project),
+    ]));
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->call('advanceToShifts')
+        ->assertSee('Priority shifts first')
+        ->assertSee('3 of 5 priority slots are filled.')
+        ->assertSee('Locked until the priority shift threshold is reached.')
+        ->assertSee('Regular Shift');
+});
+
+it('hides the priority gate banner once the gate is unlocked', function () {
+    $this->event->update(['priority_unlock_threshold_percent' => 80]);
+    $priorityShift = Shift::factory()->for($this->job, 'volunteerJob')->priority()->create(['capacity' => 5]);
+
+    collect(range(1, 4))->each(fn () => ShiftSignup::factory()->create([
+        'shift_id' => $priorityShift->id,
+        'volunteer_id' => Volunteer::factory()->for($this->project),
+    ]));
+
+    $this->event->fresh()->evaluatePriorityGate();
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->call('advanceToShifts')
+        ->assertDontSee('Priority shifts first')
+        ->assertDontSee('Locked until the priority shift threshold is reached.');
+});
+
 // --- Email entry step ---
 
 it('starts on the email entry step', function () {
