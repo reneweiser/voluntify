@@ -42,6 +42,20 @@ it('does not show events from other organizations', function () {
         ->assertDontSee('Other Org Event');
 });
 
+it('falls back to UTC when a project timezone is blank', function () {
+    $project = Project::factory()->for($this->org)->create(['timezone' => '']);
+
+    Event::factory()
+        ->for($this->org)
+        ->for($project)
+        ->published()
+        ->create(['name' => 'Timezone Fallback Event']);
+
+    Livewire::actingAs($this->user)
+        ->test(EventList::class)
+        ->assertSee('Timezone Fallback Event');
+});
+
 it('filters events by status', function () {
     Event::factory()->for($this->org)->published()->create(['name' => 'Published Event']);
     Event::factory()->for($this->org)->create(['name' => 'Draft Event', 'status' => EventStatus::Draft]);

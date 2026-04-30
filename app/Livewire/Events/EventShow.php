@@ -79,6 +79,27 @@ class EventShow extends Component
         return route('events.public', $this->event->public_token);
     }
 
+    /**
+     * @return array{is_visible: bool, is_open: bool, threshold_percent: ?int, filled_spots: int, total_spots: int, progress_percent: int, unlocked_at: ?string}
+     */
+    #[Computed]
+    public function priorityGateSummary(): array
+    {
+        $event = $this->event->fresh();
+        $filledSpots = $event->priorityFilledSpots();
+        $totalSpots = $event->priorityCapacityTotal();
+
+        return [
+            'is_visible' => $event->priority_unlock_threshold_percent !== null || $event->priority_gate_unlocked_at !== null || $totalSpots > 0,
+            'is_open' => $event->isPriorityGateOpen(),
+            'threshold_percent' => $event->priority_unlock_threshold_percent,
+            'filled_spots' => $filledSpots,
+            'total_spots' => $totalSpots,
+            'progress_percent' => $totalSpots === 0 ? 100 : min(100, (int) round(($filledSpots / $totalSpots) * 100)),
+            'unlocked_at' => $event->priority_gate_unlocked_at?->format('d.m.Y H:i'),
+        ];
+    }
+
     public function publishEvent(): void
     {
         Gate::authorize('publish', $this->event);

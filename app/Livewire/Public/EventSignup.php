@@ -5,6 +5,7 @@ namespace App\Livewire\Public;
 use App\Actions\ProcessVolunteerSignup;
 use App\Actions\ReserveShifts;
 use App\Actions\SendEmailVerification;
+use App\Actions\SubscribeToEventNotifications;
 use App\Enums\EventStatus;
 use App\Enums\GearItemType;
 use App\Enums\HintLocation;
@@ -54,6 +55,8 @@ class EventSignup extends Component
 
     public string $volunteerPhone = '';
 
+    public string $notificationSubscriptionEmail = '';
+
     #[Locked]
     public string $warningMessage = '';
 
@@ -79,6 +82,9 @@ class EventSignup extends Component
 
     #[Locked]
     public ?string $verificationStartedAt = null;
+
+    #[Locked]
+    public string $notificationSubscriptionMessage = '';
 
     public function mount(string $publicToken): void
     {
@@ -136,9 +142,27 @@ class EventSignup extends Component
     #[Computed]
     public function jobs(): Collection
     {
-        return $this->event->volunteerJobs()
-            ->with(['shifts' => fn ($q) => $q->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])->orderBy('shift_date')->orderBy('starts_at')])
-            ->get();
+        return $this->event->publicSignupJobs($this->existingShiftIds);
+    }
+
+    /**
+     * @return array{is_open: bool, is_closed: bool, threshold_percent: ?int, filled_spots: int, total_spots: int, progress_percent: int}
+     */
+    #[Computed]
+    public function priorityGateStatus(): array
+    {
+        $event = $this->event->fresh();
+        $filledSpots = $event->priorityFilledSpots();
+        $totalSpots = $event->priorityCapacityTotal();
+
+        return [
+            'is_open' => $event->isPriorityGateOpen(),
+            'is_closed' => ! $event->isPriorityGateOpen(),
+            'threshold_percent' => $event->priority_unlock_threshold_percent,
+            'filled_spots' => $filledSpots,
+            'total_spots' => $totalSpots,
+            'progress_percent' => $totalSpots === 0 ? 100 : min(100, (int) round(($filledSpots / $totalSpots) * 100)),
+        ];
     }
 
     /**
@@ -375,7 +399,44 @@ class EventSignup extends Component
             ));
         }
 
+        if ($this->notificationSubscriptionEmail === '') {
+            $this->notificationSubscriptionEmail = $this->volunteerEmail;
+        }
+
         $this->state = WizardState::SelectingShifts;
+    }
+
+    public function subscribeToNotifications(): void
+    {
+        if ($this->state !== WizardState::SelectingShifts || $this->jobs->isNotEmpty()) {
+            $this->addError('notificationSubscriptionEmail', __('Notifications are only available when no shifts can be selected.'));
+
+            return;
+        }
+
+        $this->validate([
+            'notificationSubscriptionEmail' => ['required', 'email', 'max:255'],
+        ]);
+
+        $ipKey = 'event-notification-subscribe:'.request()->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 10)) {
+            $this->addError('notificationSubscriptionEmail', __('Too many attempts. Please wait a moment before trying again.'));
+
+            return;
+        }
+        RateLimiter::hit($ipKey, 60);
+
+        $emailKey = 'event-notification-subscribe-email:'.$this->event->id.':'.strtolower(trim($this->notificationSubscriptionEmail));
+        if (RateLimiter::tooManyAttempts($emailKey, 3)) {
+            $this->addError('notificationSubscriptionEmail', __('Too many attempts for this email. Please wait a few minutes.'));
+
+            return;
+        }
+        RateLimiter::hit($emailKey, 300);
+
+        app(SubscribeToEventNotifications::class)->execute($this->event, $this->notificationSubscriptionEmail);
+
+        $this->notificationSubscriptionMessage = __('Check your inbox to confirm your notification signup. Once confirmed, we will email you when new shifts become available.');
     }
 
     /**
@@ -396,8 +457,8 @@ class EventSignup extends Component
                 'integer',
                 Rule::exists('shifts', 'id')->where(fn ($q) => $q->whereIn(
                     'volunteer_job_id',
-                    $this->event->volunteerJobs()->select('id'),
-                )),
+                    $this->event->volunteerJobs()->active()->select('id'),
+                )->where('is_active', true)),
             ],
         ]);
 
@@ -417,11 +478,17 @@ class EventSignup extends Component
             return;
         }
 
-        $result = app(ReserveShifts::class)->execute(
-            shiftIds: $newShiftIds,
-            sessionId: session()->getId(),
-            event: $this->event,
-        );
+        try {
+            $result = app(ReserveShifts::class)->execute(
+                shiftIds: $newShiftIds,
+                sessionId: session()->getId(),
+                event: $this->event,
+            );
+        } catch (DomainException $e) {
+            $this->addError('selectedShiftIds', $e->getMessage());
+
+            return;
+        }
 
         if (! $result->hasReservations()) {
             $this->addError('selectedShiftIds', __('All selected shifts are full.'));
@@ -585,6 +652,8 @@ class EventSignup extends Component
         $this->reservationExpiresAt = '';
         $this->warningMessage = '';
         $this->lookupMessage = '';
+        $this->notificationSubscriptionEmail = '';
+        $this->notificationSubscriptionMessage = '';
         $this->verificationTokenId = null;
         $this->existingVolunteerId = null;
         $this->existingShiftIds = [];

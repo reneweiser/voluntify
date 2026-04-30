@@ -35,6 +35,9 @@ class EventSettingsForm extends Form
     #[Validate('nullable|email|max:255')]
     public string $notificationEmail = '';
 
+    #[Validate('nullable|integer|min:0|max:100')]
+    public $priorityUnlockThresholdPercent = '';
+
     /**
      * Dynamic rules for fields that need runtime context.
      *
@@ -62,5 +65,6 @@ class EventSettingsForm extends Form
         $this->attendanceGraceMinutes = $data['attendanceGraceMinutes'];
         $this->visibility = $data['visibility'];
         $this->notificationEmail = $data['notificationEmail'];
+        $this->priorityUnlockThresholdPercent = $data['priorityUnlockThresholdPercent'];
     }
 }

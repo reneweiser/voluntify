@@ -198,6 +198,43 @@
             </flux:card>
         </div>
 
+        @if ($this->priorityGateSummary['is_visible'])
+            <flux:card class="mb-6">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <flux:heading size="sm">{{ __('Priority Shift Gate') }}</flux:heading>
+                            @if ($this->priorityGateSummary['is_open'])
+                                <flux:text size="sm">
+                                    {{ $this->priorityGateSummary['unlocked_at']
+                                        ? __('Gate open since :date', ['date' => $this->priorityGateSummary['unlocked_at']])
+                                        : __('Gate currently open') }}
+                                </flux:text>
+                            @else
+                                <flux:text size="sm">{{ __('Gate closed until the priority threshold is reached.') }}</flux:text>
+                            @endif
+                        </div>
+                        <flux:badge size="sm" :color="$this->priorityGateSummary['is_open'] ? 'emerald' : 'amber'">
+                            {{ $this->priorityGateSummary['is_open'] ? __('Open') : __('Closed') }}
+                        </flux:badge>
+                    </div>
+
+                    @if ($this->priorityGateSummary['threshold_percent'] !== null)
+                        <flux:text size="sm">
+                            {{ __(':filled of :total priority slots filled. Unlock threshold: :threshold%.', [
+                                'filled' => $this->priorityGateSummary['filled_spots'],
+                                'total' => $this->priorityGateSummary['total_spots'],
+                                'threshold' => $this->priorityGateSummary['threshold_percent'],
+                            ]) }}
+                        </flux:text>
+                        <div class="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                            <div class="h-full rounded-full bg-amber-500 transition-all" style="width: {{ $this->priorityGateSummary['progress_percent'] }}%;"></div>
+                        </div>
+                    @endif
+                </div>
+            </flux:card>
+        @endif
+
         {{-- Title image --}}
         @if ($event->titleImageUrl())
             <div class="mb-6">

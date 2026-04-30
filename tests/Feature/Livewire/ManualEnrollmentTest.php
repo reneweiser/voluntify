@@ -233,6 +233,25 @@ it('can create volunteer and then enroll them into shifts', function () {
     expect(ShiftSignup::where('volunteer_id', $volunteer->id)->where('shift_id', $shift->id)->exists())->toBeTrue();
 });
 
+it('lets organizers enroll into regular shifts even when the public priority gate is closed', function () {
+    $this->event->update(['priority_unlock_threshold_percent' => 80]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $seedShift = Shift::factory()->for($job, 'volunteerJob')->priority()->create(['capacity' => 5]);
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $seedShift->id]);
+    $regularShift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 5]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ManualEnrollment::class, ['eventId' => $this->event->id])
+        ->call('selectVolunteer', $volunteer->id)
+        ->set('selectedShifts', [$regularShift->id])
+        ->call('enroll')
+        ->assertSee('1 shift(s) enrolled successfully.');
+
+    expect(ShiftSignup::where('volunteer_id', $volunteer->id)->where('shift_id', $regularShift->id)->exists())->toBeTrue();
+});
+
 it('displays the selected volunteer full name in the shift selection heading', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create([
         'first_name' => 'Alice',

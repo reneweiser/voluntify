@@ -73,9 +73,10 @@
                                     </flux:badge>
                                 </div>
                                 <div class="mt-1 flex flex-col gap-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                    @php($projectTimezone = $event->project->timezone ?: 'UTC')
                                     <span class="inline-flex items-center gap-1">
                                         <flux:icon name="calendar" variant="mini" class="size-4 shrink-0" />
-                                        {{ $event->starts_at->setTimezone($event->project->timezone ?? 'UTC')->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->setTimezone($event->project->timezone ?? 'UTC')->format('g:i A') }}
+                                        {{ $event->starts_at->setTimezone($projectTimezone)->format('M d, Y g:i A') }} &mdash; {{ $event->ends_at->setTimezone($projectTimezone)->format('g:i A') }}
                                     </span>
                                     @if ($event->location)
                                         <span class="inline-flex items-center gap-1">

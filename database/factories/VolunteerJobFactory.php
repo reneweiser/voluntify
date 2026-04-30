@@ -7,7 +7,7 @@ use App\Models\VolunteerJob;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\VolunteerJob>
+ * @extends Factory<VolunteerJob>
  */
 class VolunteerJobFactory extends Factory
 {
@@ -20,6 +20,12 @@ class VolunteerJobFactory extends Factory
             'name' => fake()->jobTitle(),
             'description' => fake()->sentence(),
             'instructions' => fake()->paragraph(),
+            'is_active' => true,
         ];
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn () => ['is_active' => false]);
     }
 }

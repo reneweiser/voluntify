@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\ProcessVolunteerSignup;
+use App\Exceptions\DomainException;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
 use App\Models\EmailVerificationToken;
@@ -311,4 +312,38 @@ it('auto-assigns Typ 2 gear alongside Typ 1 selections', function () {
 
     expect(VolunteerGear::where('project_gear_item_id', $tshirt->id)->first()->size)->toBe('L');
     expect(VolunteerGear::where('project_gear_item_id', $drinks->id)->first()->quantity_entitled)->toBe(2);
+});
+
+it('blocks non-priority shifts while the priority gate is closed', function () {
+    $this->event->update(['priority_unlock_threshold_percent' => 80]);
+    $priorityShift = Shift::factory()->for($this->job, 'volunteerJob')->priority()->create(['capacity' => 5]);
+    $regularShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 5]);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    expect(fn () => $action->execute(
+        firstName: 'Gate',
+        lastName: 'Blocked',
+        email: 'gate-blocked@example.com',
+        event: $this->event,
+        shiftIds: [$priorityShift->id, $regularShift->id],
+    ))->toThrow(DomainException::class, 'Please fill the priority shifts first. Other shifts unlock once 80% of the priority slots are filled.');
+});
+
+it('allows priority-only signup while the priority gate is closed', function () {
+    $this->event->update(['priority_unlock_threshold_percent' => 80]);
+    $priorityShift = Shift::factory()->for($this->job, 'volunteerJob')->priority()->create(['capacity' => 5]);
+
+    $action = app(ProcessVolunteerSignup::class);
+
+    $result = $action->execute(
+        firstName: 'Gate',
+        lastName: 'Allowed',
+        email: 'gate-allowed@example.com',
+        event: $this->event,
+        shiftIds: [$priorityShift->id],
+    );
+
+    expect($result->hasNewSignups())->toBeTrue()
+        ->and(ShiftSignup::whereHas('volunteer', fn ($query) => $query->where('email', 'gate-allowed@example.com'))->exists())->toBeTrue();
 });

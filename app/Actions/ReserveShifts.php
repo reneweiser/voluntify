@@ -29,14 +29,21 @@ class ReserveShifts
      */
     public function execute(array $shiftIds, string $sessionId, Event $event): ReservationResult
     {
-        $eventJobIds = $event->volunteerJobs()->pluck('id');
-        $validShiftIds = Shift::whereIn('volunteer_job_id', $eventJobIds)
+        $event = $event->fresh();
+        $eventJobIds = $event->volunteerJobs()->active()->pluck('id');
+        $selectedShifts = Shift::whereIn('volunteer_job_id', $eventJobIds)
+            ->active()
             ->whereIn('id', $shiftIds)
-            ->pluck('id')
-            ->all();
+            ->get(['id', 'is_priority']);
+
+        $validShiftIds = $selectedShifts->pluck('id')->all();
 
         if (count($validShiftIds) !== count($shiftIds)) {
             throw new DomainException('One or more shifts do not belong to this event.');
+        }
+
+        if (! $event->isPriorityGateOpen() && $selectedShifts->contains(fn (Shift $shift) => ! $shift->is_priority)) {
+            throw new DomainException($event->priorityGateMessage());
         }
 
         sort($validShiftIds);

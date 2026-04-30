@@ -78,3 +78,21 @@ it('derives project internally from signup', function () {
 
     expect($this->signup->fresh()->cancelled_at)->not->toBeNull();
 });
+
+it('does not relock an unlocked priority gate after cancellation', function () {
+    $this->event->update(['priority_unlock_threshold_percent' => 50]);
+    $this->shift->update(['is_priority' => true, 'capacity' => 2]);
+
+    $secondSignup = ShiftSignup::factory()->create([
+        'volunteer_id' => Volunteer::factory()->for($this->project),
+        'shift_id' => $this->shift->id,
+    ]);
+
+    $this->event->fresh()->evaluatePriorityGate();
+    $unlockedAt = $this->event->fresh()->priority_gate_unlocked_at;
+
+    $this->action->execute($secondSignup);
+
+    expect($this->event->fresh()->priority_gate_unlocked_at?->equalTo($unlockedAt))->toBeTrue()
+        ->and($this->event->fresh()->isPriorityGateOpen())->toBeTrue();
+});

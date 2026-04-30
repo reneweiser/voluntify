@@ -8,10 +8,12 @@ use App\Enums\EventVisibility;
 use App\ValueObjects\PublicToken;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Str;
 
 class Event extends Model
@@ -35,6 +37,8 @@ class Event extends Model
         'phone_required',
         'visibility',
         'notification_email',
+        'priority_unlock_threshold_percent',
+        'priority_gate_unlocked_at',
         'was_previously_published',
         'deletion_requested_at',
     ];
@@ -49,6 +53,8 @@ class Event extends Model
             'phone_required' => 'boolean',
             'visibility' => EventVisibility::class,
             'volunteer_count' => 'integer',
+            'priority_unlock_threshold_percent' => 'integer',
+            'priority_gate_unlocked_at' => 'datetime',
             'was_previously_published' => 'boolean',
             'deletion_requested_at' => 'datetime',
         ];
@@ -78,6 +84,11 @@ class Event extends Model
         return $this->hasMany(EventArrival::class);
     }
 
+    public function shifts(): HasManyThrough
+    {
+        return $this->hasManyThrough(Shift::class, VolunteerJob::class, 'event_id', 'volunteer_job_id');
+    }
+
     public function emailTemplates(): HasMany
     {
         return $this->hasMany(EmailTemplate::class);
@@ -91,6 +102,11 @@ class Event extends Model
     public function customRegistrationFields(): HasMany
     {
         return $this->hasMany(CustomRegistrationField::class)->orderBy('sort_order');
+    }
+
+    public function notificationSubscribers(): HasMany
+    {
+        return $this->hasMany(EventNotificationSubscriber::class);
     }
 
     public function project(): BelongsTo
@@ -115,6 +131,93 @@ class Event extends Model
     public function isPendingDeletion(): bool
     {
         return $this->deletion_requested_at !== null;
+    }
+
+    public function hasActivePriorityShifts(): bool
+    {
+        return $this->shifts()
+            ->where('shifts.is_active', true)
+            ->where('shifts.is_priority', true)
+            ->exists();
+    }
+
+    public function priorityCapacityTotal(): int
+    {
+        return (int) $this->shifts()
+            ->where('shifts.is_active', true)
+            ->where('shifts.is_priority', true)
+            ->sum('shifts.capacity');
+    }
+
+    public function priorityFilledSpots(): int
+    {
+        return ShiftSignup::query()
+            ->active()
+            ->whereHas('shift', fn (Builder $query) => $query
+                ->where('shifts.is_active', true)
+                ->where('shifts.is_priority', true)
+                ->whereHas('volunteerJob', fn (Builder $jobQuery) => $jobQuery->where('event_id', $this->id)))
+            ->count();
+    }
+
+    public function priorityFillRate(): float
+    {
+        $capacityTotal = $this->priorityCapacityTotal();
+
+        if ($capacityTotal === 0) {
+            return 0.0;
+        }
+
+        return $this->priorityFilledSpots() / $capacityTotal;
+    }
+
+    public function isPriorityGateOpen(): bool
+    {
+        return $this->priority_unlock_threshold_percent === null
+            || $this->priority_unlock_threshold_percent <= 0
+            || $this->priority_gate_unlocked_at !== null
+            || ! $this->hasActivePriorityShifts();
+    }
+
+    public function evaluatePriorityGate(): void
+    {
+        if ($this->isPriorityGateOpen()) {
+            return;
+        }
+
+        if (($this->priorityFillRate() * 100) < $this->priority_unlock_threshold_percent) {
+            return;
+        }
+
+        $this->forceFill([
+            'priority_gate_unlocked_at' => now(),
+        ])->save();
+    }
+
+    public function priorityGateMessage(): string
+    {
+        return __('Please fill the priority shifts first. Other shifts unlock once :percent% of the priority slots are filled.', [
+            'percent' => $this->priority_unlock_threshold_percent,
+        ]);
+    }
+
+    /**
+     * @param  array<int>  $existingShiftIds
+     */
+    public function publicSignupJobs(array $existingShiftIds = []): Collection
+    {
+        return $this->volunteerJobs()
+            ->active()
+            ->whereHas('shifts', fn ($query) => $query->active())
+            ->with(['shifts' => fn ($query) => $query->active()
+                ->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])
+                ->orderBy('shift_date')
+                ->orderBy('starts_at')])
+            ->get()
+            ->filter(fn ($job) => $job->shifts->contains(
+                fn ($shift) => ! $shift->isFull() || in_array((int) $shift->id, $existingShiftIds, true)
+            ))
+            ->values();
     }
 
     public function scopeActive(Builder $query): void

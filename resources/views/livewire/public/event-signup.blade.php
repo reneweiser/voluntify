@@ -287,81 +287,144 @@
                     @endif
                 </div>
 
-                @foreach ($this->jobs as $job)
-                    <div class="rounded-lg overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);" wire:key="job-{{ $job->id }}">
-                        <div class="p-4" style="background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.08);">
-                            <h3 class="text-sm font-semibold text-white">{{ $job->name }}</h3>
-                            @if ($job->description)
-                                <p class="mt-1 text-sm" style="color: #a1a1aa;">{{ $job->description }}</p>
-                            @endif
-                            @if ($job->instructions)
-                                <a href="{{ route('events.jobs.cheat-sheet', ['publicToken' => $event->public_token, 'jobId' => $job->id]) }}" target="_blank"
-                                   class="inline-flex items-center gap-1 mt-2 text-sm" style="color: var(--brand); text-decoration: none;">
-                                    <flux:icon name="document-text" variant="mini" class="size-4" />
-                                    {{ __('View Instructions') }}
-                                </a>
-                            @endif
-                        </div>
-
-                        <div class="p-4 space-y-3">
-                            @foreach ($job->shifts as $shift)
-                                @php
-                                    $spotsLeft = $shift->spotsRemaining();
-                                    $isFull = $spotsLeft === 0;
-                                    $isSelected = in_array($shift->id, $selectedShiftIds);
-                                    $isConflicting = in_array($shift->id, $this->overlappingShiftIds);
-                                    $isExisting = in_array($shift->id, $existingShiftIds);
-                                    $shiftTimeLabel = $job->name.' — '.$shift->shift_date->setTimezone($tz)->format('M d').' '.$shift->displayTimeRange($tz);
-                                @endphp
-                                <label
-                                    class="flex items-center justify-between p-3 rounded-lg transition-all duration-200"
-                                    style="border: 2px solid {{ $isExisting ? 'rgba(59,130,246,0.3)' : ($isSelected && $isConflicting ? 'var(--yellow)' : ($isSelected ? 'var(--brand)' : 'rgba(255,255,255,0.08)')) }};
-                                           background: {{ $isExisting ? 'rgba(59,130,246,0.08)' : ($isSelected && $isConflicting ? 'rgba(244,208,63,0.08)' : ($isSelected ? 'rgba(5,150,105,0.08)' : 'transparent')) }};
-                                           {{ $isExisting ? 'opacity: 0.7; cursor: default;' : ($isFull ? 'opacity: 0.4; cursor: not-allowed;' : 'cursor: pointer;') }}"
-                                    wire:key="shift-{{ $shift->id }}"
-                                >
-                                    <div class="flex items-center gap-3">
-                                        <input type="checkbox" value="{{ $shift->id }}"
-                                            wire:model.live="selectedShiftIds"
-                                            @disabled($isFull || $isExisting)
-                                            @checked($isExisting)
-                                            @if ($isFull) aria-label="{{ $shiftTimeLabel }} — {{ __('Full, no spots available') }}" @endif
-                                            @if ($isExisting) aria-label="{{ $shiftTimeLabel }} — {{ __('Already signed up') }}" @endif
-                                            class="accent-emerald-600"
-                                        />
-                                        <div>
-                                            <span class="text-sm font-medium text-white">
-                                                {{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}
-                                            </span>
-                                            @if ($isExisting)
-                                                <span class="block text-sm font-semibold" style="color: #93c5fd;">
-                                                    {{ __('Already signed up') }}
-                                                </span>
-                                            @elseif ($spotsLeft <= 3 && $spotsLeft > 0)
-                                                <span class="block text-sm font-semibold urgency-pulse" style="color: var(--yellow);">
-                                                    {{ __('Nur noch :count Plätze!', ['count' => $spotsLeft]) }}
-                                                </span>
-                                            @else
-                                                <span class="block text-sm" style="color: #a1a1aa;">
-                                                    {{ $spotsLeft }} {{ __('spots remaining') }}
-                                                </span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    @if ($isExisting)
-                                        <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(59,130,246,0.15); color: #93c5fd;">{{ __('Signed Up') }}</span>
-                                    @elseif ($isFull)
-                                        <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(230,57,70,0.15); color: #fca5a5;">{{ __('Full') }}</span>
-                                    @elseif ($isConflicting && $isSelected)
-                                        <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(244,208,63,0.15); color: #fbbf24;">{{ __('Conflict') }}</span>
-                                    @else
-                                        <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(5,150,105,0.15); color: #6ee7b7;">{{ __('Open') }}</span>
-                                    @endif
-                                </label>
-                            @endforeach
+                @if ($this->priorityGateStatus['is_closed'])
+                    <div class="rounded-lg p-4" style="background: rgba(244,208,63,0.1); border: 1px solid rgba(244,208,63,0.25);">
+                        <div class="flex items-start gap-3">
+                            <flux:icon name="lock-closed" class="size-5 shrink-0" style="color: #fbbf24;" />
+                            <div class="w-full">
+                                <p class="text-sm font-semibold text-white">{{ __('Priority shifts first') }}</p>
+                                <p class="mt-1 text-sm" style="color: #fcd34d;">
+                                    {{ __('Once :percent% of the priority slots are filled, the remaining shifts unlock.', ['percent' => $this->priorityGateStatus['threshold_percent']]) }}
+                                </p>
+                                <p class="mt-1 text-sm" style="color: #a1a1aa;">
+                                    {{ __(':filled of :total priority slots are filled.', ['filled' => $this->priorityGateStatus['filled_spots'], 'total' => $this->priorityGateStatus['total_spots']]) }}
+                                </p>
+                                <div class="mt-3 h-2 w-full overflow-hidden rounded-full" style="background: rgba(255,255,255,0.08);">
+                                    <div class="h-full rounded-full transition-all duration-300" style="width: {{ $this->priorityGateStatus['progress_percent'] }}%; background: linear-gradient(90deg, #f59e0b, #10b981);"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                @endforeach
+                @endif
+
+                @if ($this->jobs->isEmpty())
+                    <div class="rounded-2xl p-6" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+                        <div class="flex items-start gap-3">
+                            <flux:icon name="bell-alert" class="size-6 shrink-0" style="color: var(--brand);" />
+                            <div class="w-full">
+                                <h3 class="text-lg font-semibold text-white">{{ __('No shifts are available right now') }}</h3>
+                                <p class="mt-2 text-sm" style="color: #d4d4d8;">{{ __('All shifts are currently full or still being planned. Enter your email to get notified as soon as new shifts open up for this event.') }}</p>
+
+                                <div class="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+                                    <flux:field>
+                                        <flux:label>{{ __('Email') }}</flux:label>
+                                        <flux:input type="email" wire:model="notificationSubscriptionEmail" placeholder="{{ __('your@email.com') }}" />
+                                        <flux:error name="notificationSubscriptionEmail" />
+                                    </flux:field>
+
+                                    <div class="flex items-end">
+                                        <button wire:click="subscribeToNotifications" wire:loading.attr="disabled" class="public-btn-primary w-full md:w-auto">
+                                            {{ __('Notify me') }}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @if ($notificationSubscriptionMessage)
+                                    <p class="mt-4 text-sm" style="color: #6ee7b7;">{{ $notificationSubscriptionMessage }}</p>
+                                @endif
+
+                                <p class="mt-4 text-xs" style="color: #9a9a9a;">{{ __('We only use your email for this event notification. Every update email includes an unsubscribe link.') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    @foreach ($this->jobs as $job)
+                        <div class="rounded-lg overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);" wire:key="job-{{ $job->id }}">
+                            <div class="p-4" style="background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.08);">
+                                <h3 class="text-sm font-semibold text-white">{{ $job->name }}</h3>
+                                @if ($job->description)
+                                    <p class="mt-1 text-sm" style="color: #a1a1aa;">{{ $job->description }}</p>
+                                @endif
+                                @if ($job->instructions)
+                                    <a href="{{ route('events.jobs.cheat-sheet', ['publicToken' => $event->public_token, 'jobId' => $job->id]) }}" target="_blank"
+                                       class="inline-flex items-center gap-1 mt-2 text-sm" style="color: var(--brand); text-decoration: none;">
+                                        <flux:icon name="document-text" variant="mini" class="size-4" />
+                                        {{ __('View Instructions') }}
+                                    </a>
+                                @endif
+                            </div>
+
+                            <div class="p-4 space-y-3">
+                                @foreach ($job->shifts as $shift)
+                                    @php
+                                        $spotsLeft = $shift->spotsRemaining();
+                                        $isFull = $spotsLeft === 0;
+                                        $isSelected = in_array($shift->id, $selectedShiftIds);
+                                        $isConflicting = in_array($shift->id, $this->overlappingShiftIds);
+                                        $isExisting = in_array($shift->id, $existingShiftIds);
+                                        $isLockedByPriorityGate = $this->priorityGateStatus['is_closed'] && ! $shift->is_priority && ! $isExisting;
+                                        $shiftTimeLabel = $job->name.' — '.$shift->shift_date->setTimezone($tz)->format('M d').' '.$shift->displayTimeRange($tz);
+                                    @endphp
+                                    <label
+                                        class="flex items-center justify-between p-3 rounded-lg transition-all duration-200"
+                                        style="border: 2px solid {{ $isExisting ? 'rgba(59,130,246,0.3)' : ($isSelected && $isConflicting ? 'var(--yellow)' : ($isSelected ? 'var(--brand)' : 'rgba(255,255,255,0.08)')) }};
+                                               background: {{ $isExisting ? 'rgba(59,130,246,0.08)' : ($isSelected && $isConflicting ? 'rgba(244,208,63,0.08)' : ($isSelected ? 'rgba(5,150,105,0.08)' : 'transparent')) }};
+                                               {{ $isExisting ? 'opacity: 0.7; cursor: default;' : ($isFull || $isLockedByPriorityGate ? 'opacity: 0.4; cursor: not-allowed;' : 'cursor: pointer;') }}"
+                                        wire:key="shift-{{ $shift->id }}"
+                                    >
+                                        <div class="flex items-center gap-3">
+                                            <input type="checkbox" value="{{ $shift->id }}"
+                                                wire:model.live="selectedShiftIds"
+                                                @disabled($isFull || $isExisting || $isLockedByPriorityGate)
+                                                @checked($isExisting)
+                                                @if ($isFull) aria-label="{{ $shiftTimeLabel }} — {{ __('Full, no spots available') }}" @endif
+                                                @if ($isExisting) aria-label="{{ $shiftTimeLabel }} — {{ __('Already signed up') }}" @endif
+                                                @if ($isLockedByPriorityGate) aria-label="{{ $shiftTimeLabel }} — {{ __('Locked until priority shifts are filled') }}" @endif
+                                                class="accent-emerald-600"
+                                            />
+                                            <div>
+                                                <span class="text-sm font-medium text-white">
+                                                    {{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}
+                                                </span>
+                                                @if ($shift->is_priority)
+                                                    <span class="ml-2 inline-flex rounded px-2 py-0.5 text-xs font-semibold" style="background: rgba(245,158,11,0.15); color: #fbbf24;">{{ __('Priority') }}</span>
+                                                @endif
+                                                @if ($isExisting)
+                                                    <span class="block text-sm font-semibold" style="color: #93c5fd;">
+                                                        {{ __('Already signed up') }}
+                                                    </span>
+                                                @elseif ($isLockedByPriorityGate)
+                                                    <span class="block text-sm" style="color: #a1a1aa;">
+                                                        {{ __('Locked until the priority shift threshold is reached.') }}
+                                                    </span>
+                                                @elseif ($spotsLeft <= 3 && $spotsLeft > 0)
+                                                    <span class="block text-sm font-semibold urgency-pulse" style="color: var(--yellow);">
+                                                        {{ __('Nur noch :count Plätze!', ['count' => $spotsLeft]) }}
+                                                    </span>
+                                                @else
+                                                    <span class="block text-sm" style="color: #a1a1aa;">
+                                                        {{ $spotsLeft }} {{ __('spots remaining') }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        @if ($isExisting)
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(59,130,246,0.15); color: #93c5fd;">{{ __('Signed Up') }}</span>
+                                        @elseif ($isLockedByPriorityGate)
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(161,161,170,0.15); color: #d4d4d8;">{{ __('Locked') }}</span>
+                                        @elseif ($isFull)
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(230,57,70,0.15); color: #fca5a5;">{{ __('Full') }}</span>
+                                        @elseif ($isConflicting && $isSelected)
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(244,208,63,0.15); color: #fbbf24;">{{ __('Conflict') }}</span>
+                                        @else
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(5,150,105,0.15); color: #6ee7b7;">{{ __('Open') }}</span>
+                                        @endif
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
             </div>
 
             @if (count($this->overlappingShiftIds) > 0)
@@ -374,9 +437,11 @@
                 <button wire:click="goBack" class="flex-1 public-btn-ghost">
                     {{ __('Back') }}
                 </button>
-                <button wire:click="reserveAndAdvance" wire:loading.attr="disabled" class="flex-1 public-btn-primary">
-                    {{ __('Continue') }}
-                </button>
+                @if ($this->jobs->isNotEmpty())
+                    <button wire:click="reserveAndAdvance" wire:loading.attr="disabled" class="flex-1 public-btn-primary">
+                        {{ __('Continue') }}
+                    </button>
+                @endif
             </div>
         </div>
 

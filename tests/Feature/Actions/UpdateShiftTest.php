@@ -3,6 +3,7 @@
 use App\Actions\UpdateShift;
 use App\Events\Activity\ShiftUpdated;
 use App\Exceptions\DomainException;
+use App\Jobs\NotifyEventSubscribers;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
@@ -12,6 +13,7 @@ use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event as EventFacade;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
@@ -30,6 +32,7 @@ it('updates shift times and capacity', function () {
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 20,
+        isActive: true,
         causer: $this->user,
     );
 
@@ -53,6 +56,7 @@ it('throws DomainException when reducing capacity below current signups', functi
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 2,
+        isActive: true,
         causer: $this->user,
     ))->toThrow(DomainException::class, 'Cannot reduce capacity below current number of signups.');
 });
@@ -71,6 +75,7 @@ it('allows reducing capacity to exactly current signups', function () {
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 3,
+        isActive: true,
         causer: $this->user,
     );
 
@@ -88,8 +93,43 @@ it('dispatches ShiftUpdated activity event with causer', function () {
         startsAt: Carbon::parse('2026-07-01 14:00'),
         endsAt: Carbon::parse('2026-07-01 18:00'),
         capacity: 20,
+        isActive: true,
         causer: $this->user,
     );
 
     EventFacade::assertDispatched(ShiftUpdated::class, fn ($e) => $e->causer->id === $this->user->id);
+});
+
+it('can deactivate a shift', function () {
+    $shift = Shift::factory()->for($this->job, 'volunteerJob')->create(['is_active' => true]);
+
+    $updated = $this->action->execute(
+        shift: $shift,
+        shiftDate: $shift->shift_date,
+        startsAt: $shift->starts_at,
+        endsAt: $shift->ends_at,
+        capacity: $shift->capacity,
+        isActive: false,
+        causer: $this->user,
+    );
+
+    expect($updated->is_active)->toBeFalse();
+});
+
+it('queues subscriber notifications when an inactive shift becomes available', function () {
+    Queue::fake();
+
+    $shift = Shift::factory()->for($this->job, 'volunteerJob')->inactive()->create();
+
+    $this->action->execute(
+        shift: $shift,
+        shiftDate: $shift->shift_date,
+        startsAt: $shift->starts_at,
+        endsAt: $shift->ends_at,
+        capacity: $shift->capacity,
+        isActive: true,
+        causer: $this->user,
+    );
+
+    Queue::assertPushed(NotifyEventSubscribers::class, fn (NotifyEventSubscribers $job) => $job->eventId === $this->event->id);
 });

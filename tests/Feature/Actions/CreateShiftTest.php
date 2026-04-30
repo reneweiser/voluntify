@@ -2,12 +2,14 @@
 
 use App\Actions\CreateShift;
 use App\Events\Activity\ShiftCreated;
+use App\Jobs\NotifyEventSubscribers;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\User;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event as EventFacade;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
@@ -24,6 +26,7 @@ it('creates a shift with date and times', function () {
         startsAt: Carbon::parse('2026-07-01 09:00'),
         endsAt: Carbon::parse('2026-07-01 13:00'),
         capacity: 10,
+        isActive: true,
         causer: $this->user,
     );
 
@@ -43,6 +46,7 @@ it('creates a shift with date only and no times', function () {
         startsAt: null,
         endsAt: null,
         capacity: 5,
+        isActive: true,
         displayText: 'Ganzer Tag',
         causer: $this->user,
     );
@@ -62,6 +66,7 @@ it('creates a shift with custom display text overriding time display', function 
         startsAt: Carbon::parse('2026-07-01 09:00'),
         endsAt: Carbon::parse('2026-07-01 13:00'),
         capacity: 10,
+        isActive: true,
         displayText: 'Vormittag',
         causer: $this->user,
     );
@@ -79,8 +84,42 @@ it('dispatches ShiftCreated activity event with causer', function () {
         startsAt: Carbon::parse('2026-07-01 09:00'),
         endsAt: Carbon::parse('2026-07-01 13:00'),
         capacity: 10,
+        isActive: true,
         causer: $this->user,
     );
 
     EventFacade::assertDispatched(ShiftCreated::class, fn ($e) => $e->causer->id === $this->user->id);
+});
+
+it('creates inactive shifts when requested', function () {
+    $shift = $this->action->execute(
+        job: $this->job,
+        shiftDate: Carbon::parse('2026-07-01'),
+        startsAt: Carbon::parse('2026-07-01 09:00'),
+        endsAt: Carbon::parse('2026-07-01 13:00'),
+        capacity: 10,
+        isActive: false,
+        causer: $this->user,
+    );
+
+    expect($shift->is_active)->toBeFalse();
+});
+
+it('queues one subscriber notification batch when availability opens up', function () {
+    Queue::fake();
+
+    foreach (range(1, 3) as $index) {
+        $this->action->execute(
+            job: $this->job,
+            shiftDate: Carbon::parse('2026-07-0'.$index),
+            startsAt: Carbon::parse('2026-07-0'.$index.' 09:00'),
+            endsAt: Carbon::parse('2026-07-0'.$index.' 13:00'),
+            capacity: 10,
+            isActive: true,
+            causer: $this->user,
+        );
+    }
+
+    Queue::assertPushed(NotifyEventSubscribers::class, 1);
+    Queue::assertPushed(NotifyEventSubscribers::class, fn (NotifyEventSubscribers $job) => $job->eventId === $this->event->id && $job->delay !== null);
 });

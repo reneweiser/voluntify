@@ -13,12 +13,17 @@ class UpdateVolunteerJob
         string $name,
         ?string $description,
         ?string $instructions,
+        bool $isActive,
         User $causer,
     ): VolunteerJob {
+        $event = $job->event;
+        $hadAvailability = $event->publicSignupJobs()->isNotEmpty();
+
         $updateData = [
             'name' => $name,
             'description' => $description,
             'instructions' => $instructions,
+            'is_active' => $isActive,
         ];
 
         $changed = collect($updateData)
@@ -27,6 +32,7 @@ class UpdateVolunteerJob
             ->all();
 
         $job->update($updateData);
+        app(ScheduleEventSubscriberNotification::class)->execute($job->event->fresh(), $hadAvailability);
 
         if ($changed) {
             JobUpdated::dispatch($job->refresh(), $causer, $changed);
