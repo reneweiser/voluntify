@@ -143,7 +143,11 @@ class EventSignup extends Component
                 ->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])
                 ->orderBy('shift_date')
                 ->orderBy('starts_at')])
-            ->get();
+            ->get()
+            ->filter(fn ($job) => $job->shifts->contains(
+                fn ($shift) => ! $shift->isFull() || in_array((int) $shift->id, $this->existingShiftIds, true)
+            ))
+            ->values();
     }
 
     /**

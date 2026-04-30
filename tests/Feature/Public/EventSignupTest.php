@@ -127,6 +127,97 @@ it('shows full badge for shifts at capacity', function () {
         ->assertSee('Full');
 });
 
+it('hides fully booked jobs while keeping jobs with open shifts visible', function () {
+    $fullJob = VolunteerJob::factory()->for($this->event)->create(['name' => 'Info Desk']);
+
+    collect(range(1, 2))->each(function () use ($fullJob) {
+        $shift = Shift::factory()->for($fullJob, 'volunteerJob')->create(['capacity' => 1]);
+
+        ShiftSignup::factory()->create([
+            'shift_id' => $shift->id,
+            'volunteer_id' => Volunteer::factory()->for($this->project),
+        ]);
+    });
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSee('Litter Pickup')
+        ->assertDontSee('Info Desk');
+});
+
+it('keeps partially full jobs visible with their full shifts', function () {
+    Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1, 'display_text' => 'Morning Shift']);
+    $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1, 'display_text' => 'Noon Shift']);
+    Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 3, 'display_text' => 'Evening Shift']);
+
+    ShiftSignup::factory()->create([
+        'shift_id' => $fullShift->id,
+        'volunteer_id' => Volunteer::factory()->for($this->project),
+    ]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSee('Litter Pickup')
+        ->assertSee('Morning Shift')
+        ->assertSee('Noon Shift')
+        ->assertSee('Evening Shift')
+        ->assertSee('Full');
+});
+
+it('keeps a returning volunteers fully booked job visible when they already hold a shift in it', function () {
+    $fullJob = VolunteerJob::factory()->for($this->event)->create(['name' => 'Backstage']);
+    $returningVolunteer = Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'returning-full@example.com',
+        'first_name' => 'Returning',
+        'last_name' => 'Volunteer',
+    ]);
+
+    $existingShift = Shift::factory()->for($fullJob, 'volunteerJob')->create(['capacity' => 1, 'display_text' => 'Load In']);
+    $otherFullShift = Shift::factory()->for($fullJob, 'volunteerJob')->create(['capacity' => 1, 'display_text' => 'Load Out']);
+
+    ShiftSignup::factory()->create([
+        'shift_id' => $existingShift->id,
+        'volunteer_id' => $returningVolunteer->id,
+    ]);
+
+    ShiftSignup::factory()->create([
+        'shift_id' => $otherFullShift->id,
+        'volunteer_id' => Volunteer::factory()->for($this->project),
+    ]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning-full@example.com')
+        ->call('submitEmail');
+
+    simulateVerification($component, 'returning-full@example.com');
+
+    $component
+        ->call('advanceToShifts')
+        ->assertSee('Backstage')
+        ->assertSee('Load In')
+        ->assertSee('Already signed up')
+        ->assertSee('Load Out');
+});
+
+it('returns an empty jobs collection when all jobs are fully booked and the volunteer has no existing signup', function () {
+    $this->shift->update(['capacity' => 1]);
+
+    ShiftSignup::factory()->create([
+        'shift_id' => $this->shift->id,
+        'volunteer_id' => Volunteer::factory()->for($this->project),
+    ]);
+
+    $fullJob = VolunteerJob::factory()->for($this->event)->create(['name' => 'Merch']);
+    $fullShift = Shift::factory()->for($fullJob, 'volunteerJob')->create(['capacity' => 1]);
+
+    ShiftSignup::factory()->create([
+        'shift_id' => $fullShift->id,
+        'volunteer_id' => Volunteer::factory()->for($this->project),
+    ]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token]);
+
+    expect($component->instance()->jobs)->toHaveCount(0);
+});
+
 it('shows a priority gate banner and locks regular shifts while the gate is closed', function () {
     $this->event->update(['priority_unlock_threshold_percent' => 80]);
     $priorityShift = Shift::factory()->for($this->job, 'volunteerJob')->priority()->create(['capacity' => 5]);
