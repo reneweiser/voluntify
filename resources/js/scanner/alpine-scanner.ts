@@ -40,6 +40,8 @@ import type { Volunteer, ArrivalRecord, AttendanceRecord, GearItem, VolunteerGea
 type ScannerState = 'idle' | 'loading' | 'scanning' | 'result' | 'duplicate' | 'invalid' | 'confirmed';
 type ScannerTab = 'scanner' | 'volunteers' | 'guests' | 'shifts';
 type ScannerDataSource = 'network' | 'cache' | 'unavailable';
+type VolunteerSelectionSource = 'qr' | 'manual' | 'shift' | null;
+type VolunteerDetailState = 'ready' | 'checked_in' | 'configuration_review' | 'missing_ticket' | null;
 
 interface SelectedShiftContext {
     volunteerId: number;
@@ -112,9 +114,11 @@ export function scannerApp(config: ScannerAppConfig) {
         _video: null as HTMLVideoElement | null,
         _canvas: null as HTMLCanvasElement | null,
         activeTab: 'scanner' as ScannerTab,
+        volunteerSearchQuery: '' as string,
         guestSearchQuery: '' as string,
         shiftSearchQuery: '' as string,
         guestResult: null as GuestEntry | null,
+        selectedVolunteerSource: null as VolunteerSelectionSource,
 
         get filteredGuestGroups(): { label: string; guestCount: number; entries: GuestEntry[] }[] {
             const groups = new Map<number, { label: string; guestCount: number; entries: GuestEntry[] }>();
@@ -139,6 +143,58 @@ export function scannerApp(config: ScannerAppConfig) {
             }
 
             return Array.from(groups.values());
+        },
+
+        get shouldShowVolunteerSearchHint(): boolean {
+            const query = this.volunteerSearchQuery.trim();
+
+            return query.length > 0 && query.length < 2;
+        },
+
+        get filteredVolunteers(): Volunteer[] {
+            if (this.scannerType !== 'entry_staff') {
+                return [];
+            }
+
+            const query = this.volunteerSearchQuery.trim().toLowerCase();
+            if (query.length < 2) {
+                return [];
+            }
+
+            return this._volunteers
+                .filter((volunteer) => {
+                    return volunteer.first_name.toLowerCase().includes(query)
+                        || volunteer.last_name.toLowerCase().includes(query)
+                        || volunteer.email.toLowerCase().includes(query);
+                })
+                .sort((left, right) => {
+                    const leftHasArrival = this.hasArrivalForEntryEvent(left.id) ? 1 : 0;
+                    const rightHasArrival = this.hasArrivalForEntryEvent(right.id) ? 1 : 0;
+
+                    return leftHasArrival - rightHasArrival
+                        || left.name.localeCompare(right.name)
+                        || left.id - right.id;
+                });
+        },
+
+        get volunteerDetailState(): VolunteerDetailState {
+            if (this.selectedVolunteerSource !== 'manual' || !this.selectedVolunteer) {
+                return null;
+            }
+
+            if (!this.result) {
+                return 'missing_ticket';
+            }
+
+            if (this.hasArrivalForEntryEvent(this.selectedVolunteer.id)) {
+                return 'checked_in';
+            }
+
+            if (!this.canSubmitArrival) {
+                return 'configuration_review';
+            }
+
+            return 'ready';
         },
 
         get hasShiftListTab(): boolean {
@@ -265,13 +321,16 @@ export function scannerApp(config: ScannerAppConfig) {
         selectVolunteer(volunteer: Volunteer, options: { fromQr?: boolean; shiftContext?: SelectedShiftContext | null } = {}) {
             this.selectedVolunteer = volunteer;
             this.selectedShiftContext = options.shiftContext ?? null;
-            this.result = this.buildVolunteerResult(volunteer);
+            this.selectedVolunteerSource = options.fromQr
+                ? 'qr'
+                : options.shiftContext
+                    ? 'shift'
+                    : null;
+            this.result = volunteer.ticket ? this.buildVolunteerResult(volunteer) : null;
             this.guestResult = null;
 
             if (options.fromQr) {
-                const alreadyArrived = this._entryEventId !== null && this._arrivals.some((arrival) => {
-                    return arrival.volunteer_id === volunteer.id && arrival.event_id === this._entryEventId;
-                });
+                const alreadyArrived = this.hasArrivalForEntryEvent(volunteer.id);
 
                 if (alreadyArrived) {
                     const arrival = this._arrivals.find((entry) => {
@@ -300,6 +359,12 @@ export function scannerApp(config: ScannerAppConfig) {
             this.errorMessage = '';
         },
 
+        selectVolunteerFromSearch(volunteer: Volunteer) {
+            this.selectVolunteer(volunteer);
+            this.selectedVolunteerSource = 'manual';
+            this.guestResult = null;
+        },
+
         selectVolunteerFromShift(row: ShiftGroupVolunteerRow) {
             const volunteer = this._volunteers.find((entry) => entry.id === row.volunteerId);
             if (!volunteer) {
@@ -315,7 +380,25 @@ export function scannerApp(config: ScannerAppConfig) {
                     shiftId: row.shiftId,
                 },
             });
+            this.selectedVolunteerSource = 'shift';
             this.activeTab = 'scanner';
+        },
+
+        hasArrivalForEntryEvent(volunteerId: number): boolean {
+            return this._entryEventId !== null && this._arrivals.some((arrival) => {
+                return arrival.volunteer_id === volunteerId && arrival.event_id === this._entryEventId;
+            });
+        },
+
+        clearVolunteerSelection() {
+            this.selectedVolunteer = null;
+            this.selectedShiftContext = null;
+            this.selectedVolunteerSource = null;
+            this.result = null;
+            this.guestResult = null;
+            this.resultMessage = '';
+            this.errorMessage = '';
+            this.state = 'scanning';
         },
 
         async setActiveTab(tab: ScannerTab) {
@@ -335,9 +418,11 @@ export function scannerApp(config: ScannerAppConfig) {
 
             const preservedState = options.preserveUiState ? {
                 activeTab: this.activeTab,
+                volunteerSearchQuery: this.volunteerSearchQuery,
                 shiftSearchQuery: this.shiftSearchQuery,
                 selectedVolunteerId: this.selectedVolunteer?.id ?? null,
                 selectedShiftContext: this.selectedShiftContext,
+                selectedVolunteerSource: this.selectedVolunteerSource,
             } : null;
 
             await this._loadScannerData();
@@ -349,6 +434,7 @@ export function scannerApp(config: ScannerAppConfig) {
             this.activeTab = preservedState.activeTab === 'shifts' && !this.hasShiftListTab
                 ? 'scanner'
                 : preservedState.activeTab;
+            this.volunteerSearchQuery = preservedState.volunteerSearchQuery;
             this.shiftSearchQuery = preservedState.shiftSearchQuery;
 
             if (!preservedState.selectedVolunteerId) {
@@ -359,6 +445,7 @@ export function scannerApp(config: ScannerAppConfig) {
             if (!volunteer) {
                 this.selectedVolunteer = null;
                 this.selectedShiftContext = null;
+                this.selectedVolunteerSource = null;
                 this.result = null;
                 this.shiftListNotice = 'Selected volunteer is no longer available in the latest scanner data.';
                 return;
@@ -380,6 +467,7 @@ export function scannerApp(config: ScannerAppConfig) {
             this.selectVolunteer(volunteer, {
                 shiftContext: shiftContext ?? null,
             });
+            this.selectedVolunteerSource = preservedState.selectedVolunteerSource;
         },
 
         async _loadScannerData() {
@@ -437,7 +525,7 @@ export function scannerApp(config: ScannerAppConfig) {
         },
 
         async _onQrDetected(jwtToken: string) {
-            if (this._processing || this.state !== 'scanning') {
+            if (this._processing || this.state !== 'scanning' || this.activeTab !== 'scanner') {
                 return;
             }
             this._processing = true;
@@ -490,14 +578,26 @@ export function scannerApp(config: ScannerAppConfig) {
                 return;
             }
 
+            if (this.hasArrivalForEntryEvent(this.result.volunteerId)) {
+                if (this.selectedVolunteerSource === 'qr') {
+                    this.state = 'duplicate';
+                    this.resultMessage = 'Already checked in.';
+                }
+
+                return;
+            }
+
             if (!this.canSubmitArrival || this._entryEventId === null || this._contractVersion === null) {
-                this.state = 'invalid';
-                this.errorMessage = 'Scanner configuration needs review before volunteer check-in can be used.';
+                if (this.selectedVolunteerSource === 'qr') {
+                    this.state = 'invalid';
+                    this.errorMessage = 'Scanner configuration needs review before volunteer check-in can be used.';
+                }
 
                 return;
             }
 
             const eventId = this._entryEventId;
+            const method = this.selectedVolunteerSource === 'manual' ? 'manual_lookup' as const : 'qr_scan' as const;
 
             const entry = {
                 type: 'arrival' as const,
@@ -506,7 +606,7 @@ export function scannerApp(config: ScannerAppConfig) {
                 event_id: eventId,
                 entry_event_id: eventId,
                 contract_version: this._contractVersion,
-                method: 'qr_scan' as const,
+                method,
                 scanned_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
             };
 
@@ -527,8 +627,10 @@ export function scannerApp(config: ScannerAppConfig) {
             await addOutboxEntry(this._scannerId, entry);
             this.outboxCount = await getOutboxCount(this._scannerId);
 
-            this.state = 'confirmed';
-            this.resultMessage = `${this.result.name} checked in successfully.`;
+            if (this.selectedVolunteerSource === 'qr') {
+                this.state = 'confirmed';
+                this.resultMessage = `${this.result.name} checked in successfully.`;
+            }
 
             // Try to sync immediately if online
             if (this.isOnline) {
@@ -765,6 +867,7 @@ export function scannerApp(config: ScannerAppConfig) {
             this.guestResult = null;
             this.selectedVolunteer = null;
             this.selectedShiftContext = null;
+            this.selectedVolunteerSource = null;
             this.resultMessage = '';
             this.errorMessage = '';
             this._resetInactivityTimer();
@@ -774,6 +877,7 @@ export function scannerApp(config: ScannerAppConfig) {
             const alreadyCheckedIn = entry.checked_in_at !== null;
             this.selectedVolunteer = null;
             this.selectedShiftContext = null;
+            this.selectedVolunteerSource = null;
             this.result = null;
             this.guestResult = entry;
 

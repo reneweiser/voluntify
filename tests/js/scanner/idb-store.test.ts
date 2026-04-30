@@ -63,15 +63,31 @@ describe('idb-store (DB_VERSION 3 — scannerId keys)', () => {
         expect(scanner2[0].name).toBe('Bob Smith');
     });
 
-    it('searches volunteers by name substring', async () => {
+    it('searches volunteers by first and last name substrings', async () => {
         await storeVolunteers(1, [
             makeVolunteer(),
             makeVolunteer({ id: 2, first_name: 'Bob', last_name: 'Smith', name: 'Bob Smith', email: 'bob@example.com' }),
         ]);
 
-        const result = await searchVolunteers(1, 'ali');
-        expect(result).toHaveLength(1);
-        expect(result[0].name).toBe('Alice Johnson');
+        await expect(searchVolunteers(1, 'ali')).resolves.toMatchObject([
+            expect.objectContaining({ name: 'Alice Johnson' }),
+        ]);
+
+        await expect(searchVolunteers(1, 'SMI')).resolves.toMatchObject([
+            expect.objectContaining({ name: 'Bob Smith' }),
+        ]);
+    });
+
+    it('searches volunteers by email substring', async () => {
+        await storeVolunteers(1, [
+            makeVolunteer(),
+            makeVolunteer({ id: 2, first_name: 'Bob', last_name: 'Smith', name: 'Bob Smith', email: 'bob@example.com' }),
+        ]);
+
+        const result = await searchVolunteers(1, 'EXAMPLE.COM');
+
+        expect(result).toHaveLength(2);
+        expect(result.map((volunteer) => volunteer.name)).toEqual(['Alice Johnson', 'Bob Smith']);
     });
 
     it('adds and retrieves outbox entries by scannerId', async () => {

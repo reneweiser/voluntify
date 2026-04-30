@@ -201,6 +201,58 @@ it('returns volunteer shift payload fields required for volunteer admin shift li
         ->assertJsonPath('volunteers.0.shift_signups.0.attendance_record.status', 'on_time');
 });
 
+it('includes volunteers from past pooled events in entry staff scanner data', function () {
+    $pastEvent = Event::factory()->for($this->project)->create([
+        'starts_at' => Carbon::parse('2026-06-01 09:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 18:00:00'),
+    ]);
+
+    $scanner = ProjectScanner::factory()->active()->withPoolEvents($this->event, [$this->event->id, $pastEvent->id])->create([
+        'project_id' => $this->project->id,
+        'type' => ScannerType::EntryStaff,
+    ]);
+
+    $volunteer = Volunteer::factory()->create([
+        'project_id' => $this->project->id,
+        'first_name' => 'Past',
+        'last_name' => 'Volunteer',
+        'email' => 'past-volunteer@example.com',
+    ]);
+    $ticket = Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $job = VolunteerJob::factory()->create([
+        'event_id' => $pastEvent->id,
+        'name' => 'Archive Crew',
+    ]);
+    $shift = Shift::factory()->create([
+        'volunteer_job_id' => $job->id,
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 14:00:00'),
+        'display_text' => 'Jun 01, 10:00 - 14:00',
+    ]);
+    $signup = ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $shift->id,
+    ]);
+
+    $response = $this->getJson(route('scanner-api.data', $scanner->id), [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk();
+
+    $volunteerPayload = collect($response->json('volunteers'))->firstWhere('id', $volunteer->id);
+
+    expect($volunteerPayload)->not->toBeNull()
+        ->and($volunteerPayload['ticket']['id'])->toBe($ticket->id)
+        ->and($volunteerPayload['shift_signups'][0]['id'])->toBe($signup->id)
+        ->and($volunteerPayload['shift_signups'][0]['shift']['id'])->toBe($shift->id);
+});
+
 it('returns default states for projects with null attendance_states', function () {
     $this->project->update(['attendance_states' => null]);
 
@@ -267,6 +319,44 @@ it('syncs arrivals for entry staff scanner', function () {
 
     $response->assertOk()
         ->assertJsonStructure(['arrivals']);
+});
+
+it('syncs manual lookup arrivals for entry staff scanner', function () {
+    $scanner = ProjectScanner::factory()->active()->create([
+        'project_id' => $this->project->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
+        'type' => ScannerType::EntryStaff,
+    ]);
+
+    $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
+    $ticket = Ticket::factory()->create([
+        'project_id' => $this->project->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
+    $response = $this->postJson(route('scanner-api.sync', $scanner->id), [
+        'contract_version' => ProjectScanner::CONTRACT_VERSION,
+        'arrivals' => [
+            [
+                'ticket_id' => $ticket->id,
+                'event_id' => $this->event->id,
+                'method' => 'manual_lookup',
+                'scanned_at' => now()->toISOString(),
+            ],
+        ],
+    ], [
+        'X-Scanner-Token' => $scanner->scanner_token,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('arrivals.0.method', 'manual_lookup');
+
+    $arrival = EventArrival::query()->where('ticket_id', $ticket->id)->first();
+
+    expect($arrival)->not->toBeNull()
+        ->and($arrival->event_id)->toBe($this->event->id)
+        ->and($arrival->method->value)->toBe('manual_lookup');
 });
 
 it('returns 403 when VA scanner tries to sync arrivals', function () {
