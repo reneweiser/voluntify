@@ -3,13 +3,17 @@
 namespace App\Livewire\Projects;
 
 use App\Actions\AddProjectMember;
+use App\Actions\CreateInvitedUser;
 use App\Actions\RemoveProjectMember;
 use App\Exceptions\DomainException;
 use App\Exceptions\MemberAlreadyExistsException;
 use App\Models\Project;
 use App\Models\User;
+use App\Notifications\StaffInvitation;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -48,7 +52,7 @@ class ProjectMembers extends Component
         return currentOrganization()->users()->orderBy('name')->get();
     }
 
-    public function inviteMember(AddProjectMember $action): void
+    public function inviteMember(AddProjectMember $action, CreateInvitedUser $createInvitedUser): void
     {
         Gate::authorize('manageMembers', $this->project);
 
@@ -59,13 +63,20 @@ class ProjectMembers extends Component
         $user = User::where('email', $this->inviteEmail)->first();
 
         if (! $user) {
-            $this->addError('inviteEmail', 'No user found with this email address.');
+            $invitedUser = $createInvitedUser->execute(
+                $this->resolveInviteName(),
+                $this->inviteEmail,
+            );
 
-            return;
+            $user = $invitedUser['user'];
+            $user->notify(new StaffInvitation($this->project->organization, $invitedUser['temporaryPassword']));
         }
 
+        /** @var User $causer */
+        $causer = Auth::user();
+
         try {
-            $action->execute($this->project, $user, auth()->user());
+            $action->execute($this->project, $user, $causer);
         } catch (MemberAlreadyExistsException) {
             $this->addError('inviteEmail', 'This user is already a project member.');
 
@@ -80,6 +91,24 @@ class ProjectMembers extends Component
         unset($this->members);
 
         $this->dispatch('member-added');
+    }
+
+    protected function resolveInviteName(): string
+    {
+        $volunteer = $this->project->volunteers()
+            ->where('email', $this->inviteEmail)
+            ->first();
+
+        if ($volunteer) {
+            return $volunteer->full_name;
+        }
+
+        return Str::of($this->inviteEmail)
+            ->before('@')
+            ->replace(['.', '_', '-'], ' ')
+            ->squish()
+            ->title()
+            ->value();
     }
 
     public function confirmRemoveMember(int $userId): void
@@ -102,7 +131,10 @@ class ProjectMembers extends Component
             return;
         }
 
-        $action->execute($this->project, $user, auth()->user());
+        /** @var User $causer */
+        $causer = Auth::user();
+
+        $action->execute($this->project, $user, $causer);
 
         $this->showRemoveModal = false;
         $this->reset('removeMemberId');

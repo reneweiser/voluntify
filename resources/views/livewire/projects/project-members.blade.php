@@ -71,7 +71,7 @@
     <flux:card>
         <flux:heading size="lg" class="mb-4">{{ __('Add Project Member') }}</flux:heading>
         <flux:text size="sm" class="mb-4 text-zinc-500 dark:text-zinc-400">
-            {{ __('Add an existing user to this project by their email address.') }}
+            {{ __('Invite a project member by email. If they do not have an account yet, one will be created automatically.') }}
         </flux:text>
 
         <form wire:submit="inviteMember" class="space-y-4">

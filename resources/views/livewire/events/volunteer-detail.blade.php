@@ -19,12 +19,22 @@
                         <flux:button variant="danger" size="sm" icon="trash" wire:click="$set('showDeleteModal', true)">
                             {{ __('Volunteer löschen') }}
                         </flux:button>
+                        @if ($volunteer->isEmailVerified())
+                            <flux:button variant="ghost" size="sm" icon="envelope" wire:click="resendTicketEmail" wire:loading.attr="disabled">
+                                <span wire:loading.remove wire:target="resendTicketEmail">{{ __('QR-Code erneut senden') }}</span>
+                                <span wire:loading wire:target="resendTicketEmail">{{ __('Wird gesendet...') }}</span>
+                            </flux:button>
+                        @endif
                         <flux:button variant="primary" size="sm" icon="arrow-up-circle" wire:click="$set('showPromoteModal', true)">
                             {{ __('Promote to Staff') }}
                         </flux:button>
                     </div>
                 @endif
             </div>
+            @if ($successMessage !== '')
+                <flux:callout variant="success" class="mb-4">{{ $successMessage }}</flux:callout>
+            @endif
+            <flux:error name="resend" class="mb-4" />
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">{{ __('Name') }}</flux:text>
@@ -145,8 +155,12 @@
                         <flux:table.row :key="'gear-'.$gear->id">
                             <flux:table.cell>{{ $gear->gearItem->name }}</flux:table.cell>
                             <flux:table.cell>
-                                @if ($gear->size)
-                                    <flux:badge size="sm" color="zinc">{{ $gear->size }}</flux:badge>
+                                @if ($gear->gearItem->type === \App\Enums\GearItemType::SizeSelection)
+                                    @if ($gear->size)
+                                        <flux:badge size="sm" color="zinc">{{ $gear->size }}</flux:badge>
+                                    @else
+                                        <flux:badge size="sm" color="amber">{{ __('Auswahl ausstehend') }}</flux:badge>
+                                    @endif
                                 @else
                                     —
                                 @endif
@@ -161,30 +175,40 @@
                                 @endif
                             </flux:table.cell>
                             <flux:table.cell>
-                                @can('trackGearPickup', $event)
-                                    @if ($gear->quantity_entitled !== null)
-                                        @if ($gear->remainingQuantity() > 0)
-                                            <flux:button size="xs" variant="ghost" wire:click="recordGearPickup({{ $gear->id }})" aria-label="{{ __('Record pickup') }}">
-                                                <flux:icon name="plus" class="size-4" />
+                                <div class="flex items-center gap-2">
+                                    @can('update', $event)
+                                        @if ($gear->gearItem->type === \App\Enums\GearItemType::SizeSelection && $gear->gearItem->requires_size)
+                                            <flux:button size="xs" variant="ghost" wire:click="openGearSelectionModal({{ $gear->id }})">
+                                                {{ $gear->size ? __('Auswahl ändern') : __('Auswahl setzen') }}
                                             </flux:button>
                                         @endif
-                                        @if ($gear->totalPickedUp() > 0)
-                                            <flux:button size="xs" variant="ghost" wire:click="undoGearPickup({{ $gear->id }})" aria-label="{{ __('Undo last pickup') }}">
-                                                <flux:icon name="minus" class="size-4" />
-                                            </flux:button>
-                                        @endif
-                                    @else
-                                        @if ($gear->isPickedUp())
-                                            <flux:button size="xs" variant="ghost" wire:click="undoGearPickup({{ $gear->id }})" aria-label="{{ __('Undo pickup') }}">
-                                                <flux:icon name="arrow-uturn-left" class="size-4" />
-                                            </flux:button>
+                                    @endcan
+
+                                    @can('trackGearPickup', $event)
+                                        @if ($gear->quantity_entitled !== null)
+                                            @if ($gear->remainingQuantity() > 0)
+                                                <flux:button size="xs" variant="ghost" wire:click="recordGearPickup({{ $gear->id }})" aria-label="{{ __('Record pickup') }}">
+                                                    <flux:icon name="plus" class="size-4" />
+                                                </flux:button>
+                                            @endif
+                                            @if ($gear->totalPickedUp() > 0)
+                                                <flux:button size="xs" variant="ghost" wire:click="undoGearPickup({{ $gear->id }})" aria-label="{{ __('Undo last pickup') }}">
+                                                    <flux:icon name="minus" class="size-4" />
+                                                </flux:button>
+                                            @endif
                                         @else
-                                            <flux:button size="xs" variant="ghost" wire:click="recordGearPickup({{ $gear->id }})" aria-label="{{ __('Mark as picked up') }}">
-                                                <flux:icon name="hand-raised" class="size-4" />
-                                            </flux:button>
+                                            @if ($gear->isPickedUp())
+                                                <flux:button size="xs" variant="ghost" wire:click="undoGearPickup({{ $gear->id }})" aria-label="{{ __('Undo pickup') }}">
+                                                    <flux:icon name="arrow-uturn-left" class="size-4" />
+                                                </flux:button>
+                                            @else
+                                                <flux:button size="xs" variant="ghost" wire:click="recordGearPickup({{ $gear->id }})" aria-label="{{ __('Mark as picked up') }}">
+                                                    <flux:icon name="hand-raised" class="size-4" />
+                                                </flux:button>
+                                            @endif
                                         @endif
-                                    @endif
-                                @endcan
+                                    @endcan
+                                </div>
                             </flux:table.cell>
                         </flux:table.row>
                     @endforeach
@@ -194,6 +218,33 @@
 
             <flux:error name="gear" />
         @endif
+
+        <flux:modal wire:model="showGearSelectionModal" focusable class="max-w-lg">
+            <div class="space-y-4">
+                <flux:heading size="lg">{{ __('Gear-Auswahl ändern') }}</flux:heading>
+                <flux:text>{{ __('Passe die Auswahl für :item an.', ['item' => $editingGearName]) }}</flux:text>
+
+                @if ($editingGearPickedUp)
+                    <flux:callout variant="warning">
+                        {{ __('Dieses Gear wurde bereits ausgegeben. Du kannst die Auswahl trotzdem anpassen.') }}
+                    </flux:callout>
+                @endif
+
+                <flux:select wire:model="gearSelection" :label="__('Auswahl')">
+                    <flux:select.option value="">{{ __('Bitte wählen...') }}</flux:select.option>
+                    @foreach ($gearSelectionOptions as $option)
+                        <flux:select.option :value="$option">{{ $option }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:error name="gearSelection" />
+
+                <div class="flex justify-end gap-2">
+                    <flux:button variant="ghost" wire:click="closeGearSelectionModal">{{ __('Abbrechen') }}</flux:button>
+                    <flux:button variant="primary" wire:click="saveGearSelection">{{ __('Speichern') }}</flux:button>
+                </div>
+            </div>
+        </flux:modal>
 
         {{-- Promote modal --}}
         <flux:modal wire:model="showPromoteModal" focusable class="max-w-lg">

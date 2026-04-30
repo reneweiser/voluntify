@@ -5,6 +5,9 @@ use App\Livewire\Projects\ProjectMembers;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\Volunteer;
+use App\Notifications\StaffInvitation;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -66,12 +69,32 @@ it('adds a project member by email', function () {
     expect($this->project->users()->where('user_id', $user->id)->exists())->toBeTrue();
 });
 
-it('shows error when user not found', function () {
+it('invites a volunteer email by creating a project member user', function () {
+    Notification::fake();
+
+    $volunteer = Volunteer::factory()->for($this->project)->create([
+        'first_name' => 'Taylor',
+        'last_name' => 'Volunteer',
+        'email' => 'volunteer@example.com',
+    ]);
+
     Livewire::actingAs($this->organizer)
         ->test(ProjectMembers::class, ['projectId' => $this->project->id])
-        ->set('inviteEmail', 'nonexistent@example.com')
+        ->set('inviteEmail', $volunteer->email)
         ->call('inviteMember')
-        ->assertHasErrors('inviteEmail');
+        ->assertHasNoErrors()
+        ->assertDispatched('member-added');
+
+    $newUser = User::where('email', $volunteer->email)->first();
+
+    expect($newUser)->not->toBeNull()
+        ->and($newUser->name)->toBe($volunteer->full_name)
+        ->and($newUser->must_change_password)->toBeTrue()
+        ->and($newUser->email_verified_at)->not->toBeNull()
+        ->and($this->project->users()->where('user_id', $newUser->id)->exists())->toBeTrue()
+        ->and($this->org->users()->where('user_id', $newUser->id)->exists())->toBeFalse();
+
+    Notification::assertSentTo($newUser, StaffInvitation::class);
 });
 
 it('shows error when user is already a member', function () {
