@@ -89,7 +89,10 @@ curl -s -X DELETE http://localhost:8025/api/v1/messages
 # 7. Create deterministic Volunteer Admin scanner fixture for shift-list E2E
 echo "Creating volunteer-admin shift-list E2E fixture..."
 vendor/bin/sail artisan tinker --execute="
+  use App\Actions\SendPreShiftReminders;
+  use App\Enums\ArrivalMethod;
   use App\Enums\GearItemType;
+  use App\Enums\ReminderWindow;
   use App\Enums\ScannerMode;
   use App\Enums\ScannerType;
   use App\Actions\GenerateTicket;
@@ -187,9 +190,20 @@ vendor/bin/sail artisan tinker --execute="
       'phone' => '+491701234567',
     ]);
 
-    Ticket::factory()->create([
+    \$lisaTicket = Ticket::factory()->create([
       'project_id' => \$project->id,
       'volunteer_id' => \$lisa->id,
+    ]);
+
+    app(RefreshTicketJwt::class)->execute(\$lisaTicket);
+
+    \App\Models\EventArrival::factory()->create([
+      'ticket_id' => \$lisaTicket->id,
+      'volunteer_id' => \$lisa->id,
+      'event_id' => \$event->id,
+      'scanned_by' => null,
+      'scanned_at' => now()->setTime(10, 0),
+      'method' => ArrivalMethod::QrScan,
     ]);
 
     ShiftSignup::factory()->create([
@@ -391,12 +405,6 @@ vendor/bin/sail artisan tinker --execute="
       'ends_at' => now()->addHours(4),
     ]);
 
-    file_put_contents(base_path('public/e2e-fixtures.json'), json_encode([
-      'entryPoolProjectId' => \$entryPoolProject->id,
-      'entryPoolEntryEventId' => \$entryEvent->id,
-      'entryPoolPoolEventId' => \$poolEvent->id,
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-
     \App\Models\ProjectScanner::where('scanner_token', 'e2e-entry-manual-lookup-token')->delete();
     \App\Models\Event::whereIn('name', [
       'E2E Entry Manual Event',
@@ -467,6 +475,202 @@ vendor/bin/sail artisan tinker --execute="
       'starts_at' => now()->subHour(),
       'ends_at' => now()->addHours(4),
     ]);
+
+    \App\Models\ProjectScanner::whereIn('scanner_token', [
+      'e2e-berlin-scheduled-token',
+      'e2e-utc-scheduled-token',
+    ])->delete();
+    \App\Models\Event::whereIn('name', [
+      'E2E Berlin Scheduled Event',
+      'E2E UTC Scheduled Event',
+    ])->delete();
+    \App\Models\Project::whereIn('name', [
+      'E2E Berlin Scheduled Scanner Project',
+      'E2E UTC Scheduled Scanner Project',
+    ])->delete();
+
+    \$berlinProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Berlin Scheduled Scanner Project',
+      'timezone' => 'Europe/Berlin',
+    ]);
+
+    \$berlinEvent = Event::factory()->for(\$organization)->for(\$berlinProject)->published()->create([
+      'name' => 'E2E Berlin Scheduled Event',
+      'slug' => 'e2e-berlin-scheduled-event',
+      'starts_at' => now()->addDay(),
+      'ends_at' => now()->addDay()->addHours(4),
+    ]);
+
+    \$berlinScannerStart = now('Europe/Berlin')->addDay()->setTime(16, 0)->utc();
+    \$berlinScannerEnd = now('Europe/Berlin')->addDay()->setTime(20, 0)->utc();
+
+    ProjectScanner::factory()->create([
+      'project_id' => \$berlinProject->id,
+      'entry_event_id' => \$berlinEvent->id,
+      'pool_event_ids' => [\$berlinEvent->id],
+      'name' => 'E2E Berlin Scheduled Scanner',
+      'type' => ScannerType::EntryStaff,
+      'modes' => [ScannerMode::Checkin->value],
+      'scanner_token' => 'e2e-berlin-scheduled-token',
+      'auth_code' => '666666',
+      'starts_at' => \$berlinScannerStart,
+      'ends_at' => \$berlinScannerEnd,
+    ]);
+
+    \$utcProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E UTC Scheduled Scanner Project',
+      'timezone' => '',
+    ]);
+
+    \$utcEvent = Event::factory()->for(\$organization)->for(\$utcProject)->published()->create([
+      'name' => 'E2E UTC Scheduled Event',
+      'slug' => 'e2e-utc-scheduled-event',
+      'starts_at' => now()->addDay(),
+      'ends_at' => now()->addDay()->addHours(4),
+    ]);
+
+    \$utcScannerStart = now()->addDay()->setTime(14, 0);
+    \$utcScannerEnd = now()->addDay()->setTime(18, 0);
+
+    ProjectScanner::factory()->create([
+      'project_id' => \$utcProject->id,
+      'entry_event_id' => \$utcEvent->id,
+      'pool_event_ids' => [\$utcEvent->id],
+      'name' => 'E2E UTC Scheduled Scanner',
+      'type' => ScannerType::EntryStaff,
+      'modes' => [ScannerMode::Checkin->value],
+      'scanner_token' => 'e2e-utc-scheduled-token',
+      'auth_code' => '777777',
+      'starts_at' => \$utcScannerStart,
+      'ends_at' => \$utcScannerEnd,
+    ]);
+
+    \App\Models\Event::whereIn('name', [
+      'E2E Pending Deletion Event',
+      'E2E Deletion Modal Event',
+    ])->delete();
+    \App\Models\Project::whereIn('name', [
+      'E2E Pending Deletion Project',
+      'E2E Deletion Modal Project',
+    ])->delete();
+
+    \$pendingDeletionProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Pending Deletion Project',
+      'deletion_requested_at' => now()->subDays(2),
+    ]);
+
+    \$pendingDeletionEvent = Event::factory()->for(\$organization)->for(\$pendingDeletionProject)->archived()->create([
+      'name' => 'E2E Pending Deletion Event',
+      'slug' => 'e2e-pending-deletion-event',
+      'deletion_requested_at' => now()->subDays(2),
+    ]);
+
+    \$deletionModalProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Deletion Modal Project',
+    ]);
+
+    \$deletionModalEvent = Event::factory()->for(\$organization)->for(\$deletionModalProject)->archived()->create([
+      'name' => 'E2E Deletion Modal Event',
+      'slug' => 'e2e-deletion-modal-event',
+    ]);
+
+    \$fixedReminderNow = \Carbon\Carbon::parse('2026-07-01 07:00:00', 'UTC');
+    \Carbon\Carbon::setTestNow(\$fixedReminderNow);
+
+    \App\Models\Event::where('name', 'E2E Reminder Event')->delete();
+    \App\Models\Project::where('name', 'E2E Reminder Project')->delete();
+    \App\Models\Volunteer::whereIn('email', [
+      'reminder-today@example.com',
+      'reminder-tomorrow@example.com',
+    ])->delete();
+
+    \$reminderProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Reminder Project',
+      'timezone' => 'Europe/Berlin',
+    ]);
+
+    \$reminderEvent = Event::factory()->for(\$organization)->for(\$reminderProject)->published()->create([
+      'name' => 'E2E Reminder Event',
+      'slug' => 'e2e-reminder-event',
+      'starts_at' => \Carbon\Carbon::parse('2026-07-01 09:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-07-02 00:00:00', 'UTC'),
+    ]);
+
+    \$reminderTodayJob = VolunteerJob::factory()->create([
+      'event_id' => \$reminderEvent->id,
+      'name' => 'Today Reminder Job',
+    ]);
+
+    \$reminderTomorrowJob = VolunteerJob::factory()->create([
+      'event_id' => \$reminderEvent->id,
+      'name' => 'Tomorrow Reminder Job',
+    ]);
+
+    \$todayReminderShift = Shift::factory()->create([
+      'volunteer_job_id' => \$reminderTodayJob->id,
+      'shift_date' => '2026-07-01',
+      'starts_at' => \Carbon\Carbon::parse('2026-07-01 15:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-07-01 17:00:00', 'UTC'),
+      'display_text' => 'Jul 01, 17:00 - 19:00',
+    ]);
+
+    \$tomorrowReminderShift = Shift::factory()->create([
+      'volunteer_job_id' => \$reminderTomorrowJob->id,
+      'shift_date' => '2026-07-02',
+      'starts_at' => \Carbon\Carbon::parse('2026-07-01 22:30:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-07-02 00:30:00', 'UTC'),
+      'display_text' => 'Jul 02, 00:30 - 02:30',
+    ]);
+
+    \$todayReminderVolunteer = Volunteer::factory()->verified()->for(\$reminderProject)->create([
+      'first_name' => 'Heute',
+      'last_name' => 'Erinnerung',
+      'email' => 'reminder-today@example.com',
+      'phone' => '+491700000100',
+    ]);
+
+    \$tomorrowReminderVolunteer = Volunteer::factory()->verified()->for(\$reminderProject)->create([
+      'first_name' => 'Morgen',
+      'last_name' => 'Erinnerung',
+      'email' => 'reminder-tomorrow@example.com',
+      'phone' => '+491700000200',
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$todayReminderVolunteer->id,
+      'shift_id' => \$todayReminderShift->id,
+      'notification_24h_sent' => false,
+      'notification_4h_sent' => false,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$tomorrowReminderVolunteer->id,
+      'shift_id' => \$tomorrowReminderShift->id,
+      'notification_24h_sent' => false,
+      'notification_4h_sent' => false,
+    ]);
+
+    app(SendPreShiftReminders::class)->execute(ReminderWindow::TwentyFourHour);
+
+    \Carbon\Carbon::setTestNow();
+
+    file_put_contents(base_path('public/e2e-fixtures.json'), json_encode([
+      'entryPoolProjectId' => \$entryPoolProject->id,
+      'entryPoolEntryEventId' => \$entryEvent->id,
+      'entryPoolPoolEventId' => \$poolEvent->id,
+      'scannerAuthBerlinToken' => 'e2e-berlin-scheduled-token',
+      'scannerAuthBerlinStartLabel' => \$berlinScannerStart->copy()->setTimezone('Europe/Berlin')->format('H:i'),
+      'scannerAuthUtcToken' => 'e2e-utc-scheduled-token',
+      'scannerAuthUtcStartLabel' => \$utcScannerStart->format('H:i'),
+      'deletionProjectId' => \$deletionModalProject->id,
+      'deletionEventId' => \$deletionModalEvent->id,
+      'pendingDeletionProjectId' => \$pendingDeletionProject->id,
+      'pendingDeletionEventId' => \$pendingDeletionEvent->id,
+      'pendingDeletionProjectDate' => \$pendingDeletionProject->deletion_requested_at->copy()->addDays(7)->format('d.m.Y'),
+      'pendingDeletionEventDate' => \$pendingDeletionEvent->deletion_requested_at->copy()->addDays(7)->format('d.m.Y'),
+      'reminderTodayEmail' => 'reminder-today@example.com',
+      'reminderTomorrowEmail' => 'reminder-tomorrow@example.com',
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
   });
 
   echo 'Volunteer admin shift-list fixture created';

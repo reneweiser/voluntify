@@ -330,6 +330,14 @@ export function scannerApp(config: ScannerAppConfig) {
             this.guestResult = null;
 
             if (options.fromQr) {
+                if (this.scannerType === 'volunteer_admin') {
+                    this.state = 'result';
+                    this.resultMessage = '';
+                    this.errorMessage = '';
+
+                    return;
+                }
+
                 const alreadyArrived = this.hasArrivalForEntryEvent(volunteer.id);
 
                 if (alreadyArrived) {

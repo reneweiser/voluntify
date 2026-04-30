@@ -173,6 +173,7 @@ class EmailTemplateEditor extends Component
             EmailTemplateType::PreShiftReminder24h,
             EmailTemplateType::PreShiftReminder4h => array_merge($common, [
                 'job_name' => 'Aufbau-Team',
+                'relativer_tag' => $type === EmailTemplateType::PreShiftReminder24h ? 'morgen' : 'heute',
                 'shift_date' => $sa->format('d.m.Y'),
                 'shift_time' => $sa->format('H:i').' — '.$ea->format('H:i'),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',

@@ -33,7 +33,7 @@
     {{-- Pending deletion warning --}}
     @if ($project->isPendingDeletion())
         <flux:callout variant="warning" class="mb-6">
-            {{ __('Dieses Projekt ist zur Löschung vorgemerkt und wird am :date endgültig gelöscht.', ['date' => $project->deletion_requested_at->addDays(30)->format('d.m.Y')]) }}
+            {{ __('Dieses Projekt ist zur Löschung vorgemerkt und wird am :date endgültig gelöscht.', ['date' => $project->deletion_requested_at->addDays(7)->format('d.m.Y')]) }}
         </flux:callout>
     @endif
 
@@ -326,7 +326,7 @@
     <flux:modal wire:model="showDeleteModal" focusable class="max-w-lg">
         <div class="space-y-4">
             <flux:heading size="lg">{{ __('Projekt löschen') }}</flux:heading>
-            <flux:text>{{ __('Das Projekt wird in 30 Tagen endgültig gelöscht. Du kannst es in dieser Zeit jederzeit wiederherstellen.') }}</flux:text>
+            <flux:text>{{ __('Das Projekt wird in 7 Tagen endgültig gelöscht. Du kannst es in dieser Zeit jederzeit wiederherstellen.') }}</flux:text>
             <flux:input type="password" wire:model="deletePassword" :label="__('Passwort bestätigen')" :placeholder="__('Dein aktuelles Passwort')" />
             @error('deletePassword')
                 <flux:text class="text-red-500 text-sm">{{ $message }}</flux:text>

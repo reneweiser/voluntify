@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\ScannerAuth;
+use App\Models\Project;
 use App\Models\ProjectScanner;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -137,15 +138,31 @@ it('shows not-yet-active message and disables form for scheduled scanner', funct
         ->assertSee('noch nicht aktiv');
 });
 
-it('shows not-yet-active message with start time', function () {
-    $scanner = ProjectScanner::factory()->create([
-        'starts_at' => Carbon::parse('2026-07-01 14:30:00'),
-        'ends_at' => Carbon::parse('2026-07-01 18:00:00'),
+it('formats the scheduled mount message in the project timezone', function () {
+    $scanner = ProjectScanner::factory()->for(
+        Project::factory()->create(['timezone' => 'Europe/Berlin'])
+    )->create([
+        'starts_at' => Carbon::parse('2026-07-01 12:30:00', 'UTC'),
+        'ends_at' => Carbon::parse('2026-07-01 16:00:00', 'UTC'),
     ]);
 
     Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
         ->assertSet('formDisabled', true)
-        ->assertSee('14:30');
+        ->assertSet('errorMessage', 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um 14:30.')
+        ->assertDontSee('12:30');
+});
+
+it('falls back to UTC for the scheduled mount message when the project has no timezone', function () {
+    $scanner = ProjectScanner::factory()->for(
+        Project::factory()->create(['timezone' => ''])
+    )->create([
+        'starts_at' => Carbon::parse('2026-07-01 12:30:00', 'UTC'),
+        'ends_at' => Carbon::parse('2026-07-01 16:00:00', 'UTC'),
+    ]);
+
+    Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSet('formDisabled', true)
+        ->assertSet('errorMessage', 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um 12:30.');
 });
 
 it('shows distinct error when scanner expires during auth attempt', function () {
@@ -221,6 +238,50 @@ it('shows timing message instead of rate limit message when scanner is not activ
 
     expect($component->get('errorMessage'))->toContain('abgelaufen');
     expect($component->get('errorMessage'))->not->toContain('Zu viele Versuche');
+});
+
+it('formats the scheduled rate-limit message in the project timezone', function () {
+    $scanner = ProjectScanner::factory()->for(
+        Project::factory()->create(['timezone' => 'Europe/Berlin'])
+    )->create([
+        'auth_code' => '123456',
+        'starts_at' => Carbon::parse('2026-07-01 12:30:00', 'UTC'),
+        'ends_at' => Carbon::parse('2026-07-01 16:00:00', 'UTC'),
+    ]);
+
+    $component = Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token]);
+    $sessionKey = 'scanner_auth:'.$scanner->scanner_token.':'.session()->getId();
+
+    for ($i = 0; $i < 5; $i++) {
+        RateLimiter::hit($sessionKey, 1800);
+    }
+
+    $component
+        ->set('authCode', '123456')
+        ->call('authenticate')
+        ->assertSet('formDisabled', true)
+        ->assertSet('errorMessage', 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um 14:30.');
+});
+
+it('formats the authenticate not-yet-active message in the project timezone', function () {
+    $scanner = ProjectScanner::factory()->for(
+        Project::factory()->create(['timezone' => 'Europe/Berlin'])
+    )->create([
+        'auth_code' => '123456',
+        'starts_at' => Carbon::parse('2026-07-01 11:30:00', 'UTC'),
+        'ends_at' => Carbon::parse('2026-07-01 16:00:00', 'UTC'),
+    ]);
+
+    $component = Livewire::test(ScannerAuth::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSet('formDisabled', false);
+
+    Carbon::setTestNow('2026-07-01 11:00:00');
+
+    $component
+        ->set('authCode', '123456')
+        ->call('authenticate')
+        ->assertSet('formDisabled', true)
+        ->assertSet('errorMessage', 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um 13:30.');
 });
 
 // --- Validation ---

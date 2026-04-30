@@ -12,11 +12,11 @@ class PurgePendingDeletionsCommand extends Command
 {
     protected $signature = 'app:purge-pending-deletions';
 
-    protected $description = 'Permanently delete projects and events that have been pending deletion for 30+ days';
+    protected $description = 'Permanently delete projects and events that have been pending deletion for more than 7 days';
 
     public function handle(): void
     {
-        $cutoff = now()->subDays(30);
+        $cutoff = now()->subDays(7);
 
         $events = Event::where('deletion_requested_at', '<', $cutoff)->get();
         $eventAction = app(PermanentlyDeleteEvent::class);
