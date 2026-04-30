@@ -36,11 +36,10 @@ class ScannerAuth extends Component
     {
         $scanner = ProjectScanner::with('project')->where('scanner_token', $scannerToken)->firstOrFail();
 
-        $tz = $scanner->project->timezone ?? 'UTC';
         $this->scannerToken = $scannerToken;
         $this->scannerName = $scanner->name;
-        $this->startsAt = $scanner->starts_at->setTimezone($tz)->format('H:i');
-        $this->endsAt = $scanner->ends_at->setTimezone($tz)->format('H:i');
+        $this->startsAt = $scanner->starts_at->setTimezone($this->projectTimezone($scanner))->format('H:i');
+        $this->endsAt = $scanner->ends_at->setTimezone($this->projectTimezone($scanner))->format('H:i');
 
         if ($scanner->isExpired()) {
             $this->errorMessage = 'Das Scanner-Fenster ist abgelaufen.';
@@ -50,7 +49,7 @@ class ScannerAuth extends Component
         }
 
         if ($scanner->isScheduled()) {
-            $this->errorMessage = 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$scanner->starts_at->format('H:i').'.';
+            $this->errorMessage = 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$this->formattedStartTime($scanner).'.';
             $this->formDisabled = true;
 
             return;
@@ -86,7 +85,7 @@ class ScannerAuth extends Component
             if ($scanner->isExpired() || $scanner->isScheduled()) {
                 $this->errorMessage = $scanner->isExpired()
                     ? 'Das Scanner-Fenster ist abgelaufen.'
-                    : 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$scanner->starts_at->format('H:i').'.';
+                    : 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$this->formattedStartTime($scanner).'.';
                 $this->formDisabled = true;
 
                 return;
@@ -111,7 +110,7 @@ class ScannerAuth extends Component
 
             match ($result) {
                 AuthenticationResult::Expired => $this->errorMessage = 'Das Scanner-Fenster ist abgelaufen.',
-                AuthenticationResult::NotYetActive => $this->errorMessage = 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$scanner->starts_at->format('H:i').'.',
+                AuthenticationResult::NotYetActive => $this->errorMessage = 'Scanner ist noch nicht aktiv. Das Zeitfenster beginnt um '.$this->formattedStartTime($scanner).'.',
                 AuthenticationResult::InvalidCode => $this->errorMessage = 'Ungültiger Code. Bitte versuche es erneut.',
                 default => null,
             };
@@ -137,5 +136,15 @@ class ScannerAuth extends Component
         ]);
 
         $this->redirect(route('scanner.app', $this->scannerToken));
+    }
+
+    private function projectTimezone(ProjectScanner $scanner): string
+    {
+        return $scanner->project->timezone ?: 'UTC';
+    }
+
+    private function formattedStartTime(ProjectScanner $scanner): string
+    {
+        return $scanner->starts_at->setTimezone($this->projectTimezone($scanner))->format('H:i');
     }
 }
