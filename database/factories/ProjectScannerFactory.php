@@ -37,6 +37,7 @@ class ProjectScannerFactory extends Factory
             'project_id' => Project::factory(),
             'entry_event_id' => null,
             'pool_event_ids' => null,
+            'guest_group_ids' => null,
             'requires_configuration_review' => false,
             'name' => fake()->words(2, true),
             'type' => ScannerType::EntryStaff,
@@ -79,6 +80,14 @@ class ProjectScannerFactory extends Factory
         return $this->state(fn () => [
             'type' => ScannerType::VolunteerAdmin,
             'modes' => [ScannerMode::Checkin->value, ScannerMode::GearPickup->value],
+        ]);
+    }
+
+    public function gear(): static
+    {
+        return $this->state(fn () => [
+            'type' => ScannerType::Gear,
+            'modes' => [ScannerMode::GearPickup->value],
         ]);
     }
 

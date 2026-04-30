@@ -21,6 +21,7 @@ class ProjectScanner extends Model
         'project_id',
         'entry_event_id',
         'pool_event_ids',
+        'guest_group_ids',
         'requires_configuration_review',
         'name',
         'type',
@@ -44,6 +45,7 @@ class ProjectScanner extends Model
             'modes' => 'array',
             'gear_item_ids' => 'array',
             'pool_event_ids' => 'array',
+            'guest_group_ids' => 'array',
             'requires_configuration_review' => 'boolean',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
@@ -115,9 +117,37 @@ class ProjectScanner extends Model
         return array_values(array_map('intval', $this->pool_event_ids ?? []));
     }
 
+    /** @return array<int, int> */
+    public function configuredGuestGroupIds(): array
+    {
+        return array_values(array_map('intval', $this->guest_group_ids ?? []));
+    }
+
     public function includesEvent(int $eventId): bool
     {
         return in_array($eventId, $this->configuredPoolEventIds(), true);
+    }
+
+    public function includesGuestGroup(int $guestGroupId): bool
+    {
+        return in_array($guestGroupId, $this->configuredGuestGroupIds(), true);
+    }
+
+    public function supportsVolunteerGear(): bool
+    {
+        return $this->type === ScannerType::Gear
+            || $this->type === ScannerType::VolunteerAdmin;
+    }
+
+    public function supportsGuestGear(): bool
+    {
+        return $this->type === ScannerType::Gear
+            || $this->type === ScannerType::VolunteerAdmin;
+    }
+
+    public function isGearScanner(): bool
+    {
+        return $this->type === ScannerType::Gear;
     }
 
     /**

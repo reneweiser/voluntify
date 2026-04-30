@@ -107,7 +107,40 @@ it('rejects gear pickup from entry staff scanner type', function () {
     ]);
 
     $response->assertForbidden()
-        ->assertJsonPath('error', 'Only volunteer admin scanners can record guest gear pickups.');
+        ->assertJsonPath('error', 'Only gear-enabled scanners can record guest gear pickups.');
+});
+
+it('rejects gear pickup for guests outside the configured gear scanner guest groups', function () {
+    $gearScanner = ProjectScanner::factory()->active()->gear()->create([
+        'project_id' => $this->project->id,
+    ]);
+
+    $allowedList = GuestList::factory()->confirmed()->create([
+        'project_id' => $this->project->id,
+        'scanner_id' => $this->entryStaffScanner->id,
+    ]);
+    $allowedGroup = GuestGroup::factory()->for($allowedList)->create();
+
+    $blockedList = GuestList::factory()->confirmed()->create([
+        'project_id' => $this->project->id,
+        'scanner_id' => $this->entryStaffScanner->id,
+    ]);
+    $blockedGroup = GuestGroup::factory()->for($blockedList)->create();
+
+    $blockedEntry = GuestEntry::factory()->for($blockedGroup, 'group')->withQrToken()->create();
+    $blockedGear = GuestEntryGear::factory()->create([
+        'guest_entry_id' => $blockedEntry->id,
+        'project_gear_item_id' => $this->gearItem->id,
+    ]);
+
+    $gearScanner->update(['guest_group_ids' => [$allowedGroup->id]]);
+
+    $this->postJson(route('scanner-api.guest-gear-pickup', $gearScanner->id), [
+        'guest_entry_gear_id' => $blockedGear->id,
+        'selection' => 'M',
+    ], [
+        'X-Scanner-Token' => $gearScanner->scanner_token,
+    ])->assertNotFound();
 });
 
 it('rejects gear pickup for entry from draft list', function () {

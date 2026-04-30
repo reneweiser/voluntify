@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: complete
-current_focus: "Issue #207 complete — empty-state notification opt-in, double opt-in subscriber flow, unsubscribe links, and queued event-availability notifications are implemented for public signup"
-current_milestone: issue-207-signup-empty-state-notifications
+current_focus: "Issue #201 complete — gear scanners now support volunteer and guest gear workflows with pool-scoped volunteer pickups, guest-group filtering, and scanner E2E coverage"
+current_milestone: issue-201-gear-scanner-type
 entry_point: implement
 stages_to_run:
   - plan
@@ -14,7 +14,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-30T20:18:00+02:00"
+last_updated: "2026-04-30T19:30:14+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -44,6 +44,7 @@ last_updated: "2026-04-30T20:18:00+02:00"
 | issue-203-priority-shift-gate | Priority Shift Gate | #203 event-level priority gating for public signup with organizer override and progress UI | m10-signup, issue-168-shifts-jobs-active-state | complete |
 | issue-206-hide-fully-booked-jobs | Hide Fully Booked Jobs | #206 hide fully booked public-signup jobs while keeping partial/full returning-volunteer context | issue-168-shifts-jobs-active-state, issue-203-priority-shift-gate | complete |
 | issue-207-signup-empty-state-notifications | Signup Empty-State Notifications | #207 empty-state opt-in, double opt-in verification, unsubscribe flow, and queued availability notices for public signup | issue-168-shifts-jobs-active-state, issue-203-priority-shift-gate, issue-206-hide-fully-booked-jobs | complete |
+| issue-201-gear-scanner-type | Gear Scanner Type | #201 dedicated gear scanner for volunteer and guest gear with pool events and guest group filters | m11-scanner, m12-guest-lists, issue-196-scanner-arrival-duplicate-status | complete |
 
 ## Artifacts
 
@@ -70,6 +71,7 @@ last_updated: "2026-04-30T20:18:00+02:00"
 | `.tall-pipeline/issue-203-priority-shift-gate.md` | plan+implement+test | issue-203 | Issue #203 tracking for event-level priority shift gating, organizer override, and signup UI progress | complete |
 | `.tall-pipeline/issue-206-hide-fully-booked-jobs.md` | plan+implement+test | issue-206 | Issue #206 tracking for hiding fully booked jobs from public signup while preserving returning-volunteer visibility | complete |
 | `.tall-pipeline/issue-207-signup-empty-state-notifications.md` | plan+implement+test | issue-207 | Issue #207 tracking for empty-state notification opt-in, verification, unsubscribe, and queued event availability notifications | complete |
+| `.tall-pipeline/issue-201-gear-scanner-type.md` | plan+implement+test+security | issue-201 | Issue #201 tracking for dedicated gear scanners, pool-scoped volunteer pickups, guest filtering, and scanner E2E coverage | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

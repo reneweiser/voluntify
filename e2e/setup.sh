@@ -98,6 +98,10 @@ vendor/bin/sail artisan tinker --execute="
   use App\Actions\GenerateTicket;
   use App\Actions\RefreshTicketJwt;
   use App\Models\Event;
+  use App\Models\GuestEntry;
+  use App\Models\GuestEntryGear;
+  use App\Models\GuestGroup;
+  use App\Models\GuestList;
   use App\Models\Organization;
   use App\Models\Project;
   use App\Models\ProjectGearItem;
@@ -476,6 +480,115 @@ vendor/bin/sail artisan tinker --execute="
       'ends_at' => now()->addHours(4),
     ]);
 
+    \App\Models\ProjectScanner::where('scanner_token', 'e2e-gear-scanner-token')->delete();
+    \App\Models\GuestList::where('name', 'E2E Gear Guest List')->delete();
+    \App\Models\Event::whereIn('name', [
+      'E2E Gear Entry Event',
+      'E2E Gear Pool Event',
+    ])->delete();
+    \App\Models\Project::where('name', 'E2E Gear Scanner Project')->delete();
+    \App\Models\Volunteer::where('email', 'gear-volunteer@example.com')->delete();
+
+    \$gearProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Gear Scanner Project',
+    ]);
+
+    \$gearEntryEvent = Event::factory()->for(\$organization)->for(\$gearProject)->published()->create([
+      'name' => 'E2E Gear Entry Event',
+      'slug' => 'e2e-gear-entry-event',
+      'starts_at' => now()->subHour(),
+      'ends_at' => now()->addHours(6),
+    ]);
+
+    \$gearPoolEvent = Event::factory()->for(\$organization)->for(\$gearProject)->published()->create([
+      'name' => 'E2E Gear Pool Event',
+      'slug' => 'e2e-gear-pool-event',
+      'starts_at' => now()->subDays(14),
+      'ends_at' => now()->subDays(14)->addHours(6),
+    ]);
+
+    \$gearPoolJob = VolunteerJob::factory()->create([
+      'event_id' => \$gearPoolEvent->id,
+      'name' => 'Gear Pool Team',
+    ]);
+
+    \$gearPoolShift = Shift::factory()->create([
+      'volunteer_job_id' => \$gearPoolJob->id,
+      'shift_date' => now()->subDays(14)->toDateString(),
+      'starts_at' => now()->subDays(14)->setTime(10, 0),
+      'ends_at' => now()->subDays(14)->setTime(14, 0),
+      'display_text' => now()->subDays(14)->setTime(10, 0)->format('M d, H:i').' - '.now()->subDays(14)->setTime(14, 0)->format('H:i'),
+    ]);
+
+    \$gearVolunteer = Volunteer::factory()->verified()->for(\$gearProject)->create([
+      'first_name' => 'Gear',
+      'last_name' => 'Pool',
+      'email' => 'gear-volunteer@example.com',
+      'phone' => '+491701998877',
+    ]);
+
+    Ticket::factory()->create([
+      'project_id' => \$gearProject->id,
+      'volunteer_id' => \$gearVolunteer->id,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$gearVolunteer->id,
+      'shift_id' => \$gearPoolShift->id,
+    ]);
+
+    \$gearScanner = ProjectScanner::factory()->active()->gear()->create([
+      'project_id' => \$gearProject->id,
+      'entry_event_id' => \$gearEntryEvent->id,
+      'pool_event_ids' => [\$gearEntryEvent->id, \$gearPoolEvent->id],
+      'name' => 'E2E Gear Scanner',
+      'scanner_token' => 'e2e-gear-scanner-token',
+      'auth_code' => '777777',
+      'starts_at' => now()->subHour(),
+      'ends_at' => now()->addHours(4),
+    ]);
+
+    \$volunteerGearItem = ProjectGearItem::factory()->sized(['M'])->create([
+      'project_id' => \$gearProject->id,
+      'name' => 'E2E Hoodie',
+      'requires_size' => true,
+    ]);
+
+    VolunteerGear::factory()->create([
+      'volunteer_id' => \$gearVolunteer->id,
+      'project_gear_item_id' => \$volunteerGearItem->id,
+      'size' => 'M',
+      'quantity_entitled' => 1,
+    ]);
+
+    \$guestGearItem = ProjectGearItem::factory()->quantity(1)->create([
+      'project_id' => \$gearProject->id,
+      'name' => 'E2E Wristband',
+    ]);
+
+    \$gearGuestList = GuestList::factory()->confirmed()->create([
+      'project_id' => \$gearProject->id,
+      'scanner_id' => \$gearScanner->id,
+      'name' => 'E2E Gear Guest List',
+    ]);
+
+    \$gearGuestGroup = GuestGroup::factory()->for(\$gearGuestList)->create([
+      'label' => 'Artists',
+      'guest_count' => 1,
+    ]);
+
+    \$gearGuestEntry = GuestEntry::factory()->for(\$gearGuestGroup, 'group')->withQrToken()->create([
+      'number' => 1,
+      'name' => 'DJ Tester',
+    ]);
+
+    GuestEntryGear::factory()->create([
+      'guest_entry_id' => \$gearGuestEntry->id,
+      'project_gear_item_id' => \$guestGearItem->id,
+      'quantity' => 1,
+      'picked_up_count' => 0,
+    ]);
+
     \App\Models\ProjectScanner::whereIn('scanner_token', [
       'e2e-berlin-scheduled-token',
       'e2e-utc-scheduled-token',
@@ -686,3 +799,4 @@ echo "  VA scanner:     /s/e2e-va-shift-list-token with code 222222"
 echo "  VA all past:    /s/e2e-va-all-past-token with code 444444"
 echo "  Entry/pool:     /s/e2e-entry-pool-scanner-token with code 333333"
 echo "  Entry lookup:   /s/e2e-entry-manual-lookup-token with code 555555"
+echo "  Gear scanner:   /s/e2e-gear-scanner-token with code 777777"

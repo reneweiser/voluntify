@@ -5,9 +5,12 @@ use App\Models\Event;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\ProjectScanner;
+use App\Models\Shift;
+use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
+use App\Models\VolunteerJob;
 use Carbon\Carbon;
 
 beforeEach(function () {
@@ -98,12 +101,23 @@ it('returns 404 when gear item belongs to different project', function () {
 it('accepts gear item belonging to same project', function () {
     $gearItem = ProjectGearItem::factory()->create(['project_id' => $this->project->id]);
     $volunteer = Volunteer::factory()->create(['project_id' => $this->project->id]);
+    $job = VolunteerJob::factory()->create([
+        'event_id' => $this->event->id,
+    ]);
+    $shift = Shift::factory()->create([
+        'volunteer_job_id' => $job->id,
+    ]);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $shift->id,
+    ]);
+
     $gear = VolunteerGear::factory()->create([
         'volunteer_id' => $volunteer->id,
         'project_gear_item_id' => $gearItem->id,
     ]);
 
-    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create([
+    $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->withPoolEvents($this->event, [$this->event->id])->create([
         'project_id' => $this->project->id,
     ]);
 

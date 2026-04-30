@@ -71,6 +71,23 @@ it('returns 403 for entry staff scanner', function () {
     )->assertForbidden();
 });
 
+it('returns 403 for gear scanner', function () {
+    $gearScanner = ProjectScanner::factory()->active()->gear()->create([
+        'project_id' => $this->project->id,
+        'entry_event_id' => $this->event->id,
+        'pool_event_ids' => [$this->event->id],
+    ]);
+
+    $this->postJson(
+        route('scanner-api.attendance', $gearScanner->id),
+        [
+            'shift_signup_id' => $this->signup->id,
+            'status' => 'on_time',
+        ],
+        ['X-Scanner-Token' => $gearScanner->scanner_token],
+    )->assertForbidden();
+});
+
 it('returns 422 for invalid status', function () {
     $this->postJson(
         route('scanner-api.attendance', $this->scanner->id),
