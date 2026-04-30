@@ -14,7 +14,9 @@ type MailpitInbox = {
     messages?: MailpitMessage[];
 };
 
-const mailpitBaseUrl = 'http://mailpit:8025';
+const mailpitBaseUrl = (globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+}).process?.env?.MAILPIT_BASE_URL ?? 'http://localhost:8025';
 
 test('24-hour pre-shift reminders use today and tomorrow wording', async ({ request }) => {
     await expect.poll(async () => {
