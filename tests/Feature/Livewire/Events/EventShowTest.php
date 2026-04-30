@@ -95,3 +95,11 @@ it('confirms republish without organizer note', function () {
         return $job->organizerNote === null;
     });
 });
+
+it('shows the 7-day event deletion banner', function () {
+    $this->event->update(['deletion_requested_at' => now()->subDays(2)]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(EventShow::class, ['eventId' => $this->event->id])
+        ->assertSee($this->event->deletion_requested_at->copy()->addDays(7)->format('d.m.Y'));
+});

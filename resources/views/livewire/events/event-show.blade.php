@@ -120,7 +120,7 @@
     {{-- Pending deletion warning --}}
     @if ($event->isPendingDeletion())
         <flux:callout variant="warning" class="mb-4">
-            {{ __('Dieses Event ist zur Löschung vorgemerkt und wird am :date endgültig gelöscht.', ['date' => $event->deletion_requested_at->addDays(30)->format('d.m.Y')]) }}
+            {{ __('Dieses Event ist zur Löschung vorgemerkt und wird am :date endgültig gelöscht.', ['date' => $event->deletion_requested_at->addDays(7)->format('d.m.Y')]) }}
         </flux:callout>
     @endif
 

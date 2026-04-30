@@ -68,6 +68,14 @@ it('restores a pending-deletion project', function () {
     expect($this->project->refresh()->isPendingDeletion())->toBeFalse();
 });
 
+it('shows the 7-day project deletion banner', function () {
+    $this->project->update(['deletion_requested_at' => now()->subDays(2)]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ProjectShow::class, ['projectId' => $this->project->id])
+        ->assertSee($this->project->deletion_requested_at->copy()->addDays(7)->format('d.m.Y'));
+});
+
 it('shows public link', function () {
     Livewire::actingAs($this->organizer)
         ->test(ProjectShow::class, ['projectId' => $this->project->id])

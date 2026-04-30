@@ -33,7 +33,7 @@
     {{-- Pending deletion warning --}}
     @if ($project->isPendingDeletion())
         <flux:callout variant="warning" class="mb-6">
-            {{ __('Dieses Projekt ist zur Löschung vorgemerkt und wird am :date endgültig gelöscht.', ['date' => $project->deletion_requested_at->addDays(30)->format('d.m.Y')]) }}
+            {{ __('Dieses Projekt ist zur Löschung vorgemerkt und wird am :date endgültig gelöscht.', ['date' => $project->deletion_requested_at->addDays(7)->format('d.m.Y')]) }}
         </flux:callout>
     @endif
 
