@@ -54,10 +54,10 @@ function makeVolunteer(overrides: Partial<Volunteer> = {}): Volunteer {
     };
 }
 
-function createApp() {
+function createApp(scannerType: 'entry_staff' | 'volunteer_admin' = 'entry_staff') {
     return scannerApp({
         scannerId: 7,
-        scannerType: 'entry_staff',
+        scannerType,
         modes: ['checkin'],
         entryEventId: 5,
         contractVersion: 1,
@@ -200,5 +200,79 @@ describe('alpine-scanner manual volunteer lookup', () => {
         expect(app.volunteerSearchQuery).toBe('ali');
         expect(app.selectedVolunteer?.id).toBe(volunteer.id);
         expect(app.selectedVolunteerSource).toBe('manual');
+    });
+});
+
+describe('alpine-scanner QR volunteer selection', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('shows a volunteer-admin result for an already-arrived volunteer', () => {
+        const app = createApp('volunteer_admin');
+        const volunteer = makeVolunteer();
+
+        app._arrivals = [{
+            id: 1,
+            ticket_id: volunteer.ticket.id,
+            volunteer_id: volunteer.id,
+            event_id: 5,
+            scanned_by: null,
+            scanned_at: '2026-03-02 10:00:00',
+            method: 'qr_scan',
+            flagged: false,
+            flag_reason: null,
+        }];
+
+        app.selectVolunteer(volunteer, { fromQr: true });
+
+        expect(app.state).toBe('result');
+        expect(app.resultMessage).toBe('');
+        expect(app.result?.volunteerId).toBe(volunteer.id);
+    });
+
+    it('shows a volunteer-admin result for a not-yet-arrived volunteer', () => {
+        const app = createApp('volunteer_admin');
+        const volunteer = makeVolunteer();
+
+        app.selectVolunteer(volunteer, { fromQr: true });
+
+        expect(app.state).toBe('result');
+        expect(app.resultMessage).toBe('');
+        expect(app.result?.volunteerId).toBe(volunteer.id);
+    });
+
+    it('keeps the entry-staff duplicate state for an already-arrived volunteer', () => {
+        const app = createApp('entry_staff');
+        const volunteer = makeVolunteer();
+
+        app._arrivals = [{
+            id: 1,
+            ticket_id: volunteer.ticket.id,
+            volunteer_id: volunteer.id,
+            event_id: 5,
+            scanned_by: null,
+            scanned_at: '2026-03-02 10:00:00',
+            method: 'qr_scan',
+            flagged: false,
+            flag_reason: null,
+        }];
+
+        app.selectVolunteer(volunteer, { fromQr: true });
+
+        expect(app.state).toBe('duplicate');
+        expect(app.resultMessage).toBe('Already checked in at 10:00:00 AM.');
+        expect(app.result?.volunteerId).toBe(volunteer.id);
+    });
+
+    it('keeps the entry-staff ready message for a not-yet-arrived volunteer', () => {
+        const app = createApp('entry_staff');
+        const volunteer = makeVolunteer();
+
+        app.selectVolunteer(volunteer, { fromQr: true });
+
+        expect(app.state).toBe('result');
+        expect(app.resultMessage).toBe('Ready to check in.');
+        expect(app.result?.volunteerId).toBe(volunteer.id);
     });
 });

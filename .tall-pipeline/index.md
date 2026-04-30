@@ -1,8 +1,8 @@
 ---
 pipeline_status: in_progress
 current_stage: complete
-current_focus: "Issue #193 complete — guest invitation emails now include per-entry signed browser fallback links with a read-only public guest pass page"
-current_milestone: issue-193-guest-mail-magic-link
+current_focus: "Issue #196 complete — volunteer-admin scanner no longer shows the arrival duplicate state after QR volunteer selection"
+current_milestone: issue-196-scanner-arrival-duplicate-status
 entry_point: implement
 stages_to_run:
   - plan
@@ -14,7 +14,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-30T11:47:11+02:00"
+last_updated: "2026-04-30T13:55:23+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -39,6 +39,7 @@ last_updated: "2026-04-30T11:47:11+02:00"
 | issue-175-announcement-recipient-resilience | Announcement Recipient Resilience | #175 token-backed verified recipient resolution for announcements | m13, m18, m19 | complete |
 | issue-190-portal-announcement-visibility | Portal Announcement Visibility | #190 null-safe volunteer portal announcements + targeted visibility filtering | m15, issue-175-announcement-recipient-resilience | complete |
 | issue-193-guest-mail-magic-link | Guest Mail Magic-Link Fallback | #193 signed browser fallback page for guest invitation QR codes | m12, m15, m19 | complete |
+| issue-196-scanner-arrival-duplicate-status | Scanner Arrival Duplicate Status | #196 volunteer-admin scanners should skip arrival duplicate status while entry-staff behavior stays unchanged | m11, m16 | complete |
 
 ## Artifacts
 
@@ -60,6 +61,7 @@ last_updated: "2026-04-30T11:47:11+02:00"
 | `.tall-pipeline/issue-175-announcement-recipient-resilience.md` | plan+implement+test | issue-175 | Issue #175 plan + implementation tracking for resilient announcement recipients | complete |
 | `.tall-pipeline/issue-190-portal-announcement-visibility.md` | plan+implement+test | issue-190 | Issue #190 tracking for null-safe volunteer portal announcements and targeted visibility | complete |
 | `.tall-pipeline/issue-193-guest-mail-magic-link.md` | plan+implement+test | issue-193 | Issue #193 tracking for guest invitation magic-link QR fallbacks | complete |
+| `.tall-pipeline/issue-196-scanner-arrival-duplicate-status.md` | plan+implement+test | issue-196 | Issue #196 tracking for volunteer-admin scanner duplicate-status regression | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)
