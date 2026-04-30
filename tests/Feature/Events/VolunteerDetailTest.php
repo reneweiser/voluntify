@@ -22,6 +22,7 @@ use App\Models\VolunteerGear;
 use App\Models\VolunteerGearPickup;
 use App\Models\VolunteerJob;
 use App\Notifications\TicketResendNotification;
+use App\Notifications\VolunteerEventUpdatedNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
@@ -427,6 +428,75 @@ it('shows gear assignments with size info', function () {
         ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
         ->assertSee('T-Shirt')
         ->assertSee('L');
+});
+
+it('shows pending gear selections on volunteer detail', function () {
+    $gearItem = ProjectGearItem::factory()
+        ->sized(['S', 'M', 'L'])
+        ->for($this->project)
+        ->create(['name' => 'T-Shirt']);
+
+    VolunteerGear::factory()->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+        'size' => null,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertSee('Auswahl ausstehend')
+        ->assertSee('Auswahl setzen');
+});
+
+it('allows organizers to change sized gear selections from volunteer detail', function () {
+    Notification::fake();
+
+    $gearItem = ProjectGearItem::factory()
+        ->sized(['M', 'L', 'XL'])
+        ->for($this->project)
+        ->create(['name' => 'T-Shirt']);
+
+    $gear = VolunteerGear::factory()->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+        'size' => 'L',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('openGearSelectionModal', $gear->id)
+        ->assertSet('showGearSelectionModal', true)
+        ->set('gearSelection', 'XL')
+        ->call('saveGearSelection')
+        ->assertHasNoErrors()
+        ->assertSet('showGearSelectionModal', false)
+        ->assertSee('Gear-Auswahl wurde aktualisiert.');
+
+    expect($gear->fresh()->size)->toBe('XL');
+
+    Notification::assertSentTo($this->volunteer, VolunteerEventUpdatedNotification::class);
+});
+
+it('shows a warning when editing gear that was already picked up', function () {
+    $gearItem = ProjectGearItem::factory()
+        ->sized(['M', 'L', 'XL'])
+        ->for($this->project)
+        ->create(['name' => 'T-Shirt']);
+
+    $gear = VolunteerGear::factory()->create([
+        'project_gear_item_id' => $gearItem->id,
+        'volunteer_id' => $this->volunteer->id,
+        'size' => 'L',
+    ]);
+
+    VolunteerGearPickup::factory()->create([
+        'volunteer_gear_id' => $gear->id,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('openGearSelectionModal', $gear->id)
+        ->assertSee('Dieses Gear wurde bereits ausgegeben. Du kannst die Auswahl trotzdem anpassen.');
 });
 
 it('shows gear assignments with quantity pickup progress', function () {

@@ -7,8 +7,10 @@ use App\Actions\GenerateMagicLink;
 use App\Actions\PromoteVolunteer;
 use App\Actions\RecordArrival;
 use App\Actions\RecordGearPickup;
+use App\Actions\UpdateVolunteerGearSelection;
 use App\Enums\ActivityCategory;
 use App\Enums\ArrivalMethod;
+use App\Enums\GearItemType;
 use App\Enums\ScannerType;
 use App\Enums\StaffRole;
 use App\Exceptions\DomainException;
@@ -50,6 +52,21 @@ class VolunteerDetail extends Component
     public string $promoteRole = 'organizer';
 
     public string $selectedScannerId = '';
+
+    public bool $showGearSelectionModal = false;
+
+    public ?int $editingGearId = null;
+
+    public string $editingGearName = '';
+
+    public string $gearSelection = '';
+
+    /**
+     * @var array<int, string>
+     */
+    public array $gearSelectionOptions = [];
+
+    public bool $editingGearPickedUp = false;
 
     public function mount(int $eventId, int $volunteerId): void
     {
@@ -275,8 +292,7 @@ class VolunteerDetail extends Component
     {
         Gate::authorize('trackGearPickup', $this->event);
 
-        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
-            ->findOrFail($gearId);
+        $gear = $this->findVolunteerGear($gearId);
 
         try {
             app(RecordGearPickup::class)->execute($gear, Auth::user());
@@ -291,11 +307,81 @@ class VolunteerDetail extends Component
     {
         Gate::authorize('trackGearPickup', $this->event);
 
-        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $this->event->project_id))
-            ->findOrFail($gearId);
+        $gear = $this->findVolunteerGear($gearId);
 
         $gear->pickups()->latest('picked_up_at')->first()?->delete();
 
         unset($this->volunteerGear);
+    }
+
+    public function openGearSelectionModal(int $gearId): void
+    {
+        Gate::authorize('update', $this->event);
+
+        $this->resetErrorBag('gearSelection');
+
+        $gear = $this->findVolunteerGear($gearId);
+
+        if ($gear->gearItem->type !== GearItemType::SizeSelection || ! $gear->gearItem->requires_size) {
+            abort(404);
+        }
+
+        $this->editingGearId = $gear->id;
+        $this->editingGearName = $gear->gearItem->name;
+        $this->gearSelection = $gear->size ?? '';
+        $this->gearSelectionOptions = $gear->gearItem->available_sizes ?? [];
+        $this->editingGearPickedUp = $gear->isPickedUp();
+        $this->showGearSelectionModal = true;
+    }
+
+    public function closeGearSelectionModal(): void
+    {
+        $this->showGearSelectionModal = false;
+        $this->editingGearId = null;
+        $this->editingGearName = '';
+        $this->gearSelection = '';
+        $this->gearSelectionOptions = [];
+        $this->editingGearPickedUp = false;
+        $this->resetErrorBag('gearSelection');
+    }
+
+    public function saveGearSelection(UpdateVolunteerGearSelection $action): void
+    {
+        Gate::authorize('update', $this->event);
+
+        $this->validate([
+            'gearSelection' => ['required', 'string'],
+        ]);
+
+        if ($this->editingGearId === null) {
+            abort(404);
+        }
+
+        try {
+            $action->execute(
+                gear: $this->findVolunteerGear($this->editingGearId),
+                event: $this->event,
+                selection: $this->gearSelection,
+                causer: Auth::user(),
+            );
+        } catch (DomainException $e) {
+            $this->addError('gearSelection', $e->getMessage());
+
+            return;
+        }
+
+        $this->closeGearSelectionModal();
+        $this->successMessage = __('Gear-Auswahl wurde aktualisiert.');
+
+        unset($this->volunteerGear);
+    }
+
+    private function findVolunteerGear(int $gearId): VolunteerGear
+    {
+        return VolunteerGear::query()
+            ->where('volunteer_id', $this->volunteer->id)
+            ->whereHas('gearItem', fn ($query) => $query->where('project_id', $this->event->project_id))
+            ->with('gearItem')
+            ->findOrFail($gearId);
     }
 }
