@@ -37,7 +37,8 @@
 
         {{-- Main content --}}
         <main id="main-content" style="position: relative; z-index: 1; max-width: 896px; margin: 0 auto; padding: 5rem 1.5rem 3rem;">
-            {{ $slot }}
+            {{ $slot ?? '' }}
+            @yield('content')
         </main>
 
         {{-- Footer (matches landing page) --}}

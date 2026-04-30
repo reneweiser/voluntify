@@ -13,6 +13,10 @@ Name: {{ $entry->name }}
 
 {!! $entry->qrCodeSvg() !!}
 
+If the QR code is not visible in your email app, open this pass in your browser.
+
+<a href="{{ $entry->guestPassUrl() }}">{{ $entry->guestPassUrl() }}</a>
+
 @endforeach
 
 Please present your QR code at the entrance.
