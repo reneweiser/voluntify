@@ -303,7 +303,7 @@
     <flux:modal wire:model="showDeleteModal" focusable class="max-w-lg">
         <div class="space-y-4">
             <flux:heading size="lg">{{ __('Event löschen') }}</flux:heading>
-            <flux:text>{{ __('Dieses Event wird in 30 Tagen endgültig gelöscht. Du kannst es in dieser Zeit jederzeit wiederherstellen.') }}</flux:text>
+            <flux:text>{{ __('Dieses Event wird in 7 Tagen endgültig gelöscht. Du kannst es in dieser Zeit jederzeit wiederherstellen.') }}</flux:text>
             <flux:input type="password" wire:model="deletePassword" :label="__('Passwort bestätigen')" :placeholder="__('Dein aktuelles Passwort')" />
             @error('deletePassword')
                 <flux:text class="text-red-500 text-sm">{{ $message }}</flux:text>
