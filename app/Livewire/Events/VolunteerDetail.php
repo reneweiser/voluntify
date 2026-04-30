@@ -3,13 +3,16 @@
 namespace App\Livewire\Events;
 
 use App\Actions\DeleteVolunteerProfile;
+use App\Actions\GenerateMagicLink;
 use App\Actions\PromoteVolunteer;
 use App\Actions\RecordArrival;
 use App\Actions\RecordGearPickup;
+use App\Enums\ActivityCategory;
 use App\Enums\ArrivalMethod;
 use App\Enums\ScannerType;
 use App\Enums\StaffRole;
 use App\Exceptions\DomainException;
+use App\Models\ActivityLog;
 use App\Models\CustomRegistrationField;
 use App\Models\Event;
 use App\Models\EventArrival;
@@ -17,9 +20,11 @@ use App\Models\ProjectScanner;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
+use App\Notifications\TicketResendNotification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -39,6 +44,8 @@ class VolunteerDetail extends Component
     public bool $showDeleteModal = false;
 
     public bool $deleteConfirmed = false;
+
+    public string $successMessage = '';
 
     public string $promoteRole = 'organizer';
 
@@ -183,6 +190,63 @@ class VolunteerDetail extends Component
         }
 
         $this->redirect(route('events.volunteers', $this->event));
+    }
+
+    public function resendTicketEmail(): void
+    {
+        Gate::authorize('update', $this->event);
+
+        $this->resetErrorBag('resend');
+        $this->successMessage = '';
+
+        if (! $this->volunteer->isEmailVerified()) {
+            $this->addError('resend', 'Die E-Mail-Adresse dieses Volunteers ist noch nicht verifiziert.');
+
+            return;
+        }
+
+        $volunteerKey = 'qr-resend:'.$this->volunteer->id;
+        if (RateLimiter::tooManyAttempts($volunteerKey, 1)) {
+            $this->addError('resend', 'Bitte warte einige Minuten, bevor du es erneut versuchst.');
+
+            return;
+        }
+
+        $organizerKey = 'qr-resend-admin-user:'.Auth::id();
+        if (RateLimiter::tooManyAttempts($organizerKey, 10)) {
+            $this->addError('resend', 'Zu viele Anfragen. Bitte versuche es später erneut.');
+
+            return;
+        }
+
+        RateLimiter::hit($volunteerKey, 300);
+        RateLimiter::hit($organizerKey, 3600);
+
+        $result = app(GenerateMagicLink::class)->execute($this->volunteer);
+
+        $this->volunteer->notify(new TicketResendNotification(
+            $this->volunteer->project,
+            $result['plainToken'],
+        ));
+
+        ActivityLog::create([
+            'organization_id' => $this->event->organization_id,
+            'project_id' => $this->event->project_id,
+            'event_id' => $this->event->id,
+            'causer_type' => Auth::user()::class,
+            'causer_id' => Auth::id(),
+            'subject_type' => Volunteer::class,
+            'subject_id' => $this->volunteer->id,
+            'action' => 'resent',
+            'category' => ActivityCategory::Email,
+            'description' => "Resent volunteer portal link to {$this->volunteer->full_name}",
+            'properties' => [
+                'volunteer_name' => $this->volunteer->full_name,
+                'volunteer_email' => $this->volunteer->email,
+            ],
+        ]);
+
+        $this->successMessage = __('Mail wurde an :email gesendet.', ['email' => $this->volunteer->email]);
     }
 
     public function markAsArrived(): void

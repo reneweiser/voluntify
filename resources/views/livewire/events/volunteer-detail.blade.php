@@ -19,12 +19,22 @@
                         <flux:button variant="danger" size="sm" icon="trash" wire:click="$set('showDeleteModal', true)">
                             {{ __('Volunteer löschen') }}
                         </flux:button>
+                        @if ($volunteer->isEmailVerified())
+                            <flux:button variant="ghost" size="sm" icon="envelope" wire:click="resendTicketEmail" wire:loading.attr="disabled">
+                                <span wire:loading.remove wire:target="resendTicketEmail">{{ __('QR-Code erneut senden') }}</span>
+                                <span wire:loading wire:target="resendTicketEmail">{{ __('Wird gesendet...') }}</span>
+                            </flux:button>
+                        @endif
                         <flux:button variant="primary" size="sm" icon="arrow-up-circle" wire:click="$set('showPromoteModal', true)">
                             {{ __('Promote to Staff') }}
                         </flux:button>
                     </div>
                 @endif
             </div>
+            @if ($successMessage !== '')
+                <flux:callout variant="success" class="mb-4">{{ $successMessage }}</flux:callout>
+            @endif
+            <flux:error name="resend" class="mb-4" />
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <flux:text size="sm" class="!text-zinc-500 dark:!text-zinc-400">{{ __('Name') }}</flux:text>

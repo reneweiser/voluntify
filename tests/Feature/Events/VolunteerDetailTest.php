@@ -4,6 +4,7 @@ use App\Enums\ArrivalMethod;
 use App\Enums\AttendanceStatus;
 use App\Enums\StaffRole;
 use App\Livewire\Events\VolunteerDetail;
+use App\Models\ActivityLog;
 use App\Models\AttendanceRecord;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
@@ -20,7 +21,9 @@ use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use App\Models\VolunteerGearPickup;
 use App\Models\VolunteerJob;
+use App\Notifications\TicketResendNotification;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -28,7 +31,7 @@ beforeEach(function () {
     app()->instance(Organization::class, $this->org);
     $this->project = Project::factory()->for($this->org)->create();
     $this->event = Event::factory()->for($this->org)->for($this->project)->published()->create();
-    $this->volunteer = Volunteer::factory()->for($this->project)->create(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane@example.com', 'phone' => '+1234567890']);
+    $this->volunteer = Volunteer::factory()->verified()->for($this->project)->create(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane@example.com', 'phone' => '+1234567890']);
     $this->job = VolunteerJob::factory()->for($this->event)->create();
     $this->shift = Shift::factory()->for($this->job, 'volunteerJob')->create();
     ShiftSignup::factory()->create(['volunteer_id' => $this->volunteer->id, 'shift_id' => $this->shift->id]);
@@ -110,6 +113,7 @@ it('shows promote button for organizer when not promoted', function () {
     Livewire::actingAs($this->user)
         ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
         ->assertSee('Volunteer löschen')
+        ->assertSee('QR-Code erneut senden')
         ->assertSee('Promote to Staff');
 });
 
@@ -133,6 +137,91 @@ it('allows project members to view volunteer detail but forbids deletion', funct
         ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
         ->call('deleteVolunteer')
         ->assertForbidden();
+});
+
+it('resends ticket email from volunteer detail for organizers', function () {
+    Notification::fake();
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('resendTicketEmail')
+        ->assertSee('Mail wurde an jane@example.com gesendet.');
+
+    Notification::assertSentTo($this->volunteer, TicketResendNotification::class);
+
+    expect(ActivityLog::query()
+        ->where('action', 'resent')
+        ->where('event_id', $this->event->id)
+        ->where('subject_type', Volunteer::class)
+        ->where('subject_id', $this->volunteer->id)
+        ->where('causer_id', $this->user->id)
+        ->exists())->toBeTrue();
+});
+
+it('rate limits volunteer detail ticket resends to once per five minutes', function () {
+    Notification::fake();
+
+    $component = Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('resendTicketEmail')
+        ->assertSee('Mail wurde an jane@example.com gesendet.');
+
+    $component->call('resendTicketEmail')
+        ->assertSee('Bitte warte einige Minuten, bevor du es erneut versuchst.');
+
+    Notification::assertSentToTimes($this->volunteer, TicketResendNotification::class, 1);
+});
+
+it('rate limits volunteer detail ticket resends per organizer', function () {
+    Notification::fake();
+
+    $organizerKey = 'qr-resend-admin-user:'.$this->user->id;
+
+    for ($attempt = 0; $attempt < 10; $attempt++) {
+        RateLimiter::hit($organizerKey, 3600);
+    }
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('resendTicketEmail')
+        ->assertSee('Zu viele Anfragen. Bitte versuche es später erneut.');
+
+    Notification::assertNothingSent();
+});
+
+it('forbids ticket resend from volunteer detail for non-organizers', function () {
+    Notification::fake();
+
+    $member = User::factory()->create();
+    $this->project->users()->attach($member, ['role' => StaffRole::VolunteerAdmin]);
+
+    Livewire::actingAs($member)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('resendTicketEmail')
+        ->assertForbidden();
+
+    Notification::assertNothingSent();
+});
+
+it('does not show resend button for unverified volunteers', function () {
+    $this->volunteer->update(['email_verified_at' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->assertDontSee('QR-Code erneut senden');
+});
+
+it('does not resend ticket email for unverified volunteers', function () {
+    Notification::fake();
+
+    $this->volunteer->update(['email_verified_at' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(VolunteerDetail::class, ['eventId' => $this->event->id, 'volunteerId' => $this->volunteer->id])
+        ->call('resendTicketEmail')
+        ->assertHasErrors('resend');
+
+    Notification::assertNothingSent();
 });
 
 it('hides promote button when already promoted', function () {
