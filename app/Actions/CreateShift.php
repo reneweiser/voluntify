@@ -21,6 +21,8 @@ class CreateShift
         ?string $displayText = null,
         ?User $causer = null,
     ): Shift {
+        $hadAvailability = $job->event->publicSignupJobs()->isNotEmpty();
+
         $shift = $job->shifts()->create([
             'shift_date' => $shiftDate,
             'starts_at' => $startsAt,
@@ -32,6 +34,7 @@ class CreateShift
         ]);
 
         $shift->volunteerJob->event->refresh()->evaluatePriorityGate();
+        app(ScheduleEventSubscriberNotification::class)->execute($shift->volunteerJob->event->fresh(), $hadAvailability);
 
         if ($causer) {
             ShiftCreated::dispatch($shift, $causer);

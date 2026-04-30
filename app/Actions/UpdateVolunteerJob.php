@@ -16,6 +16,9 @@ class UpdateVolunteerJob
         bool $isActive,
         User $causer,
     ): VolunteerJob {
+        $event = $job->event;
+        $hadAvailability = $event->publicSignupJobs()->isNotEmpty();
+
         $updateData = [
             'name' => $name,
             'description' => $description,
@@ -29,6 +32,7 @@ class UpdateVolunteerJob
             ->all();
 
         $job->update($updateData);
+        app(ScheduleEventSubscriberNotification::class)->execute($job->event->fresh(), $hadAvailability);
 
         if ($changed) {
             JobUpdated::dispatch($job->refresh(), $causer, $changed);

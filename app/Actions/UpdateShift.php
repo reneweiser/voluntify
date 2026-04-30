@@ -21,6 +21,9 @@ class UpdateShift
         ?string $displayText = null,
         ?User $causer = null,
     ): Shift {
+        $event = $shift->volunteerJob->event;
+        $hadAvailability = $event->publicSignupJobs()->isNotEmpty();
+
         if ($capacity < $shift->activeSignups()->count()) {
             throw new DomainException('Cannot reduce capacity below current number of signups.');
         }
@@ -42,6 +45,7 @@ class UpdateShift
 
         $shift->update($updateData);
         $shift->volunteerJob->event->refresh()->evaluatePriorityGate();
+        app(ScheduleEventSubscriberNotification::class)->execute($shift->volunteerJob->event->fresh(), $hadAvailability);
 
         if ($changed && $causer) {
             ShiftUpdated::dispatch($shift->refresh(), $causer, $changed);

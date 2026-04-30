@@ -5,6 +5,7 @@ namespace App\Livewire\Public;
 use App\Actions\ProcessVolunteerSignup;
 use App\Actions\ReserveShifts;
 use App\Actions\SendEmailVerification;
+use App\Actions\SubscribeToEventNotifications;
 use App\Enums\EventStatus;
 use App\Enums\GearItemType;
 use App\Enums\HintLocation;
@@ -54,6 +55,8 @@ class EventSignup extends Component
 
     public string $volunteerPhone = '';
 
+    public string $notificationSubscriptionEmail = '';
+
     #[Locked]
     public string $warningMessage = '';
 
@@ -79,6 +82,9 @@ class EventSignup extends Component
 
     #[Locked]
     public ?string $verificationStartedAt = null;
+
+    #[Locked]
+    public string $notificationSubscriptionMessage = '';
 
     public function mount(string $publicToken): void
     {
@@ -136,18 +142,7 @@ class EventSignup extends Component
     #[Computed]
     public function jobs(): Collection
     {
-        return $this->event->volunteerJobs()
-            ->active()
-            ->whereHas('shifts', fn ($query) => $query->active())
-            ->with(['shifts' => fn ($query) => $query->active()
-                ->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])
-                ->orderBy('shift_date')
-                ->orderBy('starts_at')])
-            ->get()
-            ->filter(fn ($job) => $job->shifts->contains(
-                fn ($shift) => ! $shift->isFull() || in_array((int) $shift->id, $this->existingShiftIds, true)
-            ))
-            ->values();
+        return $this->event->publicSignupJobs($this->existingShiftIds);
     }
 
     /**
@@ -404,7 +399,44 @@ class EventSignup extends Component
             ));
         }
 
+        if ($this->notificationSubscriptionEmail === '') {
+            $this->notificationSubscriptionEmail = $this->volunteerEmail;
+        }
+
         $this->state = WizardState::SelectingShifts;
+    }
+
+    public function subscribeToNotifications(): void
+    {
+        if ($this->state !== WizardState::SelectingShifts || $this->jobs->isNotEmpty()) {
+            $this->addError('notificationSubscriptionEmail', __('Notifications are only available when no shifts can be selected.'));
+
+            return;
+        }
+
+        $this->validate([
+            'notificationSubscriptionEmail' => ['required', 'email', 'max:255'],
+        ]);
+
+        $ipKey = 'event-notification-subscribe:'.request()->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 10)) {
+            $this->addError('notificationSubscriptionEmail', __('Too many attempts. Please wait a moment before trying again.'));
+
+            return;
+        }
+        RateLimiter::hit($ipKey, 60);
+
+        $emailKey = 'event-notification-subscribe-email:'.$this->event->id.':'.strtolower(trim($this->notificationSubscriptionEmail));
+        if (RateLimiter::tooManyAttempts($emailKey, 3)) {
+            $this->addError('notificationSubscriptionEmail', __('Too many attempts for this email. Please wait a few minutes.'));
+
+            return;
+        }
+        RateLimiter::hit($emailKey, 300);
+
+        app(SubscribeToEventNotifications::class)->execute($this->event, $this->notificationSubscriptionEmail);
+
+        $this->notificationSubscriptionMessage = __('Check your inbox to confirm your notification signup. Once confirmed, we will email you when new shifts become available.');
     }
 
     /**
@@ -620,6 +652,8 @@ class EventSignup extends Component
         $this->reservationExpiresAt = '';
         $this->warningMessage = '';
         $this->lookupMessage = '';
+        $this->notificationSubscriptionEmail = '';
+        $this->notificationSubscriptionMessage = '';
         $this->verificationTokenId = null;
         $this->existingVolunteerId = null;
         $this->existingShiftIds = [];

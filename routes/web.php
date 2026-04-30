@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\EventNotificationSubscriberController;
 use App\Http\Controllers\GuestPassController;
 use App\Http\Controllers\VolunteerExportController;
 use App\Livewire\ActivityFeed;
@@ -60,6 +61,8 @@ if (app()->environment('local')) {
 Route::livewire('p/{publicToken}', ProjectWebsite::class)->name('projects.public');
 Route::livewire('events/{publicToken}', EventSignup::class)->name('events.public')->middleware('throttle:60,1');
 Route::livewire('events/{publicToken}/jobs/{jobId}/cheat-sheet', JobCheatSheet::class)->name('events.jobs.cheat-sheet');
+Route::get('event-notifications/verify/{token}', [EventNotificationSubscriberController::class, 'verify'])->name('events.notifications.verify');
+Route::get('event-notifications/unsubscribe/{token}', [EventNotificationSubscriberController::class, 'unsubscribe'])->name('events.notifications.unsubscribe');
 Route::get('guest-pass/{entry}', GuestPassController::class)->middleware('signed')->name('guest.pass.show');
 Route::livewire('my-ticket/{magicToken}', VolunteerTicket::class)->name('volunteer.ticket');
 Route::livewire('my-portal/{magicToken}', VolunteerPortal::class)->name('volunteer.portal');

@@ -8,6 +8,7 @@ use App\Enums\EventVisibility;
 use App\ValueObjects\PublicToken;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -103,6 +104,11 @@ class Event extends Model
         return $this->hasMany(CustomRegistrationField::class)->orderBy('sort_order');
     }
 
+    public function notificationSubscribers(): HasMany
+    {
+        return $this->hasMany(EventNotificationSubscriber::class);
+    }
+
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -193,6 +199,25 @@ class Event extends Model
         return __('Please fill the priority shifts first. Other shifts unlock once :percent% of the priority slots are filled.', [
             'percent' => $this->priority_unlock_threshold_percent,
         ]);
+    }
+
+    /**
+     * @param  array<int>  $existingShiftIds
+     */
+    public function publicSignupJobs(array $existingShiftIds = []): Collection
+    {
+        return $this->volunteerJobs()
+            ->active()
+            ->whereHas('shifts', fn ($query) => $query->active())
+            ->with(['shifts' => fn ($query) => $query->active()
+                ->withCount(['activeSignups as signups_count', 'activeReservations as active_reservations_count'])
+                ->orderBy('shift_date')
+                ->orderBy('starts_at')])
+            ->get()
+            ->filter(fn ($job) => $job->shifts->contains(
+                fn ($shift) => ! $shift->isFull() || in_array((int) $shift->id, $existingShiftIds, true)
+            ))
+            ->values();
     }
 
     public function scopeActive(Builder $query): void

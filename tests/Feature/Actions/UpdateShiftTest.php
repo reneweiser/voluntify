@@ -3,6 +3,7 @@
 use App\Actions\UpdateShift;
 use App\Events\Activity\ShiftUpdated;
 use App\Exceptions\DomainException;
+use App\Jobs\NotifyEventSubscribers;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Shift;
@@ -12,6 +13,7 @@ use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event as EventFacade;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
@@ -112,4 +114,22 @@ it('can deactivate a shift', function () {
     );
 
     expect($updated->is_active)->toBeFalse();
+});
+
+it('queues subscriber notifications when an inactive shift becomes available', function () {
+    Queue::fake();
+
+    $shift = Shift::factory()->for($this->job, 'volunteerJob')->inactive()->create();
+
+    $this->action->execute(
+        shift: $shift,
+        shiftDate: $shift->shift_date,
+        startsAt: $shift->starts_at,
+        endsAt: $shift->ends_at,
+        capacity: $shift->capacity,
+        isActive: true,
+        causer: $this->user,
+    );
+
+    Queue::assertPushed(NotifyEventSubscribers::class, fn (NotifyEventSubscribers $job) => $job->eventId === $this->event->id);
 });

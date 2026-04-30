@@ -2,11 +2,14 @@
 
 use App\Actions\UpdateVolunteerJob;
 use App\Events\Activity\JobUpdated;
+use App\Jobs\NotifyEventSubscribers;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Shift;
 use App\Models\User;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Facades\Event as EventFacade;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->org = Organization::factory()->create();
@@ -62,4 +65,22 @@ it('can deactivate a job', function () {
     );
 
     expect($updated->is_active)->toBeFalse();
+});
+
+it('queues subscriber notifications when a job activation opens availability', function () {
+    Queue::fake();
+
+    $job = VolunteerJob::factory()->for($this->event)->inactive()->create();
+    Shift::factory()->for($job, 'volunteerJob')->create();
+
+    $this->action->execute(
+        job: $job,
+        name: $job->name,
+        description: $job->description,
+        instructions: $job->instructions,
+        isActive: true,
+        causer: $this->user,
+    );
+
+    Queue::assertPushed(NotifyEventSubscribers::class, fn (NotifyEventSubscribers $job) => $job->eventId === $this->event->id);
 });
