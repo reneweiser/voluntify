@@ -54,7 +54,7 @@ function makeVolunteer(overrides: Partial<Volunteer> = {}): Volunteer {
     };
 }
 
-function createApp(scannerType: 'entry_staff' | 'volunteer_admin' = 'entry_staff') {
+function createApp(scannerType: 'entry_staff' | 'gear' | 'volunteer_admin' = 'entry_staff') {
     return scannerApp({
         scannerId: 7,
         scannerType,
@@ -274,5 +274,62 @@ describe('alpine-scanner QR volunteer selection', () => {
         expect(app.state).toBe('result');
         expect(app.resultMessage).toBe('Ready to check in.');
         expect(app.result?.volunteerId).toBe(volunteer.id);
+    });
+
+    it('shows a gear scanner result for volunteer QR scans without arrival copy', () => {
+        const app = createApp('gear');
+        const volunteer = makeVolunteer();
+
+        app.selectVolunteer(volunteer, { fromQr: true });
+
+        expect(app.state).toBe('result');
+        expect(app.resultMessage).toBe('');
+        expect(app.result?.volunteerId).toBe(volunteer.id);
+    });
+});
+
+describe('alpine-scanner gear guest selection', () => {
+    it('selects a guest from search in gear mode', () => {
+        const app = createApp('gear');
+
+        app._guestEntries = [{
+            id: 11,
+            guest_group_id: 3,
+            group_label: 'Artists',
+            group_guest_count: 2,
+            number: 1,
+            name: 'DJ Test',
+            qr_token: 'guest-token',
+            checked_in_at: null,
+            gear: [],
+        }];
+
+        app.selectGuestFromSearch(app._guestEntries[0]);
+
+        expect(app.selectedGuest?.id).toBe(11);
+        expect(app.selectedGuestSource).toBe('manual');
+        expect(app.selectedVolunteer).toBeNull();
+    });
+
+    it('routes guest QR scans into gear mode guest details', () => {
+        const app = createApp('gear');
+        const entry = {
+            id: 12,
+            guest_group_id: 4,
+            group_label: 'Speakers',
+            group_guest_count: 1,
+            number: 1,
+            name: 'Keynote',
+            qr_token: 'guest-qr',
+            checked_in_at: null,
+            gear: [],
+        };
+
+        app._handleGuestQr(entry);
+
+        expect(app.selectedGuest?.id).toBe(12);
+        expect(app.selectedGuestSource).toBe('qr');
+        expect(app.guestResult).toBeNull();
+        expect(app.state).toBe('result');
     });
 });

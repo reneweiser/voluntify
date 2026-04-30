@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Models\GuestList;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
@@ -11,7 +12,7 @@ class ScannerForm extends Form
     #[Validate('required|string|max:255')]
     public string $name = '';
 
-    #[Validate('required|string|in:entry_staff,volunteer_admin')]
+    #[Validate('required|string|in:entry_staff,gear,volunteer_admin')]
     public string $type = 'entry_staff';
 
     #[Validate('required|array|min:1')]
@@ -20,6 +21,8 @@ class ScannerForm extends Form
     public ?int $entryEventId = null;
 
     public array $poolEventIds = [];
+
+    public array $guestGroupIds = [];
 
     public array $gearItemIds = [];
 
@@ -53,6 +56,16 @@ class ScannerForm extends Form
                 }
             }],
             'poolEventIds.*' => ['integer', Rule::exists('events', 'id')->where('project_id', $this->component->projectId)],
+            'guestGroupIds' => ['array'],
+            'guestGroupIds.*' => [
+                'integer',
+                Rule::exists('guest_groups', 'id')->where(function ($query) {
+                    $query->whereIn('guest_list_id', GuestList::query()
+                        ->confirmed()
+                        ->forProject($this->component->projectId)
+                        ->select('id'));
+                }),
+            ],
         ];
     }
 
@@ -68,6 +81,7 @@ class ScannerForm extends Form
         $this->modes = $data['modes'];
         $this->entryEventId = $data['entryEventId'];
         $this->poolEventIds = $data['poolEventIds'];
+        $this->guestGroupIds = $data['guestGroupIds'];
         $this->gearItemIds = $data['gearItemIds'];
         $this->hintText = $data['hintText'];
         $this->startsAt = $data['startsAt'];
@@ -100,6 +114,9 @@ class ScannerForm extends Form
             'modes' => $this->modes,
             'entry_event_id' => $this->entryEventId,
             'pool_event_ids' => array_values(array_unique(array_map('intval', $this->poolEventIds))),
+            'guest_group_ids' => ! empty($this->guestGroupIds)
+                ? array_values(array_unique(array_map('intval', $this->guestGroupIds)))
+                : null,
             'gear_item_ids' => ! empty($this->gearItemIds) ? $this->gearItemIds : null,
             'hint_text' => $this->hintText ?: null,
             'starts_at' => $this->startsAt,

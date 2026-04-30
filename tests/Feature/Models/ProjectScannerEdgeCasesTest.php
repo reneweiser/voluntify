@@ -106,6 +106,14 @@ it('returns configured pool event ids', function () {
     expect($scanner->configuredPoolEventIds())->toBe([$entryEvent->id, $poolEvent->id]);
 });
 
+it('returns configured guest group ids', function () {
+    $scanner = ProjectScanner::factory()->create([
+        'guest_group_ids' => ['10', 20],
+    ]);
+
+    expect($scanner->configuredGuestGroupIds())->toBe([10, 20]);
+});
+
 // --- Type casting ---
 
 it('casts type to ScannerType enum', function () {

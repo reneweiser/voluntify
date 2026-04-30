@@ -7,6 +7,7 @@
  *
  * Type-based post-scan behavior:
  * - entry_staff: arrival confirmation only
+ * - gear: volunteer + guest gear workflows
  * - volunteer_admin: shift attendance + gear pickup (gear is online-only)
  */
 import { startCamera, stopCamera } from './camera';
@@ -41,6 +42,7 @@ type ScannerState = 'idle' | 'loading' | 'scanning' | 'result' | 'duplicate' | '
 type ScannerTab = 'scanner' | 'volunteers' | 'guests' | 'shifts';
 type ScannerDataSource = 'network' | 'cache' | 'unavailable';
 type VolunteerSelectionSource = 'qr' | 'manual' | 'shift' | null;
+type GuestSelectionSource = 'qr' | 'manual' | null;
 type VolunteerDetailState = 'ready' | 'checked_in' | 'configuration_review' | 'missing_ticket' | null;
 
 interface SelectedShiftContext {
@@ -60,7 +62,7 @@ interface ScannerResult {
 
 interface ScannerAppConfig {
     scannerId: number;
-    scannerType: 'entry_staff' | 'volunteer_admin';
+    scannerType: 'entry_staff' | 'gear' | 'volunteer_admin';
     modes: string[];
     entryEventId: number | null;
     contractVersion: number;
@@ -118,7 +120,9 @@ export function scannerApp(config: ScannerAppConfig) {
         guestSearchQuery: '' as string,
         shiftSearchQuery: '' as string,
         guestResult: null as GuestEntry | null,
+        selectedGuest: null as GuestEntry | null,
         selectedVolunteerSource: null as VolunteerSelectionSource,
+        selectedGuestSource: null as GuestSelectionSource,
 
         get filteredGuestGroups(): { label: string; guestCount: number; entries: GuestEntry[] }[] {
             const groups = new Map<number, { label: string; guestCount: number; entries: GuestEntry[] }>();
@@ -151,8 +155,14 @@ export function scannerApp(config: ScannerAppConfig) {
             return query.length > 0 && query.length < 2;
         },
 
+        get shouldShowGuestSearchHint(): boolean {
+            const query = this.guestSearchQuery.trim();
+
+            return query.length > 0 && query.length < 2;
+        },
+
         get filteredVolunteers(): Volunteer[] {
-            if (this.scannerType !== 'entry_staff') {
+            if (this.scannerType === 'volunteer_admin') {
                 return [];
             }
 
@@ -202,7 +212,7 @@ export function scannerApp(config: ScannerAppConfig) {
         },
 
         get hasGuestListTab(): boolean {
-            return this.scannerType === 'entry_staff';
+            return this.scannerType === 'entry_staff' || this.scannerType === 'gear';
         },
 
         get visibleShiftGroups(): ShiftGroup[] {
@@ -252,7 +262,7 @@ export function scannerApp(config: ScannerAppConfig) {
         },
 
         get canPickupGear(): boolean {
-            return config.modes.includes('gear_pickup');
+            return config.scannerType === 'gear' || config.modes.includes('gear_pickup');
         },
 
         get canMarkAttendance(): boolean {
@@ -328,9 +338,11 @@ export function scannerApp(config: ScannerAppConfig) {
                     : null;
             this.result = volunteer.ticket ? this.buildVolunteerResult(volunteer) : null;
             this.guestResult = null;
+            this.selectedGuest = null;
+            this.selectedGuestSource = null;
 
             if (options.fromQr) {
-                if (this.scannerType === 'volunteer_admin') {
+                if (this.scannerType !== 'entry_staff') {
                     this.state = 'result';
                     this.resultMessage = '';
                     this.errorMessage = '';
@@ -373,6 +385,23 @@ export function scannerApp(config: ScannerAppConfig) {
             this.guestResult = null;
         },
 
+        selectGuest(entry: GuestEntry, options: { fromQr?: boolean } = {}) {
+            this.selectedGuest = entry;
+            this.selectedGuestSource = options.fromQr ? 'qr' : 'manual';
+            this.selectedVolunteer = null;
+            this.selectedShiftContext = null;
+            this.selectedVolunteerSource = null;
+            this.result = null;
+            this.guestResult = null;
+            this.state = 'result';
+            this.resultMessage = '';
+            this.errorMessage = '';
+        },
+
+        selectGuestFromSearch(entry: GuestEntry) {
+            this.selectGuest(entry);
+        },
+
         selectVolunteerFromShift(row: ShiftGroupVolunteerRow) {
             const volunteer = this._volunteers.find((entry) => entry.id === row.volunteerId);
             if (!volunteer) {
@@ -404,6 +433,17 @@ export function scannerApp(config: ScannerAppConfig) {
             this.selectedVolunteerSource = null;
             this.result = null;
             this.guestResult = null;
+            this.selectedGuest = null;
+            this.selectedGuestSource = null;
+            this.resultMessage = '';
+            this.errorMessage = '';
+            this.state = 'scanning';
+        },
+
+        clearGuestSelection() {
+            this.selectedGuest = null;
+            this.selectedGuestSource = null;
+            this.guestResult = null;
             this.resultMessage = '';
             this.errorMessage = '';
             this.state = 'scanning';
@@ -427,10 +467,13 @@ export function scannerApp(config: ScannerAppConfig) {
             const preservedState = options.preserveUiState ? {
                 activeTab: this.activeTab,
                 volunteerSearchQuery: this.volunteerSearchQuery,
+                guestSearchQuery: this.guestSearchQuery,
                 shiftSearchQuery: this.shiftSearchQuery,
                 selectedVolunteerId: this.selectedVolunteer?.id ?? null,
+                selectedGuestId: this.selectedGuest?.id ?? null,
                 selectedShiftContext: this.selectedShiftContext,
                 selectedVolunteerSource: this.selectedVolunteerSource,
+                selectedGuestSource: this.selectedGuestSource,
             } : null;
 
             await this._loadScannerData();
@@ -443,9 +486,25 @@ export function scannerApp(config: ScannerAppConfig) {
                 ? 'scanner'
                 : preservedState.activeTab;
             this.volunteerSearchQuery = preservedState.volunteerSearchQuery;
+            this.guestSearchQuery = preservedState.guestSearchQuery;
             this.shiftSearchQuery = preservedState.shiftSearchQuery;
 
             if (!preservedState.selectedVolunteerId) {
+                if (!preservedState.selectedGuestId) {
+                    return;
+                }
+
+                const guestEntry = this._guestEntries.find((entry) => entry.id === preservedState.selectedGuestId);
+                if (!guestEntry) {
+                    this.selectedGuest = null;
+                    this.selectedGuestSource = null;
+
+                    return;
+                }
+
+                this.selectGuest(guestEntry);
+                this.selectedGuestSource = preservedState.selectedGuestSource;
+
                 return;
             }
 
@@ -876,6 +935,8 @@ export function scannerApp(config: ScannerAppConfig) {
             this.selectedVolunteer = null;
             this.selectedShiftContext = null;
             this.selectedVolunteerSource = null;
+            this.selectedGuest = null;
+            this.selectedGuestSource = null;
             this.resultMessage = '';
             this.errorMessage = '';
             this._resetInactivityTimer();
@@ -888,6 +949,14 @@ export function scannerApp(config: ScannerAppConfig) {
             this.selectedVolunteerSource = null;
             this.result = null;
             this.guestResult = entry;
+            this.selectedGuest = null;
+            this.selectedGuestSource = null;
+
+            if (this.scannerType === 'gear') {
+                this.selectGuest(entry, { fromQr: true });
+
+                return;
+            }
 
             const label = `${entry.group_label} ${entry.number}/${entry.group_guest_count}`;
 
@@ -930,7 +999,7 @@ export function scannerApp(config: ScannerAppConfig) {
 
         async _postGuestGear(guestEntryGearId: number, payload: Record<string, unknown>) {
             if (!this.isOnline) {
-                return;
+                return null;
             }
 
             try {
@@ -946,22 +1015,61 @@ export function scannerApp(config: ScannerAppConfig) {
 
                 if (!response.ok) {
                     console.error('Guest gear pickup failed:', await response.text());
+
+                    return null;
                 }
+
+                return await response.json();
             } catch (error) {
                 console.error('Guest gear pickup network error:', error);
+
+                return null;
             }
         },
 
         async selectGuestGearState(guestEntryGearId: number, state: string) {
-            await this._postGuestGear(guestEntryGearId, { status: state });
+            const response = await this._postGuestGear(guestEntryGearId, { status: state });
+            const gear = this.findGuestGear(guestEntryGearId);
+
+            if (response && gear) {
+                gear.status = state;
+            }
         },
 
         async selectGuestGearSelection(guestEntryGearId: number, selection: string) {
-            await this._postGuestGear(guestEntryGearId, { selection });
+            const response = await this._postGuestGear(guestEntryGearId, { selection });
+            const gear = this.findGuestGear(guestEntryGearId);
+
+            if (response && gear) {
+                gear.selection = selection;
+            }
         },
 
         async incrementGuestGearPickup(guestEntryGearId: number) {
-            await this._postGuestGear(guestEntryGearId, { quantity: 1 });
+            const response = await this._postGuestGear(guestEntryGearId, { quantity: 1 });
+            const gear = this.findGuestGear(guestEntryGearId);
+
+            if (response && gear) {
+                gear.picked_up_count += 1;
+            }
+        },
+
+        findGuestGear(guestEntryGearId: number) {
+            for (const entry of this._guestEntries) {
+                const gear = entry.gear.find((item) => item.id === guestEntryGearId);
+
+                if (gear) {
+                    return gear;
+                }
+            }
+
+            return null;
+        },
+
+        isGuestGearFullyPickedUp(guestEntryGearId: number): boolean {
+            const gear = this.findGuestGear(guestEntryGearId);
+
+            return gear ? gear.picked_up_count >= gear.quantity : false;
         },
 
         _resetInactivityTimer() {

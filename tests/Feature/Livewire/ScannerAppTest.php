@@ -97,6 +97,30 @@ it('does not render entry staff volunteer lookup UI for volunteer admin scanners
         ->assertDontSee('Close Details');
 });
 
+it('renders gear scanner tabs and guest search UI', function () {
+    $scanner = ProjectScanner::factory()->active()->gear()->create();
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertSet('scannerType', ScannerType::Gear->value)
+        ->assertSee('Volunteers')
+        ->assertSee('Guests')
+        ->assertSee('Search volunteers...')
+        ->assertSee('Search guests...')
+        ->assertSeeHtml('selectGuestFromSearch(entry)')
+        ->assertSee('Record Pickup');
+});
+
+it('hides attendance and arrival actions for gear scanners', function () {
+    $scanner = ProjectScanner::factory()->active()->gear()->create();
+    session(['scanner_id' => $scanner->id]);
+
+    Livewire::test(ScannerApp::class, ['scannerToken' => $scanner->scanner_token])
+        ->assertDontSeeHtml('confirmArrival()')
+        ->assertDontSeeHtml('confirmAttendance(signup.id)')
+        ->assertDontSeeHtml('confirmGuestCheckin(entry.id)');
+});
+
 it('renders scanner and shift-list tabs for volunteer admin scanners with checkin mode', function () {
     $scanner = ProjectScanner::factory()->active()->volunteerAdmin()->create();
     session(['scanner_id' => $scanner->id]);

@@ -4,6 +4,8 @@ use App\Actions\CreateProjectScanner;
 use App\Enums\ScannerMode;
 use App\Enums\ScannerType;
 use App\Models\Event;
+use App\Models\GuestGroup;
+use App\Models\GuestList;
 use App\Models\Project;
 use App\Models\ProjectScanner;
 
@@ -124,4 +126,25 @@ it('stores entry and pool events', function () {
         ->and($result->gear_item_ids)->toBe([1, 2, 3])
         ->and($result->hint_text)->toBe('Scan volunteer badges here')
         ->and($result->type)->toBe(ScannerType::VolunteerAdmin);
+});
+
+it('stores optional guest group ids for gear scanners', function () {
+    $entryEvent = Event::factory()->for($this->project)->create();
+    $guestList = GuestList::factory()->confirmed()->create(['project_id' => $this->project->id]);
+    $group = GuestGroup::factory()->for($guestList)->create();
+    $action = new CreateProjectScanner;
+
+    $result = $action->execute($this->project, [
+        'name' => 'Gear Scanner',
+        'type' => ScannerType::Gear->value,
+        'modes' => [ScannerMode::GearPickup->value],
+        'entry_event_id' => $entryEvent->id,
+        'pool_event_ids' => [$entryEvent->id],
+        'guest_group_ids' => [$group->id],
+        'starts_at' => '2026-07-01 10:00:00',
+        'ends_at' => '2026-07-01 18:00:00',
+    ]);
+
+    expect($result->type)->toBe(ScannerType::Gear)
+        ->and($result->guest_group_ids)->toBe([$group->id]);
 });

@@ -6,6 +6,7 @@ use App\Enums\StaffRole;
 use App\Jobs\SendScannerLinksJob;
 use App\Livewire\Projects\ScannerManagement;
 use App\Models\Event;
+use App\Models\GuestGroup;
 use App\Models\GuestList;
 use App\Models\Organization;
 use App\Models\Project;
@@ -227,6 +228,44 @@ it('shows mode checkboxes when type is volunteer_admin', function () {
         ->set('form.type', ScannerType::VolunteerAdmin->value)
         ->assertSeeHtml('value="checkin"')
         ->assertSeeHtml('value="gear_pickup"');
+});
+
+it('shows guest group options when type is gear', function () {
+    $guestList = GuestList::factory()->confirmed()->create([
+        'project_id' => $this->project->id,
+    ]);
+    $group = GuestGroup::factory()->for($guestList)->create(['label' => 'Crew']);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->set('form.type', ScannerType::Gear->value)
+        ->assertSee('Guest Groups')
+        ->assertSee($guestList->name.' - '.$group->label);
+});
+
+it('creates a gear scanner with guest group filters', function () {
+    $guestList = GuestList::factory()->confirmed()->create([
+        'project_id' => $this->project->id,
+    ]);
+    $group = GuestGroup::factory()->for($guestList)->create();
+
+    Livewire::actingAs($this->organizer)
+        ->test(ScannerManagement::class, ['projectId' => $this->project->id])
+        ->set('form.name', 'Gear West')
+        ->set('form.type', ScannerType::Gear->value)
+        ->set('form.entryEventId', $this->event->id)
+        ->set('form.poolEventIds', [$this->event->id])
+        ->set('form.guestGroupIds', [$group->id])
+        ->set('form.startsAt', '2026-07-01T10:00')
+        ->set('form.endsAt', '2026-07-01T18:00')
+        ->call('createScanner')
+        ->assertHasNoErrors();
+
+    $scanner = ProjectScanner::where('project_id', $this->project->id)->where('name', 'Gear West')->first();
+
+    expect($scanner)->not->toBeNull()
+        ->and($scanner->type)->toBe(ScannerType::Gear)
+        ->and($scanner->guest_group_ids)->toBe([$group->id]);
 });
 
 it('resets modes to checkin when switching type from volunteer_admin to entry_staff', function () {

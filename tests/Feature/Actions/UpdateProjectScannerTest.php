@@ -4,6 +4,8 @@ use App\Actions\UpdateProjectScanner;
 use App\Enums\ScannerMode;
 use App\Enums\ScannerType;
 use App\Models\Event;
+use App\Models\GuestGroup;
+use App\Models\GuestList;
 use App\Models\Project;
 use App\Models\ProjectScanner;
 
@@ -132,4 +134,21 @@ it('does not modify auth_code or scanner_token', function () {
 
     expect($fresh->auth_code)->toBe($originalAuthCode)
         ->and($fresh->scanner_token)->toBe($originalToken);
+});
+
+it('updates guest group ids for gear scanners', function () {
+    $guestList = GuestList::factory()->confirmed()->create(['project_id' => $this->project->id]);
+    $group = GuestGroup::factory()->for($guestList)->create();
+    $this->scanner->update([
+        'type' => ScannerType::Gear,
+        'modes' => [ScannerMode::GearPickup->value],
+    ]);
+
+    $action = new UpdateProjectScanner;
+
+    $result = $action->execute($this->scanner, [
+        'guest_group_ids' => [$group->id],
+    ]);
+
+    expect($result->guest_group_ids)->toBe([$group->id]);
 });

@@ -24,6 +24,7 @@ use App\Models\Volunteer;
 use App\Models\VolunteerGear;
 use App\Services\JwtKeyService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,19 +43,23 @@ class ScannerDataController extends Controller
         $projectId = $scanner->project_id;
         $entryEventId = $scanner->entry_event_id;
         $poolEventIds = $scanner->configuredPoolEventIds();
+        $includesVolunteerShiftData = ! $scanner->isGearScanner();
 
         $volunteerQuery = Volunteer::forEvents($poolEventIds);
 
         $eagerLoads = [
             'tickets' => fn ($q) => $q->where('project_id', $projectId),
-            'shiftSignups' => function ($q) use ($poolEventIds) {
-                $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->whereIn('event_id', $poolEventIds));
-            },
-            'shiftSignups.shift.volunteerJob',
-            'shiftSignups.attendanceRecord',
         ];
 
-        if ($scanner->type === ScannerType::VolunteerAdmin) {
+        if ($includesVolunteerShiftData) {
+            $eagerLoads['shiftSignups'] = function ($q) use ($poolEventIds) {
+                $q->whereHas('shift.volunteerJob', fn ($sq) => $sq->whereIn('event_id', $poolEventIds));
+            };
+            $eagerLoads['shiftSignups.shift.volunteerJob'] = fn ($q) => $q;
+            $eagerLoads['shiftSignups.attendanceRecord'] = fn ($q) => $q;
+        }
+
+        if ($scanner->supportsVolunteerGear()) {
             $eagerLoads['volunteerGear'] = fn ($q) => $q->whereHas('gearItem', fn ($sq) => $sq->where('project_id', $projectId));
             $eagerLoads['volunteerGear.gearItem'] = fn ($q) => $q;
             $eagerLoads['volunteerGear.pickups'] = fn ($q) => $q;
@@ -67,17 +72,23 @@ class ScannerDataController extends Controller
             ->orderBy('name')
             ->get();
 
-        $arrivals = EventArrival::where('event_id', $entryEventId)->get();
+        $arrivals = $includesVolunteerShiftData
+            ? EventArrival::where('event_id', $entryEventId)->get()
+            : collect();
 
-        $shiftSignupIds = $volunteers->flatMap(fn ($v) => $v->shiftSignups->pluck('id'));
-        $attendanceRecords = AttendanceRecord::whereIn('shift_signup_id', $shiftSignupIds)->get();
+        $attendanceRecords = $includesVolunteerShiftData
+            ? AttendanceRecord::whereIn(
+                'shift_signup_id',
+                $volunteers->flatMap(fn ($volunteer) => $volunteer->shiftSignups->pluck('id')),
+            )->get()
+            : collect();
 
         $guestEntries = $this->loadGuestEntries($scanner);
 
         $gearItems = [];
         $volunteerGearMap = (object) [];
 
-        if ($scanner->type === ScannerType::VolunteerAdmin) {
+        if ($scanner->supportsVolunteerGear()) {
             $gearItems = ProjectGearItem::where('project_id', $projectId)
                 ->orderBy('sort_order')
                 ->get()
@@ -129,25 +140,27 @@ class ScannerDataController extends Controller
                 'email' => $v->email,
                 'phone' => $v->phone,
                 'ticket' => $v->tickets->first(),
-                'shift_signups' => $v->shiftSignups->map(fn ($signup) => [
-                    'id' => $signup->id,
-                    'shift' => [
-                        'id' => $signup->shift->id,
-                        'shift_date' => $signup->shift->shift_date->toDateString(),
-                        'starts_at' => $signup->shift->starts_at,
-                        'ends_at' => $signup->shift->ends_at,
-                        'display_text' => $signup->shift->display_text,
-                        'volunteer_job' => [
-                            'id' => $signup->shift->volunteerJob->id,
-                            'name' => $signup->shift->volunteerJob->name,
+                'shift_signups' => $includesVolunteerShiftData
+                    ? $v->shiftSignups->map(fn ($signup) => [
+                        'id' => $signup->id,
+                        'shift' => [
+                            'id' => $signup->shift->id,
+                            'shift_date' => $signup->shift->shift_date->toDateString(),
+                            'starts_at' => $signup->shift->starts_at,
+                            'ends_at' => $signup->shift->ends_at,
+                            'display_text' => $signup->shift->display_text,
+                            'volunteer_job' => [
+                                'id' => $signup->shift->volunteerJob->id,
+                                'name' => $signup->shift->volunteerJob->name,
+                            ],
                         ],
-                    ],
-                    'attendance_record' => $signup->attendanceRecord ? [
-                        'id' => $signup->attendanceRecord->id,
-                        'shift_signup_id' => $signup->attendanceRecord->shift_signup_id,
-                        'status' => $signup->attendanceRecord->status->value,
-                    ] : null,
-                ]),
+                        'attendance_record' => $signup->attendanceRecord ? [
+                            'id' => $signup->attendanceRecord->id,
+                            'shift_signup_id' => $signup->attendanceRecord->shift_signup_id,
+                            'status' => $signup->attendanceRecord->status->value,
+                        ] : null,
+                    ])
+                    : [],
             ]),
             'arrivals' => $arrivals,
             'attendance_records' => $attendanceRecords,
@@ -224,8 +237,8 @@ class ScannerDataController extends Controller
             return response()->json(['error' => 'Scanner ID mismatch.'], 403);
         }
 
-        if ($scanner->type !== ScannerType::VolunteerAdmin) {
-            return response()->json(['error' => 'Only volunteer admin scanners can record gear pickups.'], 403);
+        if (! $scanner->supportsVolunteerGear()) {
+            return response()->json(['error' => 'Only gear-enabled scanners can record gear pickups.'], 403);
         }
 
         $request->validate([
@@ -234,7 +247,9 @@ class ScannerDataController extends Controller
             'quantity' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $gear = VolunteerGear::whereHas('gearItem', fn ($q) => $q->where('project_id', $scanner->project_id))
+        $gear = VolunteerGear::query()
+            ->whereHas('gearItem', fn ($query) => $query->where('project_id', $scanner->project_id))
+            ->whereHas('volunteer', fn ($query) => $query->forEvents($scanner->configuredPoolEventIds()))
             ->findOrFail($request->integer('volunteer_gear_id'));
 
         try {
@@ -307,8 +322,8 @@ class ScannerDataController extends Controller
             return response()->json(['error' => 'Scanner ID mismatch.'], 403);
         }
 
-        if ($scanner->type !== ScannerType::VolunteerAdmin) {
-            return response()->json(['error' => 'Only volunteer admin scanners can record guest gear pickups.'], 403);
+        if (! $scanner->supportsGuestGear()) {
+            return response()->json(['error' => 'Only gear-enabled scanners can record guest gear pickups.'], 403);
         }
 
         $request->validate([
@@ -318,9 +333,7 @@ class ScannerDataController extends Controller
             'quantity' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $gear = GuestEntryGear::whereHas('entry.group.guestList', function ($q) use ($scanner) {
-            $q->confirmed()->where('project_id', $scanner->project_id);
-        })->findOrFail($request->integer('guest_entry_gear_id'));
+        $gear = $this->guestEntryGearQuery($scanner)->findOrFail($request->integer('guest_entry_gear_id'));
 
         $result = $recordGuestGearPickup->execute($gear, $request->only(['selection', 'status', 'quantity']));
 
@@ -473,6 +486,50 @@ class ScannerDataController extends Controller
             ])->all();
         }
 
+        if ($scanner->isGearScanner()) {
+            $entries = $this->gearGuestEntriesQuery($scanner)
+                ->with(['group', 'gear.gearItem'])
+                ->get();
+
+            return $entries->map(fn (GuestEntry $e) => [
+                'id' => $e->id,
+                'guest_group_id' => $e->guest_group_id,
+                'group_label' => $e->group->label,
+                'group_guest_count' => $e->group->guest_count,
+                'number' => $e->number,
+                'name' => $e->name,
+                'qr_token' => $e->qr_token,
+                'checked_in_at' => $e->checked_in_at,
+                'gear' => $e->gear->map(fn ($g) => [
+                    'id' => $g->id,
+                    'gear_item_name' => $g->gearItem->name,
+                    'gear_item_type' => $g->gearItem->type->value,
+                    'available_sizes' => $g->gearItem->available_sizes,
+                    'available_states' => $g->gearItem->available_states,
+                    'quantity' => $g->quantity,
+                    'picked_up_count' => $g->picked_up_count,
+                    'selection' => $g->selection,
+                    'status' => $g->status,
+                ]),
+            ])->all();
+        }
+
         return [];
+    }
+
+    private function gearGuestEntriesQuery(ProjectScanner $scanner): Builder
+    {
+        $guestGroupIds = $scanner->configuredGuestGroupIds();
+
+        return GuestEntry::query()
+            ->whereHas('group.guestList', function ($query) use ($scanner) {
+                $query->confirmed()->where('project_id', $scanner->project_id);
+            })
+            ->when($guestGroupIds !== [], fn ($query) => $query->whereIn('guest_group_id', $guestGroupIds));
+    }
+
+    private function guestEntryGearQuery(ProjectScanner $scanner): Builder
+    {
+        return GuestEntryGear::query()->whereIn('guest_entry_id', $this->gearGuestEntriesQuery($scanner)->select('guest_entries.id'));
     }
 }

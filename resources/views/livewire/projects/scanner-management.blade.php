@@ -38,11 +38,14 @@
                 <flux:card wire:key="scanner-{{ $scanner->id }}">
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0 flex-1">
-                            @php
-                                $poolEventNames = collect($scanner->configuredPoolEventIds())
-                                    ->map(fn ($eventId) => $this->eventNamesById[$eventId] ?? ('#'.$eventId))
-                                    ->implode(', ');
-                            @endphp
+                             @php
+                                 $poolEventNames = collect($scanner->configuredPoolEventIds())
+                                     ->map(fn ($eventId) => $this->eventNamesById[$eventId] ?? ('#'.$eventId))
+                                     ->implode(', ');
+                                 $guestGroupNames = collect($scanner->configuredGuestGroupIds())
+                                     ->map(fn ($groupId) => $this->guestGroupLabelsById[$groupId] ?? ('#'.$groupId))
+                                     ->implode(', ');
+                             @endphp
 
                             <div class="flex items-center gap-2 mb-1">
                                 <flux:heading size="lg">{{ $scanner->name }}</flux:heading>
@@ -50,8 +53,19 @@
                                 <flux:badge size="sm" :color="match($status) { 'active' => 'emerald', 'scheduled' => 'blue', 'expired' => 'zinc' }">
                                     {{ ucfirst($status) }}
                                 </flux:badge>
-                                <flux:badge size="sm" :color="$scanner->type === \App\Enums\ScannerType::EntryStaff ? 'blue' : 'purple'">
-                                    {{ $scanner->type === \App\Enums\ScannerType::EntryStaff ? __('Entry Staff') : __('Volunteer Admin') }}
+                                <flux:badge
+                                    size="sm"
+                                    :color="match($scanner->type) {
+                                        \App\Enums\ScannerType::EntryStaff => 'blue',
+                                        \App\Enums\ScannerType::Gear => 'amber',
+                                        default => 'purple',
+                                    }"
+                                >
+                                    {{ match($scanner->type) {
+                                        \App\Enums\ScannerType::EntryStaff => __('Entry Staff'),
+                                        \App\Enums\ScannerType::Gear => __('Gear'),
+                                        default => __('Volunteer Admin'),
+                                    } }}
                                 </flux:badge>
                             </div>
                             <flux:text size="sm" class="text-zinc-500">
@@ -69,6 +83,11 @@
                                 <flux:text size="sm" class="text-zinc-500">
                                     {{ __('Pool Events: :events', ['events' => $poolEventNames !== '' ? $poolEventNames : __('Needs review')]) }}
                                 </flux:text>
+                                @if ($scanner->type === \App\Enums\ScannerType::Gear)
+                                    <flux:text size="sm" class="text-zinc-500">
+                                        {{ __('Guest Groups: :groups', ['groups' => $guestGroupNames !== '' ? $guestGroupNames : __('All confirmed guest lists')]) }}
+                                    </flux:text>
+                                @endif
                             </div>
 
                             @if ($scanner->requires_configuration_review)
@@ -173,6 +192,7 @@
                 <flux:label>{{ __('Type') }}</flux:label>
                 <flux:select wire:model.live="form.type">
                     <flux:select.option value="entry_staff">{{ __('Entry Staff') }}</flux:select.option>
+                    <flux:select.option value="gear">{{ __('Gear') }}</flux:select.option>
                     <flux:select.option value="volunteer_admin">{{ __('Volunteer Admin') }}</flux:select.option>
                 </flux:select>
                 <flux:error name="form.type" />
@@ -221,6 +241,35 @@
 
                 <flux:error name="form.poolEventIds" />
             </flux:field>
+
+            @if ($form->type === 'gear')
+                <flux:field>
+                    <flux:label>{{ __('Guest Groups') }}</flux:label>
+                    <flux:text size="sm" class="text-zinc-500">
+                        {{ __('Leave all groups unchecked to include all confirmed guest lists in the project.') }}
+                    </flux:text>
+
+                    @if ($this->guestGroups->isEmpty())
+                        <flux:text size="sm" class="text-zinc-500">
+                            {{ __('No confirmed guest groups are available yet.') }}
+                        </flux:text>
+                    @else
+                        <div class="space-y-2">
+                            @foreach ($this->guestGroups as $group)
+                                <flux:checkbox
+                                    wire:key="guest-group-{{ $group->id }}"
+                                    wire:model="form.guestGroupIds"
+                                    :value="$group->id"
+                                    :label="$group->guestList->name.' - '.$group->label"
+                                />
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <flux:error name="form.guestGroupIds" />
+                    <flux:error name="form.guestGroupIds.*" />
+                </flux:field>
+            @endif
 
             <div class="grid grid-cols-2 gap-4">
                 <flux:field>

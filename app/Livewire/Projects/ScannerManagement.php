@@ -15,6 +15,7 @@ use App\Events\Activity\ScannerAssigneeRemoved;
 use App\Exceptions\HasGuestListsException;
 use App\Livewire\Forms\ScannerForm;
 use App\Models\Event;
+use App\Models\GuestGroup;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\ProjectScanner;
@@ -61,11 +62,22 @@ class ScannerManagement extends Component
     {
         if ($value === ScannerType::EntryStaff->value) {
             $this->form->modes = [ScannerMode::Checkin->value];
+            $this->form->guestGroupIds = [];
 
             $this->ensureEntryEventIsIncludedInPool();
 
             return;
         }
+
+        if ($value === ScannerType::Gear->value) {
+            $this->form->modes = [ScannerMode::GearPickup->value];
+
+            $this->ensureEntryEventIsIncludedInPool();
+
+            return;
+        }
+
+        $this->form->guestGroupIds = [];
 
         $this->synchronizeVolunteerAdminPool();
     }
@@ -102,6 +114,28 @@ class ScannerManagement extends Component
         }
 
         $this->ensureEntryEventIsIncludedInPool();
+    }
+
+    /** @return Collection<int, GuestGroup> */
+    #[Computed]
+    public function guestGroups(): Collection
+    {
+        return GuestGroup::query()
+            ->whereHas('guestList', fn ($query) => $query->confirmed()->forProject($this->projectId))
+            ->with('guestList')
+            ->orderBy('label')
+            ->get();
+    }
+
+    /** @return array<int, string> */
+    #[Computed]
+    public function guestGroupLabelsById(): array
+    {
+        return $this->guestGroups
+            ->mapWithKeys(fn (GuestGroup $group) => [
+                $group->id => $group->guestList->name.' - '.$group->label,
+            ])
+            ->all();
     }
 
     /** @return Collection<int, ProjectScanner> */
@@ -190,6 +224,7 @@ class ScannerManagement extends Component
             'modes' => $scanner->modes ?? ['checkin'],
             'entryEventId' => $entryEventId,
             'poolEventIds' => $poolEventIds,
+            'guestGroupIds' => $scanner->configuredGuestGroupIds(),
             'gearItemIds' => $scanner->gear_item_ids ?? [],
             'hintText' => $scanner->hint_text ?? '',
             'startsAt' => $this->toLocal($scanner->starts_at, $tz),
@@ -317,6 +352,7 @@ class ScannerManagement extends Component
         $this->editingScannerId = null;
         $this->form->type = ScannerType::EntryStaff->value;
         $this->form->modes = [ScannerMode::Checkin->value];
+        $this->form->guestGroupIds = [];
         $this->form->setDefaultScope($this->firstEventId());
         $this->ensureEntryEventIsIncludedInPool();
     }
