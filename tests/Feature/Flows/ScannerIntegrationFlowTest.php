@@ -12,9 +12,12 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectGearItem;
 use App\Models\ProjectScanner;
+use App\Models\Shift;
+use App\Models\ShiftSignup;
 use App\Models\Ticket;
 use App\Models\Volunteer;
 use App\Models\VolunteerGear;
+use App\Models\VolunteerJob;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
@@ -143,6 +146,17 @@ it('completes full volunteer admin flow: create scanner, auth, fetch data, gear 
 
     // Step 4: Gear pickup via API
     $volunteer = Volunteer::factory()->create(['project_id' => $project->id]);
+    $job = VolunteerJob::factory()->create([
+        'event_id' => $event->id,
+    ]);
+    $shift = Shift::factory()->create([
+        'volunteer_job_id' => $job->id,
+    ]);
+    ShiftSignup::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'shift_id' => $shift->id,
+    ]);
+
     $gear = VolunteerGear::factory()->create([
         'volunteer_id' => $volunteer->id,
         'project_gear_item_id' => $gearItem->id,
