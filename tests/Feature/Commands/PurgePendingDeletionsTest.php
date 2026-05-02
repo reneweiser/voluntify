@@ -11,6 +11,15 @@ use App\Models\Shift;
 use App\Models\ShiftSignup;
 use App\Models\Volunteer;
 use App\Models\VolunteerJob;
+use Carbon\Carbon;
+
+beforeEach(function () {
+    Carbon::setTestNow('2026-05-01 12:00:00');
+});
+
+afterEach(function () {
+    Carbon::setTestNow();
+});
 
 it('purges projects pending deletion for more than 7 days', function () {
     $org = Organization::factory()->create();
