@@ -10,6 +10,7 @@ use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -18,12 +19,15 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 #[Title('Your Ticket')]
 class VolunteerTicket extends Component
 {
+    #[Locked]
     public ?Volunteer $volunteer = null;
 
+    #[Locked]
     public ?Ticket $ticket = null;
 
     public bool $expired = false;
 
+    #[Locked]
     public string $magicToken = '';
 
     public function mount(string $magicToken): void

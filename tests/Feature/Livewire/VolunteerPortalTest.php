@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\GenerateTicket;
 use App\Actions\VerifyMagicLink;
 use App\Enums\AttendanceStatus;
 use App\Enums\EventStatus;
@@ -23,8 +24,11 @@ use App\Models\VolunteerGear;
 use App\Models\VolunteerGearPickup;
 use App\Models\VolunteerJob;
 use App\Notifications\TicketResendNotification;
+use App\Services\JwtKeyService;
 use App\ValueObjects\HashedToken;
 use Carbon\Carbon;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
@@ -803,6 +807,36 @@ it('displays QR code SVG when volunteer has ticket', function () {
 
     Livewire::test(VolunteerPortal::class, ['magicToken' => 'token'])
         ->assertSeeHtml('<svg');
+});
+
+it('refreshes a stale ticket JWT when the volunteer portal loads', function () {
+    Carbon::setTestNow('2026-05-01 10:00:00');
+
+    $plainToken = 'portal-refresh-token';
+
+    MagicLinkToken::create([
+        'volunteer_id' => $this->volunteer->id,
+        'token_hash' => HashedToken::fromPlaintext($plainToken)->hash,
+        'expires_at' => null,
+    ]);
+
+    $ticket = app(GenerateTicket::class)->execute($this->volunteer, $this->event);
+    $staleJwt = $ticket->jwt_token;
+
+    Carbon::setTestNow('2026-05-04 10:00:00');
+
+    Livewire::test(VolunteerPortal::class, ['magicToken' => $plainToken])
+        ->assertSeeHtml('<svg');
+
+    $ticket->refresh();
+
+    expect($ticket->jwt_token)->not->toBe($staleJwt);
+
+    $publicKey = app(JwtKeyService::class)->publicKey($this->project->id);
+    $decoded = JWT::decode($ticket->jwt_token, new Key($publicKey, 'EdDSA'));
+
+    expect($decoded->volunteer_id)->toBe($this->volunteer->id)
+        ->and($decoded->project_id)->toBe($this->project->id);
 });
 
 it('hides QR section when no ticket', function () {
