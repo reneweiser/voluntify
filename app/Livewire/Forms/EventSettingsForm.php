@@ -30,6 +30,9 @@ class EventSettingsForm extends Form
     #[Validate('nullable|integer|min:0|max:120')]
     public $attendanceGraceMinutes = '';
 
+    #[Validate('required|integer|min:0|max:1440')]
+    public $signupGraceMinutes = 30;
+
     public string $visibility = 'public';
 
     #[Validate('nullable|email|max:255')]
@@ -63,6 +66,7 @@ class EventSettingsForm extends Form
         $this->startsAt = $data['startsAt'];
         $this->endsAt = $data['endsAt'];
         $this->attendanceGraceMinutes = $data['attendanceGraceMinutes'];
+        $this->signupGraceMinutes = $data['signupGraceMinutes'];
         $this->visibility = $data['visibility'];
         $this->notificationEmail = $data['notificationEmail'];
         $this->priorityUnlockThresholdPercent = $data['priorityUnlockThresholdPercent'];

@@ -97,6 +97,13 @@
                         <flux:description>{{ __('Leave empty to disable shift priority gating for this event. 80 means regular shifts unlock once 80% of priority slots are filled.') }}</flux:description>
                         <flux:error name="form.priorityUnlockThresholdPercent" />
                     </flux:field>
+
+                    <flux:field>
+                        <flux:label>{{ __('Signup Grace Period (minutes)') }}</flux:label>
+                        <flux:input type="number" wire:model="form.signupGraceMinutes" min="0" max="1440" />
+                        <flux:description>{{ __('Volunteers can sign up until the shift start plus this many minutes. Untimed shifts use the shift date at 00:00 as their cutoff reference.') }}</flux:description>
+                        <flux:error name="form.signupGraceMinutes" />
+                    </flux:field>
                 </div>
             </flux:card>
 

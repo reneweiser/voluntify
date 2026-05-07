@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Shift;
@@ -30,6 +31,11 @@ class ReserveShifts
     public function execute(array $shiftIds, string $sessionId, Event $event): ReservationResult
     {
         $event = $event->fresh();
+
+        if ($event->status !== EventStatus::PublishedOpen) {
+            throw new DomainException('This event is no longer open for signup.');
+        }
+
         $eventJobIds = $event->volunteerJobs()->active()->pluck('id');
         $selectedShifts = Shift::whereIn('volunteer_job_id', $eventJobIds)
             ->active()
@@ -48,7 +54,7 @@ class ReserveShifts
 
         sort($validShiftIds);
 
-        return DB::transaction(function () use ($validShiftIds, $sessionId) {
+        return DB::transaction(function () use ($event, $validShiftIds, $sessionId) {
             // D11: Delete existing reservations INSIDE the transaction to avoid race condition.
             // Without the transaction, another user could claim freed capacity between
             // the delete and the lockForUpdate below.
@@ -60,6 +66,10 @@ class ReserveShifts
 
             foreach ($validShiftIds as $shiftId) {
                 $shift = Shift::lockForUpdate()->findOrFail($shiftId);
+
+                if (! $shift->isSignupOpen($event->signup_grace_minutes)) {
+                    throw new DomainException('One or more selected shifts are no longer available for signup.');
+                }
 
                 if ($shift->isFull()) {
                     $unavailable[] = $shift;

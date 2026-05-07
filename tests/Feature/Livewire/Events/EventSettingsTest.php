@@ -47,7 +47,12 @@ it('shows current event values on load', function () {
         ->assertSet('form.name', 'Test Event')
         ->assertSet('form.description', 'A test description')
         ->assertSet('form.location', 'Berlin')
+        ->assertSet('form.signupGraceMinutes', 30)
         ->assertSet('form.visibility', 'public');
+});
+
+it('defaults signup grace minutes to 30 for new events', function () {
+    expect($this->event->fresh()->signup_grace_minutes)->toBe(30);
 });
 
 it('can update general settings', function () {
@@ -82,13 +87,23 @@ it('can update signup settings', function () {
     Livewire::actingAs($this->organizer)
         ->test(EventSettings::class, ['eventId' => $this->event->id])
         ->set('form.visibility', 'private')
+        ->set('form.signupGraceMinutes', 60)
         ->set('form.priorityUnlockThresholdPercent', 80)
         ->call('saveEvent')
         ->assertHasNoErrors();
 
     $this->event->refresh();
     expect($this->event->visibility)->toBe(EventVisibility::Private)
+        ->and($this->event->signup_grace_minutes)->toBe(60)
         ->and($this->event->priority_unlock_threshold_percent)->toBe(80);
+});
+
+it('validates signup grace minutes range', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(EventSettings::class, ['eventId' => $this->event->id])
+        ->set('form.signupGraceMinutes', -1)
+        ->call('saveEvent')
+        ->assertHasErrors(['form.signupGraceMinutes']);
 });
 
 it('validates priority threshold range', function () {

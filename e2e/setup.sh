@@ -116,6 +116,8 @@ vendor/bin/sail artisan tinker --execute="
   \Carbon\Carbon::setTestNow(now());
 
   \DB::transaction(function () {
+    \App\Models\MagicLinkToken::where('token_hash', \App\ValueObjects\HashedToken::fromPlaintext('e2e-portal-refresh-token')->hash)->delete();
+
     \App\Models\ProjectScanner::where('scanner_token', 'e2e-va-shift-list-token')->delete();
 
     \App\Models\Event::where('name', 'E2E Volunteer Admin Shift Event')->delete();
@@ -124,6 +126,7 @@ vendor/bin/sail artisan tinker --execute="
 
     \App\Models\Volunteer::whereIn('email', [
       'lisa-shifts@example.com',
+      'portal-refresh@example.com',
       'tom-shifts@example.com',
       'active-1@example.com',
       'active-2@example.com',
@@ -218,6 +221,29 @@ vendor/bin/sail artisan tinker --execute="
     ShiftSignup::factory()->create([
       'volunteer_id' => \$lisa->id,
       'shift_id' => \$laterShift->id,
+    ]);
+
+    \$portalVolunteer = Volunteer::factory()->verified()->for(\$project)->create([
+      'first_name' => 'Portal',
+      'last_name' => 'Refresh',
+      'email' => 'portal-refresh@example.com',
+      'phone' => '+491701111111',
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$portalVolunteer->id,
+      'shift_id' => \$activeShift->id,
+    ]);
+
+    \$fixtureNow = now();
+    \Carbon\Carbon::setTestNow(\$fixtureNow->copy()->subDays(3));
+    app(GenerateTicket::class)->execute(\$portalVolunteer, \$event);
+    \Carbon\Carbon::setTestNow(\$fixtureNow);
+
+    \App\Models\MagicLinkToken::create([
+      'volunteer_id' => \$portalVolunteer->id,
+      'token_hash' => \App\ValueObjects\HashedToken::fromPlaintext('e2e-portal-refresh-token')->hash,
+      'expires_at' => null,
     ]);
 
     \$tom = Volunteer::factory()->verified()->for(\$project)->create([
@@ -767,6 +793,59 @@ vendor/bin/sail artisan tinker --execute="
 
     \Carbon\Carbon::setTestNow();
 
+    \App\Models\Event::where('name', 'E2E Signup Grace Event')->delete();
+    \App\Models\Project::where('name', 'E2E Signup Grace Project')->delete();
+
+    \$signupGraceProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Signup Grace Project',
+    ]);
+
+    \$signupGraceEvent = Event::factory()->for(\$organization)->for(\$signupGraceProject)->published()->create([
+      'name' => 'E2E Signup Grace Event',
+      'slug' => 'e2e-signup-grace-event',
+      'starts_at' => now()->subHour(),
+      'ends_at' => now()->addDay(),
+      'signup_grace_minutes' => 30,
+    ]);
+
+    \$signupGraceEvent->forceFill([
+      'public_token' => 'e2e-signup-grace-token',
+    ])->save();
+
+    \$signupGraceVerificationHash = \App\ValueObjects\HashedToken::fromPlaintext('e2e-signup-grace-vt')->hash;
+    \App\Models\EmailVerificationToken::where('token_hash', \$signupGraceVerificationHash)->delete();
+    \App\Models\EmailVerificationToken::create([
+      'event_id' => \$signupGraceEvent->id,
+      'project_id' => \$signupGraceProject->id,
+      'email' => 'signup-grace@example.com',
+      'token_hash' => \$signupGraceVerificationHash,
+      'expires_at' => now()->addHour(),
+      'verified_at' => now(),
+    ]);
+
+    \$signupGraceJob = VolunteerJob::factory()->create([
+      'event_id' => \$signupGraceEvent->id,
+      'name' => 'Signup Grace Crew',
+    ]);
+
+    Shift::factory()->create([
+      'volunteer_job_id' => \$signupGraceJob->id,
+      'shift_date' => now()->toDateString(),
+      'starts_at' => now()->subMinutes(10),
+      'ends_at' => now()->addMinutes(50),
+      'display_text' => 'Grace Window Shift',
+      'capacity' => 10,
+    ]);
+
+    Shift::factory()->create([
+      'volunteer_job_id' => \$signupGraceJob->id,
+      'shift_date' => now()->toDateString(),
+      'starts_at' => now()->subMinutes(45),
+      'ends_at' => now()->addMinutes(15),
+      'display_text' => 'Past Cutoff Shift',
+      'capacity' => 10,
+    ]);
+
     file_put_contents(base_path('public/e2e-fixtures.json'), json_encode([
       'entryPoolProjectId' => \$entryPoolProject->id,
       'entryPoolEntryEventId' => \$entryEvent->id,
@@ -783,6 +862,9 @@ vendor/bin/sail artisan tinker --execute="
       'pendingDeletionEventDate' => \$pendingDeletionEvent->deletion_requested_at->copy()->addDays(7)->format('d.m.Y'),
       'reminderTodayEmail' => 'reminder-today@example.com',
       'reminderTomorrowEmail' => 'reminder-tomorrow@example.com',
+      'signupGraceEventId' => \$signupGraceEvent->id,
+      'signupGracePublicToken' => 'e2e-signup-grace-token',
+      'signupGraceVerificationHash' => \$signupGraceVerificationHash,
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
   });
 

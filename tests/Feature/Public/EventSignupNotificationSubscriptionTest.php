@@ -57,6 +57,22 @@ it('shows the notification empty state when no jobs are available', function () 
         ->assertSee('Every update email includes an unsubscribe link.');
 });
 
+it('shows the notification empty state when all shifts are past the signup cutoff', function () {
+    $this->event->update(['signup_grace_minutes' => 30]);
+    $this->shift->update([
+        'capacity' => 10,
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(31),
+        'ends_at' => now()->addMinutes(29),
+        'display_text' => 'Past cutoff shift',
+    ]);
+    ShiftSignup::query()->delete();
+
+    moveToEmptyShiftState(Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token]), 'cutoff@example.com')
+        ->assertSee('No shifts are available right now')
+        ->assertSee('Notify me');
+});
+
 it('creates an unverified subscriber and sends a verification email', function () {
     moveToEmptyShiftState(Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token]))
         ->set('notificationSubscriptionEmail', 'subscriber@example.com')

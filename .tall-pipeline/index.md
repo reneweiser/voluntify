@@ -1,8 +1,8 @@
 ---
-pipeline_status: in_progress
+pipeline_status: complete
 current_stage: complete
-current_focus: "Issue #201 complete — gear scanners now support volunteer and guest gear workflows with pool-scoped volunteer pickups, guest-group filtering, and scanner E2E coverage"
-current_milestone: issue-201-gear-scanner-type
+current_focus: "Issues #222 and #221 complete — portal QR refresh is current-key safe, and public signup cutoff enforcement now covers listing, reserve, final submit, and organizer-safe overrides"
+current_milestone: issue-221-signup-grace-minutes
 entry_point: implement
 stages_to_run:
   - plan
@@ -14,7 +14,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-04-30T19:30:14+02:00"
+last_updated: "2026-05-07T17:30:00+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -45,6 +45,8 @@ last_updated: "2026-04-30T19:30:14+02:00"
 | issue-206-hide-fully-booked-jobs | Hide Fully Booked Jobs | #206 hide fully booked public-signup jobs while keeping partial/full returning-volunteer context | issue-168-shifts-jobs-active-state, issue-203-priority-shift-gate | complete |
 | issue-207-signup-empty-state-notifications | Signup Empty-State Notifications | #207 empty-state opt-in, double opt-in verification, unsubscribe flow, and queued availability notices for public signup | issue-168-shifts-jobs-active-state, issue-203-priority-shift-gate, issue-206-hide-fully-booked-jobs | complete |
 | issue-201-gear-scanner-type | Gear Scanner Type | #201 dedicated gear scanner for volunteer and guest gear with pool events and guest group filters | m11-scanner, m12-guest-lists, issue-196-scanner-arrival-duplicate-status | complete |
+| issue-222-portal-jwt-refresh | Volunteer Portal JWT Refresh | #222 refresh portal QR JWTs so scanner verification no longer fails with stale signatures | m15-volunteer-portal-enhancements, m11-scanner, m19-non-expiring-magic-links | complete |
+| issue-221-signup-grace-minutes | Signup Grace Minutes | #221 event-level public signup cutoff with configurable grace minutes | issue-168-shifts-jobs-active-state, issue-203-priority-shift-gate, issue-206-hide-fully-booked-jobs, issue-207-signup-empty-state-notifications | complete |
 
 ## Artifacts
 
@@ -72,6 +74,10 @@ last_updated: "2026-04-30T19:30:14+02:00"
 | `.tall-pipeline/issue-206-hide-fully-booked-jobs.md` | plan+implement+test | issue-206 | Issue #206 tracking for hiding fully booked jobs from public signup while preserving returning-volunteer visibility | complete |
 | `.tall-pipeline/issue-207-signup-empty-state-notifications.md` | plan+implement+test | issue-207 | Issue #207 tracking for empty-state notification opt-in, verification, unsubscribe, and queued event availability notifications | complete |
 | `.tall-pipeline/issue-201-gear-scanner-type.md` | plan+implement+test+security | issue-201 | Issue #201 tracking for dedicated gear scanners, pool-scoped volunteer pickups, guest filtering, and scanner E2E coverage | complete |
+| `.tall-pipeline/issue-222-portal-jwt-refresh.md` | plan+implement+test+security | issue-222 | Issue #222 tracking for volunteer portal ticket JWT refresh and scanner verification | complete |
+| `e2e/volunteer-portal-jwt-refresh.spec.ts` | test | issue-222 | Browser coverage for stale portal QR refresh before scanner verification | complete |
+| `.tall-pipeline/issue-221-signup-grace-minutes.md` | plan+implement+test+security | issue-221 | Issue #221 tracking for event-level signup grace minutes and booking cutoff enforcement | complete |
+| `e2e/signup-grace-minutes.spec.ts` | test | issue-221 | Browser coverage for organizer-managed signup grace minutes and public shift visibility | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

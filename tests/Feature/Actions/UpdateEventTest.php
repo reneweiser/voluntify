@@ -67,6 +67,21 @@ it('can update published events', function () {
     expect($updated->name)->toBe('Updated Published');
 });
 
+it('rejects out-of-range signup grace minutes', function () {
+    $event = Event::factory()->for($this->org)->create();
+
+    expect(fn () => $this->action->execute(
+        event: $event,
+        name: 'Updated Name',
+        description: null,
+        location: null,
+        startsAt: Carbon::parse('2026-08-01 10:00'),
+        endsAt: Carbon::parse('2026-08-01 18:00'),
+        signupGraceMinutes: 1441,
+        causer: $this->user,
+    ))->toThrow(DomainException::class, 'Signup grace minutes must be between 0 and 1440.');
+});
+
 it('appends numeric suffix when slug collides with another event', function () {
     Event::factory()->for($this->org)->create(['slug' => 'same-name']);
     $event = Event::factory()->for($this->org)->create(['slug' => 'original']);

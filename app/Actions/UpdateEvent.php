@@ -24,6 +24,7 @@ class UpdateEvent
         CarbonInterface $endsAt,
         ?UploadedFile $titleImage = null,
         ?int $attendanceGraceMinutes = null,
+        int $signupGraceMinutes = 30,
         ?EventVisibility $visibility = null,
         ?string $notificationEmail = null,
         ?int $priorityUnlockThresholdPercent = null,
@@ -31,6 +32,10 @@ class UpdateEvent
     ): Event {
         if ($event->status === EventStatus::Archived) {
             throw new DomainException('Cannot update an archived event.');
+        }
+
+        if ($signupGraceMinutes < 0 || $signupGraceMinutes > 1440) {
+            throw new DomainException('Signup grace minutes must be between 0 and 1440.');
         }
 
         $slug = $this->uniqueSlug($event, $name);
@@ -43,6 +48,7 @@ class UpdateEvent
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             'attendance_grace_minutes' => $attendanceGraceMinutes,
+            'signup_grace_minutes' => $signupGraceMinutes,
             'visibility' => $visibility ?? $event->visibility,
             'notification_email' => $notificationEmail,
             'priority_unlock_threshold_percent' => $priorityUnlockThresholdPercent,

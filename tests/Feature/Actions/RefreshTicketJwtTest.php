@@ -73,3 +73,14 @@ it('preserves volunteer_id and project_id in refreshed JWT', function () {
     expect($decoded->volunteer_id)->toBe($this->volunteer->id)
         ->and($decoded->project_id)->toBe($this->project->id);
 });
+
+it('does not rewrite a ticket that is already signed for the current period', function () {
+    Carbon::setTestNow('2026-04-08 10:00:00');
+
+    $ticket = app(GenerateTicket::class)->execute($this->volunteer, $this->event);
+    $currentJwt = $ticket->jwt_token;
+
+    app(RefreshTicketJwt::class)->execute($ticket);
+
+    expect($ticket->fresh()->jwt_token)->toBe($currentJwt);
+});

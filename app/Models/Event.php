@@ -34,6 +34,7 @@ class Event extends Model
         'status',
         'title_image_path',
         'attendance_grace_minutes',
+        'signup_grace_minutes',
         'phone_required',
         'visibility',
         'notification_email',
@@ -50,6 +51,7 @@ class Event extends Model
             'ends_at' => 'datetime',
             'status' => EventStatus::class,
             'attendance_grace_minutes' => 'integer',
+            'signup_grace_minutes' => 'integer',
             'phone_required' => 'boolean',
             'visibility' => EventVisibility::class,
             'volunteer_count' => 'integer',
@@ -214,6 +216,13 @@ class Event extends Model
                 ->orderBy('shift_date')
                 ->orderBy('starts_at')])
             ->get()
+            ->map(function ($job) use ($existingShiftIds) {
+                $job->setRelation('shifts', $job->shifts
+                    ->filter(fn (Shift $shift) => in_array((int) $shift->id, $existingShiftIds, true) || $shift->isSignupOpen($this->signup_grace_minutes))
+                    ->values());
+
+                return $job;
+            })
             ->filter(fn ($job) => $job->shifts->contains(
                 fn ($shift) => ! $shift->isFull() || in_array((int) $shift->id, $existingShiftIds, true)
             ))

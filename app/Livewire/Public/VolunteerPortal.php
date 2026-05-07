@@ -5,6 +5,7 @@ namespace App\Livewire\Public;
 use App\Actions\CancelShiftSignup;
 use App\Actions\DeleteVolunteerProfile;
 use App\Actions\GenerateMagicLink;
+use App\Actions\RefreshTicketJwt;
 use App\Actions\VerifyMagicLink;
 use App\Enums\HintLocation;
 use App\Exceptions\CancellationCutoffPassedException;
@@ -61,9 +62,15 @@ class VolunteerPortal extends Component
 
         try {
             $this->volunteer = app(VerifyMagicLink::class)->execute($magicToken);
-            $this->hasTicket = Ticket::where('volunteer_id', $this->volunteer->id)
+            $ticket = Ticket::where('volunteer_id', $this->volunteer->id)
                 ->where('project_id', $this->volunteer->project_id)
-                ->exists();
+                ->first();
+
+            $this->hasTicket = $ticket !== null;
+
+            if ($ticket) {
+                app(RefreshTicketJwt::class)->execute($ticket);
+            }
         } catch (InvalidMagicLinkException $e) {
             if (str_contains($e->getMessage(), 'expired')) {
                 $this->expired = true;
