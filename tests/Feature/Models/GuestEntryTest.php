@@ -131,3 +131,41 @@ it('falls back to a seven-day guest pass expiry when scanner end time is unavail
     expect(URL::hasValidSignature(Request::create($url)))->toBeTrue()
         ->and($query['expires'] ?? null)->toBe((string) now()->addDays(7)->timestamp);
 });
+
+it('treats legacy invitation_sent_at rows as sent', function () {
+    $entry = GuestEntry::factory()->create([
+        'email' => 'legacy@example.com',
+        'qr_token' => bin2hex(random_bytes(32)),
+        'invitation_sent_at' => now()->subMinute(),
+        'invitation_queued_at' => null,
+        'invitation_failed_at' => null,
+    ]);
+
+    expect($entry->isInvitationSent())->toBeTrue()
+        ->and($entry->invitationStatus())->toBe('sent')
+        ->and($entry->isInvitationPending())->toBeFalse();
+});
+
+it('reports queued, failed, and pending invitation states truthfully', function () {
+    $queued = GuestEntry::factory()->create([
+        'email' => 'queued@example.com',
+        'qr_token' => bin2hex(random_bytes(32)),
+        'invitation_queued_at' => now()->subMinute(),
+    ]);
+    $failed = GuestEntry::factory()->create([
+        'email' => 'failed@example.com',
+        'qr_token' => bin2hex(random_bytes(32)),
+        'invitation_failed_at' => now()->subMinute(),
+    ]);
+    $pending = GuestEntry::factory()->create([
+        'email' => 'pending@example.com',
+        'qr_token' => bin2hex(random_bytes(32)),
+    ]);
+
+    expect($queued->invitationStatus())->toBe('queued')
+        ->and($queued->isInvitationQueued())->toBeTrue()
+        ->and($failed->invitationStatus())->toBe('failed')
+        ->and($failed->isInvitationFailed())->toBeTrue()
+        ->and($pending->invitationStatus())->toBe('pending')
+        ->and($pending->isInvitationPending())->toBeTrue();
+});

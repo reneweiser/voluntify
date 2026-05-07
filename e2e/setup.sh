@@ -721,6 +721,7 @@ vendor/bin/sail artisan tinker --execute="
     \App\Models\Volunteer::whereIn('email', [
       'reminder-today@example.com',
       'reminder-tomorrow@example.com',
+      'reminder-soon@example.com',
     ])->delete();
 
     \$reminderProject = Project::factory()->for(\$organization)->create([
@@ -745,6 +746,11 @@ vendor/bin/sail artisan tinker --execute="
       'name' => 'Tomorrow Reminder Job',
     ]);
 
+    \$reminderSoonJob = VolunteerJob::factory()->create([
+      'event_id' => \$reminderEvent->id,
+      'name' => 'Soon Reminder Job',
+    ]);
+
     \$todayReminderShift = Shift::factory()->create([
       'volunteer_job_id' => \$reminderTodayJob->id,
       'shift_date' => '2026-07-01',
@@ -761,6 +767,14 @@ vendor/bin/sail artisan tinker --execute="
       'display_text' => 'Jul 02, 00:30 - 02:30',
     ]);
 
+    \$soonReminderShift = Shift::factory()->create([
+      'volunteer_job_id' => \$reminderSoonJob->id,
+      'shift_date' => '2026-07-01',
+      'starts_at' => \Carbon\Carbon::parse('2026-07-01 10:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-07-01 12:00:00', 'UTC'),
+      'display_text' => 'Jul 01, 12:00 - 14:00',
+    ]);
+
     \$todayReminderVolunteer = Volunteer::factory()->verified()->for(\$reminderProject)->create([
       'first_name' => 'Heute',
       'last_name' => 'Erinnerung',
@@ -773,6 +787,13 @@ vendor/bin/sail artisan tinker --execute="
       'last_name' => 'Erinnerung',
       'email' => 'reminder-tomorrow@example.com',
       'phone' => '+491700000200',
+    ]);
+
+    \$soonReminderVolunteer = Volunteer::factory()->verified()->for(\$reminderProject)->create([
+      'first_name' => 'Bald',
+      'last_name' => 'Erinnerung',
+      'email' => 'reminder-soon@example.com',
+      'phone' => '+491700000300',
     ]);
 
     ShiftSignup::factory()->create([
@@ -789,7 +810,15 @@ vendor/bin/sail artisan tinker --execute="
       'notification_4h_sent' => false,
     ]);
 
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$soonReminderVolunteer->id,
+      'shift_id' => \$soonReminderShift->id,
+      'notification_24h_sent' => true,
+      'notification_4h_sent' => false,
+    ]);
+
     app(SendPreShiftReminders::class)->execute(ReminderWindow::TwentyFourHour);
+    app(SendPreShiftReminders::class)->execute(ReminderWindow::FourHour);
 
     \Carbon\Carbon::setTestNow();
 
@@ -846,6 +875,83 @@ vendor/bin/sail artisan tinker --execute="
       'capacity' => 10,
     ]);
 
+    \App\Models\Project::where('name', 'E2E Guest List Reliability Project')->delete();
+
+    \$guestListProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Guest List Reliability Project',
+    ]);
+
+    \$guestListScanner = ProjectScanner::factory()->for(\$guestListProject)->create([
+      'name' => 'E2E Guest List Reliability Scanner',
+      'type' => ScannerType::EntryStaff,
+    ]);
+
+    \$guestList = GuestList::factory()->for(\$guestListProject)->for(\$guestListScanner, 'scanner')->confirmed()->create([
+      'name' => 'E2E Guest Invitation Reliability',
+    ]);
+
+    \$draftGuestList = GuestList::factory()->for(\$guestListProject)->for(\$guestListScanner, 'scanner')->create([
+      'name' => 'E2E Draft Guest Invitation List',
+    ]);
+
+    \$repairGroup = GuestGroup::factory()->for(\$guestList)->create([
+      'label' => 'Repair Group',
+      'guest_count' => 2,
+    ]);
+
+    GuestEntry::factory()->for(\$repairGroup, 'group')->withQrToken()->create([
+      'number' => 1,
+      'name' => 'Repair One',
+      'email' => 'repair@example.com',
+      'invitation_failed_at' => now()->subMinutes(10),
+    ]);
+
+    GuestEntry::factory()->for(\$repairGroup, 'group')->withQrToken()->create([
+      'number' => 2,
+      'name' => 'Repair Two',
+      'email' => 'repair@example.com',
+      'invitation_failed_at' => now()->subMinutes(10),
+    ]);
+
+    \$retryGroup = GuestGroup::factory()->for(\$guestList)->create([
+      'label' => 'Retry Group',
+      'guest_count' => 1,
+    ]);
+
+    GuestEntry::factory()->for(\$retryGroup, 'group')->withQrToken()->create([
+      'number' => 1,
+      'name' => 'Retry Guest',
+      'email' => 'retry@example.com',
+      'invitation_failed_at' => now()->subMinutes(5),
+    ]);
+
+    \$pendingGroup = GuestGroup::factory()->for(\$guestList)->create([
+      'label' => 'Pending Group',
+      'guest_count' => 1,
+    ]);
+
+    GuestEntry::factory()->for(\$pendingGroup, 'group')->withQrToken()->create([
+      'number' => 1,
+      'name' => 'Pending Guest',
+      'email' => 'pending-invite@example.com',
+    ]);
+
+    \$sentGroup = GuestGroup::factory()->for(\$guestList)->create([
+      'label' => 'Sent Group',
+      'guest_count' => 1,
+    ]);
+
+    \$sentEntry = GuestEntry::factory()->for(\$sentGroup, 'group')->withQrToken()->create([
+      'number' => 1,
+      'name' => 'Sent Guest',
+      'email' => 'sent-invite@example.com',
+      'invitation_sent_at' => now()->subMinutes(30),
+    ]);
+
+    \Illuminate\Support\Facades\Mail::to('sent-invite@example.com')->send(
+      new \App\Mail\GuestInvitationMail(\$guestList, new \Illuminate\Database\Eloquent\Collection([\$sentEntry]))
+    );
+
     file_put_contents(base_path('public/e2e-fixtures.json'), json_encode([
       'entryPoolProjectId' => \$entryPoolProject->id,
       'entryPoolEntryEventId' => \$entryEvent->id,
@@ -865,6 +971,10 @@ vendor/bin/sail artisan tinker --execute="
       'signupGraceEventId' => \$signupGraceEvent->id,
       'signupGracePublicToken' => 'e2e-signup-grace-token',
       'signupGraceVerificationHash' => \$signupGraceVerificationHash,
+      'guestListReliabilityProjectId' => \$guestListProject->id,
+      'guestListReliabilityGuestListId' => \$guestList->id,
+      'guestListReliabilityDraftGuestListId' => \$draftGuestList->id,
+      'guestListReliabilitySentInviteEmail' => 'sent-invite@example.com',
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
   });
 

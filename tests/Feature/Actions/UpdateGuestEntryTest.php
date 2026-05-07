@@ -87,6 +87,9 @@ it('dispatches email when email is added to entry on confirmed list', function (
     Queue::assertPushed(SendGuestInvitationsJob::class, function ($job) {
         return $job->email === 'newguest@example.com';
     });
+
+    expect($entry->fresh()->invitation_queued_at)->not->toBeNull()
+        ->and($entry->fresh()->invitation_sent_at)->toBeNull();
 });
 
 it('dispatches email when email is changed on confirmed list', function () {
@@ -104,6 +107,113 @@ it('dispatches email when email is changed on confirmed list', function () {
     Queue::assertPushed(SendGuestInvitationsJob::class, function ($job) {
         return $job->email === 'new@example.com';
     });
+});
+
+it('resets sent state and queues a fresh invite when a confirmed sent row changes email', function () {
+    Queue::fake();
+
+    $guestList = GuestList::factory()->confirmed()->create();
+    $group = GuestGroup::factory()->for($guestList)->create();
+    $entry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create([
+        'email' => 'sent@example.com',
+        'invitation_sent_at' => now()->subMinute(),
+    ]);
+
+    (new UpdateGuestEntry)->execute($entry, ['email' => 'fresh@example.com']);
+
+    expect($entry->fresh()->email)->toBe('fresh@example.com')
+        ->and($entry->fresh()->invitation_sent_at)->toBeNull()
+        ->and($entry->fresh()->invitation_queued_at)->not->toBeNull();
+
+    Queue::assertPushed(SendGuestInvitationsJob::class, fn ($job) => $job->email === 'fresh@example.com' && $job->guestEntryIds === [$entry->id]);
+});
+
+it('resets queued state and queues the moved row for the new email on confirmed lists', function () {
+    Queue::fake();
+
+    $guestList = GuestList::factory()->confirmed()->create();
+    $group = GuestGroup::factory()->for($guestList)->create();
+    $entry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create([
+        'email' => 'queued@example.com',
+        'invitation_queued_at' => now()->subMinute(),
+    ]);
+
+    (new UpdateGuestEntry)->execute($entry, ['email' => 'moved@example.com']);
+
+    expect($entry->fresh()->email)->toBe('moved@example.com')
+        ->and($entry->fresh()->invitation_sent_at)->toBeNull()
+        ->and($entry->fresh()->invitation_queued_at)->not->toBeNull()
+        ->and($entry->fresh()->invitation_failed_at)->toBeNull();
+
+    Queue::assertPushed(SendGuestInvitationsJob::class, fn ($job) => $job->email === 'moved@example.com' && $job->guestEntryIds === [$entry->id]);
+});
+
+it('updates the full failed sibling set email before requeueing a corrected resend', function () {
+    Queue::fake();
+
+    $guestList = GuestList::factory()->confirmed()->create();
+    $group = GuestGroup::factory()->for($guestList)->create();
+    $entry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create([
+        'email' => 'broken@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+    GuestEntry::factory()->for($group, 'group')->withQrToken()->create([
+        'email' => 'broken@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+
+    (new UpdateGuestEntry)->execute($entry, ['email' => 'fixed@example.com']);
+
+    expect(GuestEntry::where('guest_group_id', $group->id)->where('email', 'fixed@example.com')->count())->toBe(2)
+        ->and(GuestEntry::where('guest_group_id', $group->id)->whereNotNull('invitation_queued_at')->count())->toBe(2)
+        ->and(GuestEntry::where('guest_group_id', $group->id)->whereNotNull('invitation_failed_at')->count())->toBe(0);
+
+    Queue::assertPushed(SendGuestInvitationsJob::class, fn ($job) => $job->email === 'fixed@example.com');
+});
+
+it('only rewrites failed rows when correcting a failed sibling set with same-email drift present', function () {
+    Queue::fake();
+
+    $guestList = GuestList::factory()->confirmed()->create();
+    $group = GuestGroup::factory()->for($guestList)->create();
+    $failedEntry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create([
+        'email' => 'shared@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+    $sentEntry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create([
+        'email' => 'shared@example.com',
+        'invitation_sent_at' => now()->subMinute(),
+    ]);
+
+    (new UpdateGuestEntry)->execute($failedEntry, ['email' => 'fixed@example.com']);
+
+    expect($failedEntry->fresh()->email)->toBe('fixed@example.com')
+        ->and($failedEntry->fresh()->invitation_queued_at)->not->toBeNull()
+        ->and($sentEntry->fresh()->email)->toBe('shared@example.com')
+        ->and($sentEntry->fresh()->invitation_sent_at)->not->toBeNull();
+});
+
+it('only requeues the corrected failed rows when the new email already exists elsewhere in the guest list', function () {
+    Queue::fake();
+
+    $guestList = GuestList::factory()->confirmed()->create();
+    $group = GuestGroup::factory()->for($guestList)->create();
+    $failedEntry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create([
+        'email' => 'broken@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+    $existingSentEntry = GuestEntry::factory()->for($group, 'group')->withQrToken()->create([
+        'email' => 'shared@example.com',
+        'invitation_sent_at' => now()->subMinute(),
+    ]);
+
+    (new UpdateGuestEntry)->execute($failedEntry, ['email' => 'shared@example.com']);
+
+    Queue::assertPushed(SendGuestInvitationsJob::class, fn ($job) => $job->email === 'shared@example.com' && $job->guestEntryIds === [$failedEntry->id]);
+
+    expect($failedEntry->fresh()->email)->toBe('shared@example.com')
+        ->and($failedEntry->fresh()->invitation_queued_at)->not->toBeNull()
+        ->and($existingSentEntry->fresh()->invitation_sent_at)->not->toBeNull();
 });
 
 it('does not dispatch email when email is updated on draft list', function () {

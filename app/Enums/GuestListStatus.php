@@ -10,8 +10,8 @@ enum GuestListStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Draft => 'Draft',
-            self::Confirmed => 'Confirmed',
+            self::Draft => __('Sending inactive'),
+            self::Confirmed => __('Sending active'),
         };
     }
 }

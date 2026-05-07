@@ -36,6 +36,9 @@ it('adds entry to confirmed list and generates QR token and dispatches email', f
     Queue::assertPushed(SendGuestInvitationsJob::class, function ($job) {
         return $job->email === 'vip@example.com';
     });
+
+    expect($entry->fresh()->invitation_queued_at)->not->toBeNull()
+        ->and($entry->fresh()->invitation_sent_at)->toBeNull();
 });
 
 it('adds entry to confirmed list without email and skips email dispatch', function () {

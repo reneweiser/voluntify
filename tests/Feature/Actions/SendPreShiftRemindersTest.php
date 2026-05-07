@@ -4,6 +4,7 @@ use App\Actions\SendPreShiftReminders;
 use App\Enums\EventStatus;
 use App\Enums\ReminderWindow;
 use App\Models\Event;
+use App\Models\MagicLinkToken;
 use App\Models\Organization;
 use App\Models\Shift;
 use App\Models\ShiftSignup;
@@ -17,7 +18,7 @@ beforeEach(function () {
     $this->org = Organization::factory()->create();
     $this->event = Event::factory()->for($this->org)->create(['status' => EventStatus::PublishedOpen]);
     $this->job = VolunteerJob::factory()->for($this->event)->create();
-    $this->action = new SendPreShiftReminders;
+    $this->action = app(SendPreShiftReminders::class);
 });
 
 function createSignupWithShiftStartingIn(int $hours, array $overrides = []): ShiftSignup
@@ -37,7 +38,13 @@ it('sends 24h reminders for shifts starting within 24 hours', function () {
     $count = $this->action->execute(ReminderWindow::TwentyFourHour);
 
     expect($count)->toBe(1);
-    Notification::assertSentTo($signup->volunteer, PreShiftReminder::class);
+    Notification::assertSentTo($signup->volunteer, PreShiftReminder::class, function (PreShiftReminder $notification) {
+        expect($notification->magicLinkToken)->not->toBe('');
+
+        return true;
+    });
+    expect(MagicLinkToken::where('volunteer_id', $signup->volunteer_id)->count())->toBe(1)
+        ->and(MagicLinkToken::where('volunteer_id', $signup->volunteer_id)->first()->expires_at)->toBeNull();
     expect($signup->fresh()->notification_24h_sent)->toBeTrue();
 });
 
@@ -176,4 +183,28 @@ it('returns correct count', function () {
     $count = $this->action->execute(ReminderWindow::TwentyFourHour);
 
     expect($count)->toBe(2);
+});
+
+it('generates a fresh magic-link token for each reminder send', function () {
+    $signup24h = createSignupWithShiftStartingIn(20);
+    $signup4h = createSignupWithShiftStartingIn(3, [
+        'volunteer_id' => $signup24h->volunteer_id,
+    ]);
+
+    $this->action->execute(ReminderWindow::TwentyFourHour);
+    $this->action->execute(ReminderWindow::FourHour);
+
+    $tokens = [];
+
+    Notification::assertSentToTimes($signup24h->volunteer, PreShiftReminder::class, 3);
+    Notification::assertSentTo($signup24h->volunteer, PreShiftReminder::class, function (PreShiftReminder $notification) use (&$tokens) {
+        $tokens[] = $notification->magicLinkToken;
+
+        return true;
+    });
+
+    expect($tokens)->toHaveCount(3)
+        ->and(array_unique($tokens))->toHaveCount(3)
+        ->and(MagicLinkToken::where('volunteer_id', $signup24h->volunteer_id)->count())->toBe(3)
+        ->and($signup4h->fresh()->notification_4h_sent)->toBeTrue();
 });

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\GuestListStatus;
 use App\Enums\StaffRole;
 use App\Livewire\Projects\GuestListIndex;
 use App\Models\GuestList;
@@ -63,6 +64,29 @@ it('displays guest lists', function () {
         ->test(GuestListIndex::class, ['projectId' => $this->project->id])
         ->assertSee('Alpha List')
         ->assertSee('Beta List');
+});
+
+it('shows sending status labels for draft and active guest lists', function () {
+    GuestList::factory()->create([
+        'project_id' => $this->project->id,
+        'scanner_id' => $this->scanner->id,
+        'name' => 'Draft List',
+        'status' => GuestListStatus::Draft,
+    ]);
+
+    GuestList::factory()->create([
+        'project_id' => $this->project->id,
+        'scanner_id' => $this->scanner->id,
+        'name' => 'Active List',
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListIndex::class, ['projectId' => $this->project->id])
+        ->assertSee('Sending inactive')
+        ->assertSee('Sending active')
+        ->assertDontSee('Confirmed');
 });
 
 it('shows empty state when no guest lists', function () {
