@@ -129,7 +129,11 @@
                                                 </td>
                                                 <td class="py-2 pr-4">
                                                     <flux:label for="entry-email-{{ $entry->id }}" class="sr-only">{{ __('Guest email') }}</flux:label>
-                                                    <flux:input id="entry-email-{{ $entry->id }}" wire:model="entryEmail" size="sm" type="email" placeholder="{{ __('Email') }}" @if ($entry->isInvitationFailed()) aria-describedby="entry-email-recovery-{{ $entry->id }}" @endif />
+                                                    @if ($entry->isInvitationFailed())
+                                                        <flux:input id="entry-email-{{ $entry->id }}" wire:model="entryEmail" size="sm" type="email" placeholder="{{ __('Email') }}" aria-describedby="entry-email-recovery-{{ $entry->id }}" />
+                                                    @else
+                                                        <flux:input id="entry-email-{{ $entry->id }}" wire:model="entryEmail" size="sm" type="email" placeholder="{{ __('Email') }}" />
+                                                    @endif
                                                     <flux:error name="entryEmail" />
                                                     @if ($entry->isInvitationFailed())
                                                         <p id="entry-email-recovery-{{ $entry->id }}" class="sr-only">{{ __('Saving a new email will resend this failed recipient group.') }}</p>
