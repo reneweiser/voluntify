@@ -103,6 +103,7 @@ class EventSignup extends Component
                 ->first();
 
             if ($token) {
+                $this->verificationTokenId = $token->id;
                 $this->volunteerEmail = $token->volunteer?->email ?? $token->email ?? '';
                 $this->prefillFromVolunteer($token->volunteer);
                 $this->state = WizardState::PersonalInfo;
@@ -561,6 +562,19 @@ class EventSignup extends Component
             $this->validateGearAndCustomFields();
         }
 
+        $verificationToken = $this->verificationTokenId !== null
+            ? EmailVerificationToken::find($this->verificationTokenId)
+            : null;
+
+        $verifiedEmail = $verificationToken?->volunteer?->email ?? $verificationToken?->email;
+
+        if (! $verificationToken?->isVerified() || $verificationToken->project_id !== $this->event->project_id || $verifiedEmail === null || strcasecmp($this->volunteerEmail, $verifiedEmail) !== 0) {
+            $this->addError('volunteerEmail', __('Your verified email no longer matches the submitted email. Please verify your email again before completing your signup.'));
+            $this->restartSignup();
+
+            return;
+        }
+
         // D13: Verify reservations still exist in DB, not just timestamp comparison.
         if (! ShiftReservation::forSession(session()->getId())->active()->exists()) {
             $this->handleReservationExpired();
@@ -590,6 +604,26 @@ class EventSignup extends Component
                 array_map('intval', $this->selectedShiftIds),
                 $this->existingShiftIds,
             ));
+
+            $reservedShiftIds = ShiftReservation::forSession(session()->getId())
+                ->active()
+                ->pluck('shift_id')
+                ->map(fn ($shiftId) => (int) $shiftId)
+                ->sort()
+                ->values()
+                ->all();
+
+            $submittedShiftIds = collect($newShiftIds)
+                ->sort()
+                ->values()
+                ->all();
+
+            if ($submittedShiftIds !== $reservedShiftIds) {
+                $this->addError('selectedShiftIds', __('Your shift reservation no longer matches your current selection. Please review your shifts and continue again.'));
+                $this->restartSignup();
+
+                return;
+            }
 
             $result = $action->execute(
                 firstName: $this->volunteerFirstName,

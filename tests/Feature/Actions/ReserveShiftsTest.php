@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\ReserveShifts;
+use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Organization;
@@ -144,6 +145,53 @@ it('sets expiry 20 minutes from now', function () {
 
     expect($result->expiresAt->gte($before))->toBeTrue()
         ->and($result->expiresAt->lte($after))->toBeTrue();
+});
+
+it('rejects reservations after the signup grace period has passed', function () {
+    $this->event->update(['signup_grace_minutes' => 30]);
+
+    $expiredShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(31),
+        'ends_at' => now()->addMinutes(29),
+        'capacity' => 3,
+    ]);
+
+    expect(fn () => $this->action->execute(
+        shiftIds: [$expiredShift->id],
+        sessionId: 'test-session',
+        event: $this->event,
+    ))->toThrow(DomainException::class, 'One or more selected shifts are no longer available for signup.');
+});
+
+it('allows reservations while a shift is still inside the signup grace period', function () {
+    $this->event->update(['signup_grace_minutes' => 30]);
+
+    $graceShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(10),
+        'ends_at' => now()->addMinutes(50),
+        'capacity' => 3,
+    ]);
+
+    $result = $this->action->execute(
+        shiftIds: [$graceShift->id],
+        sessionId: 'test-session',
+        event: $this->event,
+    );
+
+    expect($result->hasReservations())->toBeTrue()
+        ->and($result->reservedShiftIds())->toBe([$graceShift->id]);
+});
+
+it('rejects reservations when the event is no longer open for signup', function () {
+    $this->event->update(['status' => EventStatus::PublishedClosed]);
+
+    expect(fn () => $this->action->execute(
+        shiftIds: [$this->shift1->id],
+        sessionId: 'test-session',
+        event: $this->event,
+    ))->toThrow(DomainException::class, 'This event is no longer open for signup.');
 });
 
 it('handles mixed available and unavailable shifts with partial reservation', function () {

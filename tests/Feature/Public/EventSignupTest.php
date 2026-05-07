@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\EventStatus;
 use App\Enums\WizardState;
 use App\Livewire\Public\EventSignup;
 use App\Models\EmailVerificationToken;
@@ -73,6 +74,30 @@ it('hides inactive jobs and shifts from public signup', function () {
         ->assertSee('Litter Pickup')
         ->assertDontSee('Hidden Job')
         ->assertDontSee('Hidden Shift');
+});
+
+it('hides shifts that are past the signup grace period', function () {
+    $this->event->update(['signup_grace_minutes' => 30]);
+
+    Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'capacity' => 10,
+        'display_text' => 'Grace Window Shift',
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(10),
+        'ends_at' => now()->addMinutes(50),
+    ]);
+
+    Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'capacity' => 10,
+        'display_text' => 'Past Cutoff Shift',
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(31),
+        'ends_at' => now()->addMinutes(29),
+    ]);
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSee('Grace Window Shift')
+        ->assertDontSee('Past Cutoff Shift');
 });
 
 it('displays title image on public page', function () {
@@ -195,6 +220,40 @@ it('keeps a returning volunteers fully booked job visible when they already hold
         ->assertSee('Load In')
         ->assertSee('Already signed up')
         ->assertSee('Load Out');
+});
+
+it('keeps a returning volunteers past-cutoff shift visible when they already hold it', function () {
+    $this->event->update(['signup_grace_minutes' => 30]);
+
+    $returningVolunteer = Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'returning-cutoff@example.com',
+        'first_name' => 'Returning',
+        'last_name' => 'Cutoff',
+    ]);
+
+    $heldShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'capacity' => 5,
+        'display_text' => 'Already Held Cutoff Shift',
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(31),
+        'ends_at' => now()->addMinutes(29),
+    ]);
+
+    ShiftSignup::factory()->create([
+        'shift_id' => $heldShift->id,
+        'volunteer_id' => $returningVolunteer->id,
+    ]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning-cutoff@example.com')
+        ->call('submitEmail');
+
+    simulateVerification($component, 'returning-cutoff@example.com');
+
+    $component
+        ->call('advanceToShifts')
+        ->assertSee('Already Held Cutoff Shift')
+        ->assertSee('Already signed up');
 });
 
 it('returns an empty jobs collection when all jobs are fully booked and the volunteer has no existing signup', function () {
@@ -558,14 +617,19 @@ it('allows selecting adjacent shifts that meet exactly at midnight', function ()
 });
 
 it('blocks reserveAndAdvance when overnight shift overlaps next-day shift', function () {
+    $overnightStart = now()->addDays(30)->setTime(23, 0);
+    $overnightEnd = $overnightStart->copy()->addHours(3);
+    $nextDayStart = $overnightStart->copy()->addHours(2);
+    $nextDayEnd = $nextDayStart->copy()->addHours(3);
+
     $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-01 23:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 02:00:00'),
+        'starts_at' => $overnightStart,
+        'ends_at' => $overnightEnd,
         'capacity' => 10,
     ]);
     $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-02 01:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 04:00:00'),
+        'starts_at' => $nextDayStart,
+        'ends_at' => $nextDayEnd,
         'capacity' => 10,
     ]);
 
@@ -586,14 +650,19 @@ it('blocks reserveAndAdvance when overnight shift overlaps next-day shift', func
 });
 
 it('allows reserveAndAdvance after deselecting one conflicting cross-midnight shift', function () {
+    $overnightStart = now()->addDays(30)->setTime(23, 0);
+    $overnightEnd = $overnightStart->copy()->addHours(3);
+    $nextDayStart = $overnightStart->copy()->addHours(2);
+    $nextDayEnd = $nextDayStart->copy()->addHours(3);
+
     $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-01 23:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 02:00:00'),
+        'starts_at' => $overnightStart,
+        'ends_at' => $overnightEnd,
         'capacity' => 10,
     ]);
     $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-02 01:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 04:00:00'),
+        'starts_at' => $nextDayStart,
+        'ends_at' => $nextDayEnd,
         'capacity' => 10,
     ]);
 
@@ -1059,6 +1128,70 @@ it('checks DB reservation existence before submit (D13)', function () {
 
     $component->call('submitSignup')
         ->assertSet('state', WizardState::Expired);
+});
+
+it('rejects submitSignup when the selected shifts do not match the reserved shifts', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'tamper@example.com', 'first_name' => 'Tamper', 'last_name' => 'Test']);
+
+    $extraShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'capacity' => 10,
+        'starts_at' => now()->addDay()->setTime(13, 0),
+        'ends_at' => now()->addDay()->setTime(15, 0),
+    ]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'tamper@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'tamper@example.com');
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::Confirming)
+        ->set('selectedShiftIds', [$this->shift->id, $extraShift->id])
+        ->call('submitSignup')
+        ->assertHasErrors(['selectedShiftIds']);
+
+    expect(Volunteer::where('email', 'tamper@example.com')
+        ->whereHas('shiftSignups', fn ($query) => $query->where('shift_id', $extraShift->id))
+        ->exists())->toBeFalse();
+});
+
+it('rejects submitSignup when the verified email no longer matches the submitted email', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'verified-flow@example.com', 'first_name' => 'Verified', 'last_name' => 'Flow']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'verified-flow@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'verified-flow@example.com');
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::Confirming)
+        ->set('volunteerEmail', 'other@example.com')
+        ->call('submitSignup')
+        ->assertHasErrors(['volunteerEmail']);
+
+    expect(Volunteer::where('email', 'other@example.com')
+        ->whereHas('shiftSignups', fn ($query) => $query->where('shift_id', $this->shift->id))
+        ->exists())->toBeFalse();
+});
+
+it('rejects submitSignup when the event is no longer open', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'closed-event@example.com', 'first_name' => 'Closed', 'last_name' => 'Event']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'closed-event@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'closed-event@example.com');
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::Confirming);
+
+    $this->event->update(['status' => EventStatus::PublishedClosed]);
+
+    $component->call('submitSignup')
+        ->assertHasErrors(['selectedShiftIds']);
 });
 
 it('shows signed up message for verified volunteer', function () {

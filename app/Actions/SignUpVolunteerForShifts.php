@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\EventStatus;
 use App\Exceptions\DomainException;
 use App\Models\Event;
 use App\Models\Shift;
@@ -29,8 +30,15 @@ class SignUpVolunteerForShifts
         bool $sendNotification = true,
         ?string $sessionId = null,
         bool $bypassPriorityGate = false,
+        bool $bypassSignupCutoff = false,
+        bool $requirePublishedOpen = false,
     ): ShiftSignupResult {
         $event = $event->fresh();
+
+        if ($requirePublishedOpen && $event->status !== EventStatus::PublishedOpen) {
+            throw new DomainException('This event is no longer open for signup.');
+        }
+
         $eventJobIds = $event->volunteerJobs()->active()->pluck('id');
         $selectedShifts = Shift::whereIn('volunteer_job_id', $eventJobIds)
             ->active()
@@ -50,7 +58,7 @@ class SignUpVolunteerForShifts
         $sortedShiftIds = $shiftIds;
         sort($sortedShiftIds);
 
-        $result = DB::transaction(function () use ($volunteer, $event, $sortedShiftIds, $sessionId) {
+        $result = DB::transaction(function () use ($bypassSignupCutoff, $volunteer, $event, $sortedShiftIds, $sessionId) {
             // Release this session's reservations BEFORE checking capacity.
             // This is safe within the transaction: releasing the reservation frees capacity,
             // and the signup immediately claims it. No other transaction can grab the spot
@@ -81,6 +89,10 @@ class SignUpVolunteerForShifts
 
             foreach ($sortedShiftIds as $shiftId) {
                 $shift = Shift::lockForUpdate()->findOrFail($shiftId);
+
+                if (! $bypassSignupCutoff && ! $shift->isSignupOpen($event->signup_grace_minutes)) {
+                    throw new DomainException('One or more selected shifts are no longer available for signup.');
+                }
 
                 // Duplicate check (active signups only).
                 $existingSignup = ShiftSignup::where('volunteer_id', $volunteer->id)

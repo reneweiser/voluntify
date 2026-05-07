@@ -121,6 +121,7 @@ class ManualEnrollment extends Component
             shiftIds: $this->selectedShifts,
             sendNotification: $this->sendNotification,
             bypassPriorityGate: true,
+            bypassSignupCutoff: true,
         );
 
         $this->enrollmentResult = [

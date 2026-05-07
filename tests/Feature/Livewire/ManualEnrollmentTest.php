@@ -252,6 +252,30 @@ it('lets organizers enroll into regular shifts even when the public priority gat
     expect(ShiftSignup::where('volunteer_id', $volunteer->id)->where('shift_id', $regularShift->id)->exists())->toBeTrue();
 });
 
+it('lets organizers enroll volunteers into shifts that are past the public signup cutoff', function () {
+    $this->event->update(['signup_grace_minutes' => 30]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $job = VolunteerJob::factory()->for($this->event)->create();
+    $seedShift = Shift::factory()->for($job, 'volunteerJob')->create(['capacity' => 5]);
+    ShiftSignup::factory()->create(['volunteer_id' => $volunteer->id, 'shift_id' => $seedShift->id]);
+    $expiredShift = Shift::factory()->for($job, 'volunteerJob')->create([
+        'capacity' => 5,
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(45),
+        'ends_at' => now()->addMinutes(15),
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(ManualEnrollment::class, ['eventId' => $this->event->id])
+        ->call('selectVolunteer', $volunteer->id)
+        ->set('selectedShifts', [$expiredShift->id])
+        ->call('enroll')
+        ->assertSee('1 shift(s) enrolled successfully.');
+
+    expect(ShiftSignup::where('volunteer_id', $volunteer->id)->where('shift_id', $expiredShift->id)->exists())->toBeTrue();
+});
+
 it('displays the selected volunteer full name in the shift selection heading', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create([
         'first_name' => 'Alice',

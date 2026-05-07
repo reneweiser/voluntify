@@ -60,6 +60,7 @@ class ProcessVolunteerSignup
             event: $event,
             shiftIds: $shiftIds,
             sessionId: $sessionId,
+            requirePublishedOpen: true,
         );
 
         $volunteerJobIds = collect($shiftIds)

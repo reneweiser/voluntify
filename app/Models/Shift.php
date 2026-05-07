@@ -119,6 +119,18 @@ class Shift extends Model
         return $this->starts_at !== null;
     }
 
+    public function signupCutoffAt(int $graceMinutes): CarbonInterface
+    {
+        $signupStart = $this->starts_at?->copy() ?? $this->shift_date->copy()->startOfDay();
+
+        return $signupStart->addMinutes($graceMinutes);
+    }
+
+    public function isSignupOpen(int $graceMinutes, ?CarbonInterface $at = null): bool
+    {
+        return $this->signupCutoffAt($graceMinutes)->gte($at ?? now());
+    }
+
     public function displayTimeRange(?string $timezone = null): string
     {
         if ($this->display_text) {

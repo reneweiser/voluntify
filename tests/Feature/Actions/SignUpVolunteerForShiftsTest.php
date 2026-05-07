@@ -236,6 +236,64 @@ it('throws DomainException when a shift belongs to an inactive job', function ()
     ))->toThrow(DomainException::class, 'One or more shifts do not belong to this event.');
 });
 
+it('throws DomainException when a shift is past the signup grace period', function () {
+    $this->event->update(['signup_grace_minutes' => 30]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $expiredShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(31),
+        'ends_at' => now()->addMinutes(29),
+        'capacity' => 5,
+    ]);
+
+    expect(fn () => $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$expiredShift->id],
+    ))->toThrow(DomainException::class, 'One or more selected shifts are no longer available for signup.');
+});
+
+it('allows signups when the event overrides signup grace minutes', function () {
+    $this->event->update(['signup_grace_minutes' => 60]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $graceOverrideShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => now()->toDateString(),
+        'starts_at' => now()->subMinutes(45),
+        'ends_at' => now()->addMinutes(15),
+        'capacity' => 5,
+    ]);
+
+    $result = $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$graceOverrideShift->id],
+    );
+
+    expect($result->hasNewSignups())->toBeTrue()
+        ->and($result->newSignups)->toHaveCount(1);
+});
+
+it('uses shift_date for untimed shifts when evaluating the signup cutoff', function () {
+    $this->event->update(['signup_grace_minutes' => 30]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->create();
+    $untimedShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => now()->toDateString(),
+        'starts_at' => null,
+        'ends_at' => null,
+        'display_text' => 'Anytime today',
+        'capacity' => 5,
+    ]);
+
+    expect(fn () => $this->action->execute(
+        volunteer: $volunteer,
+        event: $this->event,
+        shiftIds: [$untimedShift->id],
+    ))->toThrow(DomainException::class, 'One or more selected shifts are no longer available for signup.');
+});
+
 it('cancelled signups do not count toward capacity', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
     $fullShift = Shift::factory()->for($this->job, 'volunteerJob')->create(['capacity' => 1]);
@@ -491,15 +549,19 @@ it('allows intra-batch adjacent shifts that meet exactly at midnight', function 
 
 it('skips a shift that overlaps a cross-midnight existing signup', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
+    $overnightStart = now()->addDays(30)->setTime(23, 0);
+    $overnightEnd = $overnightStart->copy()->addHours(3);
+    $nextDayStart = $overnightStart->copy()->addHours(2);
+    $nextDayEnd = $nextDayStart->copy()->addHours(3);
 
     $overnight = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-01 23:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 02:00:00'),
+        'starts_at' => $overnightStart,
+        'ends_at' => $overnightEnd,
         'capacity' => 5,
     ]);
     $nextDay = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-02 01:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 04:00:00'),
+        'starts_at' => $nextDayStart,
+        'ends_at' => $nextDayEnd,
         'capacity' => 5,
     ]);
 
@@ -518,20 +580,26 @@ it('skips a shift that overlaps a cross-midnight existing signup', function () {
 
 it('skips an intra-batch shift that overlaps a cross-midnight shift', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
+    $overnightStart = now()->addDays(30)->setTime(23, 0);
+    $overnightEnd = $overnightStart->copy()->addHours(3);
+    $overlappingStart = $overnightStart->copy()->addHours(2);
+    $overlappingEnd = $overlappingStart->copy()->addHours(3);
+    $noOverlapStart = $overnightStart->copy()->addHours(7);
+    $noOverlapEnd = $noOverlapStart->copy()->addHours(2);
 
     $overnight = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-01 23:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 02:00:00'),
+        'starts_at' => $overnightStart,
+        'ends_at' => $overnightEnd,
         'capacity' => 5,
     ]);
     $overlapping = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-02 01:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 04:00:00'),
+        'starts_at' => $overlappingStart,
+        'ends_at' => $overlappingEnd,
         'capacity' => 5,
     ]);
     $noOverlap = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'starts_at' => Carbon::parse('2026-05-02 06:00:00'),
-        'ends_at' => Carbon::parse('2026-05-02 08:00:00'),
+        'starts_at' => $noOverlapStart,
+        'ends_at' => $noOverlapEnd,
         'capacity' => 5,
     ]);
 

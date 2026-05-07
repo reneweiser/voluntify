@@ -4,6 +4,7 @@ use App\Enums\WizardState;
 use App\Livewire\Public\EventSignup;
 use App\Models\CustomFieldResponse;
 use App\Models\CustomRegistrationField;
+use App\Models\EmailVerificationToken;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\Project;
@@ -13,6 +14,15 @@ use App\Models\Volunteer;
 use App\Models\VolunteerJob;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+
+function simulateLivewireVerification($component, string $email)
+{
+    $token = EmailVerificationToken::where('email', $email)->latest()->first();
+    expect($token)->not->toBeNull('No verification token found for '.$email);
+    $token->update(['verified_at' => now()]);
+
+    return $component->call('checkVerification');
+}
 
 beforeEach(function () {
     Notification::fake();
@@ -71,11 +81,15 @@ it('validates required custom fields on step 2', function () {
 it('completes signup flow with custom field responses for new volunteer', function () {
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('state', WizardState::PersonalInfo)
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'newvolunteer@example.com')
+        ->call('submitEmail');
+
+    simulateLivewireVerification($component, 'newvolunteer@example.com');
+
+    $component
         ->set('volunteerFirstName', 'Test')
         ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'newvolunteer@example.com')
         ->call('advanceToShifts')
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
@@ -93,11 +107,15 @@ it('completes signup with custom fields for verified volunteer', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'verified@example.com']);
     $field = CustomRegistrationField::factory()->for($this->event)->create(['label' => 'Diet']);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('state', WizardState::PersonalInfo)
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'verified@example.com')
+        ->call('submitEmail');
+
+    simulateLivewireVerification($component, 'verified@example.com');
+
+    $component
         ->set('volunteerFirstName', 'Verified')
         ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'verified@example.com')
         ->call('advanceToShifts')
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
