@@ -66,10 +66,18 @@ it('completes full lifecycle: create list -> add groups -> add entries with gear
     // Only 1 unique email, so 1 invitation job
     Queue::assertPushed(SendGuestInvitationsJob::class, 1);
 
+    expect($guestList->entries()->where('email', 'manager@example.com')->whereNull('invitation_queued_at')->count())->toBe(0);
+
     // 6. Run the invitation job to send email
     Queue::fake();
-    (new SendGuestInvitationsJob($guestList, 'manager@example.com'))->handle();
+    (new SendGuestInvitationsJob(
+        $guestList,
+        'manager@example.com',
+        $guestList->entries()->where('email', 'manager@example.com')->pluck('guest_entries.id')->all(),
+    ))->handle();
     Mail::assertSent(GuestInvitationMail::class, function (GuestInvitationMail $mail) {
+        $mail->assertSeeInHtml(__('Open Guest Pass'));
+
         return $mail->hasTo('manager@example.com')
             && $mail->entries->count() === 1;
     });
@@ -115,6 +123,9 @@ it('post-confirm: adding entry generates QR immediately and dispatches email', f
     Queue::assertPushed(SendGuestInvitationsJob::class, function ($job) {
         return $job->email === 'late@example.com';
     });
+
+    expect($newEntry->fresh()->invitation_queued_at)->not->toBeNull()
+        ->and($newEntry->fresh()->invitation_sent_at)->toBeNull();
 });
 
 it('post-confirm removal: removed entry QR becomes invalid for check-in via API', function () {

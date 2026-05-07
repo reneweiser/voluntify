@@ -23,6 +23,7 @@ class PreShiftReminder extends Notification implements ShouldQueue
         public Event $event,
         public Shift $shift,
         public EmailTemplateType $templateType,
+        public string $magicLinkToken,
     ) {}
 
     /**
@@ -43,6 +44,7 @@ class PreShiftReminder extends Notification implements ShouldQueue
         $cheatSheetUrl = $job->instructions
             ? route('events.jobs.cheat-sheet', ['publicToken' => $this->event->public_token, 'jobId' => $job->id])
             : '';
+        $portalUrl = route('volunteer.portal', $this->magicLinkToken);
 
         $renderer = app(EmailTemplateRenderer::class);
         $rendered = $renderer->render(
@@ -61,7 +63,7 @@ class PreShiftReminder extends Notification implements ShouldQueue
                 'shift_time' => $this->shift->displayTimeRange($timezone),
                 'event_location' => $this->event->location ? "**Ort:** {$this->event->location}" : '',
                 'cheat_sheet_url' => $cheatSheetUrl ? "[Aufgaben-Infos anzeigen]({$cheatSheetUrl})" : '',
-                'portal_link' => '', // Will be set when portal URL is available
+                'portal_link' => $portalUrl,
                 'kontakt_email' => $this->event->project?->contact_email ?? $this->event->organization->smtp_from_address ?? '',
                 'project_name' => $this->event->project?->name ?? '',
             ],
@@ -77,6 +79,8 @@ class PreShiftReminder extends Notification implements ShouldQueue
                 $mail->line($trimmed);
             }
         }
+
+        $mail->action('Portal öffnen', $portalUrl);
 
         return $this->applyOrgMailer($mail, $this->event->organization, $this->event->project);
     }

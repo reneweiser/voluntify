@@ -20,11 +20,11 @@ class EmailTemplateRenderer
         ],
         'pre_shift_reminder_24h' => [
             'subject' => 'Erinnerung: Deine Schicht bei {{event_name}} ist {{relativer_tag}}',
-            'body' => "Hallo {{vorname}}!\n\nDies ist eine Erinnerung, dass deine Schicht bei **{{event_name}}** {{relativer_tag}} stattfindet.\n\n**Aufgabe:** {{job_name}}\n**Schicht:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\n\nBis bald!",
+            'body' => "Hallo {{vorname}}!\n\nDies ist eine Erinnerung, dass deine Schicht bei **{{event_name}}** {{relativer_tag}} stattfindet.\n\n**Aufgabe:** {{job_name}}\n**Schicht:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\n\nÖffne dein Volunteer-Portal: {{portal_link}}\n\nBis bald!",
         ],
         'pre_shift_reminder_4h' => [
             'subject' => 'Erinnerung: Deine Schicht bei {{event_name}} beginnt bald',
-            'body' => "Hallo {{vorname}}!\n\nDeine Schicht bei **{{event_name}}** beginnt {{relativer_tag}} in wenigen Stunden.\n\n**Aufgabe:** {{job_name}}\n**Schicht:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\n\nBis gleich!",
+            'body' => "Hallo {{vorname}}!\n\nDeine Schicht bei **{{event_name}}** beginnt {{relativer_tag}} in wenigen Stunden.\n\n**Aufgabe:** {{job_name}}\n**Schicht:** {{shift_date}} {{shift_time}}\n{{event_location}}\n{{cheat_sheet_url}}\n\nÖffne dein Volunteer-Portal: {{portal_link}}\n\nBis gleich!",
         ],
         'email_verification' => [
             'subject' => 'Bestätige deine E-Mail für {{event_name}}',

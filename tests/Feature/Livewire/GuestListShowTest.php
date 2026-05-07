@@ -13,6 +13,8 @@ use App\Models\Project;
 use App\Models\ProjectScanner;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
@@ -152,6 +154,7 @@ it('confirms guest list and dispatches job', function () {
             'guestListId' => $this->guestList->id,
         ])
         ->call('confirmGuestList')
+        ->assertSee('Guest list sending is now active. QR codes are being generated.')
         ->assertHasNoErrors();
 
     $this->guestList->refresh();
@@ -159,6 +162,32 @@ it('confirms guest list and dispatches job', function () {
         ->and($this->guestList->confirmed_at)->not->toBeNull();
 
     Queue::assertPushed(ConfirmGuestListJob::class);
+});
+
+it('shows activation wording for draft guest lists', function () {
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->assertSee('Sending inactive')
+        ->assertSee('Activate Sending')
+        ->assertSee('Activate sending for this guest list? QR codes will be generated for all entries, and new guests with an email address will keep receiving invitations automatically.');
+});
+
+it('shows sending-active status wording for confirmed guest lists', function () {
+    $this->guestList->update([
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->assertSee('Sending active')
+        ->assertDontSee('Activate Sending');
 });
 
 it('rejects confirming already-confirmed list', function () {
@@ -398,6 +427,18 @@ it('dispatches invitation jobs only for unsent entries when sending pending invi
         'invitation_sent_at' => null,
     ]);
 
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'failed@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'queued@example.com',
+        'invitation_queued_at' => now(),
+    ]);
+
     Livewire::actingAs($this->organizer)
         ->test(GuestListShow::class, [
             'projectId' => $this->project->id,
@@ -408,9 +449,184 @@ it('dispatches invitation jobs only for unsent entries when sending pending invi
 
     Queue::assertPushed(SendGuestInvitationsJob::class, 2); // 2 unique unsent emails
 
-    // Verify invitation_sent_at was set
     expect(GuestEntry::where('guest_group_id', $group->id)
-        ->whereNotNull('email')
-        ->whereNull('invitation_sent_at')
-        ->count())->toBe(0);
+        ->whereIn('email', ['new1@example.com', 'new2@example.com'])
+        ->whereNull('invitation_queued_at')
+        ->count())->toBe(0)
+        ->and(GuestEntry::where('guest_group_id', $group->id)
+            ->where('email', 'failed@example.com')
+            ->value('invitation_failed_at'))->not->toBeNull();
+});
+
+it('shows failed invitation state and resend action', function () {
+    $this->guestList->update([
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    $group = GuestGroup::factory()->create(['guest_list_id' => $this->guestList->id]);
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'failed@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->assertSee('Failed')
+        ->assertSee('Resend');
+});
+
+it('resends a failed invitation sibling set', function () {
+    Queue::fake();
+
+    $this->guestList->update([
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    $group = GuestGroup::factory()->create(['guest_list_id' => $this->guestList->id]);
+    $entry = GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'failed@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'failed@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->call('resendFailedInvitation', $entry->id)
+        ->assertSee('Invitation resend queued for failed@example.com.');
+
+    Queue::assertPushed(SendGuestInvitationsJob::class, fn ($job) => $job->email === 'failed@example.com');
+
+    GuestEntry::where('email', 'failed@example.com')->each(function (GuestEntry $sibling) {
+        expect($sibling->fresh()->invitation_queued_at)->not->toBeNull()
+            ->and($sibling->fresh()->invitation_failed_at)->toBeNull();
+    });
+});
+
+it('shows an error instead of a false success when failed resend is no longer claimable', function () {
+    Queue::fake();
+
+    $this->guestList->update([
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    $group = GuestGroup::factory()->create(['guest_list_id' => $this->guestList->id]);
+    $entry = GuestEntry::factory()->create([
+        'guest_group_id' => $group->id,
+        'email' => 'failed@example.com',
+        'qr_token' => null,
+        'invitation_failed_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->call('resendFailedInvitation', $entry->id)
+        ->assertSee('This invitation is no longer available for resend.');
+
+    Queue::assertNothingPushed();
+});
+
+it('shows a success message after saving an entry update', function () {
+    Queue::fake();
+
+    $group = GuestGroup::factory()->create([
+        'guest_list_id' => $this->guestList->id,
+    ]);
+    $entry = GuestEntry::factory()->create([
+        'guest_group_id' => $group->id,
+        'number' => 1,
+        'name' => 'Old Name',
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->call('startEditEntry', $entry->id)
+        ->set('entryName', 'New Name')
+        ->call('saveEntry')
+        ->assertSee('Guest entry updated.');
+});
+
+it('corrects a failed recipient sibling set email and requeues all siblings together', function () {
+    Queue::fake();
+
+    $this->guestList->update([
+        'status' => GuestListStatus::Confirmed,
+        'confirmed_at' => now(),
+    ]);
+
+    $group = GuestGroup::factory()->create(['guest_list_id' => $this->guestList->id]);
+    $entry = GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'number' => 1,
+        'email' => 'broken@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+    GuestEntry::factory()->withQrToken()->create([
+        'guest_group_id' => $group->id,
+        'number' => 2,
+        'email' => 'broken@example.com',
+        'invitation_failed_at' => now(),
+    ]);
+
+    Livewire::actingAs($this->organizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $this->project->id,
+            'guestListId' => $this->guestList->id,
+        ])
+        ->call('startEditEntry', $entry->id)
+        ->set('entryEmail', 'fixed@example.com')
+        ->call('saveEntry')
+        ->assertHasNoErrors();
+
+    Queue::assertPushed(SendGuestInvitationsJob::class, fn ($job) => $job->email === 'fixed@example.com');
+
+    expect(GuestEntry::where('guest_group_id', $group->id)->where('email', 'fixed@example.com')->count())->toBe(2)
+        ->and(GuestEntry::where('guest_group_id', $group->id)->whereNotNull('invitation_queued_at')->count())->toBe(2)
+        ->and(GuestEntry::where('guest_group_id', $group->id)->whereNotNull('invitation_failed_at')->count())->toBe(0);
+});
+
+it('forbids later actions when guest-list permission is revoked after mount', function () {
+    ['user' => $projectOrganizer, 'organization' => $organization, 'project' => $project] = createUserWithProjectOrganization();
+    $scanner = ProjectScanner::factory()->create(['project_id' => $project->id]);
+    $guestList = GuestList::factory()->create([
+        'project_id' => $project->id,
+        'scanner_id' => $scanner->id,
+    ]);
+
+    app()->instance(Organization::class, $organization);
+
+    $component = Livewire::actingAs($projectOrganizer)
+        ->test(GuestListShow::class, [
+            'projectId' => $project->id,
+            'guestListId' => $guestList->id,
+        ]);
+
+    DB::table('project_user')
+        ->where('project_id', $project->id)
+        ->where('user_id', $projectOrganizer->id)
+        ->delete();
+
+    Auth::setUser($projectOrganizer->fresh());
+
+    $component->call('openEditModal')->assertForbidden();
 });

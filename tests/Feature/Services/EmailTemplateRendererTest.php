@@ -137,6 +137,7 @@ it('has German default for pre-shift reminder 24h [#81]', function () {
         ->and($defaults['subject'])->toContain('{{relativer_tag}}')
         ->and($defaults['body'])->toContain('Hallo {{vorname}}')
         ->and($defaults['body'])->toContain('{{relativer_tag}} stattfindet')
+        ->and($defaults['body'])->toContain('{{portal_link}}')
         ->and($defaults['body'])->toContain('Bis bald!');
 });
 
@@ -146,7 +147,27 @@ it('has German default for pre-shift reminder 4h [#81]', function () {
     expect($defaults['subject'])->toContain('Erinnerung')
         ->and($defaults['subject'])->toContain('bald')
         ->and($defaults['body'])->toContain('Hallo {{vorname}}')
-        ->and($defaults['body'])->toContain('{{relativer_tag}} in wenigen Stunden');
+        ->and($defaults['body'])->toContain('{{relativer_tag}} in wenigen Stunden')
+        ->and($defaults['body'])->toContain('{{portal_link}}');
+});
+
+it('does not inject portal_link into custom reminder bodies unless requested', function () {
+    EmailTemplate::factory()->create([
+        'event_id' => $this->event->id,
+        'type' => EmailTemplateType::PreShiftReminder24h,
+        'subject' => 'Custom {{event_name}}',
+        'body' => 'Nur {{job_name}}',
+    ]);
+
+    $rendered = $this->renderer->render(
+        EmailTemplateType::PreShiftReminder24h,
+        $this->event,
+        array_merge($this->variables, [
+            'portal_link' => 'https://example.com/portal/reminder',
+        ]),
+    );
+
+    expect($rendered['body'])->toBe('Nur Setup Crew');
 });
 
 it('has German default for email verification [#81]', function () {

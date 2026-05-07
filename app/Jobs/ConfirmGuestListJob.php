@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\QueueGuestInvitationSiblingSet;
 use App\Models\GuestEntry;
 use App\Models\GuestList;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -47,19 +48,15 @@ class ConfirmGuestListJob implements ShouldBeUnique, ShouldQueue
             });
         });
 
-        $entries = $this->guestList->entries()
-            ->whereNotNull('email')
-            ->whereNotNull('qr_token')
-            ->get();
+        $emails = $this->guestList->entries()
+            ->pendingInvitation()
+            ->distinct()
+            ->pluck('email');
 
-        $emails = $entries->pluck('email')->unique();
+        $queueGuestInvitationSiblingSet = app(QueueGuestInvitationSiblingSet::class);
 
         foreach ($emails as $email) {
-            SendGuestInvitationsJob::dispatch($this->guestList, $email);
+            $queueGuestInvitationSiblingSet->claimPending($this->guestList, $email);
         }
-
-        $entries->each(function (GuestEntry $entry) {
-            $entry->update(['invitation_sent_at' => now()]);
-        });
     }
 }

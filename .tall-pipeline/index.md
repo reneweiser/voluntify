@@ -1,9 +1,9 @@
 ---
 pipeline_status: complete
 current_stage: complete
-current_focus: "Issues #222 and #221 complete — portal QR refresh is current-key safe, and public signup cutoff enforcement now covers listing, reserve, final submit, and organizer-safe overrides"
-current_milestone: issue-221-signup-grace-minutes
-entry_point: implement
+current_focus: "phase-3-invitation-reliability-messaging-ux is complete; no unresolved critical/high security findings remain, and reminder-send acknowledgement timing plus frontend dependency advisories are tracked as backlog follow-ups"
+current_milestone: phase-3-invitation-reliability-messaging-ux
+entry_point: security-audit
 stages_to_run:
   - plan
   - implement
@@ -11,10 +11,13 @@ stages_to_run:
   - security-audit
 completed_stages:
   - plan
+  - implement
+  - test
+  - security-audit
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-05-07T17:30:00+02:00"
+last_updated: "2026-05-07T20:50:32+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -47,6 +50,7 @@ last_updated: "2026-05-07T17:30:00+02:00"
 | issue-201-gear-scanner-type | Gear Scanner Type | #201 dedicated gear scanner for volunteer and guest gear with pool events and guest group filters | m11-scanner, m12-guest-lists, issue-196-scanner-arrival-duplicate-status | complete |
 | issue-222-portal-jwt-refresh | Volunteer Portal JWT Refresh | #222 refresh portal QR JWTs so scanner verification no longer fails with stale signatures | m15-volunteer-portal-enhancements, m11-scanner, m19-non-expiring-magic-links | complete |
 | issue-221-signup-grace-minutes | Signup Grace Minutes | #221 event-level public signup cutoff with configurable grace minutes | issue-168-shifts-jobs-active-state, issue-203-priority-shift-gate, issue-206-hide-fully-booked-jobs, issue-207-signup-empty-state-notifications | complete |
+| phase-3-invitation-reliability-messaging-ux | Phase 3: Invitation Reliability & Messaging UX | #217 failed guest invitation visibility + resend, #218 sending-active guest-list wording, #220 reminder portal links, #219 guest-pass CTA button | m12-guest-lists, m13-polish, m19-non-expiring-magic-links, issue-193-guest-mail-magic-link | complete |
 
 ## Artifacts
 
@@ -78,6 +82,8 @@ last_updated: "2026-05-07T17:30:00+02:00"
 | `e2e/volunteer-portal-jwt-refresh.spec.ts` | test | issue-222 | Browser coverage for stale portal QR refresh before scanner verification | complete |
 | `.tall-pipeline/issue-221-signup-grace-minutes.md` | plan+implement+test+security | issue-221 | Issue #221 tracking for event-level signup grace minutes and booking cutoff enforcement | complete |
 | `e2e/signup-grace-minutes.spec.ts` | test | issue-221 | Browser coverage for organizer-managed signup grace minutes and public shift visibility | complete |
+| `.tall-pipeline/phase-3-invitation-reliability-messaging-ux.md` | plan+implement+test+security | phase-3-invitation-reliability-messaging-ux | Phase 3 milestone tracking with implementation, verification, and security-audit outcomes for #217, #218, #220, and #219 | complete |
+| `.tall-pipeline/phase-3-invitation-reliability-messaging-ux-security-audit.md` | security-audit | phase-3-invitation-reliability-messaging-ux | Security audit report for invitation state transitions, organizer resend recovery, reminder portal links, and guest-pass CTA surfaces | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)

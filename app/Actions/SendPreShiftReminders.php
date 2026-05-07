@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\Log;
 
 class SendPreShiftReminders
 {
+    public function __construct(
+        private GenerateMagicLink $generateMagicLink,
+    ) {}
+
     public function execute(ReminderWindow $window): int
     {
         $signups = ShiftSignup::query()
@@ -30,10 +34,13 @@ class SendPreShiftReminders
             $signup->update([$window->flagColumn() => true]);
 
             try {
+                ['plainToken' => $plainToken] = $this->generateMagicLink->execute($signup->volunteer);
+
                 $signup->volunteer->notify(new PreShiftReminder(
                     $signup->shift->volunteerJob->event,
                     $signup->shift,
                     $window->templateType(),
+                    $plainToken,
                 ));
                 $count++;
             } catch (\Throwable $e) {

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\QrCodeGenerator;
 use Database\Factories\GuestEntryFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,7 +28,6 @@ class GuestEntry extends Model
         'qr_token',
         'checked_in_at',
         'checked_in_by',
-        'invitation_sent_at',
     ];
 
     protected function casts(): array
@@ -36,7 +36,19 @@ class GuestEntry extends Model
             'number' => 'integer',
             'checked_in_at' => 'datetime',
             'invitation_sent_at' => 'datetime',
+            'invitation_queued_at' => 'datetime',
+            'invitation_failed_at' => 'datetime',
         ];
+    }
+
+    public function scopePendingInvitation(Builder $query): Builder
+    {
+        return $query
+            ->whereNotNull('email')
+            ->whereNotNull('qr_token')
+            ->whereNull('invitation_sent_at')
+            ->whereNull('invitation_queued_at')
+            ->whereNull('invitation_failed_at');
     }
 
     public function group(): BelongsTo
@@ -57,6 +69,53 @@ class GuestEntry extends Model
     public function isCheckedIn(): bool
     {
         return $this->checked_in_at !== null;
+    }
+
+    public function isInvitationQueued(): bool
+    {
+        return $this->invitation_queued_at !== null
+            && $this->invitation_sent_at === null
+            && $this->invitation_failed_at === null;
+    }
+
+    public function isInvitationSent(): bool
+    {
+        return $this->invitation_sent_at !== null;
+    }
+
+    public function isInvitationFailed(): bool
+    {
+        return $this->invitation_failed_at !== null;
+    }
+
+    public function isInvitationPending(): bool
+    {
+        return $this->email !== null
+            && $this->qr_token !== null
+            && ! $this->isInvitationQueued()
+            && ! $this->isInvitationSent()
+            && ! $this->isInvitationFailed();
+    }
+
+    public function invitationStatus(): string
+    {
+        if ($this->email === null || $this->qr_token === null) {
+            return 'not_ready';
+        }
+
+        if ($this->isInvitationFailed()) {
+            return 'failed';
+        }
+
+        if ($this->isInvitationSent()) {
+            return 'sent';
+        }
+
+        if ($this->isInvitationQueued()) {
+            return 'queued';
+        }
+
+        return 'pending';
     }
 
     /**

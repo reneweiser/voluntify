@@ -35,14 +35,17 @@ it('renders 24h reminder with default template', function () {
         'ends_at' => Carbon::parse('2026-04-30 16:00:00', 'UTC'),
     ]);
 
-    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect($mail->subject)->toContain('Summer Fest')
         ->and($mail->subject)->toContain('morgen')
         ->and(implode(' ', $mail->introLines))->toContain('morgen stattfindet')
         ->and(implode(' ', $mail->introLines))->toContain('Stage Crew')
-        ->and(implode(' ', $mail->introLines))->toContain('Central Park');
+        ->and(implode(' ', $mail->introLines))->toContain('Central Park')
+        ->and(implode(' ', $mail->introLines))->toContain(route('volunteer.portal', 'test-token'))
+        ->and($mail->actionText)->toBe('Portal öffnen')
+        ->and($mail->actionUrl)->toBe(route('volunteer.portal', 'test-token'));
 });
 
 it('renders 4h reminder with default template', function () {
@@ -52,7 +55,7 @@ it('renders 4h reminder with default template', function () {
         'ends_at' => Carbon::parse('2026-04-29 15:00:00', 'UTC'),
     ]);
 
-    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder4h);
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder4h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect($mail->subject)->toContain('Summer Fest')
@@ -68,7 +71,7 @@ it('renders 24h reminder with heute when the shift is today', function () {
         'ends_at' => Carbon::parse('2026-04-29 16:00:00', 'UTC'),
     ]);
 
-    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect($mail->subject)->toContain('ist heute')
@@ -83,7 +86,7 @@ it('renders 24h reminder fallback with formatted date outside today and tomorrow
         'ends_at' => Carbon::parse('2026-05-02 16:00:00', 'UTC'),
     ]);
 
-    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect($mail->subject)->toContain('ist am 02.05.2026')
@@ -100,7 +103,7 @@ it('uses the project timezone to determine the relative day around midnight', fu
         'ends_at' => Carbon::parse('2026-04-30 00:30:00', 'UTC'),
     ]);
 
-    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect($mail->subject)->toContain('morgen')
@@ -116,11 +119,28 @@ it('uses custom template when set', function () {
         'body' => 'Custom reminder for {{job_name}}',
     ]);
 
-    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect($mail->subject)->toBe('Hey Alice Test, Summer Fest is tomorrow!')
-        ->and(implode(' ', $mail->introLines))->toContain('Custom reminder for Stage Crew');
+        ->and(implode(' ', $mail->introLines))->toContain('Custom reminder for Stage Crew')
+        ->and($mail->actionText)->toBe('Portal öffnen')
+        ->and($mail->actionUrl)->toBe(route('volunteer.portal', 'test-token'));
+});
+
+it('renders custom portal_link placeholder when present', function () {
+    EmailTemplate::factory()->create([
+        'event_id' => $this->event->id,
+        'type' => EmailTemplateType::PreShiftReminder24h,
+        'subject' => 'Portal {{event_name}}',
+        'body' => 'Portal: {{portal_link}}',
+    ]);
+
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h, 'custom-token');
+    $mail = $notification->toMail($this->volunteer);
+
+    expect(implode(' ', $mail->introLines))->toContain(route('volunteer.portal', 'custom-token'))
+        ->and($mail->actionUrl)->toBe(route('volunteer.portal', 'custom-token'));
 });
 
 it('omits location when event has none', function () {
@@ -128,21 +148,21 @@ it('omits location when event has none', function () {
     $job = VolunteerJob::factory()->for($event)->create();
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
 
-    $notification = new PreShiftReminder($event, $shift, EmailTemplateType::PreShiftReminder24h);
+    $notification = new PreShiftReminder($event, $shift, EmailTemplateType::PreShiftReminder24h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect(implode(' ', $mail->introLines))->not->toContain('Location');
 });
 
 it('is queued', function () {
-    expect(new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h))
+    expect(new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h, 'test-token'))
         ->toBeInstanceOf(ShouldQueue::class);
 });
 
 it('includes cheat sheet link when job has instructions', function () {
     $this->job->update(['instructions' => 'Bring gloves and safety glasses.']);
 
-    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h);
+    $notification = new PreShiftReminder($this->event, $this->shift, EmailTemplateType::PreShiftReminder24h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     $cheatSheetUrl = route('events.jobs.cheat-sheet', [
@@ -157,7 +177,7 @@ it('omits cheat sheet link when job has no instructions', function () {
     $job = VolunteerJob::factory()->for($this->event)->create(['instructions' => null]);
     $shift = Shift::factory()->for($job, 'volunteerJob')->create();
 
-    $notification = new PreShiftReminder($this->event, $shift, EmailTemplateType::PreShiftReminder24h);
+    $notification = new PreShiftReminder($this->event, $shift, EmailTemplateType::PreShiftReminder24h, 'test-token');
     $mail = $notification->toMail($this->volunteer);
 
     expect(implode(' ', $mail->introLines))

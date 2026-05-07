@@ -2,7 +2,6 @@
 
 namespace App\Actions;
 
-use App\Jobs\SendGuestInvitationsJob;
 use App\Models\GuestEntry;
 use App\Models\GuestGroup;
 
@@ -32,8 +31,7 @@ class AddGuestEntry
             $entry->update(['qr_token' => bin2hex(random_bytes(32))]);
 
             if ($email) {
-                SendGuestInvitationsJob::dispatch($guestList, $email);
-                $entry->update(['invitation_sent_at' => now()]);
+                app(QueueGuestInvitationSiblingSet::class)->claimPending($guestList, $email);
             }
         }
 
