@@ -1,5 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
+import { loadFixtures } from './fixtures.js';
+
 type Fixtures = {
     guestListReliabilityProjectId: number;
     guestListReliabilityGuestListId: number;
@@ -77,14 +79,8 @@ async function login(page: Page): Promise<void> {
     await expect(page).toHaveURL(/\/admin\/dashboard$/);
 }
 
-async function loadFixtures(page: Page): Promise<Fixtures> {
-    await page.goto('/e2e-fixtures.json');
-
-    return JSON.parse(await page.locator('body').innerText()) as Fixtures;
-}
-
 test('organizer can see failed invitation groups, resend them, and repair a failed address inline', async ({ page, request }) => {
-    const fixtures = await loadFixtures(page);
+    const fixtures = await loadFixtures<Fixtures>();
 
     await login(page);
     await page.goto(`/admin/projects/${fixtures.guestListReliabilityProjectId}/guest-lists/${fixtures.guestListReliabilityGuestListId}`);
@@ -140,7 +136,7 @@ test('organizer can see failed invitation groups, resend them, and repair a fail
 });
 
 test('organizer sees sending-active wording on guest list badges and activation flow', async ({ page }) => {
-    const fixtures = await loadFixtures(page);
+    const fixtures = await loadFixtures<Fixtures>();
 
     await login(page);
     await page.goto(`/admin/projects/${fixtures.guestListReliabilityProjectId}/guest-lists`);
@@ -166,7 +162,7 @@ test('organizer sees sending-active wording on guest list badges and activation 
 });
 
 test('guest invitation emails expose the browser fallback as a CTA button', async ({ page, request }) => {
-    const fixtures = await loadFixtures(page);
+    const fixtures = await loadFixtures<Fixtures>();
 
     const invitation = await waitForSingleMessageForRecipient(request, fixtures.guestListReliabilitySentInviteEmail);
     const guestPassUrls = extractUrls(

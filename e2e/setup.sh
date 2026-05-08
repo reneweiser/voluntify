@@ -875,6 +875,217 @@ vendor/bin/sail artisan tinker --execute="
       'capacity' => 10,
     ]);
 
+    \App\Models\Event::where('name', 'E2E Signup Conflict Event')->delete();
+    \App\Models\Project::where('name', 'E2E Signup Conflict Project')->delete();
+
+    \$signupConflictProject = Project::factory()->for(\$organization)->create([
+      'name' => 'E2E Signup Conflict Project',
+      'timezone' => 'UTC',
+    ]);
+
+    \$signupConflictEvent = Event::factory()->for(\$organization)->for(\$signupConflictProject)->published()->create([
+      'name' => 'E2E Signup Conflict Event',
+      'slug' => 'e2e-signup-conflict-event',
+      'starts_at' => now()->addDays(30),
+      'ends_at' => now()->addDays(30)->addHours(12),
+    ]);
+
+    \$signupConflictEvent->forceFill([
+      'public_token' => 'e2e-signup-conflict-token',
+    ])->save();
+
+    \$createVerifiedSignupToken = function (?Volunteer \$volunteer, string \$email, string \$plainTextToken) use (\$signupConflictEvent, \$signupConflictProject): string {
+      \$tokenHash = \App\ValueObjects\HashedToken::fromPlaintext(\$plainTextToken)->hash;
+
+      \App\Models\EmailVerificationToken::where('token_hash', \$tokenHash)->delete();
+
+      \App\Models\EmailVerificationToken::create([
+        'volunteer_id' => \$volunteer?->id,
+        'event_id' => \$signupConflictEvent->id,
+        'project_id' => \$signupConflictProject->id,
+        'email' => \$email,
+        'token_hash' => \$tokenHash,
+        'expires_at' => now()->addHour(),
+        'verified_at' => now(),
+      ]);
+
+      return \$tokenHash;
+    };
+
+    \$conflictNewVolunteer = Volunteer::factory()->verified()->for(\$signupConflictProject)->create([
+      'first_name' => 'Nina',
+      'last_name' => 'Overlap',
+      'email' => 'signup-conflict-new@example.com',
+      'phone' => '+15550002101',
+    ]);
+
+    \$returningConflictVolunteer = Volunteer::factory()->verified()->for(\$signupConflictProject)->create([
+      'first_name' => 'Elli',
+      'last_name' => 'Existing',
+      'email' => 'signup-conflict-existing@example.com',
+      'phone' => '+15550002102',
+    ]);
+
+    \$reactivateSuccessVolunteer = Volunteer::factory()->verified()->for(\$signupConflictProject)->create([
+      'first_name' => 'Rita',
+      'last_name' => 'Return',
+      'email' => 'signup-conflict-reactivate-ok@example.com',
+      'phone' => '+15550002103',
+    ]);
+
+    \$reactivateBlockedVolunteer = Volunteer::factory()->verified()->for(\$signupConflictProject)->create([
+      'first_name' => 'Blake',
+      'last_name' => 'Blocked',
+      'email' => 'signup-conflict-reactivate-blocked@example.com',
+      'phone' => '+15550002104',
+    ]);
+
+    \$newVsNewJobA = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Morning Setup',
+    ]);
+    \$newVsNewJobB = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Registration Desk',
+    ]);
+    \$newVsNewJobC = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Closing Support',
+    ]);
+
+    Shift::factory()->create([
+      'volunteer_job_id' => \$newVsNewJobA->id,
+      'shift_date' => '2026-09-10',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-10 09:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-10 12:00:00', 'UTC'),
+      'display_text' => 'Sep 10, 09:00 - 12:00',
+      'capacity' => 10,
+    ]);
+    Shift::factory()->create([
+      'volunteer_job_id' => \$newVsNewJobB->id,
+      'shift_date' => '2026-09-10',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-10 11:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-10 14:00:00', 'UTC'),
+      'display_text' => 'Sep 10, 11:00 - 14:00',
+      'capacity' => 10,
+    ]);
+    Shift::factory()->create([
+      'volunteer_job_id' => \$newVsNewJobC->id,
+      'shift_date' => '2026-09-10',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-10 15:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-10 18:00:00', 'UTC'),
+      'display_text' => 'Sep 10, 15:00 - 18:00',
+      'capacity' => 10,
+    ]);
+
+    \$heldJob = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Held Check-In',
+    ]);
+    \$newConflictJob = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Crowd Support',
+    ]);
+
+    \$heldShift = Shift::factory()->create([
+      'volunteer_job_id' => \$heldJob->id,
+      'shift_date' => '2026-09-11',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-11 10:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-11 14:00:00', 'UTC'),
+      'display_text' => 'Sep 11, 10:00 - 14:00',
+      'capacity' => 10,
+    ]);
+    \$newConflictShift = Shift::factory()->create([
+      'volunteer_job_id' => \$newConflictJob->id,
+      'shift_date' => '2026-09-11',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-11 12:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-11 15:00:00', 'UTC'),
+      'display_text' => 'Sep 11, 12:00 - 15:00',
+      'capacity' => 10,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$returningConflictVolunteer->id,
+      'shift_id' => \$heldShift->id,
+    ]);
+
+    \$reactivateSuccessCancelledJob = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Warehouse Morning',
+    ]);
+    \$reactivateSuccessActiveJob = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Welcome Tent',
+    ]);
+
+    \$reactivateSuccessCancelledShift = Shift::factory()->create([
+      'volunteer_job_id' => \$reactivateSuccessCancelledJob->id,
+      'shift_date' => '2026-09-12',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-12 10:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-12 14:00:00', 'UTC'),
+      'display_text' => 'Sep 12, 10:00 - 14:00',
+      'capacity' => 10,
+    ]);
+    \$reactivateSuccessActiveShift = Shift::factory()->create([
+      'volunteer_job_id' => \$reactivateSuccessActiveJob->id,
+      'shift_date' => '2026-09-12',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-12 15:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-12 18:00:00', 'UTC'),
+      'display_text' => 'Sep 12, 15:00 - 18:00',
+      'capacity' => 10,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$reactivateSuccessVolunteer->id,
+      'shift_id' => \$reactivateSuccessActiveShift->id,
+    ]);
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$reactivateSuccessVolunteer->id,
+      'shift_id' => \$reactivateSuccessCancelledShift->id,
+      'cancelled_at' => now()->subDay(),
+    ]);
+
+    \$reactivateBlockedCancelledJob = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Check-In Revisit',
+    ]);
+    \$reactivateBlockedActiveJob = VolunteerJob::factory()->create([
+      'event_id' => \$signupConflictEvent->id,
+      'name' => 'Main Stage Help',
+    ]);
+
+    \$reactivateBlockedCancelledShift = Shift::factory()->create([
+      'volunteer_job_id' => \$reactivateBlockedCancelledJob->id,
+      'shift_date' => '2026-09-13',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-13 10:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-13 14:00:00', 'UTC'),
+      'display_text' => 'Sep 13, 10:00 - 14:00',
+      'capacity' => 10,
+    ]);
+    \$reactivateBlockedActiveShift = Shift::factory()->create([
+      'volunteer_job_id' => \$reactivateBlockedActiveJob->id,
+      'shift_date' => '2026-09-13',
+      'starts_at' => \Carbon\Carbon::parse('2026-09-13 11:00:00', 'UTC'),
+      'ends_at' => \Carbon\Carbon::parse('2026-09-13 16:00:00', 'UTC'),
+      'display_text' => 'Sep 13, 11:00 - 16:00',
+      'capacity' => 10,
+    ]);
+
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$reactivateBlockedVolunteer->id,
+      'shift_id' => \$reactivateBlockedActiveShift->id,
+    ]);
+    ShiftSignup::factory()->create([
+      'volunteer_id' => \$reactivateBlockedVolunteer->id,
+      'shift_id' => \$reactivateBlockedCancelledShift->id,
+      'cancelled_at' => now()->subDay(),
+    ]);
+
+    \$signupConflictNewVolunteerHash = \$createVerifiedSignupToken(\$conflictNewVolunteer, \$conflictNewVolunteer->email, 'e2e-signup-conflict-new-vt');
+    \$signupConflictReturningConflictHash = \$createVerifiedSignupToken(\$returningConflictVolunteer, \$returningConflictVolunteer->email, 'e2e-signup-conflict-existing-vt');
+    \$signupConflictReactivateSuccessHash = \$createVerifiedSignupToken(\$reactivateSuccessVolunteer, \$reactivateSuccessVolunteer->email, 'e2e-signup-conflict-reactivate-ok-vt');
+    \$signupConflictReactivateBlockedHash = \$createVerifiedSignupToken(\$reactivateBlockedVolunteer, \$reactivateBlockedVolunteer->email, 'e2e-signup-conflict-reactivate-blocked-vt');
+
     \App\Models\Project::where('name', 'E2E Guest List Reliability Project')->delete();
 
     \$guestListProject = Project::factory()->for(\$organization)->create([
@@ -952,7 +1163,11 @@ vendor/bin/sail artisan tinker --execute="
       new \App\Mail\GuestInvitationMail(\$guestList, new \Illuminate\Database\Eloquent\Collection([\$sentEntry]))
     );
 
-    file_put_contents(base_path('public/e2e-fixtures.json'), json_encode([
+    if (! is_dir(base_path('e2e/.generated'))) {
+      mkdir(base_path('e2e/.generated'), 0777, true);
+    }
+
+    file_put_contents(base_path('e2e/.generated/fixtures.json'), json_encode([
       'entryPoolProjectId' => \$entryPoolProject->id,
       'entryPoolEntryEventId' => \$entryEvent->id,
       'entryPoolPoolEventId' => \$poolEvent->id,
@@ -971,6 +1186,11 @@ vendor/bin/sail artisan tinker --execute="
       'signupGraceEventId' => \$signupGraceEvent->id,
       'signupGracePublicToken' => 'e2e-signup-grace-token',
       'signupGraceVerificationHash' => \$signupGraceVerificationHash,
+      'signupConflictPublicToken' => 'e2e-signup-conflict-token',
+      'signupConflictNewVolunteerHash' => \$signupConflictNewVolunteerHash,
+      'signupConflictReturningConflictHash' => \$signupConflictReturningConflictHash,
+      'signupConflictReactivateSuccessHash' => \$signupConflictReactivateSuccessHash,
+      'signupConflictReactivateBlockedHash' => \$signupConflictReactivateBlockedHash,
       'guestListReliabilityProjectId' => \$guestListProject->id,
       'guestListReliabilityGuestListId' => \$guestList->id,
       'guestListReliabilityDraftGuestListId' => \$draftGuestList->id,

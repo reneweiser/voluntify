@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { loadFixtures } from './fixtures.js';
+
 type Fixtures = {
     scannerAuthBerlinToken: string;
     scannerAuthBerlinStartLabel: string;
@@ -7,14 +9,8 @@ type Fixtures = {
     scannerAuthUtcStartLabel: string;
 };
 
-async function loadFixtures(page: Page): Promise<Fixtures> {
-    await page.goto('/e2e-fixtures.json');
-
-    return JSON.parse(await page.locator('body').innerText()) as Fixtures;
-}
-
 test('scheduled scanner auth shows the project timezone start time', async ({ page }) => {
-    const fixtures = await loadFixtures(page);
+    const fixtures = await loadFixtures<Fixtures>();
 
     await page.goto(`/s/${fixtures.scannerAuthBerlinToken}`);
 
@@ -23,7 +19,7 @@ test('scheduled scanner auth shows the project timezone start time', async ({ pa
 });
 
 test('scheduled scanner auth falls back to UTC when the project timezone is empty', async ({ page }) => {
-    const fixtures = await loadFixtures(page);
+    const fixtures = await loadFixtures<Fixtures>();
 
     await page.goto(`/s/${fixtures.scannerAuthUtcToken}`);
 

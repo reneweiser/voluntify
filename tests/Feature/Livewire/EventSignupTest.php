@@ -24,6 +24,20 @@ function simulateLivewireVerification($component, string $email)
     return $component->call('checkVerification');
 }
 
+function startLivewireSignupWizard(string $publicToken, string $email = 'test@example.com')
+{
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $publicToken])
+        ->set('volunteerEmail', $email)
+        ->call('submitEmail');
+
+    simulateLivewireVerification($component, $email);
+
+    return $component
+        ->set('volunteerFirstName', 'Test')
+        ->set('volunteerLastName', 'Person')
+        ->call('advanceToShifts');
+}
+
 beforeEach(function () {
     Notification::fake();
     $this->org = Organization::factory()->create();
@@ -38,12 +52,7 @@ it('renders custom fields on step 2 of the wizard', function () {
     CustomRegistrationField::factory()->select(['Vegan', 'None'])->for($this->event)->create(['label' => 'Diet', 'sort_order' => 2]);
     CustomRegistrationField::factory()->checkbox()->for($this->event)->create(['label' => 'Photo Release', 'sort_order' => 3]);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('state', WizardState::PersonalInfo)
-        ->set('volunteerFirstName', 'Test')
-        ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'test@example.com')
-        ->call('advanceToShifts')
+    startLivewireSignupWizard($this->event->public_token)
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::GearAndFields)
@@ -65,12 +74,7 @@ it('does not render deleted custom fields', function () {
 it('validates required custom fields on step 2', function () {
     $field = CustomRegistrationField::factory()->required()->for($this->event)->create(['label' => 'Required Field']);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('state', WizardState::PersonalInfo)
-        ->set('volunteerFirstName', 'Test')
-        ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'test@example.com')
-        ->call('advanceToShifts')
+    startLivewireSignupWizard($this->event->public_token)
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::GearAndFields)
@@ -132,12 +136,7 @@ it('completes signup with custom fields for verified volunteer', function () {
 it('renders placeholder option in custom field select dropdown', function () {
     CustomRegistrationField::factory()->select(['Vegan', 'Vegetarian', 'None'])->for($this->event)->create(['label' => 'Diet Preference']);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('state', WizardState::PersonalInfo)
-        ->set('volunteerFirstName', 'Test')
-        ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'test@example.com')
-        ->call('advanceToShifts')
+    startLivewireSignupWizard($this->event->public_token)
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::GearAndFields)
@@ -147,12 +146,7 @@ it('renders placeholder option in custom field select dropdown', function () {
 it('renders placeholder option in gear size select dropdown', function () {
     ProjectGearItem::factory()->sized(['S', 'M', 'L'])->for($this->project)->create(['name' => 'T-Shirt']);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('state', WizardState::PersonalInfo)
-        ->set('volunteerFirstName', 'Test')
-        ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'test@example.com')
-        ->call('advanceToShifts')
+    startLivewireSignupWizard($this->event->public_token)
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::GearAndFields)
@@ -174,12 +168,7 @@ it('renders without error when gear item has requires_size true but available_si
 it('validates multi-choice custom field with array values', function () {
     $field = CustomRegistrationField::factory()->select(['Red', 'Blue', 'Green'])->allowMultiple()->for($this->event)->create(['label' => 'Favorite Colors']);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('state', WizardState::PersonalInfo)
-        ->set('volunteerFirstName', 'Test')
-        ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'test@example.com')
-        ->call('advanceToShifts')
+    startLivewireSignupWizard($this->event->public_token)
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::GearAndFields)
@@ -192,12 +181,7 @@ it('validates multi-choice custom field with array values', function () {
 it('advances to confirmation when gear items exist but none require size validation', function () {
     ProjectGearItem::factory()->for($this->project)->create(['name' => 'Badge']);
 
-    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
-        ->set('state', WizardState::PersonalInfo)
-        ->set('volunteerFirstName', 'Test')
-        ->set('volunteerLastName', 'Person')
-        ->set('volunteerEmail', 'test@example.com')
-        ->call('advanceToShifts')
+    startLivewireSignupWizard($this->event->public_token)
         ->set('selectedShiftIds', [$this->shift->id])
         ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::GearAndFields)

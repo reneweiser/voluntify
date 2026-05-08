@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { loadFixtures } from './fixtures.js';
+
 type Fixtures = {
     signupGraceEventId: number;
     signupGracePublicToken: string;
@@ -14,14 +16,8 @@ async function login(page: Page): Promise<void> {
     await expect(page).toHaveURL(/\/admin\/dashboard$/);
 }
 
-async function loadFixtures(page: Page): Promise<Fixtures> {
-    await page.goto('/e2e-fixtures.json');
-
-    return JSON.parse(await page.locator('body').innerText()) as Fixtures;
-}
-
 test('organizer updates signup grace minutes and the public signup list reacts immediately', async ({ page }) => {
-    const fixtures = await loadFixtures(page);
+    const fixtures = await loadFixtures<Fixtures>();
 
     const publicSignupUrl = `/events/${fixtures.signupGracePublicToken}?vt=${fixtures.signupGraceVerificationHash}`;
 

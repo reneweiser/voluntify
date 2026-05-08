@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { loadFixtures } from './fixtures.js';
+
 test('organizer configures an entry staff scanner with separate entry and pool events', async ({ page }) => {
     await page.goto('/login');
     await page.getByPlaceholder('email@example.com').fill('test@example.com');
@@ -8,13 +10,11 @@ test('organizer configures an entry staff scanner with separate entry and pool e
 
     await expect(page).toHaveURL(/\/admin\/dashboard$/);
 
-    await page.goto('/e2e-fixtures.json');
-
-    const fixtures = JSON.parse(await page.locator('body').innerText()) as {
+    const fixtures = await loadFixtures<{
         entryPoolProjectId: number;
         entryPoolEntryEventId: number;
         entryPoolPoolEventId: number;
-    };
+    }>();
 
     await page.goto(`/admin/projects/${fixtures.entryPoolProjectId}/scanners`);
     await expect(page.getByRole('button', { name: 'New Scanner' })).toBeVisible();

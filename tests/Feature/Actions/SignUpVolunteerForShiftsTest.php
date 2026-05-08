@@ -17,6 +17,17 @@ use Carbon\Carbon;
 use Illuminate\Notifications\Action;
 use Illuminate\Support\Facades\Notification;
 
+function phaseFourCancelledResignupTimeline(): array
+{
+    $cancelledStart = Carbon::parse('2026-08-15 10:00:00');
+
+    return [
+        'cancelled' => [$cancelledStart, $cancelledStart->copy()->addHours(2)],
+        'overlapping_active' => [$cancelledStart->copy()->addHour(), $cancelledStart->copy()->addHours(3)],
+        'non_overlapping_active' => [$cancelledStart->copy()->addHours(3), $cancelledStart->copy()->addHours(5)],
+    ];
+}
+
 beforeEach(function () {
     Notification::fake();
 
@@ -314,8 +325,27 @@ it('cancelled signups do not count toward capacity', function () {
         ->and($result->newSignups)->toHaveCount(1);
 });
 
-it('re-signup reactivates a cancelled row', function () {
+it('reactivates a cancelled row when the volunteers active schedule no longer overlaps', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
+    $timeline = phaseFourCancelledResignupTimeline();
+
+    $this->shift1->update([
+        'shift_date' => '2026-08-15',
+        'starts_at' => $timeline['cancelled'][0],
+        'ends_at' => $timeline['cancelled'][1],
+    ]);
+
+    $activeShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-08-15',
+        'starts_at' => $timeline['non_overlapping_active'][0],
+        'ends_at' => $timeline['non_overlapping_active'][1],
+        'capacity' => 5,
+    ]);
+    ShiftSignup::factory()->create([
+        'shift_id' => $activeShift->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+
     $signup = ShiftSignup::factory()->create([
         'shift_id' => $this->shift1->id,
         'volunteer_id' => $volunteer->id,
@@ -330,6 +360,7 @@ it('re-signup reactivates a cancelled row', function () {
 
     expect($result->hasNewSignups())->toBeTrue()
         ->and($result->newSignups)->toHaveCount(1)
+        ->and($result->skippedOverlap)->toBeEmpty()
         ->and($signup->fresh()->cancelled_at)->toBeNull();
 });
 
@@ -455,24 +486,24 @@ it('allows adjacent non-overlapping shifts', function () {
         ->and($result->skippedOverlap)->toBeEmpty();
 });
 
-it('skips a reactivated shift that now overlaps a newer signup', function () {
+it('skips a reactivated shift that now overlaps a newer active signup', function () {
     $volunteer = Volunteer::factory()->for($this->project)->create();
+    $timeline = phaseFourCancelledResignupTimeline();
 
     $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'shift_date' => '2026-06-01',
-        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
-        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'shift_date' => '2026-08-15',
+        'starts_at' => $timeline['cancelled'][0],
+        'ends_at' => $timeline['cancelled'][1],
         'capacity' => 5,
     ]);
     $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
-        'shift_date' => '2026-06-01',
-        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
-        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'shift_date' => '2026-08-15',
+        'starts_at' => $timeline['overlapping_active'][0],
+        'ends_at' => $timeline['overlapping_active'][1],
         'capacity' => 5,
     ]);
 
-    // Volunteer has a cancelled signup for A and an active signup for B
-    ShiftSignup::factory()->create([
+    $cancelledSignup = ShiftSignup::factory()->create([
         'shift_id' => $shiftA->id,
         'volunteer_id' => $volunteer->id,
         'cancelled_at' => now(),
@@ -491,7 +522,8 @@ it('skips a reactivated shift that now overlaps a newer signup', function () {
 
     expect($result->hasNewSignups())->toBeFalse()
         ->and($result->skippedOverlap)->toHaveCount(1)
-        ->and($result->skippedOverlap[0]->id)->toBe($shiftA->id);
+        ->and($result->skippedOverlap[0]->id)->toBe($shiftA->id)
+        ->and($cancelledSignup->fresh()->cancelled_at)->not->toBeNull();
 });
 
 // --- Cross-day overlap tests ---

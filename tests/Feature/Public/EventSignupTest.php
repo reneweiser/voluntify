@@ -37,6 +37,22 @@ function simulateVerification(Testable $component, string $email): Testable
     return $component->call('checkVerification');
 }
 
+function eventSignupPhaseFourTimeline(): array
+{
+    $cancelledStart = Carbon::parse('2026-08-15 10:00:00');
+
+    return [
+        'cancelled' => [$cancelledStart, $cancelledStart->copy()->addHours(2)],
+        'overlapping_active' => [$cancelledStart->copy()->addHour(), $cancelledStart->copy()->addHours(3)],
+        'non_overlapping_active' => [$cancelledStart->copy()->addHours(3), $cancelledStart->copy()->addHours(5)],
+    ];
+}
+
+function eventSignupShiftTimeLabel(VolunteerJob $job, Shift $shift, string $timezone): string
+{
+    return $job->name.' — '.$shift->shift_date->setTimezone($timezone)->format('M d').' '.$shift->displayTimeRange($timezone);
+}
+
 beforeEach(function () {
     Notification::fake();
 
@@ -371,6 +387,29 @@ it('prefills data for returning verified volunteer only after verification', fun
         ->assertSet('state', WizardState::PersonalInfo);
 });
 
+it('does not resume personal info from an expired verified vt token', function () {
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'expired-vt@example.com',
+        'first_name' => 'Expired',
+        'last_name' => 'Resume',
+    ]);
+
+    $token = EmailVerificationToken::factory()->create([
+        'volunteer_id' => $volunteer->id,
+        'event_id' => $this->event->id,
+        'project_id' => $this->project->id,
+        'email' => $volunteer->email,
+        'verified_at' => now()->subMinutes(5),
+        'expires_at' => now()->subMinute(),
+    ]);
+
+    Livewire::withQueryParams(['vt' => $token->token_hash])
+        ->test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSet('state', WizardState::EmailEntry)
+        ->assertSet('verificationTokenId', null)
+        ->assertSet('volunteerEmail', '');
+});
+
 it('shows identical response for known and unknown emails', function () {
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'known@example.com']);
 
@@ -388,6 +427,31 @@ it('shows identical response for known and unknown emails', function () {
         ->and($unknown->get('volunteerFirstName'))->toBe('')
         ->and($known->get('isReturningVolunteer'))->toBeFalse()
         ->and($unknown->get('isReturningVolunteer'))->toBeFalse();
+});
+
+it('scopes the initial email lookup throttle to the current event', function () {
+    $otherEvent = Event::factory()->for($this->org)->for($this->project)->published()->create();
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'scoped-lookup@example.com')
+        ->call('submitEmail')
+        ->assertHasNoErrors();
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'scoped-lookup@example.com')
+        ->call('submitEmail')
+        ->assertHasNoErrors();
+
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'scoped-lookup@example.com')
+        ->call('submitEmail')
+        ->assertHasNoErrors();
+
+    Livewire::test(EventSignup::class, ['publicToken' => $otherEvent->public_token])
+        ->set('volunteerEmail', 'scoped-lookup@example.com')
+        ->call('submitEmail')
+        ->assertHasNoErrors('volunteerEmail')
+        ->assertSet('state', WizardState::PendingVerification);
 });
 
 it('completes full wizard for verified volunteer with verification step', function () {
@@ -411,6 +475,60 @@ it('completes full wizard for verified volunteer with verification step', functi
         ->call('submitSignup')
         ->assertHasNoErrors()
         ->assertSet('state', WizardState::Complete);
+});
+
+it('resendVerification requires the pending verification step', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'resend-step@example.com')
+        ->call('resendVerification')
+        ->assertHasErrors(['state'])
+        ->assertSet('state', WizardState::EmailEntry);
+});
+
+it('resendVerification validates the current email again', function () {
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'valid@example.com')
+        ->call('submitEmail')
+        ->assertSet('state', WizardState::PendingVerification);
+
+    $component->set('volunteerEmail', 'not-an-email')
+        ->call('resendVerification')
+        ->assertHasErrors(['volunteerEmail']);
+});
+
+it('resendVerification requires an active verification token', function () {
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'expired-resend@example.com')
+        ->call('submitEmail')
+        ->assertSet('state', WizardState::PendingVerification);
+
+    EmailVerificationToken::find($component->get('verificationTokenId'))?->update([
+        'expires_at' => now()->subMinute(),
+    ]);
+
+    $component->call('resendVerification')
+        ->assertHasErrors(['volunteerEmail']);
+});
+
+it('scopes resend verification throttling to the current event', function () {
+    $otherEvent = Event::factory()->for($this->org)->for($this->project)->published()->create();
+
+    $firstComponent = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'scoped-resend@example.com')
+        ->call('submitEmail')
+        ->assertSet('state', WizardState::PendingVerification);
+
+    $firstComponent->call('resendVerification')
+        ->call('resendVerification')
+        ->call('resendVerification')
+        ->assertHasNoErrors();
+
+    $secondComponent = Livewire::test(EventSignup::class, ['publicToken' => $otherEvent->public_token])
+        ->set('volunteerEmail', 'scoped-resend@example.com')
+        ->call('submitEmail')
+        ->assertSet('state', WizardState::PendingVerification)
+        ->call('resendVerification')
+        ->assertHasNoErrors('volunteerEmail');
 });
 
 // --- Step 1: Shift selection & reservation ---
@@ -526,6 +644,44 @@ it('rejects inactive shifts during reservation even if submitted directly', func
         ->assertSet('state', WizardState::SelectingShifts);
 });
 
+it('rejects reserveAndAdvance outside the shift-selection step', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'wrong-step-reserve@example.com', 'first_name' => 'Wrong', 'last_name' => 'Step']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'wrong-step-reserve@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'wrong-step-reserve@example.com');
+
+    $component->call('reserveAndAdvance')
+        ->assertHasErrors(['state'])
+        ->assertSee(__('Please continue from the current signup step.'))
+        ->assertSet('state', WizardState::PersonalInfo);
+
+    expect(ShiftReservation::count())->toBe(0);
+});
+
+it('rejects hidden shift ids that are not renderable in the current public shift list', function () {
+    $hiddenJob = VolunteerJob::factory()->for($this->event)->create(['name' => 'Hidden']);
+    $hiddenShift = Shift::factory()->for($hiddenJob, 'volunteerJob')->create(['capacity' => 1]);
+    ShiftSignup::factory()->create([
+        'shift_id' => $hiddenShift->id,
+        'volunteer_id' => Volunteer::factory()->for($this->project),
+    ]);
+
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'hidden-injection@example.com', 'first_name' => 'Hidden', 'last_name' => 'Injection']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'hidden-injection@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'hidden-injection@example.com');
+
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$hiddenShift->id])
+        ->call('reserveAndAdvance')
+        ->assertHasErrors(['selectedShiftIds.0' => ['in']])
+        ->assertSet('state', WizardState::SelectingShifts);
+});
+
 it('blocks reserveAndAdvance when selected shifts overlap in time', function () {
     $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
         'shift_date' => '2026-06-01',
@@ -542,6 +698,10 @@ it('blocks reserveAndAdvance when selected shifts overlap in time', function () 
 
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'test@example.com', 'first_name' => 'Test', 'last_name' => 'Person']);
 
+    $timezone = $this->project->timezone ?? 'UTC';
+    $shiftALabel = eventSignupShiftTimeLabel($this->job, $shiftA, $timezone);
+    $shiftBLabel = eventSignupShiftTimeLabel($this->job, $shiftB, $timezone);
+
     $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerEmail', 'test@example.com')
         ->call('submitEmail');
@@ -550,7 +710,14 @@ it('blocks reserveAndAdvance when selected shifts overlap in time', function () 
         ->set('selectedShiftIds', [$shiftA->id, $shiftB->id])
         ->assertSee(__('Conflict'))
         ->assertSee(__('Some selected shifts overlap in time'))
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $shiftALabel, 'conflicts' => __('the selected shift :shifts', ['shifts' => $shiftBLabel])]))
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $shiftBLabel, 'conflicts' => __('the selected shift :shifts', ['shifts' => $shiftALabel])]))
+        ->assertSeeHtml('role="alert" aria-live="assertive" aria-atomic="true"')
+        ->assertSeeHtml('id="shift-conflict-description-'.$shiftA->id.'"')
+        ->assertSeeHtml('aria-describedby="shift-conflict-description-'.$shiftA->id.'"')
         ->call('reserveAndAdvance')
+        ->assertHasErrors(['selectedShiftIds'])
+        ->assertSee(__('Some selected shifts overlap in time. Review the conflict details below before continuing.'))
         ->assertSet('state', WizardState::SelectingShifts);
 
     expect(ShiftReservation::count())->toBe(0);
@@ -586,6 +753,116 @@ it('allows reserveAndAdvance after deselecting one conflicting shift', function 
         ->assertSet('state', WizardState::Confirming);
 
     expect(ShiftReservation::where('shift_id', $shiftA->id)->count())->toBe(1);
+});
+
+it('marks only the conflicting shifts when three selected shifts include one non-overlapping option', function () {
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftC = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 14:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 16:00:00'),
+        'capacity' => 10,
+    ]);
+
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'three-shifts@example.com', 'first_name' => 'Three', 'last_name' => 'Shifts']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'three-shifts@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'three-shifts@example.com');
+
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$shiftA->id, $shiftB->id, $shiftC->id])
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => eventSignupShiftTimeLabel($this->job, $shiftA, $timezone = $this->project->timezone ?? 'UTC'), 'conflicts' => __('the selected shift :shifts', ['shifts' => eventSignupShiftTimeLabel($this->job, $shiftB, $timezone)])]))
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => eventSignupShiftTimeLabel($this->job, $shiftB, $timezone), 'conflicts' => __('the selected shift :shifts', ['shifts' => eventSignupShiftTimeLabel($this->job, $shiftA, $timezone)])]))
+        ->assertDontSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => eventSignupShiftTimeLabel($this->job, $shiftC, $timezone), 'conflicts' => __('the selected shift :shifts', ['shifts' => eventSignupShiftTimeLabel($this->job, $shiftA, $timezone)])]));
+
+    expect(array_keys($component->instance()->overlapConflictMap))
+        ->toEqualCanonicalizing([$shiftA->id, $shiftB->id])
+        ->and($component->instance()->overlappingShiftIds)
+        ->toEqualCanonicalizing([$shiftA->id, $shiftB->id]);
+});
+
+it('references all newly selected conflicting shifts when one shift overlaps multiple others', function () {
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 10:30:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftC = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 11:30:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 10,
+    ]);
+
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'multi-conflict@example.com', 'first_name' => 'Multi', 'last_name' => 'Conflict']);
+
+    $timezone = $this->project->timezone ?? 'UTC';
+    $shiftALabel = eventSignupShiftTimeLabel($this->job, $shiftA, $timezone);
+    $shiftBLabel = eventSignupShiftTimeLabel($this->job, $shiftB, $timezone);
+    $shiftCLabel = eventSignupShiftTimeLabel($this->job, $shiftC, $timezone);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'multi-conflict@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'multi-conflict@example.com');
+
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$shiftA->id, $shiftB->id, $shiftC->id])
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $shiftBLabel, 'conflicts' => __('the selected shifts :shifts', ['shifts' => $shiftALabel.' and '.$shiftCLabel])]))
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $shiftALabel, 'conflicts' => __('the selected shift :shifts', ['shifts' => $shiftBLabel])]))
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $shiftCLabel, 'conflicts' => __('the selected shift :shifts', ['shifts' => $shiftBLabel])]));
+});
+
+it('uses unique ids for visible and hidden conflict descriptions and associates the shift group with its messages', function () {
+    $shiftA = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 12:00:00'),
+        'capacity' => 10,
+    ]);
+    $shiftB = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-06-01',
+        'starts_at' => Carbon::parse('2026-06-01 11:00:00'),
+        'ends_at' => Carbon::parse('2026-06-01 13:00:00'),
+        'capacity' => 10,
+    ]);
+
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'ids@example.com', 'first_name' => 'Ids', 'last_name' => 'Check']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'ids@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'ids@example.com');
+
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$shiftA->id, $shiftB->id])
+        ->assertSeeHtml('id="shift-conflict-description-'.$shiftA->id.'"')
+        ->assertSeeHtml('id="shift-conflict-message-'.$shiftA->id.'"')
+        ->assertSeeHtml('aria-describedby="shift-conflict-description-'.$shiftA->id.'"')
+        ->assertSeeHtml('role="group"')
+        ->assertSeeHtml('aria-labelledby="step-heading-selecting_shifts"')
+        ->assertSeeHtml('aria-describedby="shift-selection-conflicts"')
+        ->assertDontSeeHtml('aria-describedby="shift-conflict-message-'.$shiftA->id.'"');
 });
 
 it('allows selecting adjacent shifts that meet exactly at midnight', function () {
@@ -635,6 +912,10 @@ it('blocks reserveAndAdvance when overnight shift overlaps next-day shift', func
 
     Volunteer::factory()->for($this->project)->verified()->create(['email' => 'test@example.com', 'first_name' => 'Test', 'last_name' => 'Person']);
 
+    $timezone = $this->project->timezone ?? 'UTC';
+    $shiftALabel = eventSignupShiftTimeLabel($this->job, $shiftA, $timezone);
+    $shiftBLabel = eventSignupShiftTimeLabel($this->job, $shiftB, $timezone);
+
     $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerEmail', 'test@example.com')
         ->call('submitEmail');
@@ -643,6 +924,7 @@ it('blocks reserveAndAdvance when overnight shift overlaps next-day shift', func
         ->set('selectedShiftIds', [$shiftA->id, $shiftB->id])
         ->assertSee(__('Conflict'))
         ->assertSee(__('Some selected shifts overlap in time'))
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $shiftALabel, 'conflicts' => __('the selected shift :shifts', ['shifts' => $shiftBLabel])]))
         ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::SelectingShifts);
 
@@ -719,6 +1001,21 @@ it('validates size is required for size-required gear items on step 2', function
         ->assertSet('state', WizardState::GearAndFields)
         ->call('advanceToConfirmation')
         ->assertHasErrors(['gearSelections.'.$tshirt->id]);
+});
+
+it('rejects advanceToConfirmation outside the gear step', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'wrong-step-details@example.com', 'first_name' => 'Wrong', 'last_name' => 'Details']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'wrong-step-details@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'wrong-step-details@example.com');
+
+    $component->call('advanceToShifts')
+        ->call('advanceToConfirmation')
+        ->assertHasErrors(['state'])
+        ->assertSee(__('Please continue from the current signup step.'))
+        ->assertSet('state', WizardState::SelectingShifts);
 });
 
 // --- Personal info step ---
@@ -845,6 +1142,53 @@ it('submits signup without phone number for verified volunteer', function () {
         ->assertSet('state', WizardState::Complete);
 
     expect(Volunteer::where('email', 'nophone@example.com')->first()->phone)->toBeNull();
+});
+
+it('rejects submitSignup outside the confirmation step', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'wrong-step-submit@example.com', 'first_name' => 'Wrong', 'last_name' => 'Submit']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'wrong-step-submit@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'wrong-step-submit@example.com');
+
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('submitSignup')
+        ->assertHasErrors(['state'])
+        ->assertSee(__('Please continue from the current signup step.'))
+        ->assertSet('state', WizardState::SelectingShifts);
+
+    expect(ShiftSignup::where('shift_id', $this->shift->id)->count())->toBe(0);
+});
+
+it('rejects submitSignup when the verified token has expired', function () {
+    Volunteer::factory()->for($this->project)->verified()->create(['email' => 'expired-submit@example.com', 'first_name' => 'Expired', 'last_name' => 'Submit']);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'expired-submit@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'expired-submit@example.com');
+
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$this->shift->id])
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::Confirming);
+
+    EmailVerificationToken::find($component->get('verificationTokenId'))?->update([
+        'expires_at' => now()->subMinute(),
+    ]);
+
+    $component->call('submitSignup')
+        ->assertHasErrors(['volunteerEmail'])
+        ->assertSet('state', WizardState::EmailEntry);
+});
+
+it('includes pending complete and expired step labels in the live region map', function () {
+    Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->assertSee(__('Email verification in progress'))
+        ->assertSee(__('Signup complete'))
+        ->assertSee(__('Reservation expired'));
 });
 
 it('shows error for already signed up volunteer on all selected shifts', function () {
@@ -1097,6 +1441,30 @@ it('can restart signup after expiry', function () {
         ->assertSet('state', WizardState::EmailEntry)
         ->assertSet('selectedShiftIds', [])
         ->assertSet('reservationExpiresAt', '');
+});
+
+it('restartSignup clears volunteer-facing personal data', function () {
+    Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'restart-clear@example.com',
+        'first_name' => 'Restart',
+        'last_name' => 'Clear',
+        'phone' => '+15551230000',
+    ]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'restart-clear@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'restart-clear@example.com');
+
+    $component->assertSet('volunteerFirstName', 'Restart')
+        ->assertSet('volunteerLastName', 'Clear')
+        ->assertSet('volunteerEmail', 'restart-clear@example.com')
+        ->assertSet('volunteerPhone', '+15551230000')
+        ->call('restartSignup')
+        ->assertSet('volunteerFirstName', '')
+        ->assertSet('volunteerLastName', '')
+        ->assertSet('volunteerEmail', '')
+        ->assertSet('volunteerPhone', '');
 });
 
 it('sets reservationExpiresAt after reservation', function () {
@@ -1436,6 +1804,10 @@ it('detects overlap between new shift and existing shift for returning volunteer
     $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['email' => 'returning@example.com']);
     ShiftSignup::factory()->create(['shift_id' => $existingShift->id, 'volunteer_id' => $volunteer->id]);
 
+    $timezone = $this->project->timezone ?? 'UTC';
+    $existingShiftLabel = eventSignupShiftTimeLabel($this->job, $existingShift, $timezone);
+    $newShiftLabel = eventSignupShiftTimeLabel($this->job, $newShift, $timezone);
+
     $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
         ->set('volunteerEmail', 'returning@example.com')
         ->call('submitEmail');
@@ -1445,10 +1817,173 @@ it('detects overlap between new shift and existing shift for returning volunteer
         ->set('selectedShiftIds', [$existingShift->id, $newShift->id])
         ->assertSee(__('Conflict'))
         ->assertSee(__('Some selected shifts overlap in time'))
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $newShiftLabel, 'conflicts' => __('your existing shift :shifts', ['shifts' => $existingShiftLabel])]))
+        ->assertDontSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $existingShiftLabel, 'conflicts' => __('your existing shift :shifts', ['shifts' => $newShiftLabel])]))
         ->call('reserveAndAdvance')
         ->assertSet('state', WizardState::SelectingShifts);
 
     expect(ShiftReservation::count())->toBe(0);
+});
+
+it('reactivates a cancelled historical shift when the volunteers active schedule no longer overlaps', function () {
+    $timeline = eventSignupPhaseFourTimeline();
+
+    $activeShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-08-15',
+        'starts_at' => $timeline['non_overlapping_active'][0],
+        'ends_at' => $timeline['non_overlapping_active'][1],
+        'capacity' => 10,
+    ]);
+    $cancelledShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-08-15',
+        'starts_at' => $timeline['cancelled'][0],
+        'ends_at' => $timeline['cancelled'][1],
+        'capacity' => 10,
+    ]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'returning-reactivate@example.com',
+        'first_name' => 'Returning',
+        'last_name' => 'Reactivate',
+    ]);
+    ShiftSignup::factory()->create([
+        'shift_id' => $activeShift->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+    $cancelledSignup = ShiftSignup::factory()->create([
+        'shift_id' => $cancelledShift->id,
+        'volunteer_id' => $volunteer->id,
+        'cancelled_at' => now(),
+    ]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning-reactivate@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'returning-reactivate@example.com');
+
+    $component->call('advanceToShifts')
+        ->assertSet('existingShiftIds', [$activeShift->id])
+        ->assertSet('selectedShiftIds', [$activeShift->id])
+        ->assertSeeHtml('value="'.$cancelledShift->id.'"')
+        ->assertDontSeeHtml('value="'.$cancelledShift->id.'" disabled')
+        ->set('selectedShiftIds', [$activeShift->id, $cancelledShift->id])
+        ->assertDontSee(__('Conflict'))
+        ->call('reserveAndAdvance')
+        ->assertSet('state', WizardState::Confirming)
+        ->call('submitSignup')
+        ->assertHasNoErrors()
+        ->assertSet('state', WizardState::Complete);
+
+    expect($cancelledSignup->fresh()->cancelled_at)->toBeNull()
+        ->and(ShiftSignup::where('volunteer_id', $volunteer->id)
+            ->where('shift_id', $cancelledShift->id)
+            ->count())
+        ->toBe(1)
+        ->and(ShiftSignup::where('volunteer_id', $volunteer->id)
+            ->where('shift_id', $cancelledShift->id)
+            ->whereNull('cancelled_at')
+            ->count())
+        ->toBe(1);
+});
+
+it('blocks re-selecting a cancelled historical shift when a newer active signup still overlaps it', function () {
+    $timeline = eventSignupPhaseFourTimeline();
+
+    $activeShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-08-15',
+        'starts_at' => $timeline['overlapping_active'][0],
+        'ends_at' => $timeline['overlapping_active'][1],
+        'capacity' => 10,
+    ]);
+    $cancelledShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-08-15',
+        'starts_at' => $timeline['cancelled'][0],
+        'ends_at' => $timeline['cancelled'][1],
+        'capacity' => 10,
+    ]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create([
+        'email' => 'returning-overlap@example.com',
+        'first_name' => 'Returning',
+        'last_name' => 'Overlap',
+    ]);
+    ShiftSignup::factory()->create([
+        'shift_id' => $activeShift->id,
+        'volunteer_id' => $volunteer->id,
+    ]);
+    $cancelledSignup = ShiftSignup::factory()->create([
+        'shift_id' => $cancelledShift->id,
+        'volunteer_id' => $volunteer->id,
+        'cancelled_at' => now(),
+    ]);
+
+    $timezone = $this->project->timezone ?? 'UTC';
+    $activeShiftLabel = eventSignupShiftTimeLabel($this->job, $activeShift, $timezone);
+    $cancelledShiftLabel = eventSignupShiftTimeLabel($this->job, $cancelledShift, $timezone);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'returning-overlap@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'returning-overlap@example.com');
+
+    $component->call('advanceToShifts')
+        ->assertSet('existingShiftIds', [$activeShift->id])
+        ->assertSet('selectedShiftIds', [$activeShift->id])
+        ->assertSeeHtml('value="'.$cancelledShift->id.'"')
+        ->assertDontSeeHtml('value="'.$cancelledShift->id.'" disabled')
+        ->set('selectedShiftIds', [$activeShift->id, $cancelledShift->id])
+        ->assertSee(__('Conflict'))
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $cancelledShiftLabel, 'conflicts' => __('your existing shift :shifts', ['shifts' => $activeShiftLabel])]))
+        ->call('reserveAndAdvance')
+        ->assertHasErrors(['selectedShiftIds'])
+        ->assertSee(__('Some selected shifts overlap in time. Review the conflict details below before continuing.'))
+        ->assertSet('state', WizardState::SelectingShifts);
+
+    expect(array_keys($component->instance()->overlapConflictMap))
+        ->toEqualCanonicalizing([$cancelledShift->id])
+        ->and($component->instance()->existingShiftIds)
+        ->toEqual([$activeShift->id]);
+
+    expect(ShiftReservation::count())->toBe(0)
+        ->and($cancelledSignup->fresh()->cancelled_at)->not->toBeNull();
+});
+
+it('uses plural existing-shift wording when one selected shift conflicts with multiple existing shifts', function () {
+    $firstExistingShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-08-16',
+        'starts_at' => Carbon::parse('2026-08-16 10:00:00'),
+        'ends_at' => Carbon::parse('2026-08-16 12:00:00'),
+        'capacity' => 10,
+    ]);
+    $secondExistingShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-08-16',
+        'starts_at' => Carbon::parse('2026-08-16 11:00:00'),
+        'ends_at' => Carbon::parse('2026-08-16 13:00:00'),
+        'capacity' => 10,
+    ]);
+    $newShift = Shift::factory()->for($this->job, 'volunteerJob')->create([
+        'shift_date' => '2026-08-16',
+        'starts_at' => Carbon::parse('2026-08-16 11:30:00'),
+        'ends_at' => Carbon::parse('2026-08-16 12:30:00'),
+        'capacity' => 10,
+    ]);
+
+    $volunteer = Volunteer::factory()->for($this->project)->verified()->create(['email' => 'multiple-existing@example.com']);
+    ShiftSignup::factory()->create(['shift_id' => $firstExistingShift->id, 'volunteer_id' => $volunteer->id]);
+    ShiftSignup::factory()->create(['shift_id' => $secondExistingShift->id, 'volunteer_id' => $volunteer->id]);
+
+    $timezone = $this->project->timezone ?? 'UTC';
+    $newShiftLabel = eventSignupShiftTimeLabel($this->job, $newShift, $timezone);
+    $expectedExistingLabels = __('your existing shifts :shifts', ['shifts' => eventSignupShiftTimeLabel($this->job, $firstExistingShift, $timezone).' and '.eventSignupShiftTimeLabel($this->job, $secondExistingShift, $timezone)]);
+
+    $component = Livewire::test(EventSignup::class, ['publicToken' => $this->event->public_token])
+        ->set('volunteerEmail', 'multiple-existing@example.com')
+        ->call('submitEmail');
+    simulateVerification($component, 'multiple-existing@example.com');
+
+    $component->call('advanceToShifts')
+        ->set('selectedShiftIds', [$firstExistingShift->id, $secondExistingShift->id, $newShift->id])
+        ->assertSee(__('Deselect :shift because it overlaps :conflicts.', ['shift' => $newShiftLabel, 'conflicts' => $expectedExistingLabels]));
 });
 
 it('allows new shift that does not overlap with existing shift for returning volunteer', function () {
