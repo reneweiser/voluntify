@@ -13,6 +13,7 @@ use App\Enums\WizardState;
 use App\Exceptions\DomainException;
 use App\Models\EmailVerificationToken;
 use App\Models\Event;
+use App\Models\Shift;
 use App\Models\ShiftReservation;
 use App\Models\Volunteer;
 use App\Services\HintTextResolver;
@@ -33,6 +34,7 @@ class EventSignup extends Component
     #[Locked]
     public Event $event;
 
+    #[Locked]
     public WizardState $state = WizardState::EmailEntry;
 
     /** @var array<int> */
@@ -100,6 +102,7 @@ class EventSignup extends Component
                 ->where('event_id', $this->event->id)
                 ->whereNotNull('verified_at')
                 ->where('verified_at', '>', now()->subMinutes(30))
+                ->where('expires_at', '>', now())
                 ->first();
 
             if ($token) {
@@ -188,6 +191,20 @@ class EventSignup extends Component
             ->all();
     }
 
+    /**
+     * @return array<int>
+     */
+    #[Computed]
+    public function renderableShiftIds(): array
+    {
+        return $this->jobs
+            ->flatMap(fn ($job) => $job->shifts)
+            ->pluck('id')
+            ->map(fn ($shiftId) => (int) $shiftId)
+            ->values()
+            ->all();
+    }
+
     #[Computed]
     public function hintSignupEmail(): ?string
     {
@@ -226,6 +243,67 @@ class EventSignup extends Component
     }
 
     /**
+     * Returns the selected new shifts keyed to their specific conflicts.
+     *
+     * @return array<int, array{shift_id: int, shift_label: string, conflicts: array<int, array{shift_id: int, shift_label: string, is_existing: bool}>}>
+     */
+    #[Computed]
+    public function overlapConflictMap(): array
+    {
+        if (count($this->selectedShiftIds) < 2) {
+            return [];
+        }
+
+        $selectedShiftIds = array_map('intval', $this->selectedShiftIds);
+        $newShiftIds = array_values(array_diff($selectedShiftIds, $this->existingShiftIds));
+
+        if ($newShiftIds === []) {
+            return [];
+        }
+
+        $shiftContexts = $this->shiftContextMap();
+
+        $newShifts = collect($newShiftIds)
+            ->map(fn (int $shiftId) => $shiftContexts[$shiftId] ?? null)
+            ->filter(fn (?array $context) => $context !== null
+                && $context['shift']->starts_at !== null
+                && $context['shift']->ends_at !== null)
+            ->values();
+
+        $existingShifts = collect($this->existingShiftIds)
+            ->map(fn (int $shiftId) => $shiftContexts[$shiftId] ?? null)
+            ->filter(fn (?array $context) => $context !== null
+                && $context['shift']->starts_at !== null
+                && $context['shift']->ends_at !== null)
+            ->values();
+
+        $conflicts = [];
+
+        for ($i = 0; $i < $newShifts->count(); $i++) {
+            for ($j = $i + 1; $j < $newShifts->count(); $j++) {
+                if (! $this->shiftsOverlap($newShifts[$i]['shift'], $newShifts[$j]['shift'])) {
+                    continue;
+                }
+
+                $this->addOverlapConflict($conflicts, $newShifts[$i], $newShifts[$j], false);
+                $this->addOverlapConflict($conflicts, $newShifts[$j], $newShifts[$i], false);
+            }
+        }
+
+        foreach ($newShifts as $newShift) {
+            foreach ($existingShifts as $existingShift) {
+                if (! $this->shiftsOverlap($newShift['shift'], $existingShift['shift'])) {
+                    continue;
+                }
+
+                $this->addOverlapConflict($conflicts, $newShift, $existingShift, true);
+            }
+        }
+
+        return $conflicts;
+    }
+
+    /**
      * Returns the IDs of selected shifts that overlap with at least one other
      * selected shift.
      *
@@ -234,52 +312,7 @@ class EventSignup extends Component
     #[Computed]
     public function overlappingShiftIds(): array
     {
-        if (count($this->selectedShiftIds) < 2) {
-            return [];
-        }
-
-        $intIds = array_map('intval', $this->selectedShiftIds);
-
-        $newOnly = array_diff($intIds, $this->existingShiftIds);
-        if (count($newOnly) < 1) {
-            return [];
-        }
-
-        $allShifts = $this->jobs->flatMap(fn ($job) => $job->shifts);
-
-        $newShifts = $allShifts
-            ->filter(fn ($s) => in_array((int) $s->id, $newOnly, true)
-                && $s->starts_at !== null && $s->ends_at !== null)
-            ->values();
-
-        $existingShifts = $allShifts
-            ->filter(fn ($s) => in_array((int) $s->id, $this->existingShiftIds, true)
-                && $s->starts_at !== null && $s->ends_at !== null)
-            ->values();
-
-        $conflicting = [];
-
-        // New vs new
-        for ($i = 0; $i < $newShifts->count(); $i++) {
-            for ($j = $i + 1; $j < $newShifts->count(); $j++) {
-                if ($newShifts[$i]->starts_at < $newShifts[$j]->ends_at
-                    && $newShifts[$i]->ends_at > $newShifts[$j]->starts_at) {
-                    $conflicting[] = $newShifts[$i]->id;
-                    $conflicting[] = $newShifts[$j]->id;
-                }
-            }
-        }
-
-        // New vs existing — only flag the new shift (existing is locked in the UI)
-        foreach ($newShifts as $new) {
-            foreach ($existingShifts as $existing) {
-                if ($new->starts_at < $existing->ends_at && $new->ends_at > $existing->starts_at) {
-                    $conflicting[] = $new->id;
-                }
-            }
-        }
-
-        return array_values(array_unique($conflicting));
+        return array_map('intval', array_keys($this->overlapConflictMap));
     }
 
     /**
@@ -299,7 +332,7 @@ class EventSignup extends Component
         }
         RateLimiter::hit($ipKey, 60);
 
-        $emailKey = 'signup-lookup-email:'.strtolower(trim($this->volunteerEmail));
+        $emailKey = 'signup-lookup-email:'.$this->event->id.':'.strtolower(trim($this->volunteerEmail));
         if (RateLimiter::tooManyAttempts($emailKey, 3)) {
             $this->addError('volunteerEmail', __('Too many attempts for this email. Please wait a few minutes.'));
 
@@ -360,7 +393,23 @@ class EventSignup extends Component
      */
     public function resendVerification(): void
     {
-        $emailKey = 'email-verification-resend:'.strtolower(trim($this->volunteerEmail));
+        if (! $this->ensureStateIs(WizardState::PendingVerification)) {
+            return;
+        }
+
+        $this->validate([
+            'volunteerEmail' => ['required', 'email', 'max:255'],
+        ]);
+
+        $token = $this->currentPendingVerificationToken();
+
+        if (! $token) {
+            $this->addError('volunteerEmail', __('Your verification attempt is no longer active. Please start again.'));
+
+            return;
+        }
+
+        $emailKey = 'email-verification-resend:'.$this->event->id.':'.strtolower(trim($this->volunteerEmail));
         if (RateLimiter::tooManyAttempts($emailKey, 3)) {
             $this->addError('volunteerEmail', __('Too many resend attempts. Please wait before trying again.'));
 
@@ -445,6 +494,10 @@ class EventSignup extends Component
      */
     public function reserveAndAdvance(): void
     {
+        if (! $this->ensureStateIs(WizardState::SelectingShifts)) {
+            return;
+        }
+
         if (RateLimiter::tooManyAttempts('signup-reserve:'.request()->ip(), 15)) {
             $this->addError('selectedShiftIds', __('Too many attempts. Please wait a moment before trying again.'));
 
@@ -456,6 +509,7 @@ class EventSignup extends Component
             'selectedShiftIds' => ['required', 'array', 'min:1'],
             'selectedShiftIds.*' => [
                 'integer',
+                Rule::in($this->renderableShiftIds),
                 Rule::exists('shifts', 'id')->where(fn ($q) => $q->whereIn(
                     'volunteer_job_id',
                     $this->event->volunteerJobs()->active()->select('id'),
@@ -464,6 +518,8 @@ class EventSignup extends Component
         ]);
 
         if (count($this->overlappingShiftIds) > 0) {
+            $this->addError('selectedShiftIds', __('Some selected shifts overlap in time. Review the conflict details below before continuing.'));
+
             return;
         }
 
@@ -499,7 +555,7 @@ class EventSignup extends Component
         }
 
         $this->selectedShiftIds = array_merge($this->existingShiftIds, $result->reservedShiftIds());
-        unset($this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
+        unset($this->overlapConflictMap, $this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
         $this->reservationExpiresAt = $result->expiresAt->toISOString();
 
         if (count($result->unavailable) > 0) {
@@ -520,6 +576,10 @@ class EventSignup extends Component
      */
     public function advanceToConfirmation(): void
     {
+        if (! $this->ensureStateIs(WizardState::GearAndFields)) {
+            return;
+        }
+
         if (! ShiftReservation::forSession(session()->getId())->active()->exists()) {
             $this->handleReservationExpired();
 
@@ -549,6 +609,10 @@ class EventSignup extends Component
      */
     public function submitSignup(): void
     {
+        if (! $this->ensureStateIs(WizardState::Confirming)) {
+            return;
+        }
+
         if (RateLimiter::tooManyAttempts('signup-submit:'.request()->ip(), 5)) {
             $this->addError('volunteerEmail', __('Too many signup attempts. Please wait a few minutes before trying again.'));
 
@@ -568,7 +632,7 @@ class EventSignup extends Component
 
         $verifiedEmail = $verificationToken?->volunteer?->email ?? $verificationToken?->email;
 
-        if (! $verificationToken?->isVerified() || $verificationToken->project_id !== $this->event->project_id || $verifiedEmail === null || strcasecmp($this->volunteerEmail, $verifiedEmail) !== 0) {
+        if (! $verificationToken?->isVerified() || $verificationToken->expires_at->isPast() || $verificationToken->project_id !== $this->event->project_id || $verifiedEmail === null || strcasecmp($this->volunteerEmail, $verifiedEmail) !== 0) {
             $this->addError('volunteerEmail', __('Your verified email no longer matches the submitted email. Please verify your email again before completing your signup.'));
             $this->restartSignup();
 
@@ -684,6 +748,10 @@ class EventSignup extends Component
         $this->state = WizardState::EmailEntry;
         $this->selectedShiftIds = [];
         $this->reservationExpiresAt = '';
+        $this->volunteerFirstName = '';
+        $this->volunteerLastName = '';
+        $this->volunteerEmail = '';
+        $this->volunteerPhone = '';
         $this->warningMessage = '';
         $this->lookupMessage = '';
         $this->notificationSubscriptionEmail = '';
@@ -696,7 +764,63 @@ class EventSignup extends Component
         $this->customFieldResponses = [];
         $this->isReturningVolunteer = false;
         $this->verificationStartedAt = null;
-        unset($this->jobs, $this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
+        unset($this->jobs, $this->overlapConflictMap, $this->overlappingShiftIds, $this->selectedJobIds, $this->gearItems, $this->hasGearOrFields);
+    }
+
+    /**
+     * @return array<int, array{shift: Shift, label: string}>
+     */
+    private function shiftContextMap(): array
+    {
+        $timezone = $this->event->project->timezone ?? 'UTC';
+        $contexts = [];
+
+        foreach ($this->jobs as $job) {
+            foreach ($job->shifts as $shift) {
+                $contexts[(int) $shift->id] = [
+                    'shift' => $shift,
+                    'label' => $job->name.' — '.$shift->shift_date->setTimezone($timezone)->format('M d').' '.$shift->displayTimeRange($timezone),
+                ];
+            }
+        }
+
+        return $contexts;
+    }
+
+    private function shiftsOverlap(Shift $firstShift, Shift $secondShift): bool
+    {
+        return $firstShift->starts_at < $secondShift->ends_at
+            && $firstShift->ends_at > $secondShift->starts_at;
+    }
+
+    /**
+     * @param  array<int, array{shift_id: int, shift_label: string, conflicts: array<int, array{shift_id: int, shift_label: string, is_existing: bool}>}>  $conflicts
+     * @param  array{shift: Shift, label: string}  $selectedShift
+     * @param  array{shift: Shift, label: string}  $conflictingShift
+     */
+    private function addOverlapConflict(array &$conflicts, array $selectedShift, array $conflictingShift, bool $isExisting): void
+    {
+        $selectedShiftId = (int) $selectedShift['shift']->id;
+        $conflictingShiftId = (int) $conflictingShift['shift']->id;
+
+        $conflicts[$selectedShiftId] ??= [
+            'shift_id' => $selectedShiftId,
+            'shift_label' => $selectedShift['label'],
+            'conflicts' => [],
+        ];
+
+        $alreadyRecorded = collect($conflicts[$selectedShiftId]['conflicts'])
+            ->contains(fn (array $conflict) => $conflict['shift_id'] === $conflictingShiftId);
+
+        if ($alreadyRecorded) {
+            return;
+        }
+
+        $conflicts[$selectedShiftId]['conflicts'][] = [
+            'shift_id' => $conflictingShiftId,
+            'shift_label' => $conflictingShift['label'],
+            'is_existing' => $isExisting,
+        ];
     }
 
     private function validateGearAndCustomFields(): void
@@ -742,6 +866,43 @@ class EventSignup extends Component
         ]);
     }
 
+    /**
+     * @param  array{shift_id: int, shift_label: string, conflicts: array<int, array{shift_id: int, shift_label: string, is_existing: bool}>}  $conflict
+     */
+    public function overlapConflictMessage(array $conflict): string
+    {
+        $existingLabels = collect($conflict['conflicts'])
+            ->filter(fn (array $item) => $item['is_existing'])
+            ->pluck('shift_label')
+            ->values()
+            ->all();
+
+        $selectedLabels = collect($conflict['conflicts'])
+            ->reject(fn (array $item) => $item['is_existing'])
+            ->pluck('shift_label')
+            ->values()
+            ->all();
+
+        $segments = [];
+
+        if ($existingLabels !== []) {
+            $segments[] = count($existingLabels) === 1
+                ? __('your existing shift :shifts', ['shifts' => $this->implodeLabels($existingLabels)])
+                : __('your existing shifts :shifts', ['shifts' => $this->implodeLabels($existingLabels)]);
+        }
+
+        if ($selectedLabels !== []) {
+            $segments[] = count($selectedLabels) === 1
+                ? __('the selected shift :shifts', ['shifts' => $this->implodeLabels($selectedLabels)])
+                : __('the selected shifts :shifts', ['shifts' => $this->implodeLabels($selectedLabels)]);
+        }
+
+        return __('Deselect :shift because it overlaps :conflicts.', [
+            'shift' => $conflict['shift_label'],
+            'conflicts' => $this->implodeLabels($segments),
+        ]);
+    }
+
     private function prefillFromVolunteer(?Volunteer $volunteer): void
     {
         if (! $volunteer) {
@@ -776,5 +937,57 @@ class EventSignup extends Component
         if (! empty($this->existingShiftIds) || ! empty($this->existingGearSelections)) {
             $this->lookupMessage = __('Details pre-filled from your previous signup.');
         }
+    }
+
+    private function ensureStateIs(WizardState $expectedState): bool
+    {
+        if ($this->state === $expectedState) {
+            return true;
+        }
+
+        $this->addError('state', __('Please continue from the current signup step.'));
+
+        return false;
+    }
+
+    private function currentPendingVerificationToken(): ?EmailVerificationToken
+    {
+        if ($this->verificationTokenId === null) {
+            return null;
+        }
+
+        $token = EmailVerificationToken::find($this->verificationTokenId);
+
+        if (! $token) {
+            return null;
+        }
+
+        if ($token->event_id !== $this->event->id || $token->project_id !== $this->event->project_id) {
+            return null;
+        }
+
+        if ($token->isVerified() || $token->expires_at->isPast()) {
+            return null;
+        }
+
+        if (strcasecmp($token->email ?? '', $this->volunteerEmail) !== 0) {
+            return null;
+        }
+
+        return $token;
+    }
+
+    /**
+     * @param  array<int, string>  $labels
+     */
+    private function implodeLabels(array $labels): string
+    {
+        if (count($labels) <= 1) {
+            return $labels[0] ?? '';
+        }
+
+        $lastLabel = array_pop($labels);
+
+        return implode(', ', $labels).' '.__('and').' '.$lastLabel;
     }
 }

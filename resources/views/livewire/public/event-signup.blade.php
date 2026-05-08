@@ -10,10 +10,13 @@
             init() {
                 const labels = {
                     '{{ \App\Enums\WizardState::EmailEntry->value }}': '{{ __('Step 1: Enter Your Email') }}',
+                    '{{ \App\Enums\WizardState::PendingVerification->value }}': '{{ __('Email verification in progress') }}',
                     '{{ \App\Enums\WizardState::PersonalInfo->value }}': '{{ __('Step 2: Your Information') }}',
                     '{{ \App\Enums\WizardState::SelectingShifts->value }}': '{{ __('Step 3: Choose Your Shifts') }}',
                     '{{ \App\Enums\WizardState::GearAndFields->value }}': '{{ __('Step 4: Details') }}',
                     '{{ \App\Enums\WizardState::Confirming->value }}': '{{ __('Step 5: Confirm Your Signup') }}',
+                    '{{ \App\Enums\WizardState::Complete->value }}': '{{ __('Signup complete') }}',
+                    '{{ \App\Enums\WizardState::Expired->value }}': '{{ __('Reservation expired') }}',
                 };
                 this.$watch(() => $wire.state, (state) => {
                     this.announcement = labels[state] || '';
@@ -192,12 +195,18 @@
         </nav>
 
         @if ($warningMessage && $state === \App\Enums\WizardState::SelectingShifts)
-            <div class="rounded-lg p-3 mb-4 text-sm" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #fbbf24;">
+            <div id="shift-selection-warning" class="rounded-lg p-3 mb-4 text-sm" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #fbbf24;">
                 {{ $warningMessage }}
             </div>
         @endif
 
         @error('selectedShiftIds')
+            <div id="shift-selection-error" class="rounded-lg p-3 mb-4 text-sm" style="background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.2); color: #fca5a5;">
+                {{ $message }}
+            </div>
+        @enderror
+
+        @error('state')
             <div class="rounded-lg p-3 mb-4 text-sm" style="background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.2); color: #fca5a5;">
                 {{ $message }}
             </div>
@@ -279,6 +288,13 @@
 
         {{-- Step 2: Select Shifts --}}
         <div x-show="$wire.state === '{{ \App\Enums\WizardState::SelectingShifts->value }}'" x-cloak>
+            @php
+                $shiftGroupDescribedBy = collect([
+                    $warningMessage ? 'shift-selection-warning' : null,
+                    $errors->has('selectedShiftIds') ? 'shift-selection-error' : null,
+                    $this->overlapConflictMap !== [] ? 'shift-selection-conflicts' : null,
+                ])->filter()->implode(' ');
+            @endphp
             <div class="space-y-6 mb-8">
                 <div>
                     <h2 class="font-bebas text-white text-2xl" style="letter-spacing: 0.04em;" id="step-heading-{{ \App\Enums\WizardState::SelectingShifts->value }}" tabindex="-1">{{ __('Choose Your Shifts') }}</h2>
@@ -338,6 +354,7 @@
                         </div>
                     </div>
                 @else
+                    <div role="group" aria-labelledby="step-heading-{{ \App\Enums\WizardState::SelectingShifts->value }}" @if ($shiftGroupDescribedBy !== '') aria-describedby="{{ $shiftGroupDescribedBy }}" @endif>
                     @foreach ($this->jobs as $job)
                         <div class="rounded-lg overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);" wire:key="job-{{ $job->id }}">
                             <div class="p-4" style="background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.08);">
@@ -356,15 +373,19 @@
 
                             <div class="p-4 space-y-3">
                                 @foreach ($job->shifts as $shift)
-                                    @php
-                                        $spotsLeft = $shift->spotsRemaining();
-                                        $isFull = $spotsLeft === 0;
-                                        $isSelected = in_array($shift->id, $selectedShiftIds);
-                                        $isConflicting = in_array($shift->id, $this->overlappingShiftIds);
-                                        $isExisting = in_array($shift->id, $existingShiftIds);
-                                        $isLockedByPriorityGate = $this->priorityGateStatus['is_closed'] && ! $shift->is_priority && ! $isExisting;
-                                        $shiftTimeLabel = $job->name.' — '.$shift->shift_date->setTimezone($tz)->format('M d').' '.$shift->displayTimeRange($tz);
-                                    @endphp
+                                     @php
+                                         $spotsLeft = $shift->spotsRemaining();
+                                         $isFull = $spotsLeft === 0;
+                                         $isSelected = in_array($shift->id, $selectedShiftIds);
+                                         $isConflicting = in_array($shift->id, $this->overlappingShiftIds);
+                                         $isExisting = in_array($shift->id, $existingShiftIds);
+                                         $isLockedByPriorityGate = $this->priorityGateStatus['is_closed'] && ! $shift->is_priority && ! $isExisting;
+                                         $shiftTimeLabel = $job->name.' — '.$shift->shift_date->setTimezone($tz)->format('M d').' '.$shift->displayTimeRange($tz);
+                                         $shiftConflict = $this->overlapConflictMap[$shift->id] ?? null;
+                                         $describedBy = collect([
+                                             $shiftConflict !== null && $isSelected ? 'shift-conflict-description-'.$shift->id : null,
+                                         ])->filter()->implode(' ');
+                                      @endphp
                                     <label
                                         class="flex items-center justify-between p-3 rounded-lg transition-all duration-200"
                                         style="border: 2px solid {{ $isExisting ? 'rgba(59,130,246,0.3)' : ($isSelected && $isConflicting ? 'var(--yellow)' : ($isSelected ? 'var(--brand)' : 'rgba(255,255,255,0.08)')) }};
@@ -373,15 +394,16 @@
                                         wire:key="shift-{{ $shift->id }}"
                                     >
                                         <div class="flex items-center gap-3">
-                                            <input type="checkbox" value="{{ $shift->id }}"
-                                                wire:model.live="selectedShiftIds"
-                                                @disabled($isFull || $isExisting || $isLockedByPriorityGate)
-                                                @checked($isExisting)
-                                                @if ($isFull) aria-label="{{ $shiftTimeLabel }} — {{ __('Full, no spots available') }}" @endif
-                                                @if ($isExisting) aria-label="{{ $shiftTimeLabel }} — {{ __('Already signed up') }}" @endif
-                                                @if ($isLockedByPriorityGate) aria-label="{{ $shiftTimeLabel }} — {{ __('Locked until priority shifts are filled') }}" @endif
-                                                class="accent-emerald-600"
-                                            />
+                                             <input type="checkbox" value="{{ $shift->id }}"
+                                                 wire:model.live="selectedShiftIds"
+                                                 @disabled($isFull || $isExisting || $isLockedByPriorityGate)
+                                                 @checked($isExisting)
+                                                 @if ($describedBy !== '') aria-describedby="{{ $describedBy }}" @endif
+                                                 @if ($isFull) aria-label="{{ $shiftTimeLabel }} — {{ __('Full, no spots available') }}" @endif
+                                                 @if ($isExisting) aria-label="{{ $shiftTimeLabel }} — {{ __('Already signed up') }}" @endif
+                                                 @if ($isLockedByPriorityGate) aria-label="{{ $shiftTimeLabel }} — {{ __('Locked until priority shifts are filled') }}" @endif
+                                                 class="accent-emerald-600"
+                                             />
                                             <div>
                                                 <span class="text-sm font-medium text-white">
                                                     {{ $shift->shift_date->setTimezone($tz)->format('M d') }} — {{ $shift->displayTimeRange($tz) }}
@@ -405,11 +427,17 @@
                                                     <span class="block text-sm" style="color: #a1a1aa;">
                                                         {{ $spotsLeft }} {{ __('spots remaining') }}
                                                     </span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        @if ($isExisting)
-                                            <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(59,130,246,0.15); color: #93c5fd;">{{ __('Signed Up') }}</span>
+                                                 @endif
+                                             </div>
+
+                                              @if ($shiftConflict !== null && $isSelected)
+                                                  <span id="shift-conflict-description-{{ $shift->id }}" class="sr-only">
+                                                      {{ $this->overlapConflictMessage($shiftConflict) }}
+                                                  </span>
+                                              @endif
+                                         </div>
+                                         @if ($isExisting)
+                                             <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(59,130,246,0.15); color: #93c5fd;">{{ __('Signed Up') }}</span>
                                         @elseif ($isLockedByPriorityGate)
                                             <span class="text-xs font-semibold px-2 py-0.5 rounded" style="background: rgba(161,161,170,0.15); color: #d4d4d8;">{{ __('Locked') }}</span>
                                         @elseif ($isFull)
@@ -424,12 +452,21 @@
                             </div>
                         </div>
                     @endforeach
+                    </div>
                 @endif
             </div>
 
-            @if (count($this->overlappingShiftIds) > 0)
-                <div class="rounded-lg p-3 mb-4 text-sm" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #fbbf24;">
-                    {{ __('Some selected shifts overlap in time. Deselect the highlighted shifts before continuing.') }}
+            @if ($this->overlapConflictMap !== [])
+                <div id="shift-selection-conflicts" role="alert" aria-live="assertive" aria-atomic="true" class="rounded-lg p-3 mb-4 text-sm" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #fbbf24;">
+                    <p class="font-medium text-white">{{ __('Some selected shifts overlap in time.') }}</p>
+
+                    <ul class="mt-2 space-y-1">
+                        @foreach ($this->overlapConflictMap as $conflict)
+                            <li id="shift-conflict-message-{{ $conflict['shift_id'] }}">
+                                {{ $this->overlapConflictMessage($conflict) }}
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
             @endif
 

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { loadFixtures } from './fixtures.js';
+
 type Fixtures = {
     deletionProjectId: number;
     deletionEventId: number;
@@ -17,14 +19,8 @@ async function login(page: Page): Promise<void> {
     await expect(page).toHaveURL(/\/admin\/dashboard$/);
 }
 
-async function loadFixtures(page: Page): Promise<Fixtures> {
-    await page.goto('/e2e-fixtures.json');
-
-    return JSON.parse(await page.locator('body').innerText()) as Fixtures;
-}
-
 test('event deletion UI uses the 7-day retention copy', async ({ page }) => {
-    const fixtures = await loadFixtures(page);
+    const fixtures = await loadFixtures<Fixtures>();
 
     await login(page);
     await page.goto(`/admin/events/${fixtures.deletionEventId}`);
@@ -38,7 +34,7 @@ test('event deletion UI uses the 7-day retention copy', async ({ page }) => {
 });
 
 test('project deletion UI uses the 7-day retention copy', async ({ page }) => {
-    const fixtures = await loadFixtures(page);
+    const fixtures = await loadFixtures<Fixtures>();
 
     await login(page);
     await page.goto(`/admin/projects/${fixtures.deletionProjectId}`);

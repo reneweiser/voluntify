@@ -1,9 +1,9 @@
 ---
 pipeline_status: complete
 current_stage: complete
-current_focus: "phase-3-invitation-reliability-messaging-ux is complete; no unresolved critical/high security findings remain, and reminder-send acknowledgement timing plus frontend dependency advisories are tracked as backlog follow-ups"
-current_milestone: phase-3-invitation-reliability-messaging-ux
-entry_point: security-audit
+current_focus: "Phase 4 signup conflict UX and coverage is complete; overlap guidance, cancelled-shift reactivation coverage, Playwright browser verification, and local-only E2E fixture handling are in place with no unresolved critical/high security findings"
+current_milestone: phase-4-signup-conflict-ux-coverage
+entry_point: plan
 stages_to_run:
   - plan
   - implement
@@ -17,7 +17,7 @@ completed_stages:
 project_summary: "Voluntify Phase 2 restructure — Projects replace EventGroups as mandatory top-level entity"
 quality_bar: "domain ~100% coverage, components 80%+, no critical/high security findings"
 started_at: "2026-04-01"
-last_updated: "2026-05-07T20:50:32+02:00"
+last_updated: "2026-05-08T07:55:01+02:00"
 ---
 
 # TALL Pipeline — Index
@@ -51,6 +51,7 @@ last_updated: "2026-05-07T20:50:32+02:00"
 | issue-222-portal-jwt-refresh | Volunteer Portal JWT Refresh | #222 refresh portal QR JWTs so scanner verification no longer fails with stale signatures | m15-volunteer-portal-enhancements, m11-scanner, m19-non-expiring-magic-links | complete |
 | issue-221-signup-grace-minutes | Signup Grace Minutes | #221 event-level public signup cutoff with configurable grace minutes | issue-168-shifts-jobs-active-state, issue-203-priority-shift-gate, issue-206-hide-fully-booked-jobs, issue-207-signup-empty-state-notifications | complete |
 | phase-3-invitation-reliability-messaging-ux | Phase 3: Invitation Reliability & Messaging UX | #217 failed guest invitation visibility + resend, #218 sending-active guest-list wording, #220 reminder portal links, #219 guest-pass CTA button | m12-guest-lists, m13-polish, m19-non-expiring-magic-links, issue-193-guest-mail-magic-link | complete |
+| phase-4-signup-conflict-ux-coverage | Phase 4: Signup Conflict UX & Coverage | #164 cancelled-then-re-signup overlap coverage, #163 specific overlap conflict messaging | issue-168-shifts-jobs-active-state, issue-203-priority-shift-gate, issue-206-hide-fully-booked-jobs, issue-207-signup-empty-state-notifications, issue-221-signup-grace-minutes | complete |
 
 ## Artifacts
 
@@ -84,6 +85,9 @@ last_updated: "2026-05-07T20:50:32+02:00"
 | `e2e/signup-grace-minutes.spec.ts` | test | issue-221 | Browser coverage for organizer-managed signup grace minutes and public shift visibility | complete |
 | `.tall-pipeline/phase-3-invitation-reliability-messaging-ux.md` | plan+implement+test+security | phase-3-invitation-reliability-messaging-ux | Phase 3 milestone tracking with implementation, verification, and security-audit outcomes for #217, #218, #220, and #219 | complete |
 | `.tall-pipeline/phase-3-invitation-reliability-messaging-ux-security-audit.md` | security-audit | phase-3-invitation-reliability-messaging-ux | Security audit report for invitation state transitions, organizer resend recovery, reminder portal links, and guest-pass CTA surfaces | complete |
+| `.tall-pipeline/phase-4-signup-conflict-ux-coverage.md` | all | phase-4-signup-conflict-ux-coverage | Phase 4 milestone tracking for signup overlap reactivation coverage and specific conflict messaging | complete |
+| `.tall-pipeline/phase-4-signup-conflict-ux-coverage-security-audit.md` | security-audit | phase-4-signup-conflict-ux-coverage | Security audit report for overlap UX hardening, verified-token resume handling, and public E2E fixture exposure | complete |
+| `e2e/signup-conflict-ux.spec.ts` | test | phase-4-signup-conflict-ux-coverage | Browser coverage for public signup overlap messaging, returning-volunteer conflicts, and cancelled-shift reactivation outcomes | complete |
 
 ## Conceive
 - **Status:** n/a (Phase 1 design complete, Phase 2 design from PO feedback PR #89)
