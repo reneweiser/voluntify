@@ -12,11 +12,13 @@
 #   }
 #
 # Usage:
+#   Set IMAGE_TAG to the commit SHA of a published build containing the patched Dockerfile.
+#   Back up MariaDB before upgrading an existing database to the pinned release.
 #   docker compose -f docker-compose.prod.yml up -d
 
 services:
   app:
-    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
+    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:?Set IMAGE_TAG to the commit SHA of a published patched build}
     # To build from source instead of pulling from GHCR, comment out "image" above and uncomment:
     # build:
     #   context: .
@@ -47,10 +49,12 @@ services:
         max-file: "3"
 
   scheduler:
-    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
+    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:?Set IMAGE_TAG to the commit SHA of a published patched build}
     restart: unless-stopped
     entrypoint: ["php"]
     command: ["artisan", "schedule:work"]
+    healthcheck:
+      disable: true
     env_file: .env
     depends_on:
       app:
@@ -66,10 +70,12 @@ services:
         max-file: "3"
 
   queue:
-    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:-latest}
+    image: ghcr.io/reneweiser/voluntify:${IMAGE_TAG:?Set IMAGE_TAG to the commit SHA of a published patched build}
     restart: unless-stopped
     entrypoint: ["php"]
     command: ["artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    healthcheck:
+      disable: true
     env_file: .env
     depends_on:
       app:
@@ -85,7 +91,7 @@ services:
         max-file: "3"
 
   mariadb:
-    image: mariadb:11
+    image: mariadb:11.8.9@sha256:f16d7a344413e519dff518f27bdb221388f84b0d274c97c4fb5f2cb0dc1b34fa
     restart: unless-stopped
     environment:
       MARIADB_DATABASE: "${DB_DATABASE:-voluntify}"

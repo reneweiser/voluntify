@@ -14,6 +14,7 @@ if [[ $# -ne 1 ]]; then
 fi
 
 readonly image_tag="$1"
+export IMAGE_TAG="${image_tag}"
 readonly previous_image="$(docker inspect --format='{{.Config.Image}}' "${APP_CONTAINER}" 2>/dev/null || true)"
 readonly previous_image_id="$(docker inspect --format='{{.Image}}' "${APP_CONTAINER}" 2>/dev/null || true)"
 
@@ -21,8 +22,11 @@ backup_path="$(${BACKUP_SCRIPT})"
 
 printf 'Backup created: %s\n' "${backup_path}"
 
-IMAGE_TAG="${image_tag}" docker compose -f "${COMPOSE_FILE}" pull app scheduler queue
-IMAGE_TAG="${image_tag}" docker compose -f "${COMPOSE_FILE}" up -d app scheduler queue
+docker compose -f "${COMPOSE_FILE}" pull app scheduler queue
+# Keep old workers from processing jobs while the app runs startup migrations.
+docker compose -f "${COMPOSE_FILE}" stop -t 60 scheduler queue
+# Database upgrades are deliberately separate from application deployments.
+docker compose -f "${COMPOSE_FILE}" up -d --no-deps app
 
 for ((elapsed_seconds = 0; elapsed_seconds < HEALTH_TIMEOUT_SECONDS; elapsed_seconds += 5)); do
     health_status="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${APP_CONTAINER}" 2>/dev/null || true)"
@@ -40,6 +44,8 @@ if [[ "${health_status}" != "healthy" ]]; then
     printf 'App container did not become healthy within %s seconds. Current status: %s\n' "${HEALTH_TIMEOUT_SECONDS}" "${health_status:-unknown}" >&2
     exit 1
 fi
+
+docker compose -f "${COMPOSE_FILE}" up -d --no-deps scheduler queue
 
 printf '\nDeployment complete for image tag: %s\n' "${image_tag}"
 
@@ -66,5 +72,5 @@ printf '  gunzip -c %q | docker compose -f %q exec -T mariadb sh -lc %q\n' "${ba
 
 if [[ -n "${previous_image}" ]]; then
     previous_tag="${previous_image##*:}"
-    printf '  IMAGE_TAG=%q docker compose -f %q up -d app scheduler queue\n' "${previous_tag}" "${COMPOSE_FILE}"
+    printf '  IMAGE_TAG=%q docker compose -f %q up -d --no-deps app scheduler queue\n' "${previous_tag}" "${COMPOSE_FILE}"
 fi

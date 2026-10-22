@@ -1,5 +1,5 @@
 # Stage 1 — Install PHP dependencies
-FROM composer:2 AS composer-deps
+FROM composer:2.10.3@sha256:da624c2c705d54e2f5a9bb77a5dc6c7d091711433ebefd7035672e84c2010fee AS composer-deps
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY . .
 RUN composer dump-autoload --optimize
 
 # Stage 2 — Build frontend assets
-FROM node:22-alpine AS node-build
+FROM node:22.23.4-alpine3.24@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS node-build
 
 WORKDIR /app
 
@@ -24,7 +24,8 @@ COPY --from=composer-deps /app/vendor/ vendor/
 RUN npm ci && npm run build
 
 # Stage 3 — Final FrankenPHP image
-FROM dunglas/frankenphp:1-php8.4-bookworm
+# PHP 8.4.27 fixes CVE-2026-109618 and CVE-2026-109619.
+FROM dunglas/frankenphp:1.13.2-php8.4.27-bookworm@sha256:49369ff211d81dc30a15890d58c0651d639aef0d9c0a9b91bcc6f387a77bd7a2
 
 ARG APP_VERSION
 ENV APP_VERSION=${APP_VERSION}
