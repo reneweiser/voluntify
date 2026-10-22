@@ -54,6 +54,9 @@ function eventSignupShiftTimeLabel(VolunteerJob $job, Shift $shift, string $time
 }
 
 beforeEach(function () {
+    // Keep fixed-date signup fixtures in the future on every test run.
+    $this->travelTo(Carbon::parse('2026-05-01 12:00:00'));
+
     Notification::fake();
 
     $this->org = Organization::factory()->create();

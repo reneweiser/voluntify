@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Event as EventFacade;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    // Keep fixed-date availability fixtures in the future on every test run.
+    $this->travelTo(Carbon::parse('2026-05-01 12:00:00'));
+
     $this->org = Organization::factory()->create();
     $this->event = Event::factory()->for($this->org)->create();
     $this->job = VolunteerJob::factory()->for($this->event)->create();
